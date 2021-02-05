@@ -1,0 +1,18 @@
+version: '3.9'
+services:
+  web:
+    image: confa/web
+    restart: always
+    network_mode: host
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt/
+
+  rtc:
+    image: confa/rtc
+    restart: always
+    network_mode: host
+    environment:
+      - ADDRESS=:8001
+      - ICE_PORT_MIN=10000
+      - ICE_PORT_MAX=10999
+      - LOG_FORMAT=console

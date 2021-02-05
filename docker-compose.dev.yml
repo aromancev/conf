@@ -1,0 +1,29 @@
+version: '3.9'
+services:
+  nginx:
+    image: nginx:1.19.6
+    depends_on: 
+      - web
+      - rtc
+    ports:
+      - "80:80"
+    volumes:
+      - ./web/nginx.dev.conf:/etc/nginx/nginx.conf
+
+  web:
+    image: node:15.7.0
+    working_dir: /app
+    command: bash -c "npm install -g pnpm; pnpm run serve"
+    volumes:
+      - ./web:/app
+
+  rtc:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/rtc/."
+    environment:
+      - ADDRESS=:8001
+      - LOG_FORMAT=console
+    volumes:
+      - ./api:/app
