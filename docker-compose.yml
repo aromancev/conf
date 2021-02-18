@@ -16,3 +16,11 @@ services:
       - ICE_PORT_MIN=10000
       - ICE_PORT_MAX=10999
       - LOG_FORMAT=console
+
+  api:
+    image: confa/api
+    restart: always
+    network_mode: host
+    environment:
+      - ADDRESS=:8002
+      - LOG_FORMAT=console

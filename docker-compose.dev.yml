@@ -27,3 +27,14 @@ services:
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/api/."
+    environment:
+      - ADDRESS=:8002
+      - LOG_FORMAT=console
+    volumes:
+      - ./api:/app

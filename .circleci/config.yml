@@ -1,33 +1,31 @@
 version: 2.1
 jobs:
+  deploy_web:
+    machine: true
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+            - web-v1
+      - run: ./deploy/web.sh
+      - save_cache:
+          key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+          paths:
+            - web/node_modules
+            - web/.pnpm-store
   deploy_rtc:
     machine: true
     steps:
         - checkout
         - run: ./deploy/rtc.sh
-  deploy_web:
+  deploy_api:
     machine: true
     steps:
-        - checkout
-        - restore_cache:
-            keys:
-              - web-v1-{{ checksum "web/pnpm-lock.yaml" }}
-              - web-v1
-        - run: ./deploy/web.sh
-        - save_cache:
-            key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
-            paths:
-              - web/node_modules
-              - web/.pnpm-store
+      - checkout
+      - run: ./deploy/api.sh
 workflows:
   version: 2.1
-  rtc:
-    jobs:
-      - approve:
-          type: approval
-      - deploy_rtc:
-          requires:
-            - approve
   web:
     jobs:
       - approve:
@@ -35,3 +33,18 @@ workflows:
       - deploy_web:
           requires:
             - approve
+  rtc:
+    jobs:
+      - approve:
+          type: approval
+      - deploy_rtc:
+          requires:
+            - approve
+  api:
+    jobs:
+      - approve:
+          type: approval
+      - deploy_api:
+          requires:
+            - approve
+
