@@ -24,6 +24,12 @@ jobs:
     steps:
       - checkout
       - run: ./deploy/api.sh
+  deploy_beanstalkd:
+    machine: true
+    steps:
+      - checkout
+      - run: ./deploy/beanstalkd.sh
+
 workflows:
   version: 2.1
   web:
@@ -48,3 +54,10 @@ workflows:
           requires:
             - approve
 
+  beanstalkd:
+    jobs:
+      - approve:
+          type: approval
+      - deploy_beanstalkd:
+          requires:
+            - approve

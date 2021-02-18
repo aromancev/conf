@@ -38,3 +38,10 @@ services:
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
+
+  beanstalkd:
+    build:
+      context: ./beanstalkd
+      dockerfile: Dockerfile
+    volumes:
+      - ./.artifacts/beanstalkd:/var/lib/beanstalkd

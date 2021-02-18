@@ -24,3 +24,10 @@ services:
     environment:
       - ADDRESS=:8002
       - LOG_FORMAT=console
+
+  beanstalkd:
+    image: confa/beanstalkd
+    restart: always
+    network_mode: host
+    volumes:
+      - /var/lib/beanstalkd:/var/lib/beanstalkd
