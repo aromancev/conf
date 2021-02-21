@@ -13,4 +13,6 @@ WORKDIR /app
 
 COPY --from=builder /app/bin/* /app/
 
+ENV EMAIL_=/bar
+
 CMD ["/app/api"]
