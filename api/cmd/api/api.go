@@ -12,12 +12,13 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/cmd/api/handler"
+	"github.com/aromancev/confa/internal/confa"
 )
 
 func main() {
 	config := Config{}.WithDefault().WithEnv()
 	if err := config.Validate(); err != nil {
-		log.Fatal().Err(err).Msg("invalid config")
+		log.Fatal().Err(err).Msg("Invalid config")
 	}
 
 	if config.LogFormat == LogConsole {
@@ -25,12 +26,15 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
+	confaSQL := confa.NewSQL()
+	confaCRUD := confa.NewCRUD(nil, confaSQL)
+
 	srv := &http.Server{
 		Addr:         config.Address,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      handler.New(),
+		Handler:      handler.New(confaCRUD),
 	}
 
 	go func() {
