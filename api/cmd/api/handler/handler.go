@@ -24,7 +24,7 @@ func New(confaCRUD *confa.CRUD) *Handler {
 		_, _ = w.Write([]byte("OK"))
 	})
 
-	r.POST("confa/v1/confas", trace.Wrap(h.createConfa))
+	r.POST("/confa/v1/confas", trace.Wrap(h.createConfa))
 
 	h.router = r
 	return h

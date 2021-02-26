@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
@@ -56,6 +57,9 @@ func (c Config) WithDefault() Config {
 func (c Config) Validate() error {
 	if c.Address == "" {
 		return errors.New("address not set")
+	}
+	if err := c.Email.Validate(); err != nil {
+		return fmt.Errorf("invalid email config: %w", err)
 	}
 
 	return nil
