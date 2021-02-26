@@ -13,6 +13,7 @@ import (
 
 	"github.com/aromancev/confa/cmd/api/handler"
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/platform/psql"
 )
 
 func main() {
@@ -26,8 +27,19 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
+	postgres, err := psql.New(psql.Config{
+		Host:     config.Postgres.Host,
+		Port:     config.Postgres.Port,
+		User:     config.Postgres.User,
+		Password: config.Postgres.Password,
+		Database: config.Postgres.Database,
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to postgres")
+	}
+
 	confaSQL := confa.NewSQL()
-	confaCRUD := confa.NewCRUD(nil, confaSQL)
+	confaCRUD := confa.NewCRUD(postgres, confaSQL)
 
 	srv := &http.Server{
 		Addr:         config.Address,

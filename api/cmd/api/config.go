@@ -16,6 +16,34 @@ type Config struct {
 	Address   string `envconfig:"ADDRESS"`
 	LogFormat string `envconfig:"LOG_FORMAT"`
 	Email     EmailConfig
+	Postgres  PostgresConfig
+}
+
+type PostgresConfig struct {
+	Host     string `envconfig:"POSTGRES_HOST"`
+	Port     string `envconfig:"POSTGRES_PORT"`
+	User     string `envconfig:"POSTGRES_USER"`
+	Password string `envconfig:"POSTGRES_PASSWORD"`
+	Database string `envconfig:"POSTGRES_DATABASE"`
+}
+
+func (c PostgresConfig) Validate() error {
+	if c.Host == "" {
+		return errors.New("host not set")
+	}
+	if c.Port == "" {
+		return errors.New("port not set")
+	}
+	if c.User == "" {
+		return errors.New("user not set")
+	}
+	if c.Password == "" {
+		return errors.New("password not set")
+	}
+	if c.Database == "" {
+		return errors.New("database not set")
+	}
+	return nil
 }
 
 type EmailConfig struct {
@@ -60,6 +88,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Email.Validate(); err != nil {
 		return fmt.Errorf("invalid email config: %w", err)
+	}
+	if err := c.Postgres.Validate(); err != nil {
+		return fmt.Errorf("invalid postgres config: %w", err)
 	}
 
 	return nil

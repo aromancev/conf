@@ -36,6 +36,15 @@ services:
     environment:
       - ADDRESS=:8002
       - LOG_FORMAT=console
+      - EMAIL_SERVER=$EMAIL_SERVER
+      - EMAIL_PORT=$EMAIL_PORT
+      - EMAIL_ADDRESS=$EMAIL_ADDRESS
+      - EMAIL_PASSWORD=$EMAIL_PASSWORD
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=confa
+      - POSTGRES_PASSWORD=confa
+      - POSTGRES_DATABASE=confa
     volumes:
       - ./api:/app
 

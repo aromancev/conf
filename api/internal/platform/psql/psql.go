@@ -25,6 +25,23 @@ type Transactioner interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
+type Config struct {
+	Host, Port, User, Password, Database string
+}
+
+func New(c Config) (*sql.DB, error) {
+	conn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s",
+		c.Host, c.Port, c.User, c.Password, c.Database,
+	)
+	db, err := sql.Open("postgres", conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
 // Transaction can be used to execute multiple operations atomically.
 //
 // It does not protect you from data races or any
