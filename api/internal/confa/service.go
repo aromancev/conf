@@ -2,7 +2,6 @@ package confa
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -15,12 +14,12 @@ type Repo interface {
 }
 
 type CRUD struct {
-	db   *sql.DB
+	conn psql.Conn
 	repo Repo
 }
 
-func NewCRUD(db *sql.DB, repo Repo) *CRUD {
-	return &CRUD{db: db, repo: repo}
+func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
+	return &CRUD{conn: conn, repo: repo}
 }
 
 func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Confa, error) {
@@ -30,7 +29,7 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 		return Confa{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
 
-	created, err := c.repo.Create(ctx, c.db, request)
+	created, err := c.repo.Create(ctx, c.conn, request)
 	if err != nil {
 		return Confa{}, fmt.Errorf("failed to create confa: %w", err)
 	}

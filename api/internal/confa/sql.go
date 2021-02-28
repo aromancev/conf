@@ -44,7 +44,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 		b.WriteRow(r.ID, r.Owner, r.Tag, r.CreatedAt)
 	}
 	query, args := b.Query()
-	_, err := execer.ExecContext(
+	_, err := execer.Exec(
 		ctx,
 		`
 			INSERT INTO confas

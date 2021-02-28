@@ -6,23 +6,23 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 )
 
 type Queryer interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 }
 
 type Execer interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 }
 
-type QueryerExecer interface {
+type Conn interface {
 	Queryer
 	Execer
-}
-
-type Transactioner interface {
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 type Config struct {
@@ -63,22 +63,22 @@ func New(c Config) (*sql.DB, error) {
 // })
 //
 // If any error is returned from the callback, transaction will be aborted.
-func Transaction(ctx context.Context, trans Transactioner, f func(context.Context, *sql.Tx) error) error {
+func Transaction(ctx context.Context, conn Conn, f func(context.Context, Conn) error) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	tx, err := trans.BeginTx(ctx, nil)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
 	err = f(ctx, tx)
 	if err != nil {
-		_ = tx.Rollback() // We can't do anything if rollback returns an error.
+		_ = tx.Rollback(ctx) // We can't do anything if rollback returns an error.
 		return err
 	}
 
-	err = tx.Commit()
+	err = tx.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
