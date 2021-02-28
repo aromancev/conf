@@ -54,3 +54,12 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
+
+  postres:
+    image: postgres:13.2
+    environment:
+      - POSTGRES_USER=postres
+      - POSTGRES_PASSWORD=postres
+      - POSTGRES_DB=confa
+    volumes:
+      - ./db:/var/lib/postgresql/data/

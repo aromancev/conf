@@ -40,3 +40,12 @@ services:
     network_mode: host
     volumes:
       - /var/lib/beanstalkd:/var/lib/beanstalkd
+
+  postres:
+    image: postgres:13.2
+    environment:
+      - POSTGRES_USER=postres
+      - POSTGRES_PASSWORD=postres
+      - POSTGRES_DB=confa
+    volumes:
+      - /var/lib/postgresql/:/var/lib/postgresql/
