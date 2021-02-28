@@ -20,6 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.8.0 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
 	golang.org/x/sys v0.0.0-20210226181700-f36f78243c0c // indirect
 )

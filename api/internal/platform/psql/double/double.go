@@ -34,7 +34,7 @@ func NewDocker(t *testing.T, migrationsDir string) (*sql.DB, func()) {
 	var db *sql.DB
 	if err := pool.Retry(func() error {
 		conn := fmt.Sprintf(
-			"host=localhost port=%s user=postgres password=postgres dbname=postgres sslmode=disable",
+			"host=localhost port=%s user=confa password=confa dbname=confa sslmode=disable",
 			resource.GetPort("5432/tcp"),
 		)
 		var err error

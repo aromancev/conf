@@ -99,10 +99,41 @@ func (b *ValuesBuilder) WriteRow(args ...interface{}) {
 	if len(b.args) != 0 {
 		b.sql.WriteString(",")
 	}
+	//b.sql.WriteString("(?" + strings.Repeat(",?", len(args)-1) + ")")
 	b.sql.WriteString("(?" + strings.Repeat(",?", len(args)-1) + ")")
+	b.args = append(b.args, args...)
+}
+
+func (b *ValuesBuilder) GetRow(args ...interface{}) {
+	if len(b.args) != 0 {
+		b.sql.WriteString(",")
+	}
+	b.sql.WriteString("(" + strings.Repeat(",", len(args)-1) + ")")
 	b.args = append(b.args, args...)
 }
 
 func (b *ValuesBuilder) Query() (string, []interface{}) {
 	return b.sql.String(), b.args
 }
+
+//// ValuesGetter can be used to build queries for multiple get by id (fields).
+//type ValuesGetter struct {
+//	sql  strings.Builder
+//	args []interface{}
+//}
+
+//func NewValuesGetter() *ValuesGetter {
+//	return &ValuesGetter{}
+//}
+//
+//func (b *ValuesGetter) GetRow(args ...interface{}) {
+//	if len(b.args) != 0 {
+//		b.sql.WriteString(",")
+//	}
+//	b.sql.WriteString("(?" + strings.Repeat(",?", len(args)-1) + ")")
+//	b.args = append(b.args, args...)
+//}
+//
+//func (b *ValuesBuilder) Query() (string, []interface{}) {
+//	return b.sql.String(), b.args
+//}
