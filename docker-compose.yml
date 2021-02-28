@@ -44,8 +44,10 @@ services:
   postres:
     image: postgres:12
     environment:
-      - POSTGRES_USER=postres
-      - POSTGRES_PASSWORD=postres
-      - POSTGRES_DB=confa
+      - POSTGRES_HOST=$POSTGRES_HOST
+      - POSTGRES_PORT=$POSTGRES_PORT
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DATABASE=$POSTGRES_DATABASE
     volumes:
       - /var/lib/postgresql/:/var/lib/postgresql/
