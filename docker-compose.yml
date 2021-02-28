@@ -39,4 +39,4 @@ services:
       - POSTGRES_PASSWORD=postres
       - POSTGRES_DB=confa
     volumes:
-      - ./db:/var/lib/postgresql/data/
+      - /var/lib/postgresql/:/var/lib/postgresql/
