@@ -17,6 +17,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	config := Config{}.WithDefault().WithEnv()
 	if err := config.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid config")
@@ -27,7 +29,7 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	postgres, err := psql.New(psql.Config{
+	postgres, err := psql.New(ctx, psql.Config{
 		Host:     config.Postgres.Host,
 		Port:     config.Postgres.Port,
 		User:     config.Postgres.User,
@@ -48,7 +50,6 @@ func main() {
 		IdleTimeout:  time.Second * 60,
 		Handler:      handler.New(confaCRUD),
 	}
-
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
@@ -63,7 +64,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
 
 	_ = srv.Shutdown(ctx)

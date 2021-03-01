@@ -56,7 +56,7 @@ services:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
   postres:
-    image: postgres:12
+    image: postgres:12.6-alpine
     environment:
       - POSTGRES_USER=postres
       - POSTGRES_PASSWORD=postres

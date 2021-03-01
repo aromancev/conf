@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/jackc/pgx/v4"
@@ -18,6 +19,10 @@ import (
 // IMPORTANT: Always call returned function at the end of tests (if no error returned) to release docker resources.
 // To make this work on CI, set DOCKER_HOST and DOCKER_IP env variables.
 func NewDocker(migrationsDir string) (pgx.Tx, func()) {
+	migrationsDir, err := filepath.Abs(migrationsDir)
+	if err != nil {
+		panic(err)
+	}
 	pg := pool.Use(migrationsDir)
 	tx, err := pg.Begin(context.Background())
 	if err != nil {

@@ -30,9 +30,16 @@ func TestSQL(t *testing.T) {
 		request := Confa{
 			ID:    uuid.New(),
 			Owner: uuid.New(),
+			Name:  "test",
 		}
 		created, err := sql.Create(ctx, pg, request)
 		require.NoError(t, err)
-		assert.Equal(t, request, created)
+
+		fetched, err := sql.Fetch(ctx, pg, Lookup{
+			ID:    request.ID,
+			Owner: request.Owner,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, created, fetched)
 	})
 }

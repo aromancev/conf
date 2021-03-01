@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/aromancev/confa/internal/platform/psql"
 )
@@ -14,11 +15,11 @@ type Repo interface {
 }
 
 type CRUD struct {
-	conn psql.Conn
+	conn *pgxpool.Pool
 	repo Repo
 }
 
-func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
+func NewCRUD(conn *pgxpool.Pool, repo Repo) *CRUD {
 	return &CRUD{conn: conn, repo: repo}
 }
 
