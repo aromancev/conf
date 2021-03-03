@@ -41,7 +41,7 @@ services:
     volumes:
       - /var/lib/beanstalkd:/var/lib/beanstalkd
 
-  postres:
+  postgres:
     image: postgres:12.6-alpine
     environment:
       - POSTGRES_HOST=$POSTGRES_HOST

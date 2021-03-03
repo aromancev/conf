@@ -12,7 +12,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Confa) ([]Confa, error)
-	Get(ctx context.Context, queryer psql.Queryer, ids ...uuid.UUID) ([]Confa, error)
+	Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Confa, error)
 }
 
 type CRUD struct {
@@ -40,7 +40,7 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 }
 
 func (c *CRUD) Confa(ctx context.Context, userID uuid.UUID, id uuid.UUID) (Confa, error) {
-	created, err := c.repo.Get(ctx, c.db, id)
+	created, err := c.repo.Fetch(ctx, c.conn, Lookup{ID: id})
 	if err != nil {
 		return Confa{}, fmt.Errorf("failed to create confa: %w", err)
 	}

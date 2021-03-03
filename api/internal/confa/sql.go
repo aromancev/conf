@@ -36,7 +36,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 		}
 	}
 
-	now := time.Now().UTC()
+	now := time.Now().Round(time.Microsecond).UTC()
 	for i := range requests {
 		requests[i].CreatedAt = now
 	}
@@ -49,7 +49,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 	_, err := execer.Exec(
 		ctx,
 		`
-			INSERT INTO confas
+			INSERT INTO confa
 			(id, owner, handle, created_at)
 			VALUES
 		`+query,
@@ -74,7 +74,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 		ctx,
 		`
 		SELECT id, owner, handle, created_at
-		FROM confas
+		FROM confa
 		WHERE
 		`+" "+query,
 		args...,
