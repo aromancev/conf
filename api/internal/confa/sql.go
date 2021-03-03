@@ -43,14 +43,14 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 
 	b := psql.NewValuesBuilder()
 	for _, r := range requests {
-		b.WriteRow(r.ID, r.Owner, r.Name, r.CreatedAt)
+		b.WriteRow(r.ID, r.Owner, r.Handle, r.CreatedAt)
 	}
 	query, args := b.Query()
 	_, err := execer.Exec(
 		ctx,
 		`
 			INSERT INTO confas
-			(id, owner, name, created_at)
+			(id, owner, handle, created_at)
 			VALUES
 		`+query,
 		args...,
@@ -73,7 +73,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 	rows, err := queryer.Query(
 		ctx,
 		`
-		SELECT id, owner, name, created_at
+		SELECT id, owner, handle, created_at
 		FROM confas
 		WHERE
 		`+" "+query,
@@ -89,7 +89,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 		err := rows.Scan(
 			&c.ID,
 			&c.Owner,
-			&c.Name,
+			&c.Handle,
 			&c.CreatedAt,
 		)
 		if err != nil {

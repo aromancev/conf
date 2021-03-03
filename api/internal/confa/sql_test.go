@@ -28,9 +28,9 @@ func TestSQL(t *testing.T) {
 		sql := NewSQL()
 
 		request := Confa{
-			ID:    uuid.New(),
-			Owner: uuid.New(),
-			Name:  "test",
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: "test",
 		}
 		created, err := sql.Create(ctx, pg, request)
 		require.NoError(t, err)
