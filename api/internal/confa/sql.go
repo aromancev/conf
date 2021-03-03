@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/aromancev/confa/internal/platform/psql"
 )
 
@@ -15,8 +17,6 @@ const (
 
 type SQL struct {
 }
-
-
 
 func NewSQL() *SQL {
 	return &SQL{}
@@ -40,18 +40,19 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 	for i := range requests {
 		requests[i].CreatedAt = now
 	}
+
 	b := psql.NewValuesBuilder()
 	for _, r := range requests {
-		b.WriteRow(r.ID, r.Owner, r.Name, r.CreatedAt)
+		b.WriteRow(r.ID, r.Owner, r.Handle, r.CreatedAt)
 	}
-	_, args := b.Query()
-	_, err := execer.ExecContext(
+	query, args := b.Query()
+	_, err := execer.Exec(
 		ctx,
 		`
-			INSERT INTO confa
-			(id, owner, tag, created_at)
+			INSERT INTO confas
+			(id, owner, handle, created_at)
 			VALUES
-			($1, $2, $3, $4)`,
+		`+query,
 		args...,
 	)
 	if err != nil {
@@ -61,14 +62,22 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 }
 
 func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Confa, error) {
-	rows, err := queryer.QueryContext(
+	b := psql.NewConditionBuilder("AND")
+	if lookup.ID != uuid.Nil {
+		b.Eq("id", lookup.ID)
+	}
+	if lookup.Owner != uuid.Nil {
+		b.Eq("owner", lookup.Owner)
+	}
+	query, args := b.Query()
+	rows, err := queryer.Query(
 		ctx,
 		`
-		SELECT id, owner, name, created_at
+		SELECT id, owner, handle, created_at
 		FROM confas
-		WHERE id = ?
-		`,
-		lookup.ID,
+		WHERE
+		`+" "+query,
+		args...,
 	)
 	if err != nil {
 		return nil, err
@@ -80,19 +89,20 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 		err := rows.Scan(
 			&c.ID,
 			&c.Owner,
-			&c.Name,
+			&c.Handle,
 			&c.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan: %w", err)
 		}
+		c.CreatedAt = c.CreatedAt.UTC()
 		confas = append(confas, c)
 	}
 
 	return confas, nil
 }
 
-func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Confa, error){
+func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Confa, error) {
 	confas, err := s.Fetch(ctx, queryer, lookup)
 	if err != nil {
 		return Confa{}, err

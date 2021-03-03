@@ -2,22 +2,21 @@ package confa
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrValidation = errors.New("invalid confa")
-	ErrNoRows = errors.New("no rows returned")
+	ErrValidation   = errors.New("invalid confa")
+	ErrNoRows       = errors.New("no rows returned")
 	ErrMultipleRows = errors.New("multiple rows returned")
 )
 
 type Confa struct {
-	ID    uuid.UUID
-	Owner uuid.UUID
-	Name   string
+	ID     uuid.UUID
+	Owner  uuid.UUID
+	Handle string
 
 	CreatedAt time.Time
 }
@@ -32,10 +31,7 @@ func (c Confa) Validate() error {
 	return nil
 }
 
-func (c Confa) toString() string {
-	return fmt.Sprintf("%v\n", c)
-}
-
 type Lookup struct {
-	ID uuid.UUID
+	ID    uuid.UUID
+	Owner uuid.UUID
 }

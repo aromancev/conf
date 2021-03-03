@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9'
 services:
   nginx:
     image: nginx:1.19.6
@@ -55,13 +55,11 @@ services:
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
-  postgres:
-    image: postgres:12
+  postres:
+    image: postgres:12.6-alpine
     environment:
-      - POSTGRES_USER=confa
-      - POSTGRES_PASSWORD=confa
+      - POSTGRES_USER=postres
+      - POSTGRES_PASSWORD=postres
       - POSTGRES_DB=confa
-    ports:
-    - 5432:5432
     volumes:
-      - ./.artifacts/db:/var/lib/postgresql/data/
+      - ./.artifacts:/var/lib/postgresql/data/
