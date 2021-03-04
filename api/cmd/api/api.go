@@ -6,18 +6,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
+	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/cmd/api/handler"
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/iam"
+	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/psql"
+	"github.com/aromancev/confa/internal/platform/trace"
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	config := Config{}.WithDefault().WithEnv()
 	if err := config.Validate(); err != nil {
@@ -40,15 +45,55 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to postgres")
 	}
 
+	producer, err := beanstalk.NewProducer(config.Beanstalkd.Pool, beanstalk.Config{
+		Multiply:         1,
+		ReconnectTimeout: 3 * time.Second,
+		InfoFunc: func(message string) {
+			log.Info().Msg(message)
+		},
+		ErrorFunc: func(err error, message string) {
+			log.Err(err).Msg(message)
+		},
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+	}
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{handler.TubeEmail}, beanstalk.Config{
+		Multiply:         1,
+		NumGoroutines:    10,
+		ReserveTimeout:   5 * time.Second,
+		ReconnectTimeout: 3 * time.Second,
+		InfoFunc: func(message string) {
+			log.Info().Msg(message)
+		},
+		ErrorFunc: func(err error, message string) {
+			log.Err(err).Msg(message)
+		},
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+	}
+
+	sign, err := iam.NewSigner(config.SecretKey)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create signer")
+	}
+	verify, err := iam.NewVerifier(config.PublicKey)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create verifier")
+	}
+
+	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password)
 	confaSQL := confa.NewSQL()
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
+	hand := handler.New(config.BaseURL, confaCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
 
 	srv := &http.Server{
 		Addr:         config.Address,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      handler.New(confaCRUD),
+		Handler:      hand,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -58,16 +103,27 @@ func main() {
 			log.Fatal().Err(err).Msg("Server failed")
 		}
 	}()
+	var consumerDone sync.WaitGroup
+	consumerDone.Add(1)
+	go func() {
+		consumer.Receive(ctx, hand.ServeJob)
+		consumerDone.Done()
+	}()
 	log.Info().Msg("Listening on " + config.Address)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second*60)
-	defer cancel()
-
-	_ = srv.Shutdown(ctx)
-
 	log.Fatal().Msg("Shutting down")
+
+	ctx, shutdown := context.WithTimeout(ctx, time.Second*60)
+	defer shutdown()
+
+	cancel()
+	_ = srv.Shutdown(ctx)
+	producer.Stop()
+	consumerDone.Wait()
+
+	log.Fatal().Msg("Shutdown complete")
 }

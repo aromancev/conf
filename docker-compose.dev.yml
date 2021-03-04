@@ -5,6 +5,7 @@ services:
     depends_on: 
       - web
       - rtc
+      - api
     ports:
       - "80:80"
     volumes:
@@ -23,7 +24,7 @@ services:
       dockerfile: Dockerfile
     command: "go run ./cmd/rtc/."
     environment:
-      - ADDRESS=:8001
+      - ADDRESS=:80
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
@@ -33,9 +34,15 @@ services:
       context: ./api
       dockerfile: Dockerfile
     command: "go run ./cmd/api/."
+    depends_on:
+      - beanstalkd
+      - postgres
     environment:
-      - ADDRESS=:8002
+      - ADDRESS=:80
+      - BASE_URL=http://localhost
       - LOG_FORMAT=console
+      - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+      - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
       - EMAIL_SERVER=$EMAIL_SERVER
       - EMAIL_PORT=$EMAIL_PORT
       - EMAIL_ADDRESS=$EMAIL_ADDRESS
@@ -45,6 +52,7 @@ services:
       - POSTGRES_USER=confa
       - POSTGRES_PASSWORD=confa
       - POSTGRES_DATABASE=confa
+      - BEANSTALKD_POOL=beanstalkd:11300
     volumes:
       - ./api:/app
 
@@ -55,11 +63,11 @@ services:
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
-  postres:
+  postgres:
     image: postgres:12.6-alpine
     environment:
-      - POSTGRES_USER=postres
-      - POSTGRES_PASSWORD=postres
+      - POSTGRES_USER=confa
+      - POSTGRES_PASSWORD=confa
       - POSTGRES_DB=confa
     volumes:
-      - ./.artifacts:/var/lib/postgresql/data/
+      - ./.artifacts/posrgresql/:/var/lib/postgresql/data/

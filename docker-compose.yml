@@ -20,10 +20,16 @@ services:
   api:
     image: confa/api
     restart: always
+    depends_on:
+      - beanstalkd
+      - postgres
     network_mode: host
     environment:
       - ADDRESS=:8002
+      - BASE_URL=https://confa.io
       - LOG_FORMAT=console
+      - SECRET_KEY=$SECRET_KEY
+      - PUBLIC_KEY=$PUBLIC_KEY
       - EMAIL_SERVER=$EMAIL_SERVER
       - EMAIL_PORT=$EMAIL_PORT
       - EMAIL_ADDRESS=$EMAIL_ADDRESS
@@ -33,6 +39,7 @@ services:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
       - POSTGRES_DATABASE=$POSTGRES_DATABASE
+      - BEANSTALKD_POOL=$BEANSTALKD_POOL
 
   beanstalkd:
     image: confa/beanstalkd
@@ -41,11 +48,11 @@ services:
     volumes:
       - /var/lib/beanstalkd:/var/lib/beanstalkd
 
-  postres:
+  postgres:
     image: postgres:12.6-alpine
     environment:
-      - POSTGRES_USER=postres
-      - POSTGRES_PASSWORD=postres
-      - POSTGRES_DB=confa
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=$POSTGRES_DATABASE
     volumes:
       - /var/lib/postgresql/:/var/lib/postgresql/
