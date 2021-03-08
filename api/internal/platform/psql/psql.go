@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type Queryer interface {
@@ -19,15 +22,34 @@ type Execer interface {
 }
 
 type Config struct {
-	Host, Port, User, Password, Database string
+	Host, User, Password, Database string
+	Port                           uint16
 }
 
 func New(ctx context.Context, c Config) (*pgxpool.Pool, error) {
-	conn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s",
-		c.Host, c.Port, c.User, c.Password, c.Database,
-	)
-	return pgxpool.Connect(ctx, conn)
+	cfg, err := pgxpool.ParseConfig("")
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.ConnConfig = &pgx.ConnConfig{
+		Config: pgconn.Config{
+			Host:           c.Host,
+			Port:           c.Port,
+			Database:       c.Database,
+			User:           c.User,
+			Password:       c.Password,
+			ConnectTimeout: 10 * time.Second,
+		},
+		Logger:   &logger{},
+		LogLevel: pgx.LogLevelWarn,
+	}
+	cfg.MaxConnLifetime = 30 * time.Minute
+	cfg.MaxConnIdleTime = 10 * time.Minute
+	cfg.MaxConns = 10
+	cfg.LazyConnect = true
+
+	return pgxpool.ConnectConfig(ctx, cfg)
 }
 
 // ValuesBuilder can be used to build queries for multiple insert with placeholders.
@@ -80,4 +102,20 @@ func (b *ConditionBuilder) Eq(column string, val interface{}) {
 
 func (b *ConditionBuilder) Query() (string, []interface{}) {
 	return b.sql.String(), b.args
+}
+
+type logger struct{}
+
+func (l logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
+	var event *zerolog.Event
+	switch level {
+	case pgx.LogLevelError:
+		event = log.Ctx(ctx).Error()
+	case pgx.LogLevelWarn:
+		event = log.Ctx(ctx).Warn()
+	default:
+		event = log.Ctx(ctx).Info()
+	}
+
+	event.Fields(data).Msg(msg)
 }

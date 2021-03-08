@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
@@ -13,15 +15,78 @@ const (
 )
 
 type Config struct {
-	Address   string `envconfig:"ADDRESS"`
-	LogFormat string `envconfig:"LOG_FORMAT"`
-	Email     EmailConfig
-	Postgres  PostgresConfig
+	Address    string `envconfig:"ADDRESS"`
+	LogFormat  string `envconfig:"LOG_FORMAT"`
+	BaseURL    string `envconfig:"BASE_URL"`
+	SecretKey  string `envconfig:"SECRET_KEY"`
+	PublicKey  string `envconfig:"PUBLIC_KEY"`
+	Email      EmailConfig
+	Postgres   PostgresConfig
+	Beanstalkd BeanstalkdConfig
+}
+
+func (c Config) WithEnv() Config {
+	err := envconfig.Process("", &c)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to process env")
+	}
+
+	sk, err := base64.StdEncoding.DecodeString(c.SecretKey)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to decode SECRET_KEY (expected base64)")
+	}
+	c.SecretKey = string(sk)
+	pk, err := base64.StdEncoding.DecodeString(c.PublicKey)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to decode PUBLIC_KEY (expected base64)")
+	}
+	c.PublicKey = string(pk)
+
+	c.Email, err = c.Email.Parsed()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to parse email config")
+	}
+	c.Beanstalkd, err = c.Beanstalkd.Parsed()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to parse beanstalkd config")
+	}
+	return c
+}
+
+func (c Config) WithDefault() Config {
+	c.Address = ":80"
+	return c
+}
+
+func (c Config) Validate() error {
+	if c.Address == "" {
+		return errors.New("ADDRESS not set")
+	}
+	if c.BaseURL == "" {
+		return errors.New("BASE_URL not set")
+	}
+	if c.SecretKey == "" {
+		return errors.New("SECRET_KEY not set")
+	}
+	if c.PublicKey == "" {
+		return errors.New("PUBLIC_KEY not set")
+	}
+	if err := c.Email.Validate(); err != nil {
+		return fmt.Errorf("invalid email config: %w", err)
+	}
+	if err := c.Postgres.Validate(); err != nil {
+		return fmt.Errorf("invalid postgres config: %w", err)
+	}
+	if err := c.Beanstalkd.Validate(); err != nil {
+		return fmt.Errorf("invalid beanstalkd config: %w", err)
+	}
+
+	return nil
 }
 
 type PostgresConfig struct {
 	Host     string `envconfig:"POSTGRES_HOST"`
-	Port     string `envconfig:"POSTGRES_PORT"`
+	Port     uint16 `envconfig:"POSTGRES_PORT"`
 	User     string `envconfig:"POSTGRES_USER"`
 	Password string `envconfig:"POSTGRES_PASSWORD"`
 	Database string `envconfig:"POSTGRES_DATABASE"`
@@ -31,7 +96,7 @@ func (c PostgresConfig) Validate() error {
 	if c.Host == "" {
 		return errors.New("host not set")
 	}
-	if c.Port == "" {
+	if c.Port == 0 {
 		return errors.New("port not set")
 	}
 	if c.User == "" {
@@ -69,29 +134,29 @@ func (c EmailConfig) Validate() error {
 	return nil
 }
 
-func (c Config) WithEnv() Config {
-	err := envconfig.Process("", &c)
+func (c EmailConfig) Parsed() (EmailConfig, error) {
+	pass, err := base64.StdEncoding.DecodeString(c.Password)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to process env")
+		return EmailConfig{}, errors.New("failed to password (expected base64)")
 	}
-	return c
+	c.Password = string(pass)
+	return c, nil
 }
 
-func (c Config) WithDefault() Config {
-	c.Address = ":80"
-	return c
+type BeanstalkdConfig struct {
+	RawPool string `envconfig:"BEANSTALKD_POOL"`
+	Pool    []string
 }
 
-func (c Config) Validate() error {
-	if c.Address == "" {
-		return errors.New("address not set")
-	}
-	if err := c.Email.Validate(); err != nil {
-		return fmt.Errorf("invalid email config: %w", err)
-	}
-	if err := c.Postgres.Validate(); err != nil {
-		return fmt.Errorf("invalid postgres config: %w", err)
+func (c BeanstalkdConfig) Validate() error {
+	if c.RawPool == "" {
+		return errors.New("pool not set")
 	}
 
 	return nil
+}
+
+func (c BeanstalkdConfig) Parsed() (BeanstalkdConfig, error) {
+	c.Pool = strings.Split(c.RawPool, ",")
+	return c, nil
 }

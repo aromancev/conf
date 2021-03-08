@@ -6,11 +6,14 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/iam"
 	"github.com/aromancev/confa/internal/platform/api"
+	"github.com/aromancev/confa/internal/platform/email"
 )
 
 func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -40,4 +43,58 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 
 	_ = api.Created(conf).Write(ctx, w)
+}
+
+type loginReq struct {
+	Email string `json:"email"`
+}
+
+func (r loginReq) Validate() error {
+	if err := email.ValidateEmail(r.Email); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	var req loginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
+		return
+	}
+
+	if err := req.Validate(); err != nil {
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	}
+
+	token, err := h.sign.EmailToken(req.Email)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create email token")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	msg, err := emails.Login(h.baseURL, req.Email, token)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to render login email")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+	body, err := json.Marshal([]email.Email{msg})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	id, err := h.producer.Put(ctx, TubeEmail, body, beanstalk.PutParams{})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to put email job")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted")
 }
