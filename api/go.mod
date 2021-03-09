@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
+	github.com/Masterminds/squirrel v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e // indirect
@@ -13,6 +14,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jackc/pgconn v1.8.0
+	github.com/jackc/pgerrcode v0.0.0-20201024163028-a0d42d470451 // indirect
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/julienschmidt/httprouter v1.3.0
