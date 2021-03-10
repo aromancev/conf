@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	ErrValidation   = errors.New("invalid confa")
-	ErrNoRows       = errors.New("no rows returned")
-	ErrMultipleRows = errors.New("multiple rows returned")
+	ErrValidation       = errors.New("invalid confa")
+	ErrNotFound         = errors.New("not found")
+	ErrUnexpectedResult = errors.New("unexpected result")
 )
 
 type Confa struct {

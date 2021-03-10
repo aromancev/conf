@@ -26,12 +26,10 @@ func NewDocker(migrationsDir string) (pgx.Tx, func()) {
 	pg := pool.Use(migrationsDir)
 	tx, err := pg.Begin(context.Background())
 	if err != nil {
-		pool.Done(migrationsDir)
 		panic(err)
 	}
 	return tx, func() {
 		_ = tx.Rollback(context.Background())
-		pool.Done(migrationsDir)
 	}
 }
 
@@ -46,7 +44,6 @@ type dockerPool struct {
 
 type container struct {
 	pool  *pgxpool.Pool
-	using int
 	purge func()
 }
 
@@ -59,7 +56,6 @@ func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
 	defer p.Unlock()
 
 	if c, ok := p.containers[migrationsDir]; ok {
-		c.using++
 		return c.pool
 	}
 
@@ -120,8 +116,7 @@ func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
 	}
 
 	c := &container{
-		pool:  pg,
-		using: 1,
+		pool: pg,
 		purge: func() {
 			pg.Close()
 			_ = pool.Purge(resource)
@@ -131,18 +126,11 @@ func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
 	return pg
 }
 
-func (p *dockerPool) Done(migrationsDir string) {
-	p.Lock()
-	defer p.Unlock()
+func Purge() {
+	pool.Lock()
+	defer pool.Unlock()
 
-	c, ok := p.containers[migrationsDir]
-	if !ok {
-		return
-	}
-	if c.using > 1 {
-		c.using--
-	} else {
-		p.containers[migrationsDir].purge()
-		delete(p.containers, migrationsDir)
+	for _, c := range pool.containers {
+		c.purge()
 	}
 }

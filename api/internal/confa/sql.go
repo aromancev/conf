@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 
 	"github.com/aromancev/confa/internal/platform/psql"
@@ -36,25 +37,21 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 		}
 	}
 
-	now := time.Now().UTC()
+	now := time.Now().Round(time.Millisecond).UTC()
 	for i := range requests {
 		requests[i].CreatedAt = now
 	}
 
-	b := psql.NewValuesBuilder()
+	q := sq.Insert("confas").Columns("id", "owner", "handle", "created_at")
 	for _, r := range requests {
-		b.WriteRow(r.ID, r.Owner, r.Handle, r.CreatedAt)
+		q = q.Values(r.ID, r.Owner, r.Handle, r.CreatedAt)
 	}
-	query, args := b.Query()
-	_, err := execer.Exec(
-		ctx,
-		`
-			INSERT INTO confas
-			(id, owner, handle, created_at)
-			VALUES
-		`+query,
-		args...,
-	)
+	q = q.PlaceholderFormat(sq.Dollar)
+	query, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	_, err = execer.Exec(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,27 +59,24 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 }
 
 func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Confa, error) {
-	b := psql.NewConditionBuilder("AND")
+	q := sq.Select("id", "owner", "handle", "created_at").From("confas")
 	if lookup.ID != uuid.Nil {
-		b.Eq("id", lookup.ID)
+		q = q.Where(sq.Eq{"id": lookup.ID})
 	}
 	if lookup.Owner != uuid.Nil {
-		b.Eq("owner", lookup.Owner)
+		q = q.Where(sq.Eq{"owner": lookup.Owner})
 	}
-	query, args := b.Query()
-	rows, err := queryer.Query(
-		ctx,
-		`
-		SELECT id, owner, handle, created_at
-		FROM confas
-		WHERE
-		`+" "+query,
-		args...,
-	)
+	q = q.Limit(batchLimit)
+	q = q.PlaceholderFormat(sq.Dollar)
+	query, args, err := q.ToSql()
 	if err != nil {
 		return nil, err
 	}
 
+	rows, err := queryer.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
 	var confas []Confa
 	for rows.Next() {
 		var c Confa
@@ -93,7 +87,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 			&c.CreatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan: %w", err)
+			return nil, err
 		}
 		c.CreatedAt = c.CreatedAt.UTC()
 		confas = append(confas, c)
@@ -108,10 +102,10 @@ func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup)
 		return Confa{}, err
 	}
 	if len(confas) == 0 {
-		return Confa{}, ErrNoRows
+		return Confa{}, ErrNotFound
 	}
 	if len(confas) > 1 {
-		return Confa{}, ErrMultipleRows
+		return Confa{}, ErrUnexpectedResult
 	}
 	return confas[0], nil
 }
