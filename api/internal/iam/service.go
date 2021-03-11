@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 
+	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/psql"
 )
 
@@ -69,6 +71,12 @@ func (s *CRUD) GetOrCreate(ctx context.Context, with Ident) (uuid.UUID, error) {
 		}
 	}
 
+	bo := backoff.Backoff{
+		Factor: 1.2,
+		Jitter: true,
+		Min:    time.Millisecond,
+		Max:    50 * time.Millisecond,
+	}
 	var err error
 	var userID uuid.UUID
 	for i := 0; i < 3; i++ {
@@ -77,6 +85,7 @@ func (s *CRUD) GetOrCreate(ctx context.Context, with Ident) (uuid.UUID, error) {
 		case err == nil:
 			return userID, err
 		case errors.Is(err, ErrDuplicatedEntry):
+			time.Sleep(bo.ForAttempt(float64(i)))
 			continue
 		case err != nil:
 			return uuid.Nil, err
