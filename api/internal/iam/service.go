@@ -24,12 +24,12 @@ type UserRepo interface {
 }
 
 type CRUD struct {
-	conn   pgx.Tx
+	conn   psql.Conn
 	idents IdentRepo
 	users  UserRepo
 }
 
-func NewCRUD(conn pgx.Tx, idents IdentRepo, users UserRepo) *CRUD {
+func NewCRUD(conn psql.Conn, idents IdentRepo, users UserRepo) *CRUD {
 	return &CRUD{conn: conn, idents: idents, users: users}
 }
 

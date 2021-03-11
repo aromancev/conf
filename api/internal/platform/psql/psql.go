@@ -19,7 +19,9 @@ type Execer interface {
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 }
 
-type Txer interface {
+type Conn interface {
+	Queryer
+	Execer
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
@@ -54,7 +56,7 @@ func New(ctx context.Context, c Config) (*pgxpool.Pool, error) {
 	return pgxpool.ConnectConfig(ctx, cfg)
 }
 
-func Tx(ctx context.Context, conn Txer, f func(ctx context.Context, tx pgx.Tx) error) error {
+func Tx(ctx context.Context, conn Conn, f func(ctx context.Context, tx pgx.Tx) error) error {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return err

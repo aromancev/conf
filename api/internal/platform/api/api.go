@@ -58,7 +58,7 @@ func InternalError() Response {
 			Code:  CodeInternalError,
 			Error: "internal error",
 		},
-		Status: http.StatusUnauthorized,
+		Status: http.StatusInternalServerError,
 	}
 }
 
