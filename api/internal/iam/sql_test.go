@@ -20,7 +20,7 @@ func TestIdentSQL(t *testing.T) {
 		t.Run("Create duplicate returns correct error", func(t *testing.T) {
 			t.Parallel()
 
-			pg, done := double.NewDocker(migrations)
+			pg, done := double.NewDocker("", migrate)
 			defer done()
 
 			users := NewUserSQL()
@@ -48,7 +48,7 @@ func TestIdentSQL(t *testing.T) {
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 
-		pg, done := double.NewDocker(migrations)
+		pg, done := double.NewDocker("", migrate)
 		defer done()
 
 		users := NewUserSQL()
