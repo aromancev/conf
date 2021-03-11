@@ -69,6 +69,10 @@ func Tx(ctx context.Context, conn Txer, f func(ctx context.Context, tx pgx.Tx) e
 	return tx.Commit(ctx)
 }
 
+func Now() time.Time {
+	return time.Now().UTC().Round(time.Microsecond)
+}
+
 type logger struct{}
 
 func (l logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {

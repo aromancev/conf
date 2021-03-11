@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -39,7 +38,7 @@ func (s *IdentSQL) Create(ctx context.Context, execer psql.Execer, requests ...I
 		}
 	}
 
-	now := time.Now().Round(time.Millisecond).UTC()
+	now := psql.Now()
 	for i := range requests {
 		requests[i].CreatedAt = now
 	}
@@ -152,7 +151,7 @@ func (s *UserSQL) Create(ctx context.Context, execer psql.Execer, requests ...Us
 		}
 	}
 
-	now := time.Now().Round(time.Millisecond).UTC()
+	now := psql.Now()
 	for i := range requests {
 		requests[i].CreatedAt = now
 	}
