@@ -16,6 +16,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
+	"github.com/aromancev/confa/internal/platform/psql"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
@@ -39,9 +40,12 @@ type Handler struct {
 	producer  Producer
 	sign      *iam.Signer
 	verify    *iam.Verifier
+
+	// TODO: remove when going to prod.
+	dbConf psql.Config
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer Producer, sign *iam.Signer, verify *iam.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer Producer, sign *iam.Signer, verify *iam.Verifier, dbconf psql.Config) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:   baseURL,
@@ -50,6 +54,8 @@ func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer P
 		producer:  producer,
 		sign:      sign,
 		verify:    verify,
+
+		dbConf: dbconf,
 	}
 
 	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -62,6 +68,8 @@ func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer P
 	r.POST("/confa/v1/confas", h.createConfa)
 
 	r.POST("/iam/v1/login", h.login)
+
+	r.POST("/admin/reset", h.reset)
 
 	h.router = r
 	return h

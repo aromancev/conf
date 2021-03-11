@@ -34,13 +34,14 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	postgres, err := psql.New(ctx, psql.Config{
+	pgconf := psql.Config{
 		Host:     config.Postgres.Host,
 		Port:     config.Postgres.Port,
 		User:     config.Postgres.User,
 		Password: config.Postgres.Password,
 		Database: config.Postgres.Database,
-	})
+	}
+	postgres, err := psql.New(ctx, pgconf)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to postgres")
 	}
@@ -86,7 +87,7 @@ func main() {
 	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password)
 	confaSQL := confa.NewSQL()
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
-	hand := handler.New(config.BaseURL, confaCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
+	hand := handler.New(config.BaseURL, confaCRUD, sender, trace.NewBeanstalkd(producer), sign, verify, pgconf)
 
 	srv := &http.Server{
 		Addr:         config.Address,

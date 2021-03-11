@@ -36,18 +36,14 @@ func New(ctx context.Context, c Config) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	cfg.ConnConfig = &pgx.ConnConfig{
-		Config: pgconn.Config{
-			Host:           c.Host,
-			Port:           c.Port,
-			Database:       c.Database,
-			User:           c.User,
-			Password:       c.Password,
-			ConnectTimeout: 10 * time.Second,
-		},
-		Logger:   &logger{},
-		LogLevel: pgx.LogLevelWarn,
-	}
+	cfg.ConnConfig.Config.Host = c.Host
+	cfg.ConnConfig.Config.Port = c.Port
+	cfg.ConnConfig.Config.Database = c.Database
+	cfg.ConnConfig.Config.User = c.User
+	cfg.ConnConfig.Config.Password = c.Password
+	cfg.ConnConfig.Config.ConnectTimeout = 10 * time.Second
+	cfg.ConnConfig.Logger = &logger{}
+	cfg.ConnConfig.LogLevel = pgx.LogLevelWarn
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 10 * time.Minute
 	cfg.MaxConns = 10
