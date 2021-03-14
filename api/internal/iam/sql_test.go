@@ -55,7 +55,7 @@ func TestIdentSQL(t *testing.T) {
 		idents := NewIdentSQL()
 
 		user := User{ID: uuid.New()}
-		_, _ = users.Create(ctx, pg, user)
+		createdUser, _ := users.Create(ctx, pg, user)
 
 		ident := Ident{
 			ID:       uuid.New(),
@@ -63,33 +63,49 @@ func TestIdentSQL(t *testing.T) {
 			Platform: PlatformEmail,
 			Value:    uuid.NewString(),
 		}
-		created, err := idents.Create(ctx, pg, ident)
+		createdIndent, err := idents.Create(ctx, pg, ident)
 		require.NoError(t, err)
 
+		t.Run("UserFetch", func(t *testing.T) {
+			fetchedUser, err := users.Fetch(ctx, pg, UserLookup{
+				ID: user.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdUser, fetchedUser)
+		})
+
+		t.Run("UserFetchOne", func(t *testing.T) {
+			fetchedUser, err := users.FetchOne(ctx, pg, UserLookup{
+				ID: user.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdUser[0], fetchedUser)
+		})
+
 		t.Run("ID", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
 				ID: ident.ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.Equal(t, createdIndent, fetchedIndent)
 		})
 
 		t.Run("Owner", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
 				Owner: user.ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.Equal(t, createdIndent, fetchedIndent)
 		})
 
 		t.Run("Matching", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
 				Matching: []Ident{
 					{Platform: ident.Platform, Value: ident.Value},
 				}},
 			)
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.Equal(t, createdIndent, fetchedIndent)
 		})
 	})
 }
