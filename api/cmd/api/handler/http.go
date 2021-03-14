@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -47,6 +48,32 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 
 	_ = api.Created(conf).Write(ctx, w)
+}
+func (h *Handler) Confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	user, err := iam.Authenticate(r)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+	confId, err := uuid.Parse(ps.ByName("confa_id"))
+	if err != nil {
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	}
+	conf, err := h.confaCRUD.Fetch(ctx, confId, user.ID)
+	switch {
+	case errors.Is(err, confa.ErrValidation):
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.OK(conf).Write(ctx, w)
 }
 
 type loginReq struct {

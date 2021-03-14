@@ -77,7 +77,8 @@ type UserLookup struct {
 }
 
 func Authenticate(r *http.Request) (User, error) {
+	id, _ := uuid.Parse("28164069-5ec3-405b-a9cc-641cf29588ed") //todo: Unhardcode this. ONLY FOR TESTING
 	return User{
-		ID: uuid.New(),
+		ID: id,
 	}, nil
 }
