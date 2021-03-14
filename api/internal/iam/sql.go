@@ -172,6 +172,50 @@ func (s *UserSQL) Create(ctx context.Context, execer psql.Execer, requests ...Us
 	return requests, nil
 }
 
-func (s *UserSQL) Fetch() {
+func (s *UserSQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup UserLookup) ([]User, error) {
+	q := sq.Select("id", "created_at")
+	q = q.From("users")
+	if lookup.ID != uuid.Nil {
+		q = q.Where(sq.Eq{"id": lookup.ID})
+	}
 
+	q = q.Limit(batchLimit)
+	q = q.PlaceholderFormat(sq.Dollar)
+	query, args, err := q.ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := queryer.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	var users []User
+	for rows.Next() {
+		var c User
+		err := rows.Scan(
+			&c.ID,
+			&c.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		c.CreatedAt = c.CreatedAt.UTC()
+		users = append(users, c)
+	}
+
+	return users, nil
+}
+
+func (s *UserSQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup UserLookup) (User, error) {
+	users, err := s.Fetch(ctx, queryer, lookup)
+	if err != nil {
+		return User{}, err
+	}
+	if len(users) == 0 {
+		return User{}, ErrNotFound
+	}
+	if len(users) > 1 {
+		return User{}, ErrUnexpectedResult
+	}
+	return users[0], nil
 }

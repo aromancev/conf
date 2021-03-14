@@ -72,6 +72,10 @@ type IdentLookup struct {
 	Matching []Ident
 }
 
+type UserLookup struct {
+	ID uuid.UUID
+}
+
 func Authenticate(r *http.Request) (User, error) {
 	return User{
 		ID: uuid.New(),
