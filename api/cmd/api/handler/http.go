@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	_ "github.com/lib/pq"
 	"github.com/prep/beanstalk"
+	"github.com/pressly/goose"
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/confa"
@@ -97,4 +101,38 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted")
+}
+
+func (h *Handler) reset(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	conn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		h.dbConf.Host,
+		h.dbConf.Port,
+		h.dbConf.User,
+		h.dbConf.Password,
+		h.dbConf.Database,
+	)
+	pg, err := sql.Open("postgres", conn)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to connect")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	goose.SetVerbose(false)
+	err = goose.SetDialect("postgres")
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to connect")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+	goose.SetTableName("goose_db_version")
+	err = goose.Up(pg, "internal/migrations")
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to connect")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
 }

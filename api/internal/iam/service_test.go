@@ -43,5 +43,4 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, with.Platform, ident.Platform)
 		assert.Equal(t, with.Value, ident.Value)
 	})
-
 }
