@@ -14,8 +14,8 @@ var (
 )
 
 type Confa struct {
-	ID     uuid.UUID
-	Owner  uuid.UUID
+	ID     uuid.UUID `json:"id"`
+	Owner  uuid.UUID `json:"Owner"`
 	Handle string
 
 	CreatedAt time.Time
