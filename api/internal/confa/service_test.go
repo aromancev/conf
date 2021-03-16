@@ -27,7 +27,7 @@ func TestCRUD(t *testing.T) {
 
 		confa, err := crud.Create(ctx, userID, request)
 		require.NoError(t, err)
-		fetchedConfa, err := crud.Fetch(ctx, confa.ID, confa.Owner)
+		fetchedConfa, err := crud.Fetch(ctx, confa.ID)
 		require.NoError(t, err)
 		require.Equal(t, confa, fetchedConfa)
 	})
