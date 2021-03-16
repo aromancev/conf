@@ -52,17 +52,12 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	user, err := iam.Authenticate(r)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
 	confID, err := uuid.Parse(ps.ByName("confa_id"))
 	if err != nil {
 		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
 		return
 	}
-	conf, err := h.confaCRUD.Fetch(ctx, confID, user.ID)
+	conf, err := h.confaCRUD.Fetch(ctx, confID)
 	switch {
 	case errors.Is(err, confa.ErrNotFound):
 		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
