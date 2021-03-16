@@ -49,7 +49,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 
 	_ = api.Created(conf).Write(ctx, w)
 }
-func (h *Handler) Confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
 	user, err := iam.Authenticate(r)
@@ -57,13 +57,16 @@ func (h *Handler) Confa(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
-	confId, err := uuid.Parse(ps.ByName("confa_id"))
+	confID, err := uuid.Parse(ps.ByName("confa_id"))
 	if err != nil {
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
 		return
 	}
-	conf, err := h.confaCRUD.Fetch(ctx, confId, user.ID)
+	conf, err := h.confaCRUD.Fetch(ctx, confID, user.ID)
 	switch {
+	case errors.Is(err, confa.ErrNotFound):
+		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
+		return
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return

@@ -18,7 +18,7 @@ type Confa struct {
 	Owner  uuid.UUID `json:"owner"`
 	Handle string `json:"handle"`
 
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func (c Confa) Validate() error {
