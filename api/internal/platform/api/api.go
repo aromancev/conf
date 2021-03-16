@@ -11,6 +11,7 @@ const (
 
 	CodeMalformedRequest = 2000
 	CodeInvalidRequest   = 2001
+	CodeNotFound = 2002
 
 	CodeInternalError = 3001
 )
@@ -79,5 +80,15 @@ func BadRequest(code int, text string) Response {
 			Code:  code,
 		},
 		Status: http.StatusBadRequest,
+	}
+}
+
+func NotFound(code int, text string) Response {
+	return Response{
+		Body: Error{
+			Error: text,
+			Code:  code,
+		},
+		Status: http.StatusNotFound,
 	}
 }
