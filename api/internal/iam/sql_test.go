@@ -55,7 +55,7 @@ func TestIdentSQL(t *testing.T) {
 		idents := NewIdentSQL()
 
 		user := User{ID: uuid.New()}
-		createdUser, _ := users.Create(ctx, pg, user)
+		_, _ = users.Create(ctx, pg, user)
 
 		ident := Ident{
 			ID:       uuid.New(),
@@ -63,10 +63,54 @@ func TestIdentSQL(t *testing.T) {
 			Platform: PlatformEmail,
 			Value:    uuid.NewString(),
 		}
-		createdIndent, err := idents.Create(ctx, pg, ident)
+		created, err := idents.Create(ctx, pg, ident)
 		require.NoError(t, err)
 
-		t.Run("UserFetch", func(t *testing.T) {
+		t.Run("ID", func(t *testing.T) {
+			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+				ID: ident.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
+		})
+
+		t.Run("Owner", func(t *testing.T) {
+			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+				Owner: user.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
+		})
+
+		t.Run("Matching", func(t *testing.T) {
+			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+				Matching: []Ident{
+					{Platform: ident.Platform, Value: ident.Value},
+				}},
+			)
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
+		})
+	})
+}
+
+func TestUserSQL(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("Fetch", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker(migrations)
+		defer done()
+
+		users := NewUserSQL()
+
+		user := User{ID: uuid.New()}
+		createdUser, _ := users.Create(ctx, pg, user)
+
+		t.Run("Fetch", func(t *testing.T) {
 			fetchedUser, err := users.Fetch(ctx, pg, UserLookup{
 				ID: user.ID,
 			})
@@ -74,7 +118,7 @@ func TestIdentSQL(t *testing.T) {
 			assert.Equal(t, createdUser, fetchedUser)
 		})
 
-		t.Run("UserFetchOne", func(t *testing.T) {
+		t.Run("FetchOne", func(t *testing.T) {
 			fetchedUser, err := users.FetchOne(ctx, pg, UserLookup{
 				ID: user.ID,
 			})
@@ -82,30 +126,5 @@ func TestIdentSQL(t *testing.T) {
 			assert.Equal(t, createdUser[0], fetchedUser)
 		})
 
-		t.Run("ID", func(t *testing.T) {
-			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
-				ID: ident.ID,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, createdIndent, fetchedIndent)
-		})
-
-		t.Run("Owner", func(t *testing.T) {
-			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
-				Owner: user.ID,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, createdIndent, fetchedIndent)
-		})
-
-		t.Run("Matching", func(t *testing.T) {
-			fetchedIndent, err := idents.Fetch(ctx, pg, IdentLookup{
-				Matching: []Ident{
-					{Platform: ident.Platform, Value: ident.Value},
-				}},
-			)
-			require.NoError(t, err)
-			assert.Equal(t, createdIndent, fetchedIndent)
-		})
 	})
 }
