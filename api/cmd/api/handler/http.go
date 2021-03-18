@@ -54,13 +54,13 @@ func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 
 	confID, err := uuid.Parse(ps.ByName("confa_id"))
 	if err != nil {
-		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
+		_ = api.NotFound(err.Error()).Write(ctx, w)
 		return
 	}
 	conf, err := h.confaCRUD.Fetch(ctx, confID)
 	switch {
 	case errors.Is(err, confa.ErrNotFound):
-		_ = api.NotFound(api.CodeNotFound, err.Error()).Write(ctx, w)
+		_ = api.NotFound(err.Error()).Write(ctx, w)
 		return
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
