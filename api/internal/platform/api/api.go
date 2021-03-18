@@ -83,11 +83,11 @@ func BadRequest(code int, text string) Response {
 	}
 }
 
-func NotFound(code int, text string) Response {
+func NotFound(text string) Response {
 	return Response{
 		Body: Error{
 			Error: text,
-			Code:  code,
+			Code:  CodeNotFound,
 		},
 		Status: http.StatusNotFound,
 	}
