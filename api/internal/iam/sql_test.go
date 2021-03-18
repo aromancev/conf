@@ -93,3 +93,38 @@ func TestIdentSQL(t *testing.T) {
 		})
 	})
 }
+
+func TestUserSQL(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("Fetch", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker(migrations)
+		defer done()
+
+		users := NewUserSQL()
+
+		user := User{ID: uuid.New()}
+		createdUser, _ := users.Create(ctx, pg, user)
+
+		t.Run("Fetch", func(t *testing.T) {
+			fetchedUser, err := users.Fetch(ctx, pg, UserLookup{
+				ID: user.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdUser, fetchedUser)
+		})
+
+		t.Run("FetchOne", func(t *testing.T) {
+			fetchedUser, err := users.FetchOne(ctx, pg, UserLookup{
+				ID: user.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdUser[0], fetchedUser)
+		})
+
+	})
+}
