@@ -102,7 +102,7 @@ func TestUserSQL(t *testing.T) {
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 
-		pg, done := double.NewDocker(migrations)
+		pg, done := double.NewDocker("", migrate)
 		defer done()
 
 		users := NewUserSQL()

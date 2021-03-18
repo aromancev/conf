@@ -60,7 +60,7 @@ func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer P
 	})
 
 	r.POST("/confa/v1/confas", h.createConfa)
-	r.GET("/confa/v1/confas/:confa_id", h.Confa)
+	r.GET("/confa/v1/confas/:confa_id", h.confa)
 
 	r.POST("/iam/v1/login", h.login)
 
