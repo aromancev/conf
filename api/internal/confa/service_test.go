@@ -2,9 +2,10 @@ package confa
 
 import (
 	"context"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/aromancev/confa/internal/platform/psql/double"
 )
@@ -17,7 +18,7 @@ func TestCRUD(t *testing.T) {
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 
-		pg, done := double.NewDocker(migrations)
+		pg, done := double.NewDocker("", migrate)
 		defer done()
 		crud := NewCRUD(pg, NewSQL())
 		userID := uuid.New()

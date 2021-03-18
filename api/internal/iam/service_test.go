@@ -18,7 +18,7 @@ func TestCRUD(t *testing.T) {
 	t.Run("GetOrCreate", func(t *testing.T) {
 		t.Parallel()
 
-		pg, done := double.NewDocker(migrations)
+		pg, done := double.NewDocker("", migrate)
 		defer done()
 
 		idents := NewIdentSQL()
