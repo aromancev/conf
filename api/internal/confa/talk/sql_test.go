@@ -13,10 +13,6 @@ import (
 	"github.com/aromancev/confa/internal/platform/psql/double"
 )
 
-const (
-	migrations = "../../migrations"
-)
-
 func TestSQL(t *testing.T) {
 	t.Parallel()
 
@@ -25,7 +21,7 @@ func TestSQL(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
-		pg, done := double.NewDocker(migrations)
+		pg, done := double.NewDocker("", migrate)
 		defer done()
 		sqlConfa := confa.NewSQL()
 
