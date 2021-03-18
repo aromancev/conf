@@ -14,11 +14,11 @@ var (
 )
 
 type Confa struct {
-	ID     uuid.UUID
-	Owner  uuid.UUID
-	Handle string
+	ID     uuid.UUID `json:"id"`
+	Owner  uuid.UUID `json:"owner"`
+	Handle string `json:"handle"`
 
-	CreatedAt time.Time
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func (c Confa) Validate() error {
