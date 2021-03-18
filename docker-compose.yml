@@ -30,6 +30,7 @@ services:
       - LOG_FORMAT=console
       - SECRET_KEY=$SECRET_KEY
       - PUBLIC_KEY=$PUBLIC_KEY
+      - MIGRATIONS_DIR=migrations
       - EMAIL_SERVER=$EMAIL_SERVER
       - EMAIL_PORT=$EMAIL_PORT
       - EMAIL_ADDRESS=$EMAIL_ADDRESS

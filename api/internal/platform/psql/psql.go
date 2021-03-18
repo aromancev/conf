@@ -2,6 +2,9 @@ package psql
 
 import (
 	"context"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -69,6 +72,60 @@ func Tx(ctx context.Context, conn Conn, f func(ctx context.Context, tx pgx.Tx) e
 
 func Now() time.Time {
 	return time.Now().UTC().Round(time.Microsecond)
+}
+
+type FS interface {
+	ReadDir(name string) ([]fs.DirEntry, error)
+	ReadFile(name string) ([]byte, error)
+}
+
+type MigratorFS struct {
+	fs FS
+}
+
+func NewMigratorFS(fs FS) *MigratorFS {
+	return &MigratorFS{fs: fs}
+}
+
+func (m MigratorFS) ReadDir(dirname string) ([]os.FileInfo, error) {
+	entries, err := m.fs.ReadDir(dirname)
+	if err != nil {
+		return nil, err
+	}
+	infos := make([]os.FileInfo, len(entries))
+	for i, e := range entries {
+		info, err := e.Info()
+		if err != nil {
+			return nil, err
+		}
+		infos[i] = info
+	}
+	return infos, nil
+}
+
+func (m MigratorFS) ReadFile(filename string) ([]byte, error) {
+	return m.fs.ReadFile(filename)
+}
+
+func (m MigratorFS) Glob(pattern string) ([]string, error) {
+	entries, err := m.fs.ReadDir(".")
+	if err != nil {
+		return nil, err
+	}
+
+	matches := make([]string, 0, len(entries))
+	for _, e := range entries {
+		ok, err := filepath.Match(pattern, e.Name())
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		matches = append(matches, e.Name())
+	}
+
+	return matches, nil
 }
 
 type logger struct{}

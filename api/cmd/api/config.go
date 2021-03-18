@@ -15,14 +15,15 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
-	BaseURL    string `envconfig:"BASE_URL"`
-	SecretKey  string `envconfig:"SECRET_KEY"`
-	PublicKey  string `envconfig:"PUBLIC_KEY"`
-	Email      EmailConfig
-	Postgres   PostgresConfig
-	Beanstalkd BeanstalkdConfig
+	Address       string `envconfig:"ADDRESS"`
+	LogFormat     string `envconfig:"LOG_FORMAT"`
+	BaseURL       string `envconfig:"BASE_URL"`
+	SecretKey     string `envconfig:"SECRET_KEY"`
+	PublicKey     string `envconfig:"PUBLIC_KEY"`
+	MigrationsDir string `envconfig:"MIGRATIONS_DIR"`
+	Email         EmailConfig
+	Postgres      PostgresConfig
+	Beanstalkd    BeanstalkdConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -70,6 +71,9 @@ func (c Config) Validate() error {
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
+	}
+	if c.MigrationsDir == "" {
+		return errors.New("MIGRATIONS_DIR not set")
 	}
 	if err := c.Email.Validate(); err != nil {
 		return fmt.Errorf("invalid email config: %w", err)

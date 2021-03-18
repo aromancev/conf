@@ -2,28 +2,22 @@ package double
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
-	"github.com/pressly/goose"
 )
 
 // NewDocker creates a Postgres container, runs migrations in it and returns a db connection to use.
+// create callback will be called if this called starts up a new container.
 // IMPORTANT: Always call returned function at the end of tests (if no error returned) to release docker resources.
 // To make this work on CI, set DOCKER_HOST and DOCKER_IP env variables.
-func NewDocker(migrationsDir string) (pgx.Tx, func()) {
-	migrationsDir, err := filepath.Abs(migrationsDir)
-	if err != nil {
-		panic(err)
-	}
-	pg := pool.Use(migrationsDir)
+func NewDocker(key string, create func(conn *pgx.Conn)) (pgx.Tx, func()) {
+	pg := pool.Use(key, create)
 	tx, err := pg.Begin(context.Background())
 	if err != nil {
 		panic(err)
@@ -51,11 +45,13 @@ func newDockerPool() *dockerPool {
 	return &dockerPool{containers: map[string]*container{}}
 }
 
-func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
+func (p *dockerPool) Use(key string, create func(conn *pgx.Conn)) *pgxpool.Pool {
 	p.Lock()
 	defer p.Unlock()
 
-	if c, ok := p.containers[migrationsDir]; ok {
+	ctx := context.Background()
+
+	if c, ok := p.containers[key]; ok {
 		return c.pool
 	}
 
@@ -76,43 +72,35 @@ func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
 		panic(err)
 	}
 
-	conn := fmt.Sprintf(
-		"host=localhost port=%s user=postgres password=postgres dbname=postgres sslmode=disable",
-		resource.GetPort("5432/tcp"),
-	)
-
-	var gooseConn *sql.DB
-	err = pool.Retry(func() error {
-		var err error
-		gooseConn, err = sql.Open("postgres", conn)
-		if err != nil {
-			return err
+	defer func() {
+		if err := recover(); err != nil {
+			_ = pool.Purge(resource)
+			panic(err)
 		}
-		return gooseConn.Ping()
+	}()
+
+	var pg *pgxpool.Pool
+	err = pool.Retry(func() error {
+		pg, err = pgxpool.Connect(
+			ctx,
+			fmt.Sprintf(
+				"host=localhost port=%s user=postgres password=postgres dbname=postgres sslmode=disable",
+				resource.GetPort("5432/tcp"),
+			),
+		)
+		return err
 	})
 	if err != nil {
-		_ = pool.Purge(resource)
-		panic(err)
-	}
-	defer gooseConn.Close()
-
-	goose.SetVerbose(false)
-	err = goose.SetDialect("postgres")
-	if err != nil {
-		_ = pool.Purge(resource)
-		panic(err)
-	}
-	goose.SetTableName("goose_db_version")
-	err = goose.Up(gooseConn, migrationsDir)
-	if err != nil {
-		_ = pool.Purge(resource)
 		panic(err)
 	}
 
-	pg, err := pgxpool.Connect(context.Background(), conn)
-	if err != nil {
-		_ = pool.Purge(resource)
-		panic(err)
+	if create != nil {
+		conn, err := pg.Acquire(ctx)
+		if err != nil {
+			panic(err)
+		}
+		create(conn.Conn())
+		conn.Release()
 	}
 
 	c := &container{
@@ -122,7 +110,7 @@ func (p *dockerPool) Use(migrationsDir string) *pgxpool.Pool {
 			_ = pool.Purge(resource)
 		},
 	}
-	p.containers[migrationsDir] = c
+	p.containers[key] = c
 	return pg
 }
 

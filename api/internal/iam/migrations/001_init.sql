@@ -1,5 +1,3 @@
--- +goose Up
--- +goose StatementBegin
 CREATE TYPE platform AS ENUM ('email');
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -14,17 +12,8 @@ CREATE TABLE idents (
     UNIQUE (platform, value)
 );
 
-CREATE TABLE confas (
-    id UUID PRIMARY KEY,
-    owner UUID NOT NULL,
-    handle VARCHAR(64) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL
-);
--- +goose StatementEnd
+---- create above / drop below ----
 
--- +goose Down
--- +goose StatementBegin
-DROP TABLE users;
 DROP TABLE idents;
-DROP TABLE confas;
--- +goose StatementEnd
+DROP TABLE users;
+DROP TYPE platform;

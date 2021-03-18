@@ -35,6 +35,26 @@ jobs:
       - checkout
       - run: ./deploy/postgres.sh
 
+  migrate_user:
+    docker:
+      - image: circleci/golang:1.16
+    steps:
+      - checkout
+      - run: |
+          go get github.com/jackc/tern@v1.12.4
+          echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
+          tern migrate -m api/internal/iam/migrations -c api/internal/iam/migrations/tern.conf -d -+1
+
+  migrate_confa:
+    docker:
+      - image: circleci/golang:1.16
+    steps:
+      - checkout
+      - run: |
+          go get github.com/jackc/tern@v1.12.4
+          echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
+          tern migrate -m api/internal/confa/migrations -c api/internal/confa/migrations/tern.conf -d -+1
+
 workflows:
   version: 2.1
   web:
@@ -72,5 +92,21 @@ workflows:
       - approve:
           type: approval
       - deploy_postgres:
+          requires:
+            - approve
+
+  migrate_user:
+    jobs:
+      - approve:
+          type: approval
+      - migrate_user:
+          requires:
+            - approve
+
+  migrate_confa:
+    jobs:
+      - approve:
+          type: approval
+      - migrate_confa:
           requires:
             - approve
