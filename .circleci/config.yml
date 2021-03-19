@@ -61,6 +61,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - deploy_web:
           requires:
             - approve
@@ -68,6 +71,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - deploy_rtc:
           requires:
             - approve
@@ -75,6 +81,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - deploy_api:
           requires:
             - approve
@@ -83,6 +92,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - deploy_beanstalkd:
           requires:
             - approve
@@ -91,6 +103,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - deploy_postgres:
           requires:
             - approve
@@ -99,6 +114,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - migrate_user:
           requires:
             - approve
@@ -107,6 +125,9 @@ workflows:
     jobs:
       - approve:
           type: approval
+          filters:
+            branches:
+              only: "master"
       - migrate_confa:
           requires:
             - approve
