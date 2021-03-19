@@ -10,8 +10,8 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/iam"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
@@ -37,11 +37,11 @@ type Handler struct {
 	confaCRUD *confa.CRUD
 	sender    *email.Sender
 	producer  Producer
-	sign      *iam.Signer
-	verify    *iam.Verifier
+	sign      *auth.Signer
+	verify    *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer Producer, sign *iam.Signer, verify *iam.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:   baseURL,

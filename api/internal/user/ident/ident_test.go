@@ -1,4 +1,4 @@
-package iam
+package ident
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v4"
 
-	"github.com/aromancev/confa/internal/iam/migrations"
 	"github.com/aromancev/confa/internal/platform/psql/double"
+	"github.com/aromancev/confa/internal/user/migrations"
 )
 
 func TestMain(m *testing.M) {

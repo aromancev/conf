@@ -1,4 +1,4 @@
-package iam
+package ident
 
 import (
 	"context"
@@ -17,14 +17,14 @@ const (
 	batchLimit = 500
 )
 
-type IdentSQL struct {
+type SQL struct {
 }
 
-func NewIdentSQL() *IdentSQL {
-	return &IdentSQL{}
+func NewSQL() *SQL {
+	return &SQL{}
 }
 
-func (s *IdentSQL) Create(ctx context.Context, execer psql.Execer, requests ...Ident) ([]Ident, error) {
+func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Ident) ([]Ident, error) {
 	if len(requests) == 0 {
 		return nil, errors.New("trying to create zero objects")
 	}
@@ -69,7 +69,7 @@ func (s *IdentSQL) Create(ctx context.Context, execer psql.Execer, requests ...I
 	return requests, nil
 }
 
-func (s *IdentSQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup IdentLookup) ([]Ident, error) {
+func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Ident, error) {
 	q := sq.Select("id", "owner", "platform", "value", "created_at")
 	q = q.From("idents")
 	if lookup.ID != uuid.Nil {
@@ -116,7 +116,7 @@ func (s *IdentSQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Ident
 	return idents, nil
 }
 
-func (s *IdentSQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup IdentLookup) (Ident, error) {
+func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Ident, error) {
 	idents, err := s.Fetch(ctx, queryer, lookup)
 	if err != nil {
 		return Ident{}, err
@@ -128,94 +128,4 @@ func (s *IdentSQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Id
 		return Ident{}, ErrUnexpectedResult
 	}
 	return idents[0], nil
-}
-
-type UserSQL struct {
-}
-
-func NewUserSQL() *UserSQL {
-	return &UserSQL{}
-}
-
-func (s *UserSQL) Create(ctx context.Context, execer psql.Execer, requests ...User) ([]User, error) {
-	if len(requests) == 0 {
-		return nil, errors.New("trying to create zero objects")
-	}
-	if len(requests) > batchLimit {
-		return nil, fmt.Errorf("trying to create more than %d", batchLimit)
-	}
-
-	for i, r := range requests {
-		if err := r.Validate(); err != nil {
-			return nil, fmt.Errorf("invalid request [%d]: %w", i, err)
-		}
-	}
-
-	now := psql.Now()
-	for i := range requests {
-		requests[i].CreatedAt = now
-	}
-
-	q := sq.Insert("users").Columns("id", "created_at")
-	for _, r := range requests {
-		q = q.Values(r.ID, r.CreatedAt)
-	}
-	q = q.PlaceholderFormat(sq.Dollar)
-	query, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	_, err = execer.Exec(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	return requests, nil
-}
-
-func (s *UserSQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup UserLookup) ([]User, error) {
-	q := sq.Select("id", "created_at")
-	q = q.From("users")
-	if lookup.ID != uuid.Nil {
-		q = q.Where(sq.Eq{"id": lookup.ID})
-	}
-
-	q = q.Limit(batchLimit)
-	q = q.PlaceholderFormat(sq.Dollar)
-	query, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	rows, err := queryer.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	var users []User
-	for rows.Next() {
-		var c User
-		err := rows.Scan(
-			&c.ID,
-			&c.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		c.CreatedAt = c.CreatedAt.UTC()
-		users = append(users, c)
-	}
-
-	return users, nil
-}
-
-func (s *UserSQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup UserLookup) (User, error) {
-	users, err := s.Fetch(ctx, queryer, lookup)
-	if err != nil {
-		return User{}, err
-	}
-	if len(users) == 0 {
-		return User{}, ErrNotFound
-	}
-	if len(users) > 1 {
-		return User{}, ErrUnexpectedResult
-	}
-	return users[0], nil
 }

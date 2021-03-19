@@ -1,4 +1,4 @@
-package iam
+package ident
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aromancev/confa/internal/platform/psql/double"
+	"github.com/aromancev/confa/internal/user"
 )
 
 func TestCRUD(t *testing.T) {
@@ -21,8 +22,8 @@ func TestCRUD(t *testing.T) {
 		pg, done := double.NewDocker("", migrate)
 		defer done()
 
-		idents := NewIdentSQL()
-		crud := NewCRUD(pg, idents, NewUserSQL())
+		idents := NewSQL()
+		crud := NewCRUD(pg, idents, user.NewSQL())
 
 		with := Ident{
 			Platform: PlatformEmail,
@@ -37,7 +38,7 @@ func TestCRUD(t *testing.T) {
 
 		assert.Equal(t, first, second)
 
-		ident, err := idents.FetchOne(ctx, pg, IdentLookup{})
+		ident, err := idents.FetchOne(ctx, pg, Lookup{})
 		require.NoError(t, err)
 		assert.Equal(t, first, ident.Owner)
 		assert.Equal(t, with.Platform, ident.Platform)

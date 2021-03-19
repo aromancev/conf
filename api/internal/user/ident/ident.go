@@ -1,8 +1,7 @@
-package iam
+package ident
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,31 +53,8 @@ func (i Ident) Validate() error {
 	return nil
 }
 
-type User struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-}
-
-func (u User) Validate() error {
-	if u.ID == uuid.Nil {
-		return errors.New("id should not be empty")
-	}
-	return nil
-}
-
-type IdentLookup struct {
+type Lookup struct {
 	ID       uuid.UUID
 	Owner    uuid.UUID
 	Matching []Ident
-}
-
-type UserLookup struct {
-	ID uuid.UUID
-}
-
-func Authenticate(r *http.Request) (User, error) {
-	id, _ := uuid.Parse("28164069-5ec3-405b-a9cc-641cf29588ed") //todo: Unhardcode this. ONLY FOR TESTING
-	return User{
-		ID: id,
-	}, nil
 }
