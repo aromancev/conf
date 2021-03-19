@@ -14,8 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/cmd/api/handler"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/iam"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/psql"
 	"github.com/aromancev/confa/internal/platform/trace"
@@ -75,11 +75,11 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
-	sign, err := iam.NewSigner(config.SecretKey)
+	sign, err := auth.NewSigner(config.SecretKey)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create signer")
 	}
-	verify, err := iam.NewVerifier(config.PublicKey)
+	verify, err := auth.NewVerifier(config.PublicKey)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create verifier")
 	}

@@ -1,11 +1,13 @@
-package iam
+package auth
 
 import (
 	"crypto/ecdsa"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 
 	"github.com/aromancev/confa/internal/platform/email"
 )
@@ -93,4 +95,9 @@ func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 		return EmailClaims{}, errors.New("invalid token")
 	}
 	return claims, nil
+}
+
+func Authenticate(r *http.Request) (uuid.UUID, error) {
+	id, _ := uuid.Parse("28164069-5ec3-405b-a9cc-641cf29588ed") //todo: Unhardcode this. ONLY FOR TESTING
+	return id, nil
 }

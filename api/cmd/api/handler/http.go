@@ -10,9 +10,9 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/emails"
-	"github.com/aromancev/confa/internal/iam"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
 )
@@ -20,7 +20,7 @@ import (
 func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	user, err := iam.Authenticate(r)
+	userID, err := auth.Authenticate(r)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
@@ -32,7 +32,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	conf, err := h.confaCRUD.Create(ctx, user.ID, request)
+	conf, err := h.confaCRUD.Create(ctx, userID, request)
 	switch {
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)

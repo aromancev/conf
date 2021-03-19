@@ -1,4 +1,4 @@
-package iam
+package ident
 
 import (
 	"context"
@@ -9,9 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aromancev/confa/internal/platform/psql/double"
+	"github.com/aromancev/confa/internal/user"
 )
 
-func TestIdentSQL(t *testing.T) {
+func TestSQL(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -23,15 +24,15 @@ func TestIdentSQL(t *testing.T) {
 			pg, done := double.NewDocker("", migrate)
 			defer done()
 
-			users := NewUserSQL()
-			idents := NewIdentSQL()
+			users := user.NewSQL()
+			idents := NewSQL()
 
-			user := User{ID: uuid.New()}
-			_, _ = users.Create(ctx, pg, user)
+			usr := user.User{ID: uuid.New()}
+			_, _ = users.Create(ctx, pg, usr)
 
 			ident := Ident{
 				ID:       uuid.New(),
-				Owner:    user.ID,
+				Owner:    usr.ID,
 				Platform: PlatformEmail,
 				Value:    uuid.NewString(),
 			}
@@ -51,15 +52,15 @@ func TestIdentSQL(t *testing.T) {
 		pg, done := double.NewDocker("", migrate)
 		defer done()
 
-		users := NewUserSQL()
-		idents := NewIdentSQL()
+		users := user.NewSQL()
+		idents := NewSQL()
 
-		user := User{ID: uuid.New()}
-		_, _ = users.Create(ctx, pg, user)
+		usr := user.User{ID: uuid.New()}
+		_, _ = users.Create(ctx, pg, usr)
 
 		ident := Ident{
 			ID:       uuid.New(),
-			Owner:    user.ID,
+			Owner:    usr.ID,
 			Platform: PlatformEmail,
 			Value:    uuid.NewString(),
 		}
@@ -67,7 +68,7 @@ func TestIdentSQL(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("ID", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+			fetched, err := idents.Fetch(ctx, pg, Lookup{
 				ID: ident.ID,
 			})
 			require.NoError(t, err)
@@ -75,15 +76,15 @@ func TestIdentSQL(t *testing.T) {
 		})
 
 		t.Run("Owner", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
-				Owner: user.ID,
+			fetched, err := idents.Fetch(ctx, pg, Lookup{
+				Owner: usr.ID,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched)
 		})
 
 		t.Run("Matching", func(t *testing.T) {
-			fetched, err := idents.Fetch(ctx, pg, IdentLookup{
+			fetched, err := idents.Fetch(ctx, pg, Lookup{
 				Matching: []Ident{
 					{Platform: ident.Platform, Value: ident.Value},
 				}},
@@ -91,40 +92,5 @@ func TestIdentSQL(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched)
 		})
-	})
-}
-
-func TestUserSQL(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	t.Run("Fetch", func(t *testing.T) {
-		t.Parallel()
-
-		pg, done := double.NewDocker("", migrate)
-		defer done()
-
-		users := NewUserSQL()
-
-		user := User{ID: uuid.New()}
-		createdUser, _ := users.Create(ctx, pg, user)
-
-		t.Run("Fetch", func(t *testing.T) {
-			fetchedUser, err := users.Fetch(ctx, pg, UserLookup{
-				ID: user.ID,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, createdUser, fetchedUser)
-		})
-
-		t.Run("FetchOne", func(t *testing.T) {
-			fetchedUser, err := users.FetchOne(ctx, pg, UserLookup{
-				ID: user.ID,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, createdUser[0], fetchedUser)
-		})
-
 	})
 }
