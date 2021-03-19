@@ -12,7 +12,5 @@ docker run \
 docker build -f $ROOT/web/Dockerfile -t confa/web $ROOT/web
 docker save -o $ROOT/.artifacts/docker/web.tar confa/web
 scp -C $ROOT/.artifacts/docker/web.tar $USER@$IP:~
-scp -C docker-compose.yml $USER@$IP:~
 ssh $USER@$IP "docker load -i ~/web.tar"
-ssh $USER@$IP "docker-compose up --no-deps -d"
-ssh $USER@$IP "docker image prune -f"
+$ROOT/deploy/up.sh

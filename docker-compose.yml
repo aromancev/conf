@@ -1,61 +1,76 @@
 version: '3.9'
 services:
-  web:
-    image: confa/web
-    restart: always
-    network_mode: host
+  nginx:
+    image: nginx:1.19.6
+    depends_on: 
+      - web
+      - rtc
+      - api
+    ports:
+      - "80:80"
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt/
+      - ./web/nginx.dev.conf:/etc/nginx/nginx.conf
+
+  web:
+    image: node:15.7.0
+    working_dir: /app
+    command: bash -c "npm install -g pnpm; pnpm run serve"
+    volumes:
+      - ./web:/app
 
   rtc:
-    image: confa/rtc
-    restart: always
-    network_mode: host
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/rtc/."
     environment:
-      - ADDRESS=:8001
-      - ICE_PORT_MIN=10000
-      - ICE_PORT_MAX=10999
+      - ADDRESS=:80
       - LOG_FORMAT=console
+    volumes:
+      - ./api:/app
 
   api:
-    image: confa/api
-    restart: always
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/api/."
     depends_on:
       - beanstalkd
       - postgres
-    network_mode: host
     environment:
-      - ADDRESS=:8002
-      - BASE_URL=https://confa.io
+      - ADDRESS=:80
+      - BASE_URL=http://localhost
       - LOG_FORMAT=console
-      - SECRET_KEY=$SECRET_KEY
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - MIGRATIONS_DIR=migrations
-      - EMAIL_SERVER=$EMAIL_SERVER
-      - EMAIL_PORT=$EMAIL_PORT
-      - EMAIL_ADDRESS=$EMAIL_ADDRESS
-      - EMAIL_PASSWORD=$EMAIL_PASSWORD
-      - POSTGRES_HOST=$POSTGRES_HOST
-      - POSTGRES_PORT=$POSTGRES_PORT
-      - POSTGRES_USER=$POSTGRES_USER
-      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - POSTGRES_DATABASE=$POSTGRES_DATABASE
-      - BEANSTALKD_POOL=$BEANSTALKD_POOL
+      - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+      - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+      - MIGRATIONS_DIR=internal/migrations
+      - EMAIL_SERVER=stub
+      - EMAIL_PORT=42
+      - EMAIL_ADDRESS=noreply@confa.io
+      - EMAIL_PASSWORD=stub
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=confa
+      - POSTGRES_PASSWORD=confa
+      - POSTGRES_DATABASE=confa
+      - BEANSTALKD_POOL=beanstalkd:11300
+    volumes:
+      - ./api:/app
 
   beanstalkd:
-    image: confa/beanstalkd
-    restart: always
-    network_mode: host
+    build:
+      context: ./beanstalkd
+      dockerfile: Dockerfile
     volumes:
-      - /var/lib/beanstalkd:/var/lib/beanstalkd
+      - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
   postgres:
     image: postgres:12.6-alpine
-    restart: always
-    network_mode: host
     environment:
-      - POSTGRES_USER=$POSTGRES_USER
-      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - POSTGRES_DB=$POSTGRES_DATABASE
+      - POSTGRES_USER=confa
+      - POSTGRES_PASSWORD=confa
+      - POSTGRES_DB=confa
+    ports:
+      - "5432:5432"
     volumes:
-      - /var/lib/postgresql/:/var/lib/postgresql/
+      - ./.artifacts/posrgresql/:/var/lib/postgresql/data/

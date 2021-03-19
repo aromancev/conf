@@ -7,7 +7,5 @@ mkdir -p $ROOT/.artifacts/docker
 docker build -f $ROOT/beanstalkd/Dockerfile -t confa/beanstalkd $ROOT/beanstalkd
 docker save -o $ROOT/.artifacts/docker/beanstalkd.tar confa/beanstalkd
 scp -C $ROOT/.artifacts/docker/beanstalkd.tar $USER@$IP:~
-scp -C $ROOT/docker-compose.yml $USER@$IP:~
 ssh $USER@$IP "docker load -i ~/beanstalkd.tar"
-ssh $USER@$IP "docker-compose up --no-deps -d"
-ssh $USER@$IP "docker image prune -f"
+$ROOT/deploy/up.sh
