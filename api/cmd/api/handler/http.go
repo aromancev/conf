@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -45,6 +46,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 
 	_ = api.Created(conf).Write(ctx, w)
 }
+
 func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
@@ -54,6 +56,61 @@ func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 	conf, err := h.confaCRUD.Fetch(ctx, confID)
+	switch {
+	case errors.Is(err, confa.ErrNotFound):
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	case errors.Is(err, confa.ErrValidation):
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.OK(conf).Write(ctx, w)
+}
+
+func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	userID, err := auth.Authenticate(r)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	var request talk.Talk
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
+		return
+	}
+
+	conf, err := h.talkCRUD.Create(ctx, userID, request)
+	switch {
+	case errors.Is(err, confa.ErrValidation):
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to create confa")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.Created(conf).Write(ctx, w)
+}
+
+func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	talkID, err := uuid.Parse(ps.ByName("talk_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+
+	conf, err := h.talkCRUD.Fetch(ctx, talkID)
 	switch {
 	case errors.Is(err, confa.ErrNotFound):
 		_ = api.NotFound(err.Error()).Write(ctx, w)

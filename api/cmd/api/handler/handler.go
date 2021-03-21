@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 	"time"
 
@@ -35,17 +36,19 @@ type Handler struct {
 	baseURL   string
 	router    http.Handler
 	confaCRUD *confa.CRUD
+	talkCRUD  *talk.CRUD
 	sender    *email.Sender
 	producer  Producer
 	sign      *auth.Signer
 	verify    *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:   baseURL,
 		confaCRUD: confaCRUD,
+		talkCRUD:  talkCRUD,
 		sender:    sender,
 		producer:  producer,
 		sign:      sign,
@@ -61,6 +64,9 @@ func New(baseURL string, confaCRUD *confa.CRUD, sender *email.Sender, producer P
 
 	r.POST("/confa/v1/confas", h.createConfa)
 	r.GET("/confa/v1/confas/:confa_id", h.confa)
+
+	r.POST("/confa/v1/talks", h.createTalk)
+	r.GET("/confa/v1/talks/:talk_id", h.talk)
 
 	r.POST("/iam/v1/login", h.login)
 
