@@ -11,7 +11,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/psql/double"
 )
 
-func TesSQL(t *testing.T) {
+func TestSQL(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
