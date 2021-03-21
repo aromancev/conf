@@ -15,6 +15,12 @@ start:
 stop:
 	docker-compose down
 
+.PHONY: migrate
+migrate:
+	cd api && \
+	./migrate.sh migrate -m internal/confa/migrations -c internal/confa/migrations/tern.conf && \
+	./migrate.sh migrate -m internal/user/migrations -c internal/user/migrations/tern.conf
+
 .PHONY: lint
 lint:
 	docker run \
