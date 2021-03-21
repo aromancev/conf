@@ -15,5 +15,5 @@ CREATE TABLE talks (
 
 ---- create above / drop below ----
 
-DROP TABLE confas;
 DROP TABLE talks;
+DROP TABLE confas;
