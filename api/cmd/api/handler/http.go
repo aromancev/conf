@@ -87,18 +87,18 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 		return
 	}
 
-	conf, err := h.talkCRUD.Create(ctx, userID, request)
+	tlk, err := h.talkCRUD.Create(ctx, userID, request)
 	switch {
-	case errors.Is(err, confa.ErrValidation):
+	case errors.Is(err, talk.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to create confa")
+		log.Ctx(ctx).Err(err).Msg("Failed to create talk")
 		_ = api.InternalError().Write(ctx, w)
 		return
 	}
 
-	_ = api.Created(conf).Write(ctx, w)
+	_ = api.Created(tlk).Write(ctx, w)
 }
 
 func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -110,21 +110,21 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 		return
 	}
 
-	conf, err := h.talkCRUD.Fetch(ctx, talkID)
+	tlk, err := h.talkCRUD.Fetch(ctx, talkID)
 	switch {
-	case errors.Is(err, confa.ErrNotFound):
+	case errors.Is(err, talk.ErrNotFound):
 		_ = api.NotFound(err.Error()).Write(ctx, w)
 		return
-	case errors.Is(err, confa.ErrValidation):
+	case errors.Is(err, talk.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa")
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
 		_ = api.InternalError().Write(ctx, w)
 		return
 	}
 
-	_ = api.OK(conf).Write(ctx, w)
+	_ = api.OK(tlk).Write(ctx, w)
 }
 
 type loginReq struct {
