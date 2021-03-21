@@ -65,7 +65,7 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *ema
 	r.POST("/confa/v1/confas", h.createConfa)
 	r.GET("/confa/v1/confas/:confa_id", h.confa)
 
-	r.POST("/confa/v1/talks", h.createTalk)
+	r.POST("/confa/v1/confa/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)
 
 	r.POST("/iam/v1/login", h.login)

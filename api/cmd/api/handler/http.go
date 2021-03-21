@@ -75,7 +75,7 @@ func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	userID, err := auth.Authenticate(r)
+	_, err := auth.Authenticate(r)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
@@ -87,7 +87,13 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 		return
 	}
 
-	tlk, err := h.talkCRUD.Create(ctx, userID, request)
+	confaID, err := uuid.Parse(ps.ByName("confa_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+
+	tlk, err := h.talkCRUD.Create(ctx, confaID, request)
 	switch {
 	case errors.Is(err, talk.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
