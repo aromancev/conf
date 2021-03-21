@@ -43,7 +43,6 @@ export default defineComponent({
     )
     const client = new Client(signal)
     signal.onopen = async () => {
-
       client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
         if (track.kind !== "video") {
           return
