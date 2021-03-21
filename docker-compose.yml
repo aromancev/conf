@@ -1,4 +1,4 @@
-version: '3.9'
+version: '3.7'
 services:
   nginx:
     image: nginx:1.19.6
@@ -71,4 +71,4 @@ services:
       - POSTGRES_PASSWORD=confa
       - POSTGRES_DB=confa
     volumes:
-      - ./.artifacts/posrgresql/:/var/lib/postgresql/data/
+      - ./.artifacts/postrgresql/:/var/lib/postgresql/data/
