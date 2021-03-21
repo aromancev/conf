@@ -1,5 +1,5 @@
 <template>
-  <div>test</div>
+  <router-link to="login">Login</router-link>
 </template>
 
 <script lang="ts">
