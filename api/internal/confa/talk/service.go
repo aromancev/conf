@@ -11,6 +11,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Talk) ([]Talk, error)
+	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Talk, error)
 }
 
 type CRUD struct {
@@ -35,4 +36,13 @@ func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, request Talk) (Tal
 	}
 
 	return created[0], nil
+}
+
+func (c *CRUD) Fetch(ctx context.Context, ID uuid.UUID) (Talk, error) {
+
+	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: ID})
+	if err != nil {
+		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
+	}
+	return fetched, nil
 }
