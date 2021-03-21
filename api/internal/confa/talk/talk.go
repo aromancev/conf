@@ -13,11 +13,10 @@ var (
 )
 
 type Talk struct {
-	ID     uuid.UUID
-	Confa  uuid.UUID
-	Handle string
-
-	CreatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	Confa     uuid.UUID `json:"confa"`
+	Handle    string    `json:"handle"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func (t Talk) Validate() error {
