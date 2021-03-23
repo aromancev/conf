@@ -71,4 +71,4 @@ services:
       - POSTGRES_PASSWORD=confa
       - POSTGRES_DB=confa
     volumes:
-      - ./.artifacts/postrgresql/:/var/lib/postgresql/data/
+      - ./.artifacts/postrgesql/:/var/lib/postgresql/data/
