@@ -11,6 +11,7 @@ var (
 	ErrValidation       = errors.New("invalid talk")
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
+	ErrDuplicatedEntry  = errors.New("duplicated entry")
 )
 
 type Talk struct {

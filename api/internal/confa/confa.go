@@ -12,6 +12,7 @@ var (
 	ErrValidation       = errors.New("invalid confa")
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
+	ErrDuplicatedEntry  = errors.New("duplicated entry")
 )
 
 type Confa struct {
