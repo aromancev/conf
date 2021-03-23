@@ -23,17 +23,17 @@ func TestSQL(t *testing.T) {
 
 		pg, done := double.NewDocker("", migrate)
 		defer done()
-		sqlConfa := confa.NewSQL()
+		confas := confa.NewSQL()
 
 		requestConfa := confa.Confa{
 			ID:     uuid.New(),
 			Owner:  uuid.New(),
 			Handle: "test",
 		}
-		_, err := sqlConfa.Create(ctx, pg, requestConfa)
+		_, err := confas.Create(ctx, pg, requestConfa)
 		require.NoError(t, err)
 
-		sqlTalk := NewSQL()
+		talks := NewSQL()
 
 		requestTalk := Talk{
 			ID:     uuid.New(),
@@ -41,10 +41,10 @@ func TestSQL(t *testing.T) {
 			Handle: "test",
 		}
 
-		createdTalk, err := sqlTalk.Create(ctx, pg, requestTalk)
+		createdTalk, err := talks.Create(ctx, pg, requestTalk)
 		require.NoError(t, err)
 
-		fetchedTalk, err := sqlTalk.Fetch(ctx, pg, Lookup{
+		fetchedTalk, err := talks.Fetch(ctx, pg, Lookup{
 			ID:    requestTalk.ID,
 			Confa: requestTalk.Confa,
 		})
@@ -56,17 +56,17 @@ func TestSQL(t *testing.T) {
 
 		pg, done := double.NewDocker("", migrate)
 		defer done()
-		sqlConfa := confa.NewSQL()
+		confas := confa.NewSQL()
 
 		requestConfa := confa.Confa{
 			ID:     uuid.New(),
 			Owner:  uuid.New(),
 			Handle: uuid.New().String(),
 		}
-		_, err := sqlConfa.Create(ctx, pg, requestConfa)
+		_, err := confas.Create(ctx, pg, requestConfa)
 		require.NoError(t, err)
 
-		sqlTalk := NewSQL()
+		talks := NewSQL()
 
 		requestTalk := Talk{
 			ID:     uuid.New(),
@@ -74,13 +74,56 @@ func TestSQL(t *testing.T) {
 			Handle: uuid.New().String(),
 		}
 
-		createdTalk, err := sqlTalk.Create(ctx, pg, requestTalk)
+		createdTalk, err := talks.Create(ctx, pg, requestTalk)
 		require.NoError(t, err)
 
-		fetchedTalk, err := sqlTalk.Fetch(ctx, pg, Lookup{
+		fetchedTalk, err := talks.Fetch(ctx, pg, Lookup{
 			ID:    requestTalk.ID,
 			Confa: requestTalk.Confa,
 		})
 		assert.Equal(t, createdTalk, fetchedTalk)
+	})
+
+	t.Run("Fetch", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+		talks := NewSQL()
+		confas := confa.NewSQL()
+
+		conf := confa.Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: "test",
+		}
+
+		tlk := Talk{
+			ID:     uuid.New(),
+			Confa:  conf.ID,
+			Handle: "test",
+		}
+
+		_, err := confas.Create(ctx, pg, conf)
+		require.NoError(t, err)
+
+		createdTalk, err := talks.Create(ctx, pg, tlk)
+		require.NoError(t, err)
+
+		t.Run("ID", func(t *testing.T) {
+			fetchedTalk, err := talks.Fetch(ctx, pg, Lookup{
+				ID: tlk.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdTalk, fetchedTalk)
+		})
+
+		t.Run("Confa", func(t *testing.T) {
+			fetchedTalk, err := talks.Fetch(ctx, pg, Lookup{
+				Confa: conf.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createdTalk, fetchedTalk)
+		})
 	})
 }

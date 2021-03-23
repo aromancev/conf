@@ -60,4 +60,37 @@ func TestSQL(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, created, fetched)
 	})
+
+	t.Run("Fetch", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+
+		confas := NewSQL()
+
+		conf := Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: "test",
+		}
+		created, err := confas.Create(ctx, pg, conf)
+		require.NoError(t, err)
+
+		t.Run("ID", func(t *testing.T) {
+			fetched, err := confas.Fetch(ctx, pg, Lookup{
+				ID: conf.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
+		})
+
+		t.Run("Owner", func(t *testing.T) {
+			fetched, err := confas.Fetch(ctx, pg, Lookup{
+				Owner: conf.Owner,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
+		})
+	})
 }
