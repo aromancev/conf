@@ -38,7 +38,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return
-	case errors.Is(err, talk.ErrDuplicatedEntry):
+	case errors.Is(err, confa.ErrDuplicatedEntry):
 		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
 		return
 	case err != nil:
