@@ -38,6 +38,9 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return
+	case errors.Is(err, talk.ErrDuplicatedEntry):
+		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
+		return
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa")
 		_ = api.InternalError().Write(ctx, w)
@@ -97,6 +100,9 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 	switch {
 	case errors.Is(err, talk.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case errors.Is(err, talk.ErrDuplicatedEntry):
+		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
 		return
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create talk")

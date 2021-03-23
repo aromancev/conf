@@ -11,7 +11,8 @@ const (
 
 	CodeMalformedRequest = 2000
 	CodeInvalidRequest   = 2001
-	CodeNotFound = 2002
+	CodeNotFound         = 2002
+	CodeDuplicatedEntry  = 2003
 
 	CodeInternalError = 3001
 )
