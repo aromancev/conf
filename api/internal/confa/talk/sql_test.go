@@ -126,4 +126,33 @@ func TestSQL(t *testing.T) {
 			assert.Equal(t, createdTalk, fetchedTalk)
 		})
 	})
+
+	t.Run("Duplicated Entry", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+		confas := confa.NewSQL()
+
+		requestConfa := confa.Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: "test",
+		}
+		_, err := confas.Create(ctx, pg, requestConfa)
+		require.NoError(t, err)
+
+		talks := NewSQL()
+
+		requestTalk := Talk{
+			ID:     uuid.New(),
+			Confa:  requestConfa.ID,
+			Handle: "test",
+		}
+
+		_, err = talks.Create(ctx, pg, requestTalk)
+		require.NoError(t, err)
+		_, err = talks.Create(ctx, pg, requestTalk)
+		assert.Equal(t, err, ErrDuplicatedEntry)
+	})
 }

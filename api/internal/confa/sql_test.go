@@ -93,4 +93,24 @@ func TestSQL(t *testing.T) {
 			assert.Equal(t, created, fetched)
 		})
 	})
+
+	t.Run("Duplicated Entry", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+
+		confas := NewSQL()
+
+		conf := Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: "test",
+		}
+		_, err := confas.Create(ctx, pg, conf)
+		require.NoError(t, err)
+
+		_, err = confas.Create(ctx, pg, conf)
+		assert.Equal(t, err, ErrDuplicatedEntry)
+	})
 }
