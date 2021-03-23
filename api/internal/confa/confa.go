@@ -2,6 +2,7 @@ package confa
 
 import (
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,8 +25,9 @@ func (c Confa) Validate() error {
 	if c.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
-	if c.Handle == "" {
-		return errors.New("handle should not be empty")
+	validHandle := regexp.MustCompile("^[A-z,0-9]{1,64}$")
+	if !validHandle.MatchString(c.Handle) {
+		return errors.New("invalid handle")
 	}
 	if c.Owner == uuid.Nil {
 		return errors.New("owner should not be empty")

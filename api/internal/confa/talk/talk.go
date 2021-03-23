@@ -3,6 +3,7 @@ package talk
 import (
 	"errors"
 	"github.com/google/uuid"
+	"regexp"
 	"time"
 )
 
@@ -23,8 +24,9 @@ func (t Talk) Validate() error {
 	if t.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
-	if t.Handle == "" {
-		return errors.New("handle should not be empty")
+	validHandle := regexp.MustCompile("^[A-z,0-9]{1,64}$")
+	if !validHandle.MatchString(t.Handle) {
+		return errors.New("invalid handle")
 	}
 	if t.Confa == uuid.Nil {
 		return errors.New("owner should not be empty")
