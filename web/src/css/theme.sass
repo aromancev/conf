@@ -1,0 +1,29 @@
+.theme-light
+  --color-background: #e4ebf5
+  --color-concave: linear-gradient(145deg, #cdd4dd, #f4fbff)
+  --color-shadow-start: #c2c8d0
+  --color-shadow-end: #ffffff
+  --color-font: #001f3f
+
+.theme-dark
+  --color-background: #444444
+  --color-concave: linear-gradient(145deg, #3d3d3d, #494949)
+  --color-shadow-start: #3a3a3a
+  --color-shadow-end: #4e4e4e
+  --color-font: #fefefe
+  
+.btn
+  font-weight: 500
+  border-radius: 4px
+  background: inherit
+  color: inherit
+  box-shadow: 5px 5px 10px var(--color-shadow-start), -5px -5px 10px var(--color-shadow-end)
+  &:hover
+    box-shadow: 3px 3px 7px var(--color-shadow-start), -3px -3px 7px var(--color-shadow-end)
+  &:active
+    background: inherit
+    box-shadow: inset 2px 2px 5px var(--color-shadow-start), inset -2px -2px 5px var(--color-shadow-end)
+
+.input
+  border-radius: 4px
+  box-shadow: inset 2px 2px 3px var(--color-shadow-start), inset -2px -2px 3px var(--color-shadow-end)
