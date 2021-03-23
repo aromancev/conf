@@ -70,7 +70,5 @@ services:
       - POSTGRES_USER=confa
       - POSTGRES_PASSWORD=confa
       - POSTGRES_DB=confa
-    ports:
-      - "5432:5432"
     volumes:
       - ./.artifacts/posrgresql/:/var/lib/postgresql/data/
