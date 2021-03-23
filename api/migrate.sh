@@ -7,8 +7,8 @@ docker run \
   --rm \
   -w /app \
   -v `pwd`:/app \
-  --network=host \
-  --env POSTGRES_HOST="localhost" \
+  --network=confa_default \
+  --env POSTGRES_HOST="postgres" \
   --env POSTGRES_PORT="5432" \
   --env POSTGRES_DATABASE="confa" \
   --env POSTGRES_USER="confa" \
