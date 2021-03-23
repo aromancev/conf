@@ -23,6 +23,9 @@ func (t Talk) Validate() error {
 	if t.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
+	if t.Handle == "" {
+		return errors.New("handle should not be empty")
+	}
 	if t.Confa == uuid.Nil {
 		return errors.New("owner should not be empty")
 	}

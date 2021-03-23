@@ -24,6 +24,9 @@ func (c Confa) Validate() error {
 	if c.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
+	if c.Handle == "" {
+		return errors.New("handle should not be empty")
+	}
 	if c.Owner == uuid.Nil {
 		return errors.New("owner should not be empty")
 	}
