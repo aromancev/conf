@@ -50,4 +50,37 @@ func TestSQL(t *testing.T) {
 		})
 		assert.Equal(t, createdTalk, fetchedTalk)
 	})
+
+	t.Run("Handle-UUID", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+		sqlConfa := confa.NewSQL()
+
+		requestConfa := confa.Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: uuid.New().String(),
+		}
+		_, err := sqlConfa.Create(ctx, pg, requestConfa)
+		require.NoError(t, err)
+
+		sqlTalk := NewSQL()
+
+		requestTalk := Talk{
+			ID:     uuid.New(),
+			Confa:  requestConfa.ID,
+			Handle: uuid.New().String(),
+		}
+
+		createdTalk, err := sqlTalk.Create(ctx, pg, requestTalk)
+		require.NoError(t, err)
+
+		fetchedTalk, err := sqlTalk.Fetch(ctx, pg, Lookup{
+			ID:    requestTalk.ID,
+			Confa: requestTalk.Confa,
+		})
+		assert.Equal(t, createdTalk, fetchedTalk)
+	})
 }

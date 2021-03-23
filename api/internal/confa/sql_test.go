@@ -38,4 +38,26 @@ func TestSQL(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, created, fetched)
 	})
+
+	t.Run("Handle-UUID", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+
+		sql := NewSQL()
+		request := Confa{
+			ID:     uuid.New(),
+			Owner:  uuid.New(),
+			Handle: uuid.New().String(),
+		}
+		created, err := sql.Create(ctx, pg, request)
+		require.NoError(t, err)
+		fetched, err := sql.Fetch(ctx, pg, Lookup{
+			ID:    request.ID,
+			Owner: request.Owner,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, created, fetched)
+	})
 }
