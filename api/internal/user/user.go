@@ -10,7 +10,6 @@ import (
 var (
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
-	ErrValidation       = errors.New("invalid user")
 )
 
 type User struct {

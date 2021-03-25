@@ -22,15 +22,18 @@ func TestCRUD(t *testing.T) {
 		pg, done := double.NewDocker("", migrate)
 		defer done()
 
-		userCRUD := user.NewCRUD(pg, user.NewSQL())
+		users := user.NewSQL()
 		sessionCRUD := NewCRUD(pg, NewSQL())
 
-		usr := user.User{}
+		usr := user.User{
+			ID: uuid.New(),
+		}
+
 		sess := Session{
 			Owner: uuid.New(),
 		}
 
-		usr, err := userCRUD.Create(ctx, usr)
+		_, err := users.Create(ctx, pg, usr)
 		require.NoError(t, err)
 
 		createdSession, err := sessionCRUD.Create(ctx, usr.ID, sess)
