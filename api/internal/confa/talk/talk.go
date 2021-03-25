@@ -21,11 +21,12 @@ type Talk struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+var validHandle = regexp.MustCompile("^[A-z,0-9,-]{1,64}$")
+
 func (t Talk) Validate() error {
 	if t.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
-	validHandle := regexp.MustCompile("^[A-z,0-9]{1,64}$")
 	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")
 	}

@@ -27,7 +27,7 @@ func TestSQL(t *testing.T) {
 			request := Confa{
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
-				Handle: "test",
+				Handle: "test1",
 			}
 			created, err := sql.Create(ctx, pg, request)
 			require.NoError(t, err)
@@ -50,22 +50,14 @@ func TestSQL(t *testing.T) {
 		})
 
 		t.Run("Duplicated Entry", func(t *testing.T) {
-			t.Parallel()
-
-			pg, done := double.NewDocker("", migrate)
-			defer done()
-
-			confas := NewSQL()
-
 			conf := Confa{
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
-				Handle: "test",
+				Handle: "test3",
 			}
-			_, err := confas.Create(ctx, pg, conf)
+			_, err := sql.Create(ctx, pg, conf)
 			require.NoError(t, err)
-
-			_, err = confas.Create(ctx, pg, conf)
+			_, err = sql.Create(ctx, pg, conf)
 			require.ErrorIs(t, err, ErrDuplicatedEntry)
 		})
 	})
