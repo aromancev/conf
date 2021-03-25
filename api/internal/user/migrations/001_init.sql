@@ -11,9 +11,15 @@ CREATE TABLE idents (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     UNIQUE (platform, value)
 );
+CREATE TABLE sessions (
+    key VARCHAR(128) PRIMARY KEY,
+    owner UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
 
 ---- create above / drop below ----
 
 DROP TABLE idents;
+DROP TABLE sessions;
 DROP TABLE users;
 DROP TYPE platform;
