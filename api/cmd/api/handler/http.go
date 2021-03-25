@@ -127,9 +127,6 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	case errors.Is(err, talk.ErrNotFound):
 		_ = api.NotFound(err.Error()).Write(ctx, w)
 		return
-	case errors.Is(err, talk.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
 		_ = api.InternalError().Write(ctx, w)
