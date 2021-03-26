@@ -84,7 +84,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create verifier")
 	}
 
-	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password)
+	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false")
 	confaSQL := confa.NewSQL()
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
 	hand := handler.New(config.BaseURL, confaCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)

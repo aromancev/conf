@@ -120,6 +120,7 @@ type EmailConfig struct {
 	Port     string `envconfig:"EMAIL_PORT"`
 	Address  string `envconfig:"EMAIL_ADDRESS"`
 	Password string `envconfig:"EMAIL_PASSWORD"`
+	Secure   string `envconfig:"EMAIL_SECURE"`
 }
 
 func (c EmailConfig) Validate() error {

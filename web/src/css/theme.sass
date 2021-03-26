@@ -4,6 +4,7 @@
   --color-shadow-start: #c2c8d0
   --color-shadow-end: #ffffff
   --color-font: #001f3f
+  --color-font-disabled: #00000073
 
 .theme-dark
   --color-background: #444444
@@ -11,19 +12,42 @@
   --color-shadow-start: #3a3a3a
   --color-shadow-end: #4e4e4e
   --color-font: #fefefe
+  --color-font-disabled: #ffffff73
   
+@mixin clickable
+  user-select: none
+  cursor: pointer
+  -webkit-tap-highlight-color: rgba(0,0,0,0)
+
+@mixin shadow-m
+  box-shadow: 5px 5px 10px var(--color-shadow-start), -5px -5px 10px var(--color-shadow-end)
+
+@mixin shadow-sm  
+  box-shadow: 3px 3px 7px var(--color-shadow-start), -3px -3px 7px var(--color-shadow-end)
+
+@mixin shadow-inset-s
+  box-shadow: inset 2px 2px 5px var(--color-shadow-start), inset -2px -2px 5px var(--color-shadow-end)
+
+@mixin shadow-inset-xs
+  box-shadow: inset 2px 2px 3px var(--color-shadow-start), inset -2px -2px 3px var(--color-shadow-end)
+
 .btn
+  @include clickable
+  @include shadow-m
   font-weight: 500
   border-radius: 4px
   background: inherit
   color: inherit
-  box-shadow: 5px 5px 10px var(--color-shadow-start), -5px -5px 10px var(--color-shadow-end)
   &:hover
-    box-shadow: 3px 3px 7px var(--color-shadow-start), -3px -3px 7px var(--color-shadow-end)
+    @include shadow-sm
   &:active
+    @include shadow-inset-s
     background: inherit
-    box-shadow: inset 2px 2px 5px var(--color-shadow-start), inset -2px -2px 5px var(--color-shadow-end)
+  &:disabled, &[disabled]
+    @include shadow-sm
+    cursor: default
+    color: var(--color-font-disabled)
 
 .input
+  @include shadow-inset-xs
   border-radius: 4px
-  box-shadow: inset 2px 2px 3px var(--color-shadow-start), inset -2px -2px 3px var(--color-shadow-end)

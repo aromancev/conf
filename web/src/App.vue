@@ -38,8 +38,8 @@ export default defineComponent({
 
 <style lang="sass">
 @use 'bootstrap-4-grid/scss/grid.scss'
-@use '@/css/clear.sass'
-@use '@/css/theme.sass'
+@use '@/css/clear'
+@use '@/css/theme'
 
 html,
 body,
@@ -57,11 +57,10 @@ body,
   background-color: var(--color-background)
 
 .theme-toggle
-  user-select: none
+  @include theme.clickable
+ 
   position: absolute
   right: 10px
   top: 10px
   color: inherit
-  cursor: pointer
-
 </style>
