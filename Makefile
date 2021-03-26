@@ -11,6 +11,10 @@ build:
 start:
 	docker-compose -f docker-compose.yml up
 
+.PHONY: start-api
+start-api:
+	docker-compose -f docker-compose.yml up nginx api beanstalkd postgres email
+
 .PHONY: stop
 stop:
 	docker-compose down

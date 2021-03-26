@@ -2,14 +2,10 @@ version: '3.9'
 services:
   nginx:
     image: nginx:1.19.6
-    depends_on: 
-      - web
-      - rtc
-      - api
     ports:
       - "80:80"
     volumes:
-      - ./web/nginx.dev.conf:/etc/nginx/nginx.conf
+      - ./nginx.conf:/etc/nginx/nginx.conf
 
   web:
     image: node:15.7.0
@@ -44,10 +40,11 @@ services:
       - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
       - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
       - MIGRATIONS_DIR=internal/migrations
-      - EMAIL_SERVER=stub
-      - EMAIL_PORT=42
+      - EMAIL_SERVER=email
+      - EMAIL_PORT=1025
       - EMAIL_ADDRESS=noreply@confa.io
       - EMAIL_PASSWORD=stub
+      - EMAIL_SECURE=false
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=confa
@@ -72,3 +69,7 @@ services:
       - POSTGRES_DB=confa
     volumes:
       - ./.artifacts/posrgresql/:/var/lib/postgresql/data/
+
+  email:
+    image: kbedel/fake-smtp-server
+    command: fake-smtp-server -s 1025 -h 80
