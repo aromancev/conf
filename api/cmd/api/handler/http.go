@@ -104,6 +104,9 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 	case errors.Is(err, talk.ErrDuplicatedEntry):
 		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
 		return
+	case errors.Is(err, talk.ErrPermissionDenied):
+		_ = api.Forbidden().Write(ctx, w)
+		return
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create talk")
 		_ = api.InternalError().Write(ctx, w)

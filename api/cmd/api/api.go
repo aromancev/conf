@@ -90,7 +90,7 @@ func main() {
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
 
 	talkSQL := talk.NewSQL()
-	talkCRUD := talk.NewCRUD(postgres, talkSQL)
+	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
 
 	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
 

@@ -3,6 +3,7 @@ package talk
 import (
 	"context"
 	"fmt"
+	"github.com/aromancev/confa/internal/confa"
 
 	"github.com/google/uuid"
 
@@ -13,14 +14,18 @@ type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Talk) ([]Talk, error)
 	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Talk, error)
 }
-
-type CRUD struct {
-	conn psql.Conn
-	repo Repo
+type ConfaCRUD interface {
+	Fetch(ctx context.Context, ID uuid.UUID) (confa.Confa, error)
 }
 
-func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
-	return &CRUD{conn: conn, repo: repo}
+type CRUD struct {
+	conn      psql.Conn
+	repo      Repo
+	confaCRUD ConfaCRUD
+}
+
+func NewCRUD(conn psql.Conn, repo Repo, confaCRUD ConfaCRUD) *CRUD {
+	return &CRUD{conn: conn, repo: repo, confaCRUD: confaCRUD}
 }
 
 func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID, request Talk) (Talk, error) {
@@ -29,6 +34,14 @@ func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID,
 	request.Owner = ownerID
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	fetchedConfa, err := c.confaCRUD.Fetch(ctx, confaID)
+	if err != nil {
+		return Talk{}, fmt.Errorf("failed to create talk: %w", err)
+	}
+
+	if fetchedConfa.Owner != ownerID {
+		return Talk{}, ErrPermissionDenied
 	}
 
 	created, err := c.repo.Create(ctx, c.conn, request)

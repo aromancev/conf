@@ -12,12 +12,13 @@ var (
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
 	ErrDuplicatedEntry  = errors.New("duplicated entry")
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
 type Talk struct {
 	ID        uuid.UUID `json:"id"`
 	Confa     uuid.UUID `json:"confa"`
-	Owner    uuid.UUID `json:"owner"`
+	Owner     uuid.UUID `json:"owner"`
 	Handle    string    `json:"handle"`
 	CreatedAt time.Time `json:"createdAt"`
 }

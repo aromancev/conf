@@ -13,6 +13,7 @@ const (
 	CodeInvalidRequest   = 2001
 	CodeNotFound         = 2002
 	CodeDuplicatedEntry  = 2003
+	CodeForbidden        = 2004
 
 	CodeInternalError = 3001
 )
@@ -91,5 +92,15 @@ func NotFound(text string) Response {
 			Code:  CodeNotFound,
 		},
 		Status: http.StatusNotFound,
+	}
+}
+
+func Forbidden() Response {
+	return Response{
+		Body: Error{
+			Error: "forbidden",
+			Code:  CodeForbidden,
+		},
+		Status: http.StatusForbidden,
 	}
 }

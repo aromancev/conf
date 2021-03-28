@@ -22,7 +22,7 @@ func TestCRUD(t *testing.T) {
 		pg, done := double.NewDocker("", migrate)
 		defer done()
 		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
-		talkCRUD := NewCRUD(pg, NewSQL())
+		talkCRUD := NewCRUD(pg, NewSQL(), confaCRUD)
 
 		userID := uuid.New()
 		requestConfa := confa.Confa{
@@ -44,4 +44,27 @@ func TestCRUD(t *testing.T) {
 		require.Equal(t, createdTalk, fetchedTalk)
 	})
 
+	t.Run("Permission denied", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
+		talkCRUD := NewCRUD(pg, NewSQL(), confaCRUD)
+
+		userID := uuid.New()
+		wronguserID := uuid.New()
+		requestConfa := confa.Confa{
+			Handle: "test",
+		}
+		requestTalk := Talk{
+			Handle: "test",
+		}
+
+		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
+		require.NoError(t, err)
+
+		_, err = talkCRUD.Create(ctx, createdConfa.ID, wronguserID, requestTalk)
+		require.ErrorIs(t, err, ErrPermissionDenied)
+	})
 }
