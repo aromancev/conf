@@ -17,6 +17,7 @@ var (
 type Talk struct {
 	ID        uuid.UUID `json:"id"`
 	Confa     uuid.UUID `json:"confa"`
+	Owner    uuid.UUID `json:"owner"`
 	Handle    string    `json:"handle"`
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -26,6 +27,9 @@ var validHandle = regexp.MustCompile("^[A-z,0-9,-]{1,64}$")
 func (t Talk) Validate() error {
 	if t.ID == uuid.Nil {
 		return errors.New("id should not be empty")
+	}
+	if t.Owner == uuid.Nil {
+		return errors.New("owner should not be empty")
 	}
 	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")

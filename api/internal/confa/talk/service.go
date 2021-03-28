@@ -23,9 +23,10 @@ func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
 	return &CRUD{conn: conn, repo: repo}
 }
 
-func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, request Talk) (Talk, error) {
+func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID, request Talk) (Talk, error) {
 	request.ID = uuid.New()
 	request.Confa = confaID
+	request.Owner = ownerID
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}

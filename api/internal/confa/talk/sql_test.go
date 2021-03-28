@@ -36,6 +36,7 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
+				Owner:  uuid.New(),
 				Confa:  requestConfa.ID,
 				Handle: "test1",
 			}
@@ -60,6 +61,7 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
+				Owner:  uuid.New(),
 				Confa:  requestConfa.ID,
 				Handle: uuid.New().String(),
 			}
@@ -85,6 +87,7 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
+				Owner:  uuid.New(),
 				Confa:  requestConfa.ID,
 				Handle: "test3",
 			}
@@ -112,6 +115,7 @@ func TestSQL(t *testing.T) {
 
 		tlk := Talk{
 			ID:     uuid.New(),
+			Owner:  uuid.New(),
 			Confa:  conf.ID,
 			Handle: "test",
 		}

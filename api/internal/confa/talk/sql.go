@@ -43,9 +43,9 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) 
 		requests[i].CreatedAt = now
 	}
 
-	q := sq.Insert("talks").Columns("id", "confa", "handle", "created_at")
+	q := sq.Insert("talks").Columns("id", "owner", "confa", "handle", "created_at")
 	for _, r := range requests {
-		q = q.Values(r.ID, r.Confa, r.Handle, r.CreatedAt)
+		q = q.Values(r.ID, r.Owner, r.Confa, r.Handle, r.CreatedAt)
 	}
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()
@@ -69,7 +69,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) 
 }
 
 func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Talk, error) {
-	q := sq.Select("id", "confa", "handle", "created_at").From("talks")
+	q := sq.Select("id", "owner", "confa", "handle", "created_at").From("talks")
 	if lookup.ID != uuid.Nil {
 		q = q.Where(sq.Eq{"id": lookup.ID})
 	}
@@ -92,6 +92,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 		var t Talk
 		err := rows.Scan(
 			&t.ID,
+			&t.Owner,
 			&t.Confa,
 			&t.Handle,
 			&t.CreatedAt,

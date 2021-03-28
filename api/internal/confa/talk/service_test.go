@@ -35,7 +35,7 @@ func TestCRUD(t *testing.T) {
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
 		require.NoError(t, err)
 
-		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, requestTalk)
+		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk)
 		require.NoError(t, err)
 
 		fetchedTalk, err := talkCRUD.Fetch(ctx, createdTalk.ID)
