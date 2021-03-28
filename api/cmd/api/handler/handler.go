@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/user/session"
 	"net/http"
 	"time"
 
@@ -37,22 +38,24 @@ type Handler struct {
 	router    http.Handler
 	confaCRUD *confa.CRUD
 	talkCRUD  *talk.CRUD
+	sessionCRUD *session.CRUD
 	sender    *email.Sender
 	producer  Producer
 	sign      *auth.Signer
 	verify    *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, sessionCRUD *session.CRUD, talkCRUD *talk.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
-		baseURL:   baseURL,
-		confaCRUD: confaCRUD,
+		baseURL:     baseURL,
+		confaCRUD:   confaCRUD,
 		talkCRUD:  talkCRUD,
-		sender:    sender,
-		producer:  producer,
-		sign:      sign,
-		verify:    verify,
+		sessionCRUD: sessionCRUD,
+		sender:      sender,
+		producer:    producer,
+		sign:        sign,
+		verify:      verify,
 	}
 
 	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -64,6 +67,9 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *ema
 
 	r.POST("/confa/v1/confas", h.createConfa)
 	r.GET("/confa/v1/confas/:confa_id", h.confa)
+
+	r.POST("/confa/v1/sessions", h.createSession)
+	r.GET("/confa/v1/sessions", h.session) // unmarshal session key from request
 
 	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)
