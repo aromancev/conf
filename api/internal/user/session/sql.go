@@ -71,7 +71,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Sessio
 func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Session, error) {
 	q := sq.Select("key", "owner", "created_at").From("sessions")
 	if lookup.Key != "" {
-		q = q.Where(sq.Eq{"Key": lookup.Key})
+		q = q.Where(sq.Eq{"key": lookup.Key})
 	}
 	if lookup.Owner != uuid.Nil {
 		q = q.Where(sq.Eq{"owner": lookup.Owner})
