@@ -169,37 +169,6 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 	_ = api.Created(sess).Write(ctx, w)
 }
 
-func (h *Handler) session(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	var request session.Session
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
-		return
-	}
-	sessKey := request.Key
-	if sessKey == "" {
-		_ = api.BadRequest(api.CodeInvalidRequest, errors.New("session key is empty").Error()).Write(ctx, w)
-		return
-	}
-
-	sess, err := h.sessionCRUD.Fetch(ctx, sessKey)
-	switch {
-	case errors.Is(err, session.ErrNotFound):
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	case errors.Is(err, session.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch session")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.OK(sess).Write(ctx, w)
-}
-
 type loginReq struct {
 	Email string `json:"email"`
 }
