@@ -37,3 +37,12 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Session) (S
 
 	return created[0], nil
 }
+
+func (c *CRUD) Fetch(ctx context.Context, Key string) (Session, error) {
+
+	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{Key: Key})
+	if err != nil {
+		return Session{}, fmt.Errorf("failed to fetch confa: %w", err)
+	}
+	return fetched, nil
+}
