@@ -23,7 +23,8 @@ func TestCRUD(t *testing.T) {
 		defer done()
 
 		users := user.NewSQL()
-		sessionCRUD := NewCRUD(pg, NewSQL())
+		sessions := NewSQL()
+		sessionCRUD := NewCRUD(pg, sessions)
 
 		usr := user.User{
 			ID: uuid.New(),
@@ -39,7 +40,7 @@ func TestCRUD(t *testing.T) {
 		createdSession, err := sessionCRUD.Create(ctx, usr.ID, sess)
 		require.NoError(t, err)
 
-		fetchedSession, err := sessionCRUD.Fetch(ctx, createdSession.Key)
+		fetchedSession, err := sessions.FetchOne(ctx, pg, Lookup{Key: createdSession.Key})
 		require.NoError(t, err)
 		require.Equal(t, createdSession, fetchedSession)
 	})
