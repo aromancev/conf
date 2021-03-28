@@ -33,7 +33,7 @@ func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID,
 
 	created, err := c.repo.Create(ctx, c.conn, request)
 	if err != nil {
-		return Talk{}, fmt.Errorf("failed to create confa: %w", err)
+		return Talk{}, fmt.Errorf("failed to create talk: %w", err)
 	}
 
 	return created[0], nil
@@ -43,7 +43,7 @@ func (c *CRUD) Fetch(ctx context.Context, ID uuid.UUID) (Talk, error) {
 
 	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: ID})
 	if err != nil {
-		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
+		return Talk{}, fmt.Errorf("failed to fetch talk: %w", err)
 	}
 	return fetched, nil
 }
