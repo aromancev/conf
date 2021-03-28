@@ -2,7 +2,9 @@ package talk
 
 import (
 	"context"
+
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/platform/psql"
 
 	"testing"
 
@@ -18,20 +20,32 @@ func TestSQL(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("Create", func(t *testing.T) {
-		t.Parallel()
-
+	type dependencies struct {
+		pg       psql.Conn
+		confaSQL *confa.SQL
+		talkSQL  *SQL
+	}
+	setup := func() (dependencies, func()) {
 		pg, done := double.NewDocker("", migrate)
-		defer done()
-		confasSql := confa.NewSQL()
-		talksSql := NewSQL()
+		return dependencies{
+			pg:       pg,
+			confaSQL: confa.NewSQL(),
+			talkSQL:  NewSQL(),
+		}, done
+	}
+	t.Run("Create", func(t *testing.T) {
 		t.Run("String handle", func(t *testing.T) {
+			t.Parallel()
+
+			deps, done := setup()
+			defer done()
+
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
 				Handle: "test1",
 			}
-			_, err := confasSql.Create(ctx, pg, requestConfa)
+			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
@@ -41,22 +55,27 @@ func TestSQL(t *testing.T) {
 				Handle: "test1",
 			}
 
-			createdTalk, err := talksSql.Create(ctx, pg, requestTalk)
+			createdTalk, err := deps.talkSQL.Create(ctx, deps.pg, requestTalk)
 			require.NoError(t, err)
 
-			fetchedTalk, err := talksSql.Fetch(ctx, pg, Lookup{
+			fetchedTalk, err := deps.talkSQL.Fetch(ctx, deps.pg, Lookup{
 				ID:    requestTalk.ID,
 				Confa: requestTalk.Confa,
 			})
 			assert.Equal(t, createdTalk, fetchedTalk)
 		})
 		t.Run("UUID handle", func(t *testing.T) {
+			t.Parallel()
+
+			deps, done := setup()
+			defer done()
+
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
 				Handle: "test2",
 			}
-			_, err := confasSql.Create(ctx, pg, requestConfa)
+			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
@@ -66,23 +85,27 @@ func TestSQL(t *testing.T) {
 				Handle: uuid.New().String(),
 			}
 
-			createdTalk, err := talksSql.Create(ctx, pg, requestTalk)
+			createdTalk, err := deps.talkSQL.Create(ctx, deps.pg, requestTalk)
 			require.NoError(t, err)
 
-			fetchedTalk, err := talksSql.Fetch(ctx, pg, Lookup{
+			fetchedTalk, err := deps.talkSQL.Fetch(ctx, deps.pg, Lookup{
 				ID:    requestTalk.ID,
 				Confa: requestTalk.Confa,
 			})
 			assert.Equal(t, createdTalk, fetchedTalk)
 		})
 		t.Run("Duplicated Entry", func(t *testing.T) {
+			t.Parallel()
+
+			deps, done := setup()
+			defer done()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
 				Handle: "test3",
 			}
-			_, err := confasSql.Create(ctx, pg, requestConfa)
+			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
@@ -92,9 +115,9 @@ func TestSQL(t *testing.T) {
 				Handle: "test3",
 			}
 
-			_, err = talksSql.Create(ctx, pg, requestTalk)
+			_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalk)
 			require.NoError(t, err)
-			_, err = talksSql.Create(ctx, pg, requestTalk)
+			_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalk)
 			assert.ErrorIs(t, err, ErrDuplicatedEntry)
 		})
 	})
