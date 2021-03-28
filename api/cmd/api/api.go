@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/user/session"
 	"net/http"
 	"os"
 	"os/signal"
@@ -93,6 +94,11 @@ func main() {
 	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
 
 	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
+
+	sessionSQL := session.NewSQL()
+	sessionCRUD := session.NewCRUD(postgres, sessionSQL)
+
+	hand := handler.New(config.BaseURL, confaCRUD, sessionCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
 
 	srv := &http.Server{
 		Addr:         config.Address,
