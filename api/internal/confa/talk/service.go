@@ -37,7 +37,7 @@ func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID,
 	}
 	fetchedConfa, err := c.confaCRUD.Fetch(ctx, confaID)
 	if err != nil {
-		return Talk{}, fmt.Errorf("failed to create talk: %w", err)
+		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
 	}
 
 	if fetchedConfa.Owner != ownerID {
