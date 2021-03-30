@@ -5,6 +5,7 @@
   --color-shadow-end: #ffffff
   --color-font: #001f3f
   --color-font-disabled: #00000073
+  --color-outline: #00000010
 
 .theme-dark
   --color-background: #444444
@@ -13,11 +14,15 @@
   --color-shadow-end: #4e4e4e
   --color-font: #fefefe
   --color-font-disabled: #ffffff73
+  --color-outline: #ffffff10
   
 @mixin clickable
   user-select: none
   cursor: pointer
   -webkit-tap-highlight-color: rgba(0,0,0,0)
+
+@mixin shadow-l
+  box-shadow: 7px 7px 10px var(--color-shadow-start), -7px -7px 10px var(--color-shadow-end)
 
 @mixin shadow-m
   box-shadow: 5px 5px 10px var(--color-shadow-start), -5px -5px 10px var(--color-shadow-end)
@@ -51,3 +56,5 @@
 .input
   @include shadow-inset-xs
   border-radius: 4px
+  &:disabled
+    color: var(--color-font-disabled)

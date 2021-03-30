@@ -58,7 +58,7 @@ body,
 
 .theme-toggle
   @include theme.clickable
- 
+
   position: absolute
   right: 10px
   top: 10px
