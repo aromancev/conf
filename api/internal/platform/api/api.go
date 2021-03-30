@@ -65,13 +65,23 @@ func InternalError() Response {
 	}
 }
 
-func Unauthorised() Response {
+func Unauthorised(text string) Response {
 	return Response{
 		Body: Error{
 			Code:  CodeUnauthorised,
-			Error: "unauthorised request",
+			Error: text,
 		},
 		Status: http.StatusUnauthorized,
+	}
+}
+
+func Forbidden() Response {
+	return Response{
+		Body: Error{
+			Code:  CodeForbidden,
+			Error: "forbidden request",
+		},
+		Status: http.StatusForbidden,
 	}
 }
 
@@ -92,15 +102,5 @@ func NotFound(text string) Response {
 			Code:  CodeNotFound,
 		},
 		Status: http.StatusNotFound,
-	}
-}
-
-func Forbidden() Response {
-	return Response{
-		Body: Error{
-			Error: "forbidden",
-			Code:  CodeForbidden,
-		},
-		Status: http.StatusForbidden,
 	}
 }

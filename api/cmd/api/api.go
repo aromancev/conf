@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/user/session"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/aromancev/confa/internal/user"
+	"github.com/aromancev/confa/internal/user/ident"
+	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
@@ -87,18 +90,22 @@ func main() {
 	}
 
 	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false")
+
 	confaSQL := confa.NewSQL()
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
 
 	talkSQL := talk.NewSQL()
 	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
 
-	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
-
 	sessionSQL := session.NewSQL()
 	sessionCRUD := session.NewCRUD(postgres, sessionSQL)
 
-	hand := handler.New(config.BaseURL, confaCRUD, sessionCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
+	userSQL := user.NewSQL()
+
+	identSQL := ident.NewSQL()
+	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
+
+	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
 
 	srv := &http.Server{
 		Addr:         config.Address,

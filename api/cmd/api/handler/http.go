@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
+
+	"github.com/aromancev/confa/internal/user/ident"
 
 	"github.com/aromancev/confa/internal/confa/talk"
 
@@ -25,7 +28,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 
 	userID, err := auth.Authenticate(r)
 	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
+		_ = api.Unauthorised(err.Error()).Write(ctx, w)
 		return
 	}
 
@@ -143,12 +146,26 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
+	rawAuthentication := r.Header.Get("Authentication")
+	authArray := strings.Split(rawAuthentication, " ")
 
-	userID, err := auth.Authenticate(r)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
+	pltfrm, token := authArray[0], authArray[1]
+	if pltfrm != "Email" {
+		_ = api.Unauthorised("incorrect platform").Write(ctx, w)
 		return
 	}
+
+	claims, err := h.verify.EmailToken(token)
+	if err != nil {
+		_ = api.Unauthorised(err.Error()).Write(ctx, w)
+		return
+	}
+
+	idnt := ident.Ident{}
+	idnt.Platform = ident.PlatformEmail
+	idnt.Value = claims.Address
+
+	userID, err := h.identCRUD.GetOrCreate(ctx, idnt)
 
 	sess, err := h.sessionCRUD.Create(ctx, userID)
 	switch {

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aromancev/confa/internal/user/ident"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
@@ -39,19 +41,21 @@ type Handler struct {
 	confaCRUD *confa.CRUD
 	talkCRUD  *talk.CRUD
 	sessionCRUD *session.CRUD
+	identCRUD   *ident.CRUD
 	sender    *email.Sender
 	producer  Producer
 	sign      *auth.Signer
 	verify    *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, sessionCRUD *session.CRUD, talkCRUD *talk.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:     baseURL,
 		confaCRUD:   confaCRUD,
 		talkCRUD:  talkCRUD,
 		sessionCRUD: sessionCRUD,
+		identCRUD:   identCRUD,
 		sender:      sender,
 		producer:    producer,
 		sign:        sign,
