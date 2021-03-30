@@ -2,8 +2,9 @@ package session
 
 import (
 	"context"
-	"github.com/aromancev/confa/internal/user"
 	"testing"
+
+	"github.com/aromancev/confa/internal/user"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -29,10 +30,8 @@ func TestSQL(t *testing.T) {
 			usr := user.User{
 				ID: uuid.New(),
 			}
-			sess := Session{
-				Key:   generateKey(),
-				Owner: usr.ID,
-			}
+			sess := NewSession()
+			sess.Owner = usr.ID
 
 			_, err := users.Create(ctx, pg, usr)
 			require.NoError(t, err)
@@ -61,10 +60,8 @@ func TestSQL(t *testing.T) {
 		usr := user.User{
 			ID: uuid.New(),
 		}
-		sess := Session{
-			Key:   generateKey(),
-			Owner: usr.ID,
-		}
+		sess := NewSession()
+		sess.Owner = usr.ID
 
 		_, err := users.Create(ctx, pg, usr)
 		require.NoError(t, err)

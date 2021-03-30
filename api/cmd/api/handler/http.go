@@ -3,8 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
+
+	"github.com/aromancev/confa/internal/confa/talk"
 
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
@@ -149,13 +150,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	var request session.Session
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
-		return
-	}
-
-	sess, err := h.sessionCRUD.Create(ctx, userID, request)
+	sess, err := h.sessionCRUD.Create(ctx, userID)
 	switch {
 	case errors.Is(err, session.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)

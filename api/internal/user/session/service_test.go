@@ -2,8 +2,9 @@ package session
 
 import (
 	"context"
-	"github.com/aromancev/confa/internal/user"
 	"testing"
+
+	"github.com/aromancev/confa/internal/user"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -30,14 +31,10 @@ func TestCRUD(t *testing.T) {
 			ID: uuid.New(),
 		}
 
-		sess := Session{
-			Owner: uuid.New(),
-		}
-
 		_, err := users.Create(ctx, pg, usr)
 		require.NoError(t, err)
 
-		createdSession, err := sessionCRUD.Create(ctx, usr.ID, sess)
+		createdSession, err := sessionCRUD.Create(ctx, usr.ID)
 		require.NoError(t, err)
 
 		fetchedSession, err := sessions.FetchOne(ctx, pg, Lookup{Key: createdSession.Key})

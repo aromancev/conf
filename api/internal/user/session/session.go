@@ -4,8 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -21,31 +22,26 @@ type Session struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-const byteKeyLength = 96 // you need 4*(n/3) chars to represent n bytes
-func generateKey() string {
-	b := make([]byte, byteKeyLength)
+const keyLength = 96 // you need 4*(n/3) chars to represent n bytes, field for key is VARCHAR(128)
+func NewSession() Session {
+	b := make([]byte, keyLength)
 	_, err := rand.Read(b)
 	if err != nil {
 		panic(err)
 	}
-
 	key := base64.StdEncoding.EncodeToString(b)
-	return key
-}
 
-func (s Session) GenerateKey() (Session, error) {
-	if s.Key != "" {
-		return s, errors.New("key is not empty")
-	}
-
-	key := generateKey()
+	s := Session{}
 	s.Key = key
-	return s, nil
+	return s
 }
 
 func (s Session) Validate() error {
 	if s.Owner == uuid.Nil {
 		return errors.New("owner should not be empty")
+	}
+	if s.Key == "" {
+		return errors.New("session key should not be empty")
 	}
 	return nil
 }
