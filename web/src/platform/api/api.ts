@@ -17,8 +17,8 @@ export class API {
 
   async post(url: string, data?: object) {
     const resp = await this.client.post(url, data)
-    if (!(resp.status in [Codes.OK, Codes.Created])) {
-      throw "unexpected code"
+    if (resp.status !== Codes.OK && resp.status !== Codes.Created) {
+      throw "unexpected code: " + resp.status
     }
   }
 }
