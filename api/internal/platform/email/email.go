@@ -44,36 +44,30 @@ type Sender struct {
 	port        string
 	fromAddress string
 	password    string
+	secure      bool
 }
 
-func NewSender(server, port, fromAddress, password string) *Sender {
-	return &Sender{server: server, port: port, fromAddress: fromAddress, password: password}
+func NewSender(server, port, fromAddress, password string, secure bool) *Sender {
+	return &Sender{server: server, port: port, fromAddress: fromAddress, password: password, secure: secure}
 }
 
 func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) {
 	dialer := net.Dialer{
 		Timeout: sendTimeout,
 	}
-	tcpConn, err := dialer.DialContext(ctx, "tcp", s.server+":"+s.port)
+	conn, err := dialer.DialContext(ctx, "tcp", s.server+":"+s.port)
 	if err != nil {
 		return err, nil
 	}
-	defer tcpConn.Close()
-	conn := tls.Client(tcpConn, &tls.Config{
-		ServerName: s.server,
-	})
-	err = conn.Handshake()
-	if err != nil {
-		return err, nil
-	}
+	defer conn.Close()
 
-	client, err := smtp.NewClient(conn, s.server)
-	if err != nil {
-		return err, nil
+	var client *smtp.Client
+	if s.secure {
+		client, err = s.secureClient(conn)
+	} else {
+		client, err = s.insecureClient(conn)
 	}
-
-	auth := smtp.PlainAuth("", s.fromAddress, s.password, s.server)
-	if err = client.Auth(auth); err != nil {
+	if err != nil {
 		return err, nil
 	}
 
@@ -88,6 +82,29 @@ func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) {
 	}
 
 	return client.Quit(), errs
+}
+
+func (s *Sender) secureClient(conn net.Conn) (*smtp.Client, error) {
+	c := tls.Client(conn, &tls.Config{
+		ServerName: s.server,
+	})
+	err := c.Handshake()
+	if err != nil {
+		return nil, err
+	}
+	client, err := smtp.NewClient(conn, s.server)
+	if err != nil {
+		return nil, err
+	}
+	auth := smtp.PlainAuth("", s.fromAddress, s.password, s.server)
+	if err = client.Auth(auth); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func (s *Sender) insecureClient(conn net.Conn) (*smtp.Client, error) {
+	return smtp.NewClient(conn, s.server)
 }
 
 var emailPattern = regexp.MustCompile(`^([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|"([]!#-[^-~ \t]|(\\[\t -~]))+")@([!#-'*+/-9=?A-Z^-~-]+(\.[!#-'*+/-9=?A-Z^-~-]+)*|\[[\t -Z^-~]*])$`) // nolint: gocritic
