@@ -3,10 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/user/session"
 	"net/http"
 	"time"
+
+	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/aromancev/confa/internal/user/ident"
 
@@ -36,16 +37,16 @@ type Producer interface {
 }
 
 type Handler struct {
-	baseURL   string
-	router    http.Handler
-	confaCRUD *confa.CRUD
-	talkCRUD  *talk.CRUD
+	baseURL     string
+	router      http.Handler
+	confaCRUD   *confa.CRUD
+	talkCRUD    *talk.CRUD
 	sessionCRUD *session.CRUD
 	identCRUD   *ident.CRUD
-	sender    *email.Sender
-	producer  Producer
-	sign      *auth.Signer
-	verify    *auth.Verifier
+	sender      *email.Sender
+	producer    Producer
+	sign        *auth.Signer
+	verify      *auth.Verifier
 }
 
 func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
@@ -53,7 +54,7 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 	h := &Handler{
 		baseURL:     baseURL,
 		confaCRUD:   confaCRUD,
-		talkCRUD:  talkCRUD,
+		talkCRUD:    talkCRUD,
 		sessionCRUD: sessionCRUD,
 		identCRUD:   identCRUD,
 		sender:      sender,

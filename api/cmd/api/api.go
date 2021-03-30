@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/aromancev/confa/internal/confa/talk"
 
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/ident"

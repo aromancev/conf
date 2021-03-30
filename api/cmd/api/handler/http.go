@@ -85,7 +85,7 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 
 	userID, err := auth.Authenticate(r)
 	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
+		_ = api.Unauthorised(err.Error()).Write(ctx, w)
 		return
 	}
 
