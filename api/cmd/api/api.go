@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 	"os"
 	"os/signal"
@@ -87,7 +88,11 @@ func main() {
 	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false")
 	confaSQL := confa.NewSQL()
 	confaCRUD := confa.NewCRUD(postgres, confaSQL)
-	hand := handler.New(config.BaseURL, confaCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
+
+	talkSQL := talk.NewSQL()
+	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
+
+	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
 
 	srv := &http.Server{
 		Addr:         config.Address,

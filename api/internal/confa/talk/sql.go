@@ -1,4 +1,4 @@
-package confa
+package talk
 
 import (
 	"context"
@@ -24,7 +24,7 @@ func NewSQL() *SQL {
 	return &SQL{}
 }
 
-func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa) ([]Confa, error) {
+func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) ([]Talk, error) {
 	if len(requests) == 0 {
 		return nil, errors.New("trying to create zero objects")
 	}
@@ -43,9 +43,9 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 		requests[i].CreatedAt = now
 	}
 
-	q := sq.Insert("confas").Columns("id", "owner", "handle", "created_at")
+	q := sq.Insert("talks").Columns("id", "owner", "confa", "handle", "created_at")
 	for _, r := range requests {
-		q = q.Values(r.ID, r.Owner, r.Handle, r.CreatedAt)
+		q = q.Values(r.ID, r.Owner, r.Confa, r.Handle, r.CreatedAt)
 	}
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()
@@ -68,13 +68,13 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Confa)
 	return requests, nil
 }
 
-func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Confa, error) {
-	q := sq.Select("id", "owner", "handle", "created_at").From("confas")
+func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Talk, error) {
+	q := sq.Select("id", "owner", "confa", "handle", "created_at").From("talks")
 	if lookup.ID != uuid.Nil {
 		q = q.Where(sq.Eq{"id": lookup.ID})
 	}
-	if lookup.Owner != uuid.Nil {
-		q = q.Where(sq.Eq{"owner": lookup.Owner})
+	if lookup.Confa != uuid.Nil {
+		q = q.Where(sq.Eq{"confa": lookup.Confa})
 	}
 	q = q.Limit(batchLimit)
 	q = q.PlaceholderFormat(sq.Dollar)
@@ -87,35 +87,36 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 	if err != nil {
 		return nil, err
 	}
-	var confas []Confa
+	var talks []Talk
 	for rows.Next() {
-		var c Confa
+		var t Talk
 		err := rows.Scan(
-			&c.ID,
-			&c.Owner,
-			&c.Handle,
-			&c.CreatedAt,
+			&t.ID,
+			&t.Owner,
+			&t.Confa,
+			&t.Handle,
+			&t.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		c.CreatedAt = c.CreatedAt.UTC()
-		confas = append(confas, c)
+		t.CreatedAt = t.CreatedAt.UTC()
+		talks = append(talks, t)
 	}
 
-	return confas, nil
+	return talks, nil
 }
 
-func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Confa, error) {
-	confas, err := s.Fetch(ctx, queryer, lookup)
+func (s *SQL) FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Talk, error) {
+	talks, err := s.Fetch(ctx, queryer, lookup)
 	if err != nil {
-		return Confa{}, err
+		return Talk{}, err
 	}
-	if len(confas) == 0 {
-		return Confa{}, ErrNotFound
+	if len(talks) == 0 {
+		return Talk{}, ErrNotFound
 	}
-	if len(confas) > 1 {
-		return Confa{}, ErrUnexpectedResult
+	if len(talks) > 1 {
+		return Talk{}, ErrUnexpectedResult
 	}
-	return confas[0], nil
+	return talks[0], nil
 }

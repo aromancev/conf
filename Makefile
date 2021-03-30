@@ -25,6 +25,11 @@ migrate:
 	./migrate.sh migrate -m internal/confa/migrations -c internal/confa/migrations/tern.conf && \
 	./migrate.sh migrate -m internal/user/migrations -c internal/user/migrations/tern.conf
 
+.PHONY: test
+test:
+	cd api && \
+    go test ./...
+
 .PHONY: lint
 lint:
 	docker run \

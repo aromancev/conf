@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -37,6 +38,9 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 	case errors.Is(err, confa.ErrValidation):
 		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
 		return
+	case errors.Is(err, confa.ErrDuplicatedEntry):
+		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
+		return
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa")
 		_ = api.InternalError().Write(ctx, w)
@@ -45,6 +49,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 
 	_ = api.Created(conf).Write(ctx, w)
 }
+
 func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
@@ -68,6 +73,70 @@ func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	}
 
 	_ = api.OK(conf).Write(ctx, w)
+}
+
+func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	userID, err := auth.Authenticate(r)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	var request talk.Talk
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
+		return
+	}
+
+	confaID, err := uuid.Parse(ps.ByName("confa_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+
+	tlk, err := h.talkCRUD.Create(ctx, confaID, userID, request)
+	switch {
+	case errors.Is(err, talk.ErrValidation):
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case errors.Is(err, talk.ErrDuplicatedEntry):
+		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
+		return
+	case errors.Is(err, talk.ErrPermissionDenied):
+		_ = api.Forbidden().Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to create talk")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.Created(tlk).Write(ctx, w)
+}
+
+func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	talkID, err := uuid.Parse(ps.ByName("talk_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+
+	tlk, err := h.talkCRUD.Fetch(ctx, talkID)
+	switch {
+	case errors.Is(err, talk.ErrNotFound):
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.OK(tlk).Write(ctx, w)
 }
 
 type loginReq struct {

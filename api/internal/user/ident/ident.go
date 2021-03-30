@@ -30,11 +30,11 @@ func (p Platform) Validate() error {
 }
 
 type Ident struct {
-	ID        uuid.UUID
-	Owner     uuid.UUID
-	Platform  Platform
-	Value     string
-	CreatedAt time.Time
+	ID        uuid.UUID `json:"id"`
+	Owner     uuid.UUID `json:"owner"`
+	Platform  Platform  `json:"platform"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func (i Ident) Validate() error {

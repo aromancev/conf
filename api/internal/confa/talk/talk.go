@@ -1,22 +1,23 @@
-package confa
+package talk
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"regexp"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var (
-	ErrValidation       = errors.New("invalid confa")
+	ErrValidation       = errors.New("invalid talk")
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
 	ErrDuplicatedEntry  = errors.New("duplicated entry")
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
-type Confa struct {
+type Talk struct {
 	ID        uuid.UUID `json:"id"`
+	Confa     uuid.UUID `json:"confa"`
 	Owner     uuid.UUID `json:"owner"`
 	Handle    string    `json:"handle"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -24,14 +25,17 @@ type Confa struct {
 
 var validHandle = regexp.MustCompile("^[A-z,0-9,-]{1,64}$")
 
-func (c Confa) Validate() error {
-	if c.ID == uuid.Nil {
+func (t Talk) Validate() error {
+	if t.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
-	if !validHandle.MatchString(c.Handle) {
+	if t.Owner == uuid.Nil {
+		return errors.New("owner should not be empty")
+	}
+	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")
 	}
-	if c.Owner == uuid.Nil {
+	if t.Confa == uuid.Nil {
 		return errors.New("owner should not be empty")
 	}
 	return nil
@@ -39,5 +43,5 @@ func (c Confa) Validate() error {
 
 type Lookup struct {
 	ID    uuid.UUID
-	Owner uuid.UUID
+	Confa uuid.UUID
 }

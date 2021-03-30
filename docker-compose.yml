@@ -73,3 +73,4 @@ services:
   email:
     image: kbedel/fake-smtp-server
     command: fake-smtp-server -s 1025 -h 80
+

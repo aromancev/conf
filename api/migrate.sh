@@ -1,8 +1,9 @@
 #!/bin/bash -e
 
-IMAGE=confa/migrate
+export IMAGE=confa/migrate
 
 docker build . -t ${IMAGE}
+echo "--- RUN MIGRATIONS ---"
 docker run \
   --rm \
   -w /app \
