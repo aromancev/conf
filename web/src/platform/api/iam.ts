@@ -14,7 +14,7 @@ export class IAM {
   async session(token: string) {
     await this.api.do(Methods.post, "/iam/v1/session", undefined, {
       headers: {
-        "Authorization": "Bearer " + token,
+        Authorization: "Bearer " + token,
       },
     })
   }

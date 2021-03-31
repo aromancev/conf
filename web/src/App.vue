@@ -17,7 +17,7 @@ export default defineComponent({
   name: "App",
   data() {
     return {
-      isDark: false
+      isDark: false,
     }
   },
   mounted() {
@@ -26,13 +26,13 @@ export default defineComponent({
   watch: {
     isDark(newIsDark) {
       localStorage.isDark = newIsDark
-    }
+    },
   },
   methods: {
     toggleTheme() {
       this.isDark = !this.isDark
-    }
-  }
+    },
+  },
 })
 </script>
 
