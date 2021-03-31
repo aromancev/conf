@@ -21,13 +21,23 @@
     </div>
   </div>
 
-  <Modal v-if="modal == Dialog.EmailSent" v-on:click="onModalClick" :buttons="{ok: 'OK'}">
+  <Modal
+    v-if="modal == Dialog.EmailSent"
+    v-on:click="onModalClick"
+    :buttons="{ ok: 'OK' }"
+  >
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </Modal>
-  <Modal v-if="modal == Dialog.Error" v-on:click="onModalClick" :buttons="{ok: 'OK'}">
+  <Modal
+    v-if="modal == Dialog.Error"
+    v-on:click="onModalClick"
+    :buttons="{ ok: 'OK' }"
+  >
     <p>Oh snap! Something unexpected happen.</p>
-    <p>Our engineers are already working on the problem. Please try again later.</p>
+    <p>
+      Our engineers are already working on the problem. Please try again later.
+    </p>
   </Modal>
 </template>
 
@@ -40,13 +50,13 @@ import Modal from "@/components/Modal.vue"
 enum Dialog {
   None = "",
   EmailSent = "sent",
-  Error = "error",
+  Error = "error"
 }
 
 export default defineComponent({
   name: "Home",
   components: {
-    Modal,
+    Modal
   },
   data() {
     return {
@@ -54,7 +64,19 @@ export default defineComponent({
       email: "",
       submitted: false,
       invalid: false,
-      modal: Dialog.None,
+      modal: Dialog.None
+    }
+  },
+  async beforeCreate() {
+    const query = new URLSearchParams(window.location.search)
+    const token = query.get('token')
+    if (token) {
+      try {
+        await iam.session(token)
+        this.$router.push("/")
+      } catch(e) {
+        this.modal = Dialog.Error
+      }
     }
   },
   methods: {
@@ -64,23 +86,26 @@ export default defineComponent({
 
     onModalClick() {
       if (this.modal === Dialog.EmailSent) {
-        this.$router.push('/')
+        this.$router.push("/")
       }
       this.modal = Dialog.None
     },
 
     async login() {
+      if (this.submitted) {
+        return
+      }
       if (!isValid(this.email)) {
         this.invalid = true
         return
       }
       this.submitted = true
       try {
-          await iam.login(this.email)
-          this.modal = Dialog.EmailSent
-      } catch(e) {
-          this.modal = Dialog.Error
-          this.submitted = false
+        await iam.login(this.email)
+        this.modal = Dialog.EmailSent
+      } catch (e) {
+        this.modal = Dialog.Error
+        this.submitted = false
       }
     }
   }
