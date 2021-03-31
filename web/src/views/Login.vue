@@ -43,8 +43,8 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import { iam } from "@/platform/api/iam"
-import { isValid } from "@/platform/email/email"
+import { iam } from "@/iam"
+import { isValid } from "@/platform/email"
 import Modal from "@/components/Modal.vue"
 
 enum Dialog {
