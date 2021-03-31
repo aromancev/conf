@@ -15,7 +15,7 @@ export class API {
   client: AxiosInstance
 
   constructor() {
-    let protocol = "http"
+    let protocol = "https"
     if (process.env.NODE_ENV == "development") {
       protocol = "http"
     }
