@@ -24,12 +24,12 @@ import { IonSFUJSONRPCSignal } from "ion-sdk-js/lib/signal/json-rpc-impl"
 export default defineComponent({
   name: "Home",
   components: {
-    Stream
+    Stream,
   },
   data() {
     return {
       localStream: null as MediaStream | null,
-      remoteStreams: {} as { [key: string]: MediaStream }
+      remoteStreams: {} as { [key: string]: MediaStream },
     }
   },
 
@@ -39,7 +39,7 @@ export default defineComponent({
       protocol = "ws"
     }
     const signal = new IonSFUJSONRPCSignal(
-      `${protocol}://${window.location.hostname}/api/rtc/v1/ws`
+      `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
     )
     const client = new Client(signal)
     signal.onopen = async () => {
@@ -59,13 +59,13 @@ export default defineComponent({
         codec: "vp8",
         resolution: "vga",
         video: true,
-        audio: false
+        audio: false,
       })
 
       await client.join("test session")
       client.publish(local)
       this.localStream = local
     }
-  }
+  },
 })
 </script>

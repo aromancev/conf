@@ -20,7 +20,7 @@ export class API {
       protocol = "http"
     }
     this.client = axios.create({
-      baseURL: `${protocol}://${window.location.hostname}/api`
+      baseURL: `${protocol}://${window.location.hostname}/api`,
     })
   }
 

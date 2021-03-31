@@ -54,7 +54,8 @@
     "rules": {}
   },
   "prettier": {
-    "semi": false
+    "semi": false,
+    "trailingComma": "all"
   },
   "browserslist": [
     "> 1%",

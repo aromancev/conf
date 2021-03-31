@@ -17,8 +17,8 @@ export default defineComponent({
   props: {
     stream: MediaStream,
     mirrored: Boolean,
-    muted: Boolean
-  }
+    muted: Boolean,
+  },
 })
 </script>
 

@@ -50,13 +50,13 @@ import Modal from "@/components/Modal.vue"
 enum Dialog {
   None = "",
   EmailSent = "sent",
-  Error = "error"
+  Error = "error",
 }
 
 export default defineComponent({
   name: "Home",
   components: {
-    Modal
+    Modal,
   },
   data() {
     return {
@@ -64,17 +64,17 @@ export default defineComponent({
       email: "",
       submitted: false,
       invalid: false,
-      modal: Dialog.None
+      modal: Dialog.None,
     }
   },
   async beforeCreate() {
     const query = new URLSearchParams(window.location.search)
-    const token = query.get('token')
+    const token = query.get("token")
     if (token) {
       try {
         await iam.session(token)
         this.$router.push("/")
-      } catch(e) {
+      } catch (e) {
         this.modal = Dialog.Error
       }
     }
@@ -107,8 +107,8 @@ export default defineComponent({
         this.modal = Dialog.Error
         this.submitted = false
       }
-    }
-  }
+    },
+  },
 })
 </script>
 

@@ -25,14 +25,14 @@ import { defineComponent } from "vue"
 export default defineComponent({
   name: "Modal",
   props: {
-    buttons: {} as Record<string, string>
+    buttons: {} as Record<string, string>,
   },
   emits: ["click"],
   methods: {
     click(id: string) {
       this.$emit("click", id)
-    }
-  }
+    },
+  },
 })
 </script>
 
