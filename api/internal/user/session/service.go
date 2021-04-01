@@ -26,9 +26,6 @@ func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
 func (c *CRUD) Create(ctx context.Context, userID uuid.UUID) (Session, error) {
 	sess := NewSession()
 	sess.Owner = userID
-	if err := sess.Validate(); err != nil {
-		return Session{}, fmt.Errorf("%w: %s", ErrValidation, err)
-	}
 
 	created, err := c.repo.Create(ctx, c.conn, sess)
 	if err != nil {

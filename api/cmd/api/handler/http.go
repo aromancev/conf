@@ -19,7 +19,6 @@ import (
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/user/session"
 )
 
 func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -145,12 +144,10 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
-	rawAuthentication := r.Header.Get("Authentication")
-	authArray := strings.Split(rawAuthentication, " ")
 
-	pltfrm, token := authArray[0], authArray[1]
-	if pltfrm != "Email" {
-		_ = api.Unauthorised("incorrect platform").Write(ctx, w)
+	token, err := auth.TokenHelper(r.Header.Get("Authentication"))
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
@@ -160,18 +157,14 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	idnt := ident.Ident{}
-	idnt.Platform = ident.PlatformEmail
-	idnt.Value = claims.Address
-
-	userID, err := h.identCRUD.GetOrCreate(ctx, idnt)
+	userID, err := h.identCRUD.GetOrCreate(ctx, ident.Ident{Platform: ident.PlatformEmail, Value: claims.Address})
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
 
 	sess, err := h.sessionCRUD.Create(ctx, userID)
-	switch {
-	case errors.Is(err, session.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	case err != nil:
+	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to create session")
 		_ = api.InternalError().Write(ctx, w)
 		return
