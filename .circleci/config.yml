@@ -55,6 +55,15 @@ jobs:
           echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
           tern migrate -m api/internal/confa/migrations -c api/internal/confa/migrations/tern.conf -d -+1
 
+  build_api:
+    docker:
+      - image: circleci/golang:1.16
+    steps:
+      - checkout
+      - run: |
+          cd ./api/cmd/api
+          go build -o ./
+
 workflows:
   version: 2.1
   web:
@@ -79,8 +88,11 @@ workflows:
             - approve
   api:
     jobs:
+      - build_api
       - approve:
           type: approval
+          requires:
+            - build_api
           filters:
             branches:
               only: "master"
