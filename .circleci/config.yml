@@ -63,6 +63,14 @@ jobs:
       - run: |
           cd ./api/cmd/api
           go build -o ./
+  build_rtc:
+    docker:
+      - image: circleci/golang:1.16
+    steps:
+      - checkout
+      - run: |
+          cd ./api/cmd/rtc
+          go build -o ./
 
 workflows:
   version: 2.1
@@ -78,8 +86,11 @@ workflows:
             - approve
   rtc:
     jobs:
+      - build_rtc
       - approve:
           type: approval
+          requires:
+            - build_rtc
           filters:
             branches:
               only: "master"
