@@ -65,11 +65,11 @@ func InternalError() Response {
 	}
 }
 
-func Unauthorised(text string) Response {
+func Unauthorised() Response {
 	return Response{
 		Body: Error{
 			Code:  CodeUnauthorised,
-			Error: text,
+			Error: "unauthorised request",
 		},
 		Status: http.StatusUnauthorized,
 	}

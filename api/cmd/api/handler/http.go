@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/aromancev/confa/internal/user/ident"
 
@@ -28,7 +27,7 @@ func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprou
 
 	userID, err := auth.Authenticate(r)
 	if err != nil {
-		_ = api.Unauthorised(err.Error()).Write(ctx, w)
+		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
@@ -85,7 +84,7 @@ func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprout
 
 	userID, err := auth.Authenticate(r)
 	if err != nil {
-		_ = api.Unauthorised(err.Error()).Write(ctx, w)
+		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
@@ -157,7 +156,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 
 	claims, err := h.verify.EmailToken(token)
 	if err != nil {
-		_ = api.Unauthorised(err.Error()).Write(ctx, w)
+		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
