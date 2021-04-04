@@ -30,8 +30,16 @@ test:
 	cd api && \
     go test ./...
 
-.PHONY: lint
-lint:
+.PHONY: api_lint
+api_lint:
+	docker run \
+	--rm \
+	-w /app \
+	-v `pwd`/api:/app \
+	golangci/golangci-lint:v1.39-alpine golangci-lint run
+
+.PHONY: web_lint
+web_lint:
 	docker run \
 	--rm \
 	-w /app \
