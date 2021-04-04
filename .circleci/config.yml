@@ -35,6 +35,17 @@ jobs:
       - checkout
       - run: ./deploy/postgres.sh
 
+  go_test:
+    machine: true
+    steps:
+      - checkout
+      - run: |
+          docker run --rm --network host \
+          -v `pwd`/api:/app \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -w /app golang:1.16.3 \
+          go test ./...
+
   migrate_user:
     docker:
       - image: circleci/golang:1.16
@@ -108,7 +119,10 @@ workflows:
             - approve
   api:
     jobs:
-      - lint_run
+      - go_test
+      - lint_run:
+          requires:
+            - go_test
       - api_build:
           requires:
             - lint_run
