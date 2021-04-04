@@ -145,7 +145,7 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	token, err := auth.TokenHelper(r.Header.Get("Authentication"))
+	token, err := auth.Bearer(r)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return

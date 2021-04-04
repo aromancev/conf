@@ -103,15 +103,17 @@ func Authenticate(r *http.Request) (uuid.UUID, error) {
 	return id, nil
 }
 
-func TokenHelper(rawToken string) (string, error) {
+func Bearer(r *http.Request) (string, error) {
+	rawToken := r.Header.Get("Authentication")
+
 	authArray := strings.Split(rawToken, " ")
 	if len(authArray) < 2 {
-		return "", errors.New("header format error")
+		return "", errors.New("wrong header format")
 	}
 
 	bearer, token := authArray[0], authArray[1]
 	if bearer != "Bearer" {
-		return "", errors.New("header type format error")
+		return "", errors.New("wrong type")
 	}
 
 	return token, nil

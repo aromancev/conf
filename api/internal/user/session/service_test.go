@@ -17,7 +17,7 @@ func TestCRUD(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("Fetch", func(t *testing.T) {
+	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
 		pg, done := double.NewDocker("", migrate)

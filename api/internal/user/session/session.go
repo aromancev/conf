@@ -31,9 +31,7 @@ func NewSession() Session {
 	}
 	key := base64.StdEncoding.EncodeToString(b)
 
-	s := Session{}
-	s.Key = key
-	return s
+	return Session{Key: key}
 }
 
 func (s Session) Validate() error {
