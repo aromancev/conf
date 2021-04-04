@@ -119,7 +119,10 @@ workflows:
             - approve
   api:
     jobs:
-      - lint_run
+      - go_test
+      - lint_run:
+          requires:
+            - go_test
       - api_build:
           requires:
             - lint_run
