@@ -26,7 +26,7 @@ export class IAM {
   }
 
   async session(token: string) {
-    const resp = await this.api.do<Token>(Method.Post, baseURL + "/session", undefined, {
+    const resp = await this.api.do<Token>(Method.Post, baseURL + "/sessions", undefined, {
       auth: false,
       headers: {
         Authorization: "Bearer " + token,
