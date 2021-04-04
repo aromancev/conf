@@ -170,13 +170,14 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	cookie := http.Cookie{}
-	cookie.Name = "session"
-	cookie.Value = sess.Key
-	cookie.HttpOnly = true
+	cookie := http.Cookie{
+		Name:     "session",
+		Value:    sess.Key,
+		HttpOnly: true,
+	}
 	http.SetCookie(w, &cookie)
 
-	_ = api.Created(sess).Write(ctx, w)
+	_ = api.Created(nil).Write(ctx, w)
 }
 
 type loginReq struct {
