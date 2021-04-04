@@ -40,7 +40,10 @@ jobs:
     steps:
       - checkout
       - run: |
-          cd api
+          docker run --rm --network host \
+          -v `pwd`/api:/app \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -w /app golang:1.16.3 \
           go test ./...
 
   migrate_user:
