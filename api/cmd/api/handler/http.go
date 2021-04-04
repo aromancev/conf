@@ -170,6 +170,12 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
+	cookie := http.Cookie{}
+	cookie.Name = "session"
+	cookie.Value = sess.Key
+	cookie.HttpOnly = true
+	http.SetCookie(w, &cookie)
+
 	_ = api.Created(sess).Write(ctx, w)
 }
 
