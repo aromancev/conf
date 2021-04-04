@@ -33,7 +33,7 @@ const defaultParams: Params = {
   headers: {},
 }
 
-export class API {
+class API {
   private client: AxiosInstance
   private token: Promise<string> | null = null
   private tokenResolve: ((token: string) => void) | null = null
@@ -50,12 +50,17 @@ export class API {
     this.resetToken()
   }
 
-  async do<T>(method: Method, url: string, data?: object, params?: Params): Promise<Response<T>> {
+  async do<T>(
+    method: Method,
+    url: string,
+    data?: object,
+    params?: Params,
+  ): Promise<Response<T>> {
     params = Object.assign(defaultParams, params) as Params
     params.headers = params.headers || {}
 
     if (params.auth) {
-      params.headers.Authorization = "Bearer" + await this.token
+      params.headers.Authorization = "Bearer" + (await this.token)
     }
 
     const resp = await this.client.request({
@@ -65,8 +70,8 @@ export class API {
       headers: params.headers,
     })
     switch (resp.status) {
-      case Status.OK, Status.Created: {
-        return new Promise<Response<T>>((resolve) => {
+      case (Status.OK, Status.Created): {
+        return new Promise<Response<T>>(resolve => {
           resolve({
             data: resp.data,
             status: resp.status,
@@ -84,7 +89,7 @@ export class API {
   }
 
   setToken(token: string): void {
-    this.token = new Promise<string>((resolve) => {
+    this.token = new Promise<string>(resolve => {
       resolve(token)
     })
     if (this.tokenResolve) {
@@ -96,7 +101,7 @@ export class API {
     if (this.tokenResolve) {
       this.tokenResolve("")
     }
-    this.token = new Promise<string>((resolve)=> {
+    this.token = new Promise<string>(resolve => {
       this.tokenResolve = resolve
     })
   }

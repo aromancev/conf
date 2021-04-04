@@ -43,7 +43,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import { iam } from "@/iam"
+import { client, userStore } from "@/iam"
 import { isValid } from "@/platform/email"
 import Modal from "@/components/Modal.vue"
 
@@ -67,13 +67,24 @@ export default defineComponent({
       modal: Dialog.None,
     }
   },
+  computed: {
+    loggedIn() {
+      return userStore.getState().loggedIn
+    },
+  },
+  watch: {
+    loggedIn(newVal: boolean) {
+      if (newVal) {
+        this.$router.replace("/")
+      }
+    },
+  },
   async beforeCreate() {
     const query = new URLSearchParams(window.location.search)
     const token = query.get("token")
     if (token) {
       try {
-        await iam.session(token)
-        this.$router.push("/")
+        await client.session(token)
       } catch (e) {
         this.modal = Dialog.Error
       }
@@ -101,7 +112,7 @@ export default defineComponent({
       }
       this.submitted = true
       try {
-        await iam.login(this.email)
+        await client.login(this.email)
         this.modal = Dialog.EmailSent
       } catch (e) {
         this.modal = Dialog.Error
