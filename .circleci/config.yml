@@ -55,7 +55,7 @@ jobs:
           echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
           tern migrate -m api/internal/confa/migrations -c api/internal/confa/migrations/tern.conf -d -+1
 
-  build_api:
+  api_build:
     docker:
       - image: circleci/golang:1.16
     steps:
@@ -63,7 +63,7 @@ jobs:
       - run: |
           cd ./api/cmd/api
           go build -o ./
-  build_rtc:
+  rtc_build:
     docker:
       - image: circleci/golang:1.16
     steps:
@@ -71,6 +71,15 @@ jobs:
       - run: |
           cd ./api/cmd/rtc
           go build -o ./
+
+  lint_run:
+    docker:
+      - image: golangci/golangci-lint:v1.39-alpine
+    steps:
+      - checkout
+      - run: |
+          cd ./api
+          golangci-lint run
 
 workflows:
   version: 2.1
@@ -86,11 +95,11 @@ workflows:
             - approve
   rtc:
     jobs:
-      - build_rtc
+      - rtc_build
       - approve:
           type: approval
           requires:
-            - build_rtc
+            - rtc_build
           filters:
             branches:
               only: "master"
@@ -99,11 +108,14 @@ workflows:
             - approve
   api:
     jobs:
-      - build_api
+      - lint_run
+      - api_build:
+          requires:
+            - lint_run
       - approve:
           type: approval
           requires:
-            - build_api
+            - api_build
           filters:
             branches:
               only: "master"
