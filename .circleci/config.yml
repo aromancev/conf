@@ -40,11 +40,11 @@ jobs:
     steps:
       - checkout
       - run: |
-        wget -c https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
-        rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.3.linux-amd64.tar.gz
-        export PATH=$PATH:/usr/local/go/bin
-        cd api
-        go test ./...
+          wget -c https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
+          rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.3.linux-amd64.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          cd api
+          go test ./...
 
   migrate_user:
     docker:
