@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -100,4 +101,20 @@ func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 func Authenticate(r *http.Request) (uuid.UUID, error) {
 	id, _ := uuid.Parse("28164069-5ec3-405b-a9cc-641cf29588ed") //todo: Unhardcode this. ONLY FOR TESTING
 	return id, nil
+}
+
+func Bearer(r *http.Request) (string, error) {
+	rawToken := r.Header.Get("Authorization")
+
+	authArray := strings.Split(rawToken, " ")
+	if len(authArray) < 2 {
+		return "", errors.New("wrong header format")
+	}
+
+	bearer, token := authArray[0], authArray[1]
+	if bearer != "Bearer" {
+		return "", errors.New("wrong type")
+	}
+
+	return token, nil
 }

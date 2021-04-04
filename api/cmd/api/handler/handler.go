@@ -3,9 +3,13 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
 	"time"
+
+	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/user/session"
+
+	"github.com/aromancev/confa/internal/user/ident"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
@@ -33,26 +37,30 @@ type Producer interface {
 }
 
 type Handler struct {
-	baseURL   string
-	router    http.Handler
-	confaCRUD *confa.CRUD
-	talkCRUD  *talk.CRUD
-	sender    *email.Sender
-	producer  Producer
-	sign      *auth.Signer
-	verify    *auth.Verifier
+	baseURL     string
+	router      http.Handler
+	confaCRUD   *confa.CRUD
+	talkCRUD    *talk.CRUD
+	sessionCRUD *session.CRUD
+	identCRUD   *ident.CRUD
+	sender      *email.Sender
+	producer    Producer
+	sign        *auth.Signer
+	verify      *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
-		baseURL:   baseURL,
-		confaCRUD: confaCRUD,
-		talkCRUD:  talkCRUD,
-		sender:    sender,
-		producer:  producer,
-		sign:      sign,
-		verify:    verify,
+		baseURL:     baseURL,
+		confaCRUD:   confaCRUD,
+		talkCRUD:    talkCRUD,
+		sessionCRUD: sessionCRUD,
+		identCRUD:   identCRUD,
+		sender:      sender,
+		producer:    producer,
+		sign:        sign,
+		verify:      verify,
 	}
 
 	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -64,6 +72,8 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sender *ema
 
 	r.POST("/confa/v1/confas", h.createConfa)
 	r.GET("/confa/v1/confas/:confa_id", h.confa)
+
+	r.POST("/iam/v1/sessions", h.createSession)
 
 	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)

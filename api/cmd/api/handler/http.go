@@ -3,8 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk"
 	"net/http"
+
+	"github.com/aromancev/confa/internal/user/ident"
+
+	"github.com/aromancev/confa/internal/confa/talk"
 
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
@@ -137,6 +140,44 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	}
 
 	_ = api.OK(tlk).Write(ctx, w)
+}
+
+func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	token, err := auth.Bearer(r)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	claims, err := h.verify.EmailToken(token)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	userID, err := h.identCRUD.GetOrCreate(ctx, ident.Ident{Platform: ident.PlatformEmail, Value: claims.Address})
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	sess, err := h.sessionCRUD.Create(ctx, userID)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create session")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:     "session",
+		Value:    sess.Key,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+
+	_ = api.Created(nil).Write(ctx, w)
 }
 
 type loginReq struct {

@@ -75,6 +75,16 @@ func Unauthorised() Response {
 	}
 }
 
+func Forbidden() Response {
+	return Response{
+		Body: Error{
+			Code:  CodeForbidden,
+			Error: "forbidden request",
+		},
+		Status: http.StatusForbidden,
+	}
+}
+
 func BadRequest(code int, text string) Response {
 	return Response{
 		Body: Error{
@@ -92,15 +102,5 @@ func NotFound(text string) Response {
 			Code:  CodeNotFound,
 		},
 		Status: http.StatusNotFound,
-	}
-}
-
-func Forbidden() Response {
-	return Response{
-		Body: Error{
-			Error: "forbidden",
-			Code:  CodeForbidden,
-		},
-		Status: http.StatusForbidden,
 	}
 }
