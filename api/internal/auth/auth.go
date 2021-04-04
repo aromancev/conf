@@ -104,7 +104,7 @@ func Authenticate(r *http.Request) (uuid.UUID, error) {
 }
 
 func Bearer(r *http.Request) (string, error) {
-	rawToken := r.Header.Get("Authentication")
+	rawToken := r.Header.Get("Authorization")
 
 	authArray := strings.Split(rawToken, " ")
 	if len(authArray) < 2 {
