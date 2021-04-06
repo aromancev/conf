@@ -16,6 +16,7 @@ import (
 const (
 	algorithm   = "ES256"
 	emailExpire = 24 * time.Hour
+	UserExpire  = 15 * time.Minute
 )
 
 type EmailClaims struct {
@@ -28,6 +29,26 @@ func (c EmailClaims) Valid() error {
 		return err
 	}
 	if err := email.ValidateEmail(c.Address); err != nil {
+		return err
+	}
+	return nil
+}
+
+type UserClaims struct {
+	jwt.StandardClaims
+	UserID uuid.UUID `json:"uid"`
+}
+
+type userClaims struct {
+	jwt.StandardClaims
+	UserID string `json:"uid"`
+}
+
+func (c userClaims) Valid() error {
+	if err := c.StandardClaims.Valid(); err != nil {
+		return err
+	}
+	if _, err := uuid.Parse(c.UserID); err != nil {
 		return err
 	}
 	return nil
@@ -70,6 +91,22 @@ func (s *Signer) EmailToken(address string) (string, error) {
 	return signed, nil
 }
 
+func (s *Signer) UserToken(userID uuid.UUID) (string, error) {
+	now := time.Now()
+	token := jwt.NewWithClaims(s.method, UserClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: now.Add(UserExpire).Unix(),
+			IssuedAt:  now.Unix(),
+		},
+		UserID: userID,
+	})
+	signed, err := token.SignedString(s.key)
+	if err != nil {
+		return "", err
+	}
+	return signed, nil
+}
+
 type Verifier struct {
 	key *ecdsa.PublicKey
 }
@@ -96,6 +133,25 @@ func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 		return EmailClaims{}, errors.New("invalid token")
 	}
 	return claims, nil
+}
+
+func (v *Verifier) UserToken(token string) (UserClaims, error) {
+	var claims userClaims
+	parsed, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
+		return v.key, nil
+	})
+	if err != nil {
+		return UserClaims{}, err
+	}
+	if !parsed.Valid {
+		return UserClaims{}, errors.New("invalid token")
+	}
+
+	userID, _ := uuid.Parse(claims.UserID)
+	return UserClaims{
+		StandardClaims: claims.StandardClaims,
+		UserID:         userID,
+	}, nil
 }
 
 func Authenticate(r *http.Request) (uuid.UUID, error) {
