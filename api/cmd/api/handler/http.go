@@ -21,6 +21,11 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
+type UserToken struct {
+	Token    string `json:"token"`
+	ExpireIn int    `json:"expireIn"`
+}
+
 func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
@@ -177,7 +182,12 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 	}
 	http.SetCookie(w, &cookie)
 
-	_ = api.Created(nil).Write(ctx, w)
+	userToken, err := h.sign.UserToken(userID)
+	if err != nil {
+		panic(err)
+	}
+
+	_ = api.Created(UserToken{Token: userToken, ExpireIn: int(auth.UserExpire.Seconds())}).Write(ctx, w)
 }
 
 type loginReq struct {
