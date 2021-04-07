@@ -135,7 +135,7 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	log.Fatal().Msg("Shutting down")
+	log.Info().Msg("Shutting down")
 
 	ctx, shutdown := context.WithTimeout(ctx, time.Second*60)
 	defer shutdown()
@@ -145,5 +145,5 @@ func main() {
 	producer.Stop()
 	consumerDone.Wait()
 
-	log.Fatal().Msg("Shutdown complete")
+	log.Info().Msg("Shutdown complete")
 }

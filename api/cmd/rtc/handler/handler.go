@@ -125,18 +125,18 @@ const (
 	methodTrickle = "trickle"
 )
 
-// join message sent when initializing a peer connection
+// join message sent when initializing a peer connection.
 type join struct {
 	Sid   string                    `json:"sid"`
 	Offer webrtc.SessionDescription `json:"offer"`
 }
 
-// negotiation message sent when renegotiating the peer connection
+// negotiation message sent when renegotiating the peer connection.
 type negotiation struct {
 	Desc webrtc.SessionDescription `json:"desc"`
 }
 
-// trickle message sent when renegotiating the peer connection
+// trickle message sent when renegotiating the peer connection.
 type trickle struct {
 	Target    int                     `json:"target"`
 	Candidate webrtc.ICECandidateInit `json:"candidate"`

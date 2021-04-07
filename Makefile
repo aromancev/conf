@@ -31,7 +31,7 @@ test:
     go test ./...
 
 .PHONY: lint-api
-lint:
+lint-api:
 	docker run \
 	--rm \
 	-w /app \

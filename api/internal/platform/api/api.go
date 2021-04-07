@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
+	"github.com/aromancev/confa/internal/platform/trace"
 )
 
 const (
@@ -28,9 +30,8 @@ type Response struct {
 }
 
 func (r Response) Write(ctx context.Context, w http.ResponseWriter) error {
-	if t, ok := ctx.Value(traceKey).(string); ok {
-		w.Header().Set(traceKey, t)
-	}
+	_, traceID := trace.Ctx(ctx)
+	w.Header().Set(traceKey, traceID)
 	w.WriteHeader(r.Status)
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(r.Body)

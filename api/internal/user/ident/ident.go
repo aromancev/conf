@@ -22,8 +22,7 @@ const (
 )
 
 func (p Platform) Validate() error {
-	switch p {
-	case PlatformEmail:
+	if p == PlatformEmail {
 		return nil
 	}
 	return errors.New("unknown platform")

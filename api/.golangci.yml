@@ -16,7 +16,6 @@ linters:
     - gosimple # Linter for Go source code that specializes in simplifying a code
     - govet # Vet examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string
     - ineffassign # Detects when assignments to existing variables are not used
-    - maligned # Tool to detect Go structs that would take less memory if their fields were sorted
     - staticcheck # Staticcheck is a go vet on steroids, applying a ton of static analysis checks
     - structcheck # Finds unused struct fields
     - stylecheck # Stylecheck is a replacement for golint
@@ -35,8 +34,10 @@ linters-settings:
       - style
     disabled-checks:
       - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - hugeParam
-      - importShadow
-      - rangeValCopy
       - unnamedResult
       - whyNoLint
+    settings:
+      rangeValCopy:
+        sizeThreshold: 512
+      hugeParam:
+        sizeThreshold: 1024

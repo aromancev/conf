@@ -85,5 +85,4 @@ func TestSQL(t *testing.T) {
 			assert.Equal(t, createdSession, fetchedSession)
 		})
 	})
-
 }
