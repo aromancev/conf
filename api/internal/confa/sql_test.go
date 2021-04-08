@@ -94,5 +94,4 @@ func TestSQL(t *testing.T) {
 			assert.Equal(t, created, fetched)
 		})
 	})
-
 }

@@ -2,9 +2,10 @@ package talk
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"regexp"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -23,7 +24,7 @@ type Talk struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-var validHandle = regexp.MustCompile("^[A-z,0-9,-]{1,64}$")
+var validHandle = regexp.MustCompile("^[A-z0-9-]{1,64}$")
 
 func (t Talk) Validate() error {
 	if t.ID == uuid.Nil {

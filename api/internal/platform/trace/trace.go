@@ -9,22 +9,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	Key = "traceId"
-)
+type ctxKey struct{}
 
 func New(ctx context.Context, trace string) context.Context {
-	return context.WithValue(ctx, Key, trace)
+	return context.WithValue(ctx, ctxKey{}, trace)
 }
 
 func Ctx(ctx context.Context) (context.Context, string) {
 	var trace string
-	if t, ok := ctx.Value(Key).(string); ok {
+	if t, ok := ctx.Value(ctxKey{}).(string); ok {
 		trace = t
 	} else {
 		trace = uuid.New().String()
 	}
-	l := log.Logger.With().Str(Key, trace).Logger()
+	l := log.Logger.With().Str("traceId", trace).Logger()
 	ctx = l.WithContext(ctx)
 	return New(ctx, trace), trace
 }

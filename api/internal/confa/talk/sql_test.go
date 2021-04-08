@@ -62,6 +62,7 @@ func TestSQL(t *testing.T) {
 				ID:    requestTalk.ID,
 				Confa: requestTalk.Confa,
 			})
+			require.NoError(t, err)
 			assert.Equal(t, createdTalk, fetchedTalk)
 		})
 		t.Run("UUID handle", func(t *testing.T) {
@@ -92,6 +93,7 @@ func TestSQL(t *testing.T) {
 				ID:    requestTalk.ID,
 				Confa: requestTalk.Confa,
 			})
+			require.NoError(t, err)
 			assert.Equal(t, createdTalk, fetchedTalk)
 		})
 		t.Run("Duplicated Entry", func(t *testing.T) {

@@ -51,7 +51,7 @@ func NewSender(server, port, fromAddress, password string, secure bool) *Sender 
 	return &Sender{server: server, port: port, fromAddress: fromAddress, password: password, secure: secure}
 }
 
-func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) {
+func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) { // nolint: golint, stylecheck
 	dialer := net.Dialer{
 		Timeout: sendTimeout,
 	}
@@ -87,6 +87,7 @@ func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) {
 func (s *Sender) secureClient(conn net.Conn) (*smtp.Client, error) {
 	c := tls.Client(conn, &tls.Config{
 		ServerName: s.server,
+		MinVersion: tls.VersionTLS12,
 	})
 	err := c.Handshake()
 	if err != nil {
@@ -97,7 +98,7 @@ func (s *Sender) secureClient(conn net.Conn) (*smtp.Client, error) {
 		return nil, err
 	}
 	auth := smtp.PlainAuth("", s.fromAddress, s.password, s.server)
-	if err = client.Auth(auth); err != nil {
+	if err := client.Auth(auth); err != nil {
 		return nil, err
 	}
 	return client, nil

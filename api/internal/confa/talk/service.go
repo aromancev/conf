@@ -3,6 +3,7 @@ package talk
 import (
 	"context"
 	"fmt"
+
 	"github.com/aromancev/confa/internal/confa"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ func NewCRUD(conn psql.Conn, repo Repo, confaCRUD ConfaCRUD) *CRUD {
 	return &CRUD{conn: conn, repo: repo, confaCRUD: confaCRUD}
 }
 
-func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID, request Talk) (Talk, error) {
+func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request Talk) (Talk, error) {
 	request.ID = uuid.New()
 	request.Confa = confaID
 	request.Owner = ownerID
@@ -52,9 +53,8 @@ func (c *CRUD) Create(ctx context.Context, confaID uuid.UUID, ownerID uuid.UUID,
 	return created[0], nil
 }
 
-func (c *CRUD) Fetch(ctx context.Context, ID uuid.UUID) (Talk, error) {
-
-	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: ID})
+func (c *CRUD) Fetch(ctx context.Context, id uuid.UUID) (Talk, error) {
+	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: id})
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to fetch talk: %w", err)
 	}

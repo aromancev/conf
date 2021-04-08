@@ -22,7 +22,7 @@ type Confa struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-var validHandle = regexp.MustCompile("^[A-z,0-9,-]{1,64}$")
+var validHandle = regexp.MustCompile("^[A-z0-9-]{1,64}$")
 
 func (c Confa) Validate() error {
 	if c.ID == uuid.Nil {

@@ -41,5 +41,4 @@ func TestCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, createdSession, fetchedSession)
 	})
-
 }

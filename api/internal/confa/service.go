@@ -38,9 +38,8 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 	return created[0], nil
 }
 
-func (c *CRUD) Fetch(ctx context.Context, ID uuid.UUID) (Confa, error) {
-
-	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: ID})
+func (c *CRUD) Fetch(ctx context.Context, id uuid.UUID) (Confa, error) {
+	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: id})
 	if err != nil {
 		return Confa{}, fmt.Errorf("failed to fetch confa: %w", err)
 	}

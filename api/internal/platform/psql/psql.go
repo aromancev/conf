@@ -83,8 +83,8 @@ type MigratorFS struct {
 	fs FS
 }
 
-func NewMigratorFS(fs FS) *MigratorFS {
-	return &MigratorFS{fs: fs}
+func NewMigratorFS(f FS) *MigratorFS {
+	return &MigratorFS{fs: f}
 }
 
 func (m MigratorFS) ReadDir(dirname string) ([]os.FileInfo, error) {

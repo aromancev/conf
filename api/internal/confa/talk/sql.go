@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 
@@ -56,8 +57,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) 
 	var pgErr *pgconn.PgError
 	switch {
 	case errors.As(err, &pgErr):
-		switch pgErr.Code {
-		case pgerrcode.UniqueViolation:
+		if pgErr.Code == pgerrcode.UniqueViolation {
 			return nil, ErrDuplicatedEntry
 		}
 		return nil, err
