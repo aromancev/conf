@@ -91,7 +91,7 @@ func (s *Signer) EmailToken(address string) (string, error) {
 	return signed, nil
 }
 
-func (s *Signer) UserToken(userID uuid.UUID) (string, error) {
+func (s *Signer) AccessToken(userID uuid.UUID) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(s.method, UserClaims{
 		StandardClaims: jwt.StandardClaims{

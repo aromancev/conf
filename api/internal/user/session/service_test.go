@@ -41,4 +41,29 @@ func TestCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, createdSession, fetchedSession)
 	})
+
+	t.Run("Fetch", func(t *testing.T) {
+		t.Parallel()
+
+		pg, done := double.NewDocker("", migrate)
+		defer done()
+
+		users := user.NewSQL()
+		sessions := NewSQL()
+		sessionCRUD := NewCRUD(pg, sessions)
+
+		usr := user.User{
+			ID: uuid.New(),
+		}
+
+		_, err := users.Create(ctx, pg, usr)
+		require.NoError(t, err)
+
+		createdSession, err := sessionCRUD.Create(ctx, usr.ID)
+		require.NoError(t, err)
+
+		fetchedSession, err := sessionCRUD.Fetch(ctx, createdSession.Key)
+		require.NoError(t, err)
+		require.Equal(t, createdSession, fetchedSession)
+	})
 }

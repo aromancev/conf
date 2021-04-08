@@ -21,6 +21,8 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
+const SessionCookieName = "session"
+
 type UserToken struct {
 	Token    string `json:"token"`
 	ExpireIn int    `json:"expireIn"`
@@ -176,13 +178,37 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 	}
 
 	cookie := http.Cookie{
-		Name:     "session",
+		Name:     SessionCookieName,
 		Value:    sess.Key,
 		HttpOnly: true,
 	}
 	http.SetCookie(w, &cookie)
 
-	userToken, err := h.sign.UserToken(userID)
+	userToken, err := h.sign.AccessToken(userID)
+	if err != nil {
+		panic(err)
+	}
+
+	_ = api.Created(UserToken{Token: userToken, ExpireIn: int(auth.UserExpire.Seconds())}).Write(ctx, w)
+}
+
+func (h *Handler) token(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	ctx := r.Context()
+
+	sessionCookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	sess, err := h.sessionCRUD.Fetch(ctx, sessionCookie.Value)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	userToken, err := h.sign.AccessToken(sess.Owner)
 	if err != nil {
 		panic(err)
 	}

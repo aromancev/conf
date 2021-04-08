@@ -74,6 +74,7 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 	r.GET("/confa/v1/confas/:confa_id", h.confa)
 
 	r.POST("/iam/v1/sessions", h.createSession)
+	r.GET("/iam/v1/token", h.token)
 
 	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)
