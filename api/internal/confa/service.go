@@ -26,6 +26,9 @@ func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
 func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Confa, error) {
 	request.ID = uuid.New()
 	request.Owner = userID
+	if request.Handle == "" {
+		request.Handle = request.ID.String()
+	}
 	if err := request.Validate(); err != nil {
 		return Confa{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}

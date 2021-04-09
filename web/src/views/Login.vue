@@ -11,8 +11,8 @@
           type="text"
           placeholder="email address"
           v-bind:disabled="submitted"
-          @focus="resetInvalid"
-          @change="resetInvalid"
+          @focus="invalid = false"
+          @change="invalid = false"
         />
       </div>
       <button @click="login" class="submit btn px-3 py-1" :disabled="submitted">
@@ -23,29 +23,24 @@
 
   <Modal
     v-if="modal == Dialog.EmailSent"
-    v-on:click="onModalClick"
+    v-on:click="$router.push('/')"
     :buttons="{ ok: 'OK' }"
   >
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </Modal>
-  <Modal
+  <InternalError
     v-if="modal == Dialog.Error"
-    v-on:click="onModalClick"
-    :buttons="{ ok: 'OK' }"
-  >
-    <p>Oh snap! Something unexpected happen.</p>
-    <p>
-      Our engineers are already working on the problem. Please try again later.
-    </p>
-  </Modal>
+    v-on:click="modal = Dialog.None"
+  />
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue"
 import { client, userStore } from "@/iam"
 import { isValid } from "@/platform/email"
-import Modal from "@/components/Modal.vue"
+import Modal from "@/components/modals/Modal.vue"
+import InternalError from "@/components/modals/InternalError.vue"
 
 enum Dialog {
   None = "",
@@ -57,6 +52,7 @@ export default defineComponent({
   name: "Home",
   components: {
     Modal,
+    InternalError,
   },
   data() {
     return {
@@ -80,8 +76,7 @@ export default defineComponent({
     },
   },
   async beforeCreate() {
-    const query = new URLSearchParams(window.location.search)
-    const token = query.get("token")
+    const token = this.$route.params.token as string
     if (token) {
       try {
         await client.session(token)
@@ -90,18 +85,12 @@ export default defineComponent({
       }
     }
   },
+  created() {
+    if (this.loggedIn) {
+      this.$router.replace("/")
+    }
+  },
   methods: {
-    resetInvalid() {
-      this.invalid = false
-    },
-
-    onModalClick() {
-      if (this.modal === Dialog.EmailSent) {
-        this.$router.push("/")
-      }
-      this.modal = Dialog.None
-    },
-
     async login() {
       if (this.submitted) {
         return

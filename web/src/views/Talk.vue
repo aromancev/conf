@@ -1,18 +1,23 @@
 <template>
-  <h3>Local Video</h3>
-  <Stream
-    v-bind:stream="localStream"
-    v-bind:mirrored="true"
-    v-bind:muted="true"
-  />
+  <div class="container">
+    <div class="row">
+      <h1></h1>
+      <h3>Local Video</h3>
+      <Stream
+        v-bind:stream="localStream"
+        v-bind:mirrored="true"
+        v-bind:muted="true"
+      />
 
-  <h3>Remote Video</h3>
-  <Stream
-    v-for="stream in remoteStreams"
-    v-bind:key="stream.id"
-    v-bind:stream="stream"
-    width="150"
-  />
+      <h3>Remote Video</h3>
+      <Stream
+        v-for="stream in remoteStreams"
+        v-bind:key="stream.id"
+        v-bind:stream="stream"
+        width="150"
+      />
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -22,7 +27,7 @@ import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
 import { IonSFUJSONRPCSignal } from "ion-sdk-js/lib/signal/json-rpc-impl"
 
 export default defineComponent({
-  name: "Home",
+  name: "Talk",
   components: {
     Stream,
   },
