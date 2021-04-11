@@ -59,9 +59,12 @@ func TestCRUD(t *testing.T) {
 		_, err := users.Create(ctx, pg, usr)
 		require.NoError(t, err)
 
-		createdSession, err := sessionCRUD.Create(ctx, usr.ID)
+		sess := NewSession()
+		sess.Owner = usr.ID
+		created, err := sessions.Create(ctx, pg, sess)
 		require.NoError(t, err)
 
+		createdSession := created[0]
 		fetchedSession, err := sessionCRUD.Fetch(ctx, createdSession.Key)
 		require.NoError(t, err)
 		require.Equal(t, createdSession, fetchedSession)

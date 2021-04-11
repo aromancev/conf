@@ -21,9 +21,9 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
-const SessionCookieName = "session"
+const sessionCookieName = "session"
 
-type UserToken struct {
+type accessToken struct {
 	Token    string `json:"token"`
 	ExpireIn int    `json:"expireIn"`
 }
@@ -178,24 +178,26 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 	}
 
 	cookie := http.Cookie{
-		Name:     SessionCookieName,
+		Name:     sessionCookieName,
 		Value:    sess.Key,
 		HttpOnly: true,
 	}
 	http.SetCookie(w, &cookie)
 
-	userToken, err := h.sign.AccessToken(userID)
+	acsToken, expireIn, err := h.sign.AccessToken(userID)
 	if err != nil {
-		panic(err)
+		log.Ctx(ctx).Err(err).Msg("Failed to sign")
+		_ = api.InternalError().Write(ctx, w)
+		return
 	}
 
-	_ = api.Created(UserToken{Token: userToken, ExpireIn: int(auth.UserExpire.Seconds())}).Write(ctx, w)
+	_ = api.Created(accessToken{Token: acsToken, ExpireIn: expireIn}).Write(ctx, w)
 }
 
 func (h *Handler) token(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	sessionCookie, err := r.Cookie(SessionCookieName)
+	sessionCookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
@@ -207,12 +209,14 @@ func (h *Handler) token(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 
-	userToken, err := h.sign.AccessToken(sess.Owner)
+	acsToken, expireIn, err := h.sign.AccessToken(sess.Owner)
 	if err != nil {
-		panic(err)
+		log.Ctx(ctx).Err(err).Msg("Failed to sign")
+		_ = api.InternalError().Write(ctx, w)
+		return
 	}
 
-	_ = api.Created(UserToken{Token: userToken, ExpireIn: int(auth.UserExpire.Seconds())}).Write(ctx, w)
+	_ = api.Created(accessToken{Token: acsToken, ExpireIn: expireIn}).Write(ctx, w)
 }
 
 type loginReq struct {
