@@ -40,7 +40,6 @@ func TestEmailToken(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, email, claims.Address)
 		assert.NotZero(t, claims.ExpiresAt)
-		assert.NotZero(t, claims.IssuedAt)
 	})
 
 	t.Run("Invalid signature returns error", func(t *testing.T) {

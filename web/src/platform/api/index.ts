@@ -45,6 +45,7 @@ class API {
     }
     this.client = axios.create({
       baseURL: `${protocol}://${window.location.hostname}/api`,
+      validateStatus: () => {return true},
     })
 
     this.resetToken()
@@ -70,7 +71,8 @@ class API {
       headers: params.headers,
     })
     switch (resp.status) {
-      case (Status.OK, Status.Created): {
+      case Status.OK:
+      case Status.Created: {
         return new Promise<Response<T>>(resolve => {
           resolve({
             data: resp.data,
