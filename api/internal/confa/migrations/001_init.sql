@@ -14,6 +14,16 @@ CREATE TABLE talks (
     UNIQUE (confa, handle)
 );
 
+CREATE TABLE claps (
+    id UUID PRIMARY KEY,
+    owner UUID NOT NULL,
+    speaker UUID NOT NULL,
+    confa UUID NOT NULL REFERENCES confas (id) ON DELETE CASCADE,
+    talk UUID NOT NULL REFERENCES talks (id) ON DELETE CASCADE,
+    claps INT8 NOT NULL,
+    CONSTRAINT unique_owner_talk UNIQUE (owner, talk)
+);
+
 ---- create above / drop below ----
 
 DROP TABLE IF EXISTS talks;
