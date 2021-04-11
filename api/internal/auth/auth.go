@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	algorithm   = "ES256"
-	emailExpire = 24 * time.Hour
-	UserExpire  = 15 * time.Minute
+	algorithm    = "ES256"
+	emailExpire  = 24 * time.Hour
+	accessExpire = 15 * time.Minute
 )
 
 type EmailClaims struct {
@@ -82,11 +82,11 @@ func (s *Signer) EmailToken(address string) (string, error) {
 	return signed, nil
 }
 
-func (s *Signer) AccessToken(userID uuid.UUID) (string, int, error) {
+func (s *Signer) AccessToken(userID uuid.UUID) (string, time.Duration, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(s.method, AccessClaims{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: now.Add(UserExpire).Unix(),
+			ExpiresAt: now.Add(accessExpire).Unix(),
 		},
 		UserID: userID,
 	})
@@ -94,7 +94,7 @@ func (s *Signer) AccessToken(userID uuid.UUID) (string, int, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	return signed, int(UserExpire.Seconds()), nil
+	return signed, accessExpire, nil
 }
 
 type Verifier struct {
@@ -146,14 +146,14 @@ func Authenticate(r *http.Request) (uuid.UUID, error) {
 }
 
 func Bearer(r *http.Request) (string, error) {
-	rawToken := r.Header.Get("Authorization")
+	token := r.Header.Get("Authorization")
 
-	authArray := strings.Split(rawToken, " ")
-	if len(authArray) < 2 {
+	parts := strings.Split(token, " ")
+	if len(parts) < 2 {
 		return "", errors.New("wrong header format")
 	}
 
-	bearer, token := authArray[0], authArray[1]
+	bearer, token := parts[0], parts[1]
 	if bearer != "Bearer" {
 		return "", errors.New("wrong type")
 	}

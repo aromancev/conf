@@ -19,7 +19,7 @@ CREATE TABLE sessions (
 
 ---- create above / drop below ----
 
-DROP TABLE idents;
-DROP TABLE sessions;
-DROP TABLE users;
-DROP TYPE platform;
+DROP TABLE IF EXISTS idents;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS platform;

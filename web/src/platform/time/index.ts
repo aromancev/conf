@@ -14,8 +14,8 @@ interface DurationParams {
 
 export function duration(duration: DurationParams): number {
   let d = duration.milliseconds || 0
-  d += duration.seconds || 0 * Duration.second
-  d += duration.minutes || 0 * Duration.minute
-  d += duration.hours || 0 * Duration.hour
+  d += (duration.seconds || 0) * Duration.second
+  d += (duration.minutes || 0) * Duration.minute
+  d += (duration.hours || 0) * Duration.hour
   return d
 }

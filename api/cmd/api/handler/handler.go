@@ -66,20 +66,17 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		_, _ = w.Write([]byte("OK"))
 	})
-	r.GET("/confa/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("OK"))
-	})
-
-	r.POST("/confa/v1/confas", h.createConfa)
-	r.GET("/confa/v1/confas/:confa_id", h.confa)
-
+	r.POST("/iam/v1/login", h.login)
 	r.POST("/iam/v1/sessions", h.createSession)
 	r.GET("/iam/v1/token", h.token)
 
+	r.GET("/confa/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		_, _ = w.Write([]byte("OK"))
+	})
+	r.POST("/confa/v1/confas", h.createConfa)
+	r.GET("/confa/v1/confas/:confa_id", h.confa)
 	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)
-
-	r.POST("/iam/v1/login", h.login)
 
 	h.router = r
 	return h

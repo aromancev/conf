@@ -21,11 +21,11 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
-const sessionCookieName = "session"
+const sessionCookie = "session"
 
 type accessToken struct {
-	Token    string `json:"token"`
-	ExpireIn int    `json:"expireIn"`
+	Token     string `json:"token"`
+	ExpiresIn uint64 `json:"expiresIn"`
 }
 
 func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -149,22 +149,27 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	_ = api.OK(tlk).Write(ctx, w)
 }
 
-func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := r.Context()
 
 	token, err := auth.Bearer(r)
 	if err != nil {
+		log.Ctx(ctx).Info().Err(err).Msg("unauth")
 		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
 	claims, err := h.verify.EmailToken(token)
 	if err != nil {
+		log.Ctx(ctx).Info().Err(err).Msg("unauth")
 		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
-	userID, err := h.identCRUD.GetOrCreate(ctx, ident.Ident{Platform: ident.PlatformEmail, Value: claims.Address})
+	userID, err := h.identCRUD.GetOrCreate(ctx, ident.Ident{
+		Platform: ident.PlatformEmail,
+		Value:    claims.Address,
+	})
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
@@ -177,46 +182,51 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	cookie := http.Cookie{
-		Name:     sessionCookieName,
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookie,
 		Value:    sess.Key,
 		HttpOnly: true,
-	}
-	http.SetCookie(w, &cookie)
+	})
 
-	acsToken, expireIn, err := h.sign.AccessToken(userID)
+	access, expiresIn, err := h.sign.AccessToken(userID)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to sign")
 		_ = api.InternalError().Write(ctx, w)
 		return
 	}
 
-	_ = api.Created(accessToken{Token: acsToken, ExpireIn: expireIn}).Write(ctx, w)
+	_ = api.Created(accessToken{
+		Token:     access,
+		ExpiresIn: uint64(expiresIn.Seconds()),
+	}).Write(ctx, w)
 }
 
-func (h *Handler) token(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *Handler) token(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := r.Context()
 
-	sessionCookie, err := r.Cookie(sessionCookieName)
+	session, err := r.Cookie(sessionCookie)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
-	sess, err := h.sessionCRUD.Fetch(ctx, sessionCookie.Value)
+	sess, err := h.sessionCRUD.Fetch(ctx, session.Value)
 	if err != nil {
 		_ = api.Unauthorised().Write(ctx, w)
 		return
 	}
 
-	acsToken, expireIn, err := h.sign.AccessToken(sess.Owner)
+	access, expiresIn, err := h.sign.AccessToken(sess.Owner)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to sign")
 		_ = api.InternalError().Write(ctx, w)
 		return
 	}
 
-	_ = api.Created(accessToken{Token: acsToken, ExpireIn: expireIn}).Write(ctx, w)
+	_ = api.Created(accessToken{
+		Token:     access,
+		ExpiresIn: uint64(expiresIn.Seconds()),
+	}).Write(ctx, w)
 }
 
 type loginReq struct {
