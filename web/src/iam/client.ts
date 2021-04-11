@@ -40,7 +40,6 @@ class Client {
         },
       },
     )
-
     this.setToken(resp.data)
   }
 
@@ -72,7 +71,6 @@ class Client {
 
   private async scheduleRefresh(expiresIn: number): Promise<void> {
     const after = duration({ seconds: expiresIn }) - 2 * Duration.minute
-    console.log(after)
     this.refreshTimer = setTimeout(
       this.refreshToken.bind(this),
       Math.max(after, minRefresh),

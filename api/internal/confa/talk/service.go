@@ -33,6 +33,9 @@ func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request T
 	request.ID = uuid.New()
 	request.Confa = confaID
 	request.Owner = ownerID
+	if request.Handle == "" {
+		request.Handle = request.ID.String()
+	}
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}

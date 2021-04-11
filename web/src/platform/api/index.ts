@@ -15,6 +15,7 @@ export enum Status {
 export interface Params {
   headers?: Record<string, string>
   auth?: boolean
+  params?: Record<string, string>
 }
 
 export interface Response<T> {
@@ -69,6 +70,7 @@ class API {
       url: url,
       data: data,
       headers: params.headers,
+      params: params.params,
     })
     switch (resp.status) {
       case Status.OK:
