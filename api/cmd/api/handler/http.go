@@ -193,7 +193,6 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httpr
 }
 
 func (h *Handler) token(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
 	ctx := r.Context()
 
 	sessionCookie, err := r.Cookie(SessionCookieName)
