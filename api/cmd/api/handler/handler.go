@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/platform/mware"
 	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/aromancev/confa/internal/user/ident"
@@ -63,20 +64,24 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 		verify:      verify,
 	}
 
+	withTrace := mware.NewChain(
+		trace.WriteHeader,
+	)
+
 	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		_, _ = w.Write([]byte("OK"))
 	})
-	r.POST("/iam/v1/login", h.login)
-	r.POST("/iam/v1/sessions", h.createSession)
-	r.GET("/iam/v1/token", h.token)
+	r.POST("/iam/v1/login", withTrace.Wrap(h.login))
+	r.POST("/iam/v1/sessions", withTrace.Wrap(h.createSession))
+	r.GET("/iam/v1/token", withTrace.Wrap(h.token))
 
 	r.GET("/confa/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		_, _ = w.Write([]byte("OK"))
 	})
-	r.POST("/confa/v1/confas", h.createConfa)
-	r.GET("/confa/v1/confas/:confa_id", h.confa)
-	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
-	r.GET("/confa/v1/talks/:talk_id", h.talk)
+	r.POST("/confa/v1/confas", withTrace.Wrap(h.createConfa))
+	r.GET("/confa/v1/confas/:confa_id", withTrace.Wrap(h.confa))
+	r.POST("/confa/v1/confas/:confa_id/talks", withTrace.Wrap(h.createTalk))
+	r.GET("/confa/v1/talks/:talk_id", withTrace.Wrap(h.talk))
 
 	h.router = r
 	return h
@@ -88,7 +93,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
-			_ = api.InternalError().Write(ctx, w)
+			_ = api.InternalError().Write(w)
 		}
 	}()
 	lw := plog.NewResponseWriter(w)

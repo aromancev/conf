@@ -1,11 +1,8 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-
-	"github.com/aromancev/confa/internal/platform/trace"
 )
 
 const (
@@ -20,18 +17,12 @@ const (
 	CodeInternalError = 3001
 )
 
-const (
-	traceKey = "traceId"
-)
-
 type Response struct {
 	Body   interface{}
 	Status int
 }
 
-func (r Response) Write(ctx context.Context, w http.ResponseWriter) error {
-	_, traceID := trace.Ctx(ctx)
-	w.Header().Set(traceKey, traceID)
+func (r Response) Write(w http.ResponseWriter) error {
 	w.WriteHeader(r.Status)
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(r.Body)
