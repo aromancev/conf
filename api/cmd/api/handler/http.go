@@ -218,6 +218,11 @@ func createTalk(verifier *auth.Verifier, talks *talk.CRUD) httprouter.Handle {
 		ctx := r.Context()
 
 		access, err := verifier.AccessToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
 		var request talk.Talk
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())

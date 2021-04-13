@@ -3,7 +3,6 @@ package emails
 import (
 	"bytes"
 	"embed"
-	_ "embed" // required by embed.
 	"html/template"
 
 	"github.com/aromancev/confa/internal/platform/email"

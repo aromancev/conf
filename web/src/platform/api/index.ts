@@ -46,7 +46,9 @@ class API {
     }
     this.client = axios.create({
       baseURL: `${protocol}://${window.location.hostname}/api`,
-      validateStatus: () => {return true},
+      validateStatus: () => {
+        return true
+      },
     })
 
     this.resetToken()

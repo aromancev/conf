@@ -3,19 +3,13 @@ package trace
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 )
 
 type ctxKey struct{}
-
-const (
-	header = "Trace-Id"
-)
 
 func New(ctx context.Context, trace string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, trace)
@@ -43,14 +37,6 @@ func Job(ctx context.Context, job *beanstalk.Job) (context.Context, string) {
 		log.Ctx(ctx).Warn().Msg("failed to parse trace from job")
 	}
 	return Ctx(ctx)
-}
-
-func WriteHeader(h httprouter.Handle) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx, traceID := Ctx(r.Context())
-		h(w, r.WithContext(ctx), ps)
-		w.Header().Set(header, traceID)
-	}
 }
 
 type Producer interface {
