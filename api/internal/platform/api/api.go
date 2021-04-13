@@ -33,66 +33,66 @@ type Error struct {
 	Code  int    `json:"code"`
 }
 
-func OK(body interface{}) Response {
+func OK(w http.ResponseWriter, body interface{}) error {
 	return Response{
 		Body:   body,
 		Status: http.StatusOK,
-	}
+	}.Write(w)
 }
 
-func Created(body interface{}) Response {
+func Created(w http.ResponseWriter, body interface{}) error {
 	return Response{
 		Body:   body,
 		Status: http.StatusCreated,
-	}
+	}.Write(w)
 }
 
-func InternalError() Response {
+func InternalError(w http.ResponseWriter) error {
 	return Response{
 		Body: Error{
 			Code:  CodeInternalError,
 			Error: "internal error",
 		},
 		Status: http.StatusInternalServerError,
-	}
+	}.Write(w)
 }
 
-func Unauthorised() Response {
+func Unauthorised(w http.ResponseWriter) error {
 	return Response{
 		Body: Error{
 			Code:  CodeUnauthorised,
 			Error: "unauthorised request",
 		},
 		Status: http.StatusUnauthorized,
-	}
+	}.Write(w)
 }
 
-func Forbidden() Response {
+func Forbidden(w http.ResponseWriter) error {
 	return Response{
 		Body: Error{
 			Code:  CodeForbidden,
 			Error: "forbidden request",
 		},
 		Status: http.StatusForbidden,
-	}
+	}.Write(w)
 }
 
-func BadRequest(code int, text string) Response {
+func BadRequest(w http.ResponseWriter, code int, text string) error {
 	return Response{
 		Body: Error{
 			Error: text,
 			Code:  code,
 		},
 		Status: http.StatusBadRequest,
-	}
+	}.Write(w)
 }
 
-func NotFound(text string) Response {
+func NotFound(w http.ResponseWriter, text string) error {
 	return Response{
 		Body: Error{
 			Error: text,
 			Code:  CodeNotFound,
 		},
 		Status: http.StatusNotFound,
-	}
+	}.Write(w)
 }

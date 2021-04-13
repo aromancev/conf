@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/platform/mware"
 	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/aromancev/confa/internal/user/ident"
@@ -50,7 +49,7 @@ type Handler struct {
 	verify      *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, signer *auth.Signer, verifier *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:     baseURL,
@@ -60,28 +59,45 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 		identCRUD:   identCRUD,
 		sender:      sender,
 		producer:    producer,
-		sign:        sign,
-		verify:      verify,
+		sign:        signer,
+		verify:      verifier,
 	}
 
-	withTrace := mware.NewChain(
-		trace.WriteHeader,
+	withTrace := func(h httprouter.Handle) httprouter.Handle {
+		return trace.WriteHeader(h)
+	}
+
+	r.GET("/iam/health", ok)
+	r.POST(
+		"/iam/v1/login",
+		withTrace(login(baseURL, signer, producer)),
+	)
+	r.POST(
+		"/iam/v1/sessions",
+		withTrace(createSession(verifier, signer, identCRUD, sessionCRUD)),
+	)
+	r.GET(
+		"/iam/v1/token",
+		withTrace(createToken(signer, sessionCRUD)),
 	)
 
-	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("OK"))
-	})
-	r.POST("/iam/v1/login", withTrace.Wrap(h.login))
-	r.POST("/iam/v1/sessions", withTrace.Wrap(h.createSession))
-	r.GET("/iam/v1/token", withTrace.Wrap(h.token))
-
-	r.GET("/confa/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("OK"))
-	})
-	r.POST("/confa/v1/confas", withTrace.Wrap(h.createConfa))
-	r.GET("/confa/v1/confas/:confa_id", withTrace.Wrap(h.confa))
-	r.POST("/confa/v1/confas/:confa_id/talks", withTrace.Wrap(h.createTalk))
-	r.GET("/confa/v1/talks/:talk_id", withTrace.Wrap(h.talk))
+	r.GET("/confa/health", ok)
+	r.POST(
+		"/confa/v1/confas",
+		withTrace(createConfa(verifier, confaCRUD)),
+	)
+	r.GET(
+		"/confa/v1/confas/:confa_id",
+		withTrace(getConfa(confaCRUD)),
+	)
+	r.POST(
+		"/confa/v1/confas/:confa_id/talks",
+		withTrace(createTalk(verifier, talkCRUD)),
+	)
+	r.GET(
+		"/confa/v1/talks/:talk_id",
+		withTrace(getTalk(talkCRUD)),
+	)
 
 	h.router = r
 	return h
