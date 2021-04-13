@@ -2,18 +2,20 @@ package emails
 
 import (
 	"bytes"
+	"embed"
 	_ "embed" // required by embed.
 	"html/template"
 
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
-//go:embed login.html
-var loginT string
+//go:embed *.html
+var templates embed.FS
+
 var login *template.Template
 
 func init() {
-	login = template.Must(template.New("login").Parse(loginT))
+	login = template.Must(template.ParseFS(templates, "login.html"))
 }
 
 func Login(baseURL, to, token string) (email.Email, error) {

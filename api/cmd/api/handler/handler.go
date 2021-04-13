@@ -109,7 +109,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
-			_ = api.InternalError().Write(w)
+			_ = api.InternalError(w)
 		}
 	}()
 	lw := plog.NewResponseWriter(w)
