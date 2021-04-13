@@ -14,9 +14,12 @@ import (
 )
 
 const (
-	algorithm    = "ES256"
+	algorithm = "ES256"
+
 	emailExpire  = 24 * time.Hour
 	accessExpire = 15 * time.Minute
+
+	sessionKey = "session"
 )
 
 type EmailClaims struct {
@@ -64,10 +67,6 @@ func NewSigner(secretKey string) (*Signer, error) {
 }
 
 func (s *Signer) EmailToken(address string) (string, error) {
-	if err := email.ValidateEmail(address); err != nil {
-		return "", err
-	}
-
 	now := time.Now()
 	token := jwt.NewWithClaims(s.method, EmailClaims{
 		StandardClaims: jwt.StandardClaims{
@@ -125,7 +124,7 @@ func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 	return claims, nil
 }
 
-func (v *Verifier) UserToken(token string) (AccessClaims, error) {
+func (v *Verifier) AccessToken(token string) (AccessClaims, error) {
 	var claims AccessClaims
 	parsed, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
 		return v.key, nil
@@ -140,23 +139,31 @@ func (v *Verifier) UserToken(token string) (AccessClaims, error) {
 	return claims, nil
 }
 
-func Authenticate(r *http.Request) (uuid.UUID, error) {
-	id, _ := uuid.Parse("28164069-5ec3-405b-a9cc-641cf29588ed") //todo: Unhardcode this. ONLY FOR TESTING
-	return id, nil
-}
-
-func Bearer(r *http.Request) (string, error) {
+func Bearer(r *http.Request) string {
 	token := r.Header.Get("Authorization")
-
 	parts := strings.Split(token, " ")
 	if len(parts) < 2 {
-		return "", errors.New("wrong header format")
+		return ""
 	}
-
 	bearer, token := parts[0], parts[1]
 	if bearer != "Bearer" {
-		return "", errors.New("wrong type")
+		return ""
 	}
+	return token
+}
 
-	return token, nil
+func Session(r *http.Request) string {
+	session, err := r.Cookie(sessionKey)
+	if err != nil {
+		return ""
+	}
+	return session.Value
+}
+
+func SetSession(w http.ResponseWriter, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionKey,
+		Value:    value,
+		HttpOnly: true,
+	})
 }

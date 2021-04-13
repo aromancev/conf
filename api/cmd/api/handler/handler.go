@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/aromancev/confa/internal/user/ident"
@@ -19,7 +20,6 @@ import (
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/backoff"
-	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
@@ -36,59 +36,62 @@ type Producer interface {
 	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
 }
 
+type JobHandle func(ctx context.Context, job *beanstalk.Job) error
+
 type Handler struct {
-	baseURL     string
-	router      http.Handler
-	confaCRUD   *confa.CRUD
-	talkCRUD    *talk.CRUD
-	sessionCRUD *session.CRUD
-	identCRUD   *ident.CRUD
-	sender      *email.Sender
-	producer    Producer
-	sign        *auth.Signer
-	verify      *auth.Verifier
+	router http.Handler
+	sender *email.Sender
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, sender *email.Sender, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier) *Handler {
 	r := httprouter.New()
-	h := &Handler{
-		baseURL:     baseURL,
-		confaCRUD:   confaCRUD,
-		talkCRUD:    talkCRUD,
-		sessionCRUD: sessionCRUD,
-		identCRUD:   identCRUD,
-		sender:      sender,
-		producer:    producer,
-		sign:        sign,
-		verify:      verify,
+
+	r.GET("/iam/health", ok)
+	r.POST(
+		"/iam/v1/login",
+		login(baseURL, signer, producer),
+	)
+	r.POST(
+		"/iam/v1/sessions",
+		createSession(verifier, signer, identCRUD, sessionCRUD),
+	)
+	r.GET(
+		"/iam/v1/token",
+		createToken(signer, sessionCRUD),
+	)
+
+	r.GET("/confa/health", ok)
+	r.POST(
+		"/confa/v1/confas",
+		createConfa(verifier, confaCRUD),
+	)
+	r.GET(
+		"/confa/v1/confas/:confa_id",
+		getConfa(confaCRUD),
+	)
+	r.POST(
+		"/confa/v1/confas/:confa_id/talks",
+		createTalk(verifier, talkCRUD),
+	)
+	r.GET(
+		"/confa/v1/talks/:talk_id",
+		getTalk(talkCRUD),
+	)
+
+	return &Handler{
+		router: r,
+		sender: sender,
 	}
-
-	r.GET("/iam/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("OK"))
-	})
-	r.POST("/iam/v1/login", h.login)
-	r.POST("/iam/v1/sessions", h.createSession)
-	r.GET("/iam/v1/token", h.token)
-
-	r.GET("/confa/health", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("OK"))
-	})
-	r.POST("/confa/v1/confas", h.createConfa)
-	r.GET("/confa/v1/confas/:confa_id", h.confa)
-	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
-	r.GET("/confa/v1/talks/:talk_id", h.talk)
-
-	h.router = r
-	return h
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, _ := trace.Ctx(r.Context())
+	ctx, traceID := trace.Ctx(r.Context())
+	w.Header().Set("Trace-Id", traceID)
 
 	defer func() {
 		if err := recover(); err != nil {
 			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
-			_ = api.InternalError().Write(ctx, w)
+			_ = api.InternalError(w)
 		}
 	}()
 	lw := plog.NewResponseWriter(w)
@@ -112,7 +115,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	var err error
 	switch job.Stats.Tube {
 	case TubeEmail:
-		err = h.sendEmail(ctx, job)
+		err = sendEmail(h.sender)(ctx, job)
 	default:
 		err = fmt.Errorf("unknown tube: %s", job.Stats.Tube)
 	}

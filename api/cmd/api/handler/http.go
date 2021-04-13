@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/user/ident"
+	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/aromancev/confa/internal/confa/talk"
 
@@ -15,218 +17,14 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/auth"
-	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
 )
 
-const sessionCookie = "session"
-
 type accessToken struct {
 	Token     string `json:"token"`
 	ExpiresIn uint64 `json:"expiresIn"`
-}
-
-func (h *Handler) createConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	userID, err := auth.Authenticate(r)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	var request confa.Confa
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
-		return
-	}
-
-	conf, err := h.confaCRUD.Create(ctx, userID, request)
-	switch {
-	case errors.Is(err, confa.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	case errors.Is(err, confa.ErrDuplicatedEntry):
-		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
-		return
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to create confa")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.Created(conf).Write(ctx, w)
-}
-
-func (h *Handler) confa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	confID, err := uuid.Parse(ps.ByName("confa_id"))
-	if err != nil {
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	}
-	conf, err := h.confaCRUD.Fetch(ctx, confID)
-	switch {
-	case errors.Is(err, confa.ErrNotFound):
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	case errors.Is(err, confa.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.OK(conf).Write(ctx, w)
-}
-
-func (h *Handler) createTalk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	userID, err := auth.Authenticate(r)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	var request talk.Talk
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
-		return
-	}
-
-	confaID, err := uuid.Parse(ps.ByName("confa_id"))
-	if err != nil {
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	}
-
-	tlk, err := h.talkCRUD.Create(ctx, confaID, userID, request)
-	switch {
-	case errors.Is(err, talk.ErrValidation):
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	case errors.Is(err, talk.ErrDuplicatedEntry):
-		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
-		return
-	case errors.Is(err, talk.ErrPermissionDenied):
-		_ = api.Forbidden().Write(ctx, w)
-		return
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to create talk")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.Created(tlk).Write(ctx, w)
-}
-
-func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
-
-	talkID, err := uuid.Parse(ps.ByName("talk_id"))
-	if err != nil {
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	}
-
-	tlk, err := h.talkCRUD.Fetch(ctx, talkID)
-	switch {
-	case errors.Is(err, talk.ErrNotFound):
-		_ = api.NotFound(err.Error()).Write(ctx, w)
-		return
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.OK(tlk).Write(ctx, w)
-}
-
-func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := r.Context()
-
-	token, err := auth.Bearer(r)
-	if err != nil {
-		log.Ctx(ctx).Info().Err(err).Msg("unauth")
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	claims, err := h.verify.EmailToken(token)
-	if err != nil {
-		log.Ctx(ctx).Info().Err(err).Msg("unauth")
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	userID, err := h.identCRUD.GetOrCreate(ctx, ident.Ident{
-		Platform: ident.PlatformEmail,
-		Value:    claims.Address,
-	})
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	sess, err := h.sessionCRUD.Create(ctx, userID)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to create session")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookie,
-		Value:    sess.Key,
-		HttpOnly: true,
-	})
-
-	access, expiresIn, err := h.sign.AccessToken(userID)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to sign")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.Created(accessToken{
-		Token:     access,
-		ExpiresIn: uint64(expiresIn.Seconds()),
-	}).Write(ctx, w)
-}
-
-func (h *Handler) token(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := r.Context()
-
-	session, err := r.Cookie(sessionCookie)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	sess, err := h.sessionCRUD.Fetch(ctx, session.Value)
-	if err != nil {
-		_ = api.Unauthorised().Write(ctx, w)
-		return
-	}
-
-	access, expiresIn, err := h.sign.AccessToken(sess.Owner)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to sign")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-
-	_ = api.Created(accessToken{
-		Token:     access,
-		ExpiresIn: uint64(expiresIn.Seconds()),
-	}).Write(ctx, w)
 }
 
 type loginReq struct {
@@ -240,45 +38,245 @@ func (r loginReq) Validate() error {
 	return nil
 }
 
-func (h *Handler) login(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	ctx := r.Context()
+func login(baseURL string, signer *auth.Signer, producer Producer) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
 
-	var req loginReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
-		return
-	}
+		var req loginReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
+			return
+		}
 
-	if err := req.Validate(); err != nil {
-		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
-		return
-	}
+		if err := req.Validate(); err != nil {
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		}
 
-	token, err := h.sign.EmailToken(req.Email)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to create email token")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
+		token, err := signer.EmailToken(req.Email)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to create email token")
+			_ = api.InternalError(w)
+			return
+		}
 
-	msg, err := emails.Login(h.baseURL, req.Email, token)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to render login email")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
-	body, err := json.Marshal([]email.Email{msg})
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to marshal email")
-		_ = api.InternalError().Write(ctx, w)
-		return
-	}
+		msg, err := emails.Login(baseURL, req.Email, token)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to render login email")
+			_ = api.InternalError(w)
+			return
+		}
+		body, err := json.Marshal([]email.Email{msg})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to marshal email")
+			_ = api.InternalError(w)
+			return
+		}
 
-	id, err := h.producer.Put(ctx, TubeEmail, body, beanstalk.PutParams{})
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to put email job")
-		_ = api.InternalError().Write(ctx, w)
-		return
+		id, err := producer.Put(ctx, TubeEmail, body, beanstalk.PutParams{})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to put email job")
+			_ = api.InternalError(w)
+			return
+		}
+		log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted")
 	}
-	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted")
+}
+
+func createSession(verifier *auth.Verifier, signer *auth.Signer, idents *ident.CRUD, sessions *session.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
+
+		claims, err := verifier.EmailToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		userID, err := idents.GetOrCreate(ctx, ident.Ident{
+			Platform: ident.PlatformEmail,
+			Value:    claims.Address,
+		})
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		sess, err := sessions.Create(ctx, userID)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to create session")
+			_ = api.InternalError(w)
+			return
+		}
+
+		access, expiresIn, err := signer.AccessToken(userID)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to sign")
+			_ = api.InternalError(w)
+			return
+		}
+
+		auth.SetSession(w, sess.Key)
+		_ = api.Created(w, accessToken{
+			Token:     access,
+			ExpiresIn: uint64(expiresIn.Seconds()),
+		})
+	}
+}
+
+func createToken(signer *auth.Signer, sessions *session.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
+
+		sess, err := sessions.Fetch(ctx, auth.Session(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		access, expiresIn, err := signer.AccessToken(sess.Owner)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to sign")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.Created(w, accessToken{
+			Token:     access,
+			ExpiresIn: uint64(expiresIn.Seconds()),
+		})
+	}
+}
+
+func ok(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	_, _ = w.Write([]byte("OK"))
+}
+
+func createConfa(verifier *auth.Verifier, confas *confa.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
+
+		access, err := verifier.AccessToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		var request confa.Confa
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
+			return
+		}
+
+		conf, err := confas.Create(ctx, access.UserID, request)
+		switch {
+		case errors.Is(err, confa.ErrValidation):
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		case errors.Is(err, confa.ErrDuplicatedEntry):
+			_ = api.BadRequest(w, api.CodeDuplicatedEntry, err.Error())
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to create confa")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.Created(w, conf)
+	}
+}
+
+func getConfa(confas *confa.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+
+		confID, err := uuid.Parse(ps.ByName("confa_id"))
+		if err != nil {
+			_ = api.NotFound(w, err.Error())
+			return
+		}
+		conf, err := confas.Fetch(ctx, confID)
+		switch {
+		case errors.Is(err, confa.ErrNotFound):
+			_ = api.NotFound(w, err.Error())
+			return
+		case errors.Is(err, confa.ErrValidation):
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to fetch confa")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.OK(w, conf)
+	}
+}
+
+func createTalk(verifier *auth.Verifier, talks *talk.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+
+		access, err := verifier.AccessToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		var request talk.Talk
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
+			return
+		}
+
+		confaID, err := uuid.Parse(ps.ByName("confa_id"))
+		if err != nil {
+			_ = api.NotFound(w, err.Error())
+			return
+		}
+
+		tlk, err := talks.Create(ctx, confaID, access.UserID, request)
+		switch {
+		case errors.Is(err, talk.ErrValidation):
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		case errors.Is(err, talk.ErrDuplicatedEntry):
+			_ = api.BadRequest(w, api.CodeDuplicatedEntry, err.Error())
+			return
+		case errors.Is(err, talk.ErrPermissionDenied):
+			_ = api.Forbidden(w)
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to create talk")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.Created(w, tlk)
+	}
+}
+
+func getTalk(talks *talk.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+
+		talkID, err := uuid.Parse(ps.ByName("talk_id"))
+		if err != nil {
+			_ = api.NotFound(w, err.Error())
+			return
+		}
+
+		tlk, err := talks.Fetch(ctx, talkID)
+		switch {
+		case errors.Is(err, talk.ErrNotFound):
+			_ = api.NotFound(w, err.Error())
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.OK(w, tlk)
+	}
 }

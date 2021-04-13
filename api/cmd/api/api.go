@@ -106,7 +106,7 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	hand := handler.New(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, sender, trace.NewBeanstalkd(producer), sign, verify)
+	hand := handler.New(config.BaseURL, sender, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify)
 
 	srv := &http.Server{
 		Addr:         config.Address,

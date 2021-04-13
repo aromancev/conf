@@ -46,7 +46,9 @@ class API {
     }
     this.client = axios.create({
       baseURL: `${protocol}://${window.location.hostname}/api`,
-      validateStatus: () => {return true},
+      validateStatus: () => {
+        return true
+      },
     })
 
     this.resetToken()
@@ -58,11 +60,12 @@ class API {
     data?: object,
     params?: Params,
   ): Promise<Response<T>> {
-    params = Object.assign(defaultParams, params) as Params
+    const defaults = Object.assign({}, defaultParams)
+    params = Object.assign(defaults, params)
     params.headers = params.headers || {}
 
     if (params.auth) {
-      params.headers.Authorization = "Bearer" + (await this.token)
+      params.headers.Authorization = "Bearer " + (await this.token)
     }
 
     const resp = await this.client.request({
