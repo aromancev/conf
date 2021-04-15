@@ -24,6 +24,7 @@ type Config struct {
 	Email         EmailConfig
 	Postgres      PostgresConfig
 	Beanstalkd    BeanstalkdConfig
+	RTC           RTCConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -56,6 +57,7 @@ func (c Config) WithEnv() Config {
 
 func (c Config) WithDefault() Config {
 	c.Address = ":80"
+	c.RTC = c.RTC.WithDefault()
 	return c
 }
 
@@ -164,4 +166,23 @@ func (c BeanstalkdConfig) Validate() error {
 func (c BeanstalkdConfig) Parsed() (BeanstalkdConfig, error) {
 	c.Pool = strings.Split(c.RawPool, ",")
 	return c, nil
+}
+
+type RTCConfig struct {
+	SFUAddress  string `envconfig:"RTC_SFU_ADDRESS"`
+	ReadBuffer  int    `envconfig:"READ_BUFFER"`
+	WriteBuffer int    `envconfig:"WRITE_BUFFER"`
+}
+
+func (c RTCConfig) WithDefault() RTCConfig {
+	c.ReadBuffer = 1024
+	c.WriteBuffer = 1024
+	return c
+}
+
+func (c RTCConfig) Validate() error {
+	if c.SFUAddress == "" {
+		return errors.New("SFUAddress not set")
+	}
+	return nil
 }

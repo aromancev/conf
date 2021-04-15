@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/platform/email"
 
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/ident"
@@ -22,7 +23,6 @@ import (
 	"github.com/aromancev/confa/cmd/api/handler"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/psql"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
@@ -106,7 +106,9 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify)
+	upgrader := handler.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer)
+
+	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify, upgrader, config.RTC.SFUAddress)
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{

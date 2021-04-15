@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
@@ -40,7 +41,7 @@ type HTTP struct {
 	router http.Handler
 }
 
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier) *HTTP {
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader websocket.Upgrader, sfuAddress string) *HTTP {
 	r := httprouter.New()
 
 	r.GET("/iam/health", ok)
@@ -75,6 +76,10 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, session
 		getTalk(talkCRUD),
 	)
 
+	r.GET(
+		"/rtc/v1/ws",
+		rtc(upgrader, sfuAddress),
+	)
 	return &HTTP{
 		router: r,
 	}

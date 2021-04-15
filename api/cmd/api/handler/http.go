@@ -1,9 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/gorilla/websocket"
+	"github.com/sourcegraph/jsonrpc2"
+	rpcws "github.com/sourcegraph/jsonrpc2/websocket"
 
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/user/ident"
@@ -278,5 +283,37 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 		}
 
 		_ = api.OK(w, tlk)
+	}
+}
+
+func rtc(upgrader websocket.Upgrader, sfuAddress string) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
+
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to upgrade connection.")
+			return
+		}
+		defer c.Close()
+
+		signal, err := NewSignal(ctx, sfuAddress)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to start new signal.")
+			return
+		}
+		defer signal.Close()
+
+		conn := jsonrpc2.NewConn(ctx, rpcws.NewObjectStream(c), signal)
+		go func() {
+			if err := signal.Serve(ctx, conn); err != nil {
+				if errors.Is(err, context.Canceled) {
+					log.Ctx(ctx).Err(err).Msg("Failed to serve signal.")
+				}
+			}
+		}()
+
+		<-conn.DisconnectNotify()
+		log.Ctx(ctx).Info().Msg("RTC client disconnected.")
 	}
 }

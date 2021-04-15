@@ -4,8 +4,8 @@ WORKDIR /app
 COPY . /app
 
 RUN go build \
-  -o bin/rtc \
-  ./cmd/rtc
+  -o bin/sfu \
+  ./cmd/sfu
 
 FROM alpine:latest
 
@@ -13,4 +13,4 @@ WORKDIR /app
 
 COPY --from=builder /app/bin/* /app/
 
-CMD ["/app/rtc"]
+CMD ["/app/sfu"]

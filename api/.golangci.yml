@@ -2,6 +2,8 @@
 
 run:
   timeout: 2m
+  skip-files:
+    - ".*\\.pb\\.go$"
 
 linters:
   enable:

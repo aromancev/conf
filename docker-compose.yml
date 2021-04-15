@@ -14,13 +14,13 @@ services:
     volumes:
       - ./web:/app
 
-  rtc:
+  sfu:
     build:
       context: ./api
       dockerfile: Dockerfile
-    command: "go run ./cmd/rtc/."
+    command: "go run ./cmd/sfu/."
     environment:
-      - ADDRESS=:80
+      - ADDRESS=:8080
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
@@ -51,6 +51,7 @@ services:
       - POSTGRES_PASSWORD=confa
       - POSTGRES_DATABASE=confa
       - BEANSTALKD_POOL=beanstalkd:11300
+      - RTC_SFU_ADDRESS=sfu:8080
     volumes:
       - ./api:/app
 
@@ -73,4 +74,3 @@ services:
   email:
     image: kbedel/fake-smtp-server
     command: fake-smtp-server -s 1025 -h 80
-
