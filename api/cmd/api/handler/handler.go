@@ -6,22 +6,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/user/session"
-
-	"github.com/aromancev/confa/internal/user/ident"
-
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/backoff"
+	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/user/ident"
+	"github.com/aromancev/confa/internal/user/session"
 )
 
 const (
@@ -38,12 +36,11 @@ type Producer interface {
 
 type JobHandle func(ctx context.Context, job *beanstalk.Job) error
 
-type Handler struct {
+type HTTP struct {
 	router http.Handler
-	sender *email.Sender
 }
 
-func New(baseURL string, sender *email.Sender, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier) *Handler {
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier) *HTTP {
 	r := httprouter.New()
 
 	r.GET("/iam/health", ok)
@@ -78,13 +75,12 @@ func New(baseURL string, sender *email.Sender, confaCRUD *confa.CRUD, talkCRUD *
 		getTalk(talkCRUD),
 	)
 
-	return &Handler{
+	return &HTTP{
 		router: r,
-		sender: sender,
 	}
 }
 
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, traceID := trace.Ctx(r.Context())
 	w.Header().Set("Trace-Id", traceID)
 
@@ -101,7 +97,24 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lw.Event(ctx, r).Msg("HTTP served")
 }
 
-func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
+type Job struct {
+	route func(job *beanstalk.Job) JobHandle
+}
+
+func NewJob(sender *email.Sender) *Job {
+	return &Job{
+		route: func(job *beanstalk.Job) JobHandle {
+			switch job.Stats.Tube {
+			case TubeEmail:
+				return sendEmail(sender)
+			default:
+				return nil
+			}
+		},
+	}
+}
+
+func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	ctx, _ = trace.Job(ctx, job)
 
 	plog.JobEvent(ctx, *job).Msg("Job received")
@@ -112,13 +125,13 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 		}
 	}()
 
-	var err error
-	switch job.Stats.Tube {
-	case TubeEmail:
-		err = sendEmail(h.sender)(ctx, job)
-	default:
-		err = fmt.Errorf("unknown tube: %s", job.Stats.Tube)
+	handle := h.route(job)
+	if handle == nil {
+		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
+		return
 	}
+
+	err := handle(ctx, job)
 	if err != nil {
 		if job.Stats.Releases >= jobRetries {
 			log.Ctx(ctx).Err(err).Msg("Job retries exceeded. Burying.")

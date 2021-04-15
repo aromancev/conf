@@ -106,14 +106,15 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	hand := handler.New(config.BaseURL, sender, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify)
+	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify)
+	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{
 		Addr:         config.Address,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      hand,
+		Handler:      httpHandler,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -126,7 +127,7 @@ func main() {
 	var consumerDone sync.WaitGroup
 	consumerDone.Add(1)
 	go func() {
-		consumer.Receive(ctx, hand.ServeJob)
+		consumer.Receive(ctx, jobHandler.ServeJob)
 		consumerDone.Done()
 	}()
 	log.Info().Msg("Listening on " + config.Address)

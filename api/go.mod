@@ -19,7 +19,6 @@ require (
 	github.com/jackc/tern v1.12.4
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lib/pq v1.9.0
 	github.com/magefile/mage v1.11.0 // indirect
 	github.com/mitchellh/copystructure v1.1.1 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
