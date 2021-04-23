@@ -76,7 +76,7 @@ export default defineComponent({
     },
   },
   async beforeCreate() {
-    const token = this.$route.params.token as string
+    const token = this.$route.query.token as string
     if (token) {
       try {
         await client.session(token)

@@ -12,12 +12,10 @@ const (
 )
 
 type Config struct {
-	Address     string `envconfig:"ADDRESS"`
-	ICEPortMin  uint16 `envconfig:"ICE_PORT_MIN"`
-	ICEPortMax  uint16 `envconfig:"ICE_PORT_MAX"`
-	ReadBuffer  int    `envconfig:"READ_BUFFER"`
-	WriteBuffer int    `envconfig:"WRITE_BUFFER"`
-	LogFormat   string `envconfig:"LOG_FORMAT"`
+	Address    string `envconfig:"ADDRESS"`
+	ICEPortMin uint16 `envconfig:"ICE_PORT_MIN"`
+	ICEPortMax uint16 `envconfig:"ICE_PORT_MAX"`
+	LogFormat  string `envconfig:"LOG_FORMAT"`
 }
 
 func (c Config) WithEnv() Config {
@@ -29,11 +27,9 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) WithDefault() Config {
-	c.Address = ":80"
+	c.Address = ":8080"
 	c.ICEPortMin = 10000
 	c.ICEPortMax = 10100
-	c.ReadBuffer = 1024
-	c.WriteBuffer = 1024
 	return c
 }
 

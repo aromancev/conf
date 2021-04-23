@@ -1,7 +1,9 @@
 package plog
 
 import (
+	"bufio"
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/prep/beanstalk"
@@ -21,6 +23,13 @@ func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
 func (w *ResponseWriter) WriteHeader(code int) {
 	w.code = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	panic("ResponseWriter does not implement http.Hijacker")
 }
 
 func (w *ResponseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Event {

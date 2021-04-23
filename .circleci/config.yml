@@ -14,11 +14,11 @@ jobs:
           paths:
             - web/node_modules
             - web/.pnpm-store
-  deploy_rtc:
+  deploy_sfu:
     machine: true
     steps:
         - checkout
-        - run: ./deploy/rtc.sh
+        - run: ./deploy/sfu.sh
   deploy_api:
     machine: true
     steps:
@@ -74,13 +74,13 @@ jobs:
       - run: |
           cd ./api/cmd/api
           go build -o ./
-  rtc_build:
+  sfu_build:
     docker:
       - image: circleci/golang:1.16
     steps:
       - checkout
       - run: |
-          cd ./api/cmd/rtc
+          cd ./api/cmd/sfu
           go build -o ./
 
   lint_run:
@@ -104,17 +104,17 @@ workflows:
       - deploy_web:
           requires:
             - approve
-  rtc:
+  sfu:
     jobs:
-      - rtc_build
+      - sfu_build
       - approve:
           type: approval
           requires:
-            - rtc_build
+            - sfu_build
           filters:
             branches:
               only: "master"
-      - deploy_rtc:
+      - deploy_sfu:
           requires:
             - approve
   api:

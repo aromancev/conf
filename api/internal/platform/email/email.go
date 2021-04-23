@@ -93,7 +93,7 @@ func (s *Sender) secureClient(conn net.Conn) (*smtp.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := smtp.NewClient(conn, s.server)
+	client, err := smtp.NewClient(c, s.server)
 	if err != nil {
 		return nil, err
 	}
