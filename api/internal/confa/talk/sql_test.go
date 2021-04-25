@@ -39,10 +39,11 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test1",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
@@ -50,7 +51,8 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
+				Speaker:  userID,
 				Confa:  requestConfa.ID,
 				Handle: "test1",
 			}
@@ -70,10 +72,11 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test2",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
@@ -81,7 +84,8 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
+				Speaker:  userID,
 				Confa:  requestConfa.ID,
 				Handle: uuid.New().String(),
 			}
@@ -101,10 +105,11 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test3",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
@@ -112,7 +117,8 @@ func TestSQL(t *testing.T) {
 
 			requestTalk := Talk{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
+				Speaker:  userID,
 				Confa:  requestConfa.ID,
 				Handle: "test3",
 			}
@@ -131,16 +137,18 @@ func TestSQL(t *testing.T) {
 		defer done()
 		talks := NewSQL()
 		confas := confa.NewSQL()
+		userID := uuid.New()
 
 		conf := confa.Confa{
 			ID:     uuid.New(),
-			Owner:  uuid.New(),
+			Owner:  userID,
 			Handle: "test",
 		}
 
 		tlk := Talk{
 			ID:     uuid.New(),
-			Owner:  uuid.New(),
+			Owner:  userID,
+			Speaker:  userID,
 			Confa:  conf.ID,
 			Handle: "test",
 		}
