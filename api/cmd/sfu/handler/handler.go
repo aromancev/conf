@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
 
 	"github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -16,7 +16,6 @@ import (
 
 type SFUServer struct {
 	proto.UnimplementedSFUServer
-	sync.Mutex
 	SFU *sfu.SFU
 }
 
@@ -24,10 +23,12 @@ func NewServer(s *sfu.SFU) *SFUServer {
 	return &SFUServer{SFU: s}
 }
 
-func (s *SFUServer) Signal(stream proto.SFU_SignalServer) error {
+func (s *SFUServer) Signal(signal proto.SFU_SignalServer) error {
+	stream := newStream(signal)
+
 	peer := sfu.NewPeer(s.SFU)
 	for {
-		in, err := stream.Recv()
+		request, err := stream.Receive()
 
 		if err != nil {
 			_ = peer.Close()
@@ -44,144 +45,139 @@ func (s *SFUServer) Signal(stream proto.SFU_SignalServer) error {
 			return err
 		}
 
-		switch payload := in.Payload.(type) {
+		switch payload := request.Payload.(type) {
 		case *proto.SignalRequest_Join:
-			var req join
-			err := json.Unmarshal(payload.Join, &req)
-			if err != nil {
-				panic(err)
-			}
-
-			peer.OnOffer = func(offer *webrtc.SessionDescription) {
-				bytes, err := json.Marshal(offer)
-				if err != nil {
-					panic(err)
-				}
-				s.Lock()
-				err = stream.Send(&proto.SignalReply{
-					Payload: &proto.SignalReply_Description{
-						Description: bytes,
+			peer.OnOffer = func(desc *webrtc.SessionDescription) {
+				err = stream.Notify(&proto.SignalReply{
+					Payload: &proto.SignalReply_Offer{
+						Offer: proto.SessionDescriptionFromRTC(*desc),
 					},
 				})
-				s.Unlock()
 				if err != nil {
-					panic(err)
+					log.Err(err).Msg("Failed to notify peer about offer.")
+					return
 				}
 			}
 
-			peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
-				bytes, err := json.Marshal(trickle{
-					Candidate: *candidate,
-					Target:    target,
-				})
-				if err != nil {
-					panic(err)
-				}
-				s.Lock()
-				err = stream.Send(&proto.SignalReply{
+			peer.OnIceCandidate = func(init *webrtc.ICECandidateInit, target int) {
+				err = stream.Notify(&proto.SignalReply{
 					Payload: &proto.SignalReply_Trickle{
-						Trickle: bytes,
+						Trickle: &proto.Trickle{
+							Target:    int32(target),
+							Candidate: proto.CandidateInitFromRTC(*init),
+						},
 					},
 				})
-				s.Unlock()
 				if err != nil {
-					panic(err)
+					log.Err(err).Msg("Failed to notify peer about trickle.")
+					return
 				}
 			}
 
-			err = peer.Join(req.Sid)
+			err = peer.Join(payload.Join.SessionId)
 			if err != nil {
-				panic(err)
+				_ = stream.Error(request.Id, err.Error())
+				log.Err(err).Msg("Failed to join.")
+				return status.Errorf(codes.Internal, fmt.Sprintf("join error: %v", err))
 			}
 
-			answer, err := peer.Answer(req.Offer)
+			answer, err := peer.Answer(proto.SessionDescriptionToRTC(payload.Join.Description))
 			if err != nil {
+				_ = stream.Error(request.Id, err.Error())
+				log.Err(err).Msg("Failed to answer.")
 				return status.Errorf(codes.Internal, fmt.Sprintf("answer error: %v", err))
 			}
 
-			bytes, err := json.Marshal(answer)
-			if err != nil {
-				return status.Errorf(codes.Internal, fmt.Sprintf("sdp marshal error: %v", err))
-			}
-
-			s.Lock()
-			err = stream.Send(&proto.SignalReply{
-				Id: in.Id,
+			err = stream.Reply(request.Id, &proto.SignalReply{
 				Payload: &proto.SignalReply_Join{
-					Join: bytes,
+					Join: &proto.SessionDescription{
+						Type: int32(answer.Type),
+						Sdp:  answer.SDP,
+					},
 				},
 			})
-			s.Unlock()
 
 			if err != nil {
+				log.Err(err).Msg("Failed to reply to join.")
 				return status.Errorf(codes.Internal, "join error %s", err)
 			}
 
 		case *proto.SignalRequest_Offer:
-			var req negotiation
-			err := json.Unmarshal(payload.Offer, &req)
+			answer, err := peer.Answer(proto.SessionDescriptionToRTC(payload.Offer))
 			if err != nil {
-				panic(err)
+				_ = stream.Error(request.Id, err.Error())
+				log.Err(err).Msg("Failed to answer.")
+				return status.Errorf(codes.Internal, fmt.Sprintf("answer error: %v", err))
 			}
-			answer, err := peer.Answer(req.Desc)
-			if err != nil {
-				panic(err)
-			}
-			bytes, err := json.Marshal(answer)
-			if err != nil {
-				panic(err)
-			}
-			s.Lock()
-			err = stream.Send(&proto.SignalReply{
-				Id: in.Id,
+			err = stream.Reply(request.Id, &proto.SignalReply{
 				Payload: &proto.SignalReply_Offer{
-					Offer: bytes,
+					Offer: &proto.SessionDescription{
+						Type: int32(answer.Type),
+						Sdp:  answer.SDP,
+					},
 				},
 			})
-			s.Unlock()
 			if err != nil {
-				panic(err)
+				log.Err(err).Msg("Failed to reply to offer.")
+				return status.Errorf(codes.Internal, fmt.Sprintf("answer error: %v", err))
 			}
 
 		case *proto.SignalRequest_Answer:
-			var req negotiation
-			err := json.Unmarshal(payload.Answer, &req)
+			err = peer.SetRemoteDescription(proto.SessionDescriptionToRTC(payload.Answer))
 			if err != nil {
-				panic(err)
-			}
-			err = peer.SetRemoteDescription(req.Desc)
-			if err != nil {
-				panic(err)
+				_ = stream.Error(request.Id, err.Error())
+				log.Err(err).Msg("Failed to set remote description.")
+				return status.Errorf(codes.Internal, fmt.Sprintf("set description error: %v", err))
 			}
 
 		case *proto.SignalRequest_Trickle:
-			var req trickle
-			err := json.Unmarshal(payload.Trickle, &req)
+			err = peer.Trickle(
+				proto.CandidateInitToRTC(payload.Trickle.Candidate),
+				int(payload.Trickle.Target),
+			)
 			if err != nil {
-				panic(err)
-			}
-
-			err = peer.Trickle(req.Candidate, req.Target)
-			if err != nil {
-				panic(err)
+				_ = stream.Error(request.Id, err.Error())
+				log.Err(err).Msg("Failed to trickle.")
+				return status.Errorf(codes.Internal, fmt.Sprintf("trickle error: %v", err))
 			}
 		}
 	}
 }
 
-// join message sent when initializing a peer connection.
-type join struct {
-	Sid   string                    `json:"sid"`
-	Offer webrtc.SessionDescription `json:"offer"`
+type stream struct {
+	signal proto.SFU_SignalServer
+	lock   sync.Mutex
 }
 
-// negotiation message sent when renegotiating the peer connection.
-type negotiation struct {
-	Desc webrtc.SessionDescription `json:"desc"`
+func newStream(s proto.SFU_SignalServer) *stream {
+	return &stream{signal: s}
 }
 
-// trickle message sent when renegotiating the peer connection.
-type trickle struct {
-	Target    int                     `json:"target"`
-	Candidate webrtc.ICECandidateInit `json:"candidate"`
+func (s *stream) Receive() (*proto.SignalRequest, error) {
+	return s.signal.Recv()
+}
+
+func (s *stream) Notify(rep *proto.SignalReply) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	rep.Id = 0
+	return s.signal.Send(rep)
+}
+
+func (s *stream) Reply(id uint32, rep *proto.SignalReply) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	rep.Id = id
+	return s.signal.Send(rep)
+}
+
+func (s *stream) Error(id uint32, msg string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.signal.Send(&proto.SignalReply{
+		Id: id,
+		Payload: &proto.SignalReply_Error{
+			Error: msg,
+		},
+	})
 }

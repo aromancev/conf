@@ -5,23 +5,46 @@ service SFU {
 }
 
 message SignalRequest {
-    string id = 1;
+    message JoinSession {
+        string session_id = 1;
+        SessionDescription description = 2;
+    }
+
+    uint32 id = 1;
     oneof payload {
-        bytes join = 2;
-        bytes offer = 3;
-        bytes answer = 4;
-        bytes trickle = 5;
+        JoinSession join = 2;
+        SessionDescription offer = 3;
+        SessionDescription answer = 4;
+        Trickle trickle = 5;
     }
 }
 
 message SignalReply {
-    string id = 1;
+    uint32 id = 1;
     oneof payload {
-        bytes offer = 2;
-        bytes trickle = 3;
-        bytes join = 4;
-        bytes answer = 5;
-        bytes description = 6;
-        string error = 7;
+        SessionDescription join = 2;
+        SessionDescription offer = 3;
+        Trickle trickle = 4;
+        string error = 5;
     }
+}
+
+message SessionDescription {
+    int32 type = 1;
+    string sdp = 2;
+}
+
+message Trickle {
+    int32 target = 1;
+    CandidateInit candidate = 2;
+}
+
+message CandidateInit {
+    string candidate = 1;
+    bool sdpm_id_set = 2;
+    string sdpm_id = 3;
+    bool sdpm_line_index_set = 4;
+    int32 sdpm_line_index = 5;
+    bool username_fragment_set = 6;
+    string username_fragment = 7;
 }

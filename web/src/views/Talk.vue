@@ -24,7 +24,7 @@
 import { defineComponent } from "vue"
 import Stream from "@/components/Stream.vue"
 import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
-import { IonSFUJSONRPCSignal } from "ion-sdk-js/lib/signal/json-rpc-impl"
+import { Signal } from "@/rtc"
 
 export default defineComponent({
   name: "Talk",
@@ -43,7 +43,7 @@ export default defineComponent({
     if (process.env.NODE_ENV == "development") {
       protocol = "ws"
     }
-    const signal = new IonSFUJSONRPCSignal(
+    const signal = new Signal(
       `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
     )
     const client = new Client(signal)

@@ -25,7 +25,6 @@ type setRemoteMedia struct {
 
 func SubscriberAPI(next sfu.MessageProcessor) sfu.MessageProcessor {
 	return sfu.ProcessFunc(func(ctx context.Context, args sfu.ProcessArgs) {
-		log.Info().Msg("SubscriberAPI")
 		srm := &setRemoteMedia{}
 		if err := json.Unmarshal(args.Message.Data, srm); err != nil {
 			return
