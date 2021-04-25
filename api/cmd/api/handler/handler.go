@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 	"time"
 
@@ -41,6 +42,7 @@ type Handler struct {
 	router      http.Handler
 	confaCRUD   *confa.CRUD
 	talkCRUD    *talk.CRUD
+	clapCRUD    *clap.CRUD
 	sessionCRUD *session.CRUD
 	identCRUD   *ident.CRUD
 	sender      *email.Sender
@@ -49,12 +51,13 @@ type Handler struct {
 	verify      *auth.Verifier
 }
 
-func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
+func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRUD *clap.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, sender *email.Sender, producer Producer, sign *auth.Signer, verify *auth.Verifier) *Handler {
 	r := httprouter.New()
 	h := &Handler{
 		baseURL:     baseURL,
 		confaCRUD:   confaCRUD,
 		talkCRUD:    talkCRUD,
+		clapCRUD:    clapCRUD,
 		sessionCRUD: sessionCRUD,
 		identCRUD:   identCRUD,
 		sender:      sender,
@@ -77,6 +80,10 @@ func New(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD
 
 	r.POST("/confa/v1/confas/:confa_id/talks", h.createTalk)
 	r.GET("/confa/v1/talks/:talk_id", h.talk)
+
+	r.POST("/confa/v1/claps", h.createClap)
+	r.GET("/confa/v1/talks/:talk_id/claps", h.clapByTalk)
+	r.GET("/confa/v1/confas/:confa_id/claps", h.clapByConfa)
 
 	r.POST("/iam/v1/login", h.login)
 

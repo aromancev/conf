@@ -8,6 +8,7 @@ CREATE TABLE confas (
 CREATE TABLE talks (
     id UUID PRIMARY KEY,
     owner UUID NOT NULL,
+    speaker UUID NOT NULL,
     confa UUID NOT NULL REFERENCES confas (id) ON DELETE CASCADE,
     handle VARCHAR(64) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,

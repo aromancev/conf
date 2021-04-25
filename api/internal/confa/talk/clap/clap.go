@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrDuplicatedEntry  = errors.New("duplicated entry")
+	ErrValidation       = errors.New("invalid clap")
 )
 
 type Clap struct {
@@ -18,7 +19,6 @@ type Clap struct {
 	Talk      uuid.UUID `json:"talk"`
 	Claps  	  int8 `json:"claps"`
 }
-
 
 func (c Clap) Validate() error {
 	if c.ID == uuid.Nil {
@@ -40,4 +40,11 @@ func (c Clap) Validate() error {
 		return errors.New("clamps cannot be more than 50")
 	}
 	return nil
+}
+
+
+type Lookup struct {
+	Confa uuid.UUID
+	Speaker uuid.UUID
+	Talk uuid.UUID
 }

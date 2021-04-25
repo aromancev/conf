@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 
 	"github.com/aromancev/confa/internal/user/ident"
@@ -140,6 +141,76 @@ func (h *Handler) talk(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	}
 
 	_ = api.OK(tlk).Write(ctx, w)
+}
+
+func (h *Handler) createClap(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	userID, err := auth.Authenticate(r)
+	if err != nil {
+		_ = api.Unauthorised().Write(ctx, w)
+		return
+	}
+
+	var request clap.Clap
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		_ = api.BadRequest(api.CodeMalformedRequest, err.Error()).Write(ctx, w)
+		return
+	}
+	err = h.clapCRUD.CreateOrUpdate(ctx, userID, request)
+	switch {
+	case errors.Is(err, clap.ErrValidation):
+		_ = api.BadRequest(api.CodeInvalidRequest, err.Error()).Write(ctx, w)
+		return
+	case errors.Is(err, clap.ErrDuplicatedEntry):
+		_ = api.BadRequest(api.CodeDuplicatedEntry, err.Error()).Write(ctx, w)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to create clap")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.Created(nil).Write(ctx, w)
+}
+
+func (h *Handler) clapByConfa(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+	confaID, err := uuid.Parse(ps.ByName("confa_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+	var lookup clap.Lookup
+	lookup.Confa = confaID
+	claps, err := h.clapCRUD.Aggregate(ctx, lookup)
+	switch {
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch clap")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.OK(claps).Write(ctx, w)
+}
+func (h *Handler) clapByTalk(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+	talkID, err := uuid.Parse(ps.ByName("talk_id"))
+	if err != nil {
+		_ = api.NotFound(err.Error()).Write(ctx, w)
+		return
+	}
+	var lookup clap.Lookup
+	lookup.Talk = talkID
+	claps, err := h.clapCRUD.Aggregate(ctx, lookup)
+	switch {
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch clap")
+		_ = api.InternalError().Write(ctx, w)
+		return
+	}
+
+	_ = api.OK(claps).Write(ctx, w)
 }
 
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
