@@ -37,7 +37,7 @@ func (c Clap) Validate() error {
 		return errors.New("talk should not be empty")
 	}
 	if c.Claps > 50 {
-		return errors.New("clamps cannot be more than 50")
+		return errors.New("claps cannot be more than 50")
 	}
 	return nil
 }

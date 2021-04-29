@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -283,6 +284,93 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 		}
 
 		_ = api.OK(w, tlk)
+	}
+}
+
+func createClap(verifier *auth.Verifier, claps *clap.CRUD, talks *talk.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+
+		access, err := verifier.AccessToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		var request clap.Clap
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
+			return
+		}
+		if request.Confa == uuid.Nil {
+			tlk, err := talks.Fetch(ctx, request.Talk)
+			switch {
+			case errors.Is(err, talk.ErrNotFound):
+				_ = api.NotFound(w, err.Error())
+				return
+			case err != nil:
+				log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
+				_ = api.InternalError(w)
+				return
+			}
+			request.Confa = tlk.Confa
+		}
+		err = claps.CreateOrUpdate(ctx, access.UserID, request)
+		switch {
+		case errors.Is(err, clap.ErrValidation):
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to create clap")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.Created(w,nil)
+	}
+}
+
+func getClapByConfa(claps *clap.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		confaID, err := uuid.Parse(ps.ByName("confa_id"))
+		if err != nil {
+			_ = api.NotFound(w, err.Error())
+			return
+		}
+		var lookup clap.Lookup
+		lookup.Confa = confaID
+		clapsCount, err := claps.Aggregate(ctx, lookup)
+		switch {
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.OK(w, clapsCount)
+	}
+}
+
+func getClapByTalk(claps *clap.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		talkID, err := uuid.Parse(ps.ByName("talk_id"))
+		if err != nil {
+			_ = api.NotFound(w, err.Error())
+			return
+		}
+		var lookup clap.Lookup
+		lookup.Talk = talkID
+		clapsCount, err := claps.Aggregate(ctx, lookup)
+		switch {
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.OK(w, clapsCount)
 	}
 }
 

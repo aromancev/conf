@@ -32,6 +32,7 @@ func TestCRUD(t *testing.T) {
 		}
 		requestTalk := talk.Talk{
 			Handle: "test",
+			Speaker: userID,
 		}
 
 
@@ -71,6 +72,7 @@ func TestCRUD(t *testing.T) {
 		}
 		requestTalk := talk.Talk{
 			Handle: "test",
+			Speaker: userID,
 		}
 
 

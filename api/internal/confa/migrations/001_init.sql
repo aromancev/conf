@@ -27,11 +27,6 @@ CREATE TABLE claps (
 
 ---- create above / drop below ----
 
-<<<<<<< HEAD
 DROP TABLE IF EXISTS talks;
 DROP TABLE IF EXISTS confas;
-=======
-DROP TABLE claps;
-DROP TABLE talks;
-DROP TABLE confas;
->>>>>>> 59617cdbd600be21597da200f9572f62deb2b7d7
+DROP TABLE IF EXISTS claps;
