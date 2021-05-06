@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
+	grpcpool "github.com/processout/grpc-go-pool"
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/auth"
@@ -19,6 +19,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/rtc/wsock"
 	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
 )
@@ -41,7 +42,7 @@ type HTTP struct {
 	router http.Handler
 }
 
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader websocket.Upgrader, sfuAddress string) *HTTP {
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfu *grpcpool.Pool) *HTTP {
 	r := httprouter.New()
 
 	r.GET("/iam/health", ok)
@@ -78,7 +79,7 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, session
 
 	r.GET(
 		"/rtc/v1/ws",
-		rtc(upgrader, sfuAddress),
+		rtc(upgrader, sfu),
 	)
 	return &HTTP{
 		router: r,

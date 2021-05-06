@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
-	"github.com/gorilla/websocket"
-	"github.com/sourcegraph/jsonrpc2"
-	rpcws "github.com/sourcegraph/jsonrpc2/websocket"
+	"github.com/pion/webrtc/v3"
+	grpcpool "github.com/processout/grpc-go-pool"
 
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/user/ident"
@@ -25,6 +23,8 @@ import (
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
+	"github.com/aromancev/confa/internal/rtc/wsock"
+	"github.com/aromancev/confa/internal/sfu"
 )
 
 type accessToken struct {
@@ -286,34 +286,85 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func rtc(upgrader websocket.Upgrader, sfuAddress string) httprouter.Handle {
+func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		ctx := r.Context()
 
-		c, err := upgrader.Upgrade(w, r, nil)
+		conn, err := upgrader.NewConn(w, r, nil)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to upgrade connection.")
 			return
 		}
-		defer c.Close()
+		defer conn.Close()
 
-		signal, err := NewSignal(ctx, sfuAddress)
+		peer, err := sfu.NewPeer(
+			ctx,
+			pool,
+			sfu.Config{
+				OnOffer: func(offer webrtc.SessionDescription) {
+					err := conn.NotifyOffer(offer)
+					if err != nil {
+						log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
+						return
+					}
+				},
+				OnTrickle: func(target int32, candidate webrtc.ICECandidateInit) {
+					err := conn.NotifyTrickle(target, candidate)
+					if err != nil {
+						log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
+						return
+					}
+				},
+			},
+		)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to start new signal.")
+			log.Ctx(ctx).Err(err).Msg("Failed to create new SFU peer.")
 			return
 		}
-		defer signal.Close()
+		defer peer.Close()
 
-		conn := jsonrpc2.NewConn(ctx, rpcws.NewObjectStream(c), signal)
-		go func() {
-			if err := signal.Serve(ctx, conn); err != nil {
-				if errors.Is(err, context.Canceled) {
-					log.Ctx(ctx).Err(err).Msg("Failed to serve signal.")
+		for {
+			request, err := conn.Receive()
+			if err != nil {
+				if !errors.Is(err, wsock.ErrClosed) {
+					log.Ctx(ctx).Err(err).Msg("Failed to receive message.")
+				}
+				return
+			}
+
+			switch req := request.(type) {
+			case wsock.Join:
+				answer, err := peer.Join(ctx, req.Sid, req.Offer)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed to join.")
+					_ = req.Error(err.Error())
+					return
+				}
+				_ = req.Reply(answer)
+
+			case wsock.Offer:
+				answer, err := peer.Offer(ctx, req.Offer)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed to receive offer.")
+					_ = req.Error(err.Error())
+					return
+				}
+				_ = req.Reply(answer)
+
+			case wsock.Answer:
+				err = peer.Answer(ctx, req.Answer)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed to receive answer.")
+					_ = req.Error(err.Error())
+				}
+
+			case wsock.Trickle:
+				err = peer.Trickle(ctx, req.Target, req.Candidate)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed to receive trickle.")
+					_ = req.Error(err.Error())
 				}
 			}
-		}()
-
-		<-conn.DisconnectNotify()
-		log.Ctx(ctx).Info().Msg("RTC client disconnected.")
+		}
 	}
 }
