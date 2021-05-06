@@ -26,6 +26,7 @@ require (
 	github.com/pion/ion-sfu v1.9.0
 	github.com/pion/webrtc/v3 v3.0.4
 	github.com/prep/beanstalk v1.4.1
+	github.com/floostack/transcoder v1.1.1
 	github.com/processout/grpc-go-pool v1.2.1 // indirect
 	github.com/rs/zerolog v1.20.0
 	github.com/sirupsen/logrus v1.8.0 // indirect

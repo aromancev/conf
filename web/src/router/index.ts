@@ -24,6 +24,12 @@ const routes: Array<RouteRecordRaw> = [
     name: "Talk",
     component: () => import(/* webpackChunkName: "talk" */ "../views/Talk.vue"),
   },
+  {
+    path: "/stream",
+    name: "Stream",
+    component: () =>
+      import(/* webpackChunkName: "stream" */ "../views/Stream.vue"),
+  },
 ]
 
 const router = createRouter({

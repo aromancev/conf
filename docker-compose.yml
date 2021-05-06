@@ -54,6 +54,7 @@ services:
       - RTC_SFU_ADDRESS=sfu:8080
     volumes:
       - ./api:/app
+      - ./.artifacts/media:/var/lib/media
 
   beanstalkd:
     build:

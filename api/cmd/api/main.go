@@ -85,6 +85,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
+	mediaHandler := http.FileServer(http.Dir("/var/lib/media"))
+
 	upgrader := wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer)
 
 	sfuFactory := grpcpool.Factory(func() (*grpc.ClientConn, error) {
@@ -127,7 +129,7 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify, upgrader, sfuPool)
+	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, trace.NewBeanstalkd(producer), sign, verify, upgrader, sfuPool, mediaHandler)
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{

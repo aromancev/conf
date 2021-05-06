@@ -368,3 +368,10 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 		}
 	}
 }
+
+func serveMedia(media http.Handler) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		r.URL.Path = ps.ByName("path")
+		media.ServeHTTP(w, r)
+	}
+}

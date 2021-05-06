@@ -42,7 +42,7 @@ type HTTP struct {
 	router http.Handler
 }
 
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfu *grpcpool.Pool) *HTTP {
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfu *grpcpool.Pool, media http.Handler) *HTTP {
 	r := httprouter.New()
 
 	r.GET("/iam/health", ok)
@@ -80,6 +80,11 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, session
 	r.GET(
 		"/rtc/v1/ws",
 		rtc(upgrader, sfu),
+	)
+
+	r.GET(
+		"/media/v1/:path",
+		serveMedia(media),
 	)
 	return &HTTP{
 		router: r,
