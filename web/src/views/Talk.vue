@@ -47,30 +47,38 @@ export default defineComponent({
       `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
     )
     const client = new Client(signal)
+
+    const uid = Math.random().toString()
+    console.log("uid", uid)
     signal.onopen = async () => {
-      client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
-        if (track.kind !== "video") {
-          return
-        }
-
-        stream.preferLayer("low")
-        this.remoteStreams[stream.id] = stream
-        stream.onremovetrack = () => {
-          delete this.remoteStreams[stream.id]
-        }
-      }
-
+      await client.join("test session", uid)
       const local = await LocalStream.getUserMedia({
         codec: "vp8",
         resolution: "vga",
+        simulcast: true,
         video: true,
         audio: false,
       })
-
-      await client.join("test session")
-      client.publish(local)
       this.localStream = local
+      client.publish(local)
+      console.log("stream", local.id)
+      for (const t of local.getTracks()) {
+        console.log("track", t.id)
+      }
     }
+
+    client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
+      if (track.kind !== "video") {
+        return
+      }
+
+      this.remoteStreams[stream.id] = stream
+      stream.onremovetrack = () => {
+        delete this.remoteStreams[stream.id]
+      }
+    }
+
+
   },
 })
 </script>

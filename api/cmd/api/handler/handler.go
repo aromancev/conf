@@ -79,7 +79,7 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, session
 
 	r.GET(
 		"/rtc/v1/ws",
-		rtc(upgrader, sfu),
+		serveRTC(upgrader, sfu),
 	)
 
 	r.GET(

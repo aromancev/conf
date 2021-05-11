@@ -1,4 +1,4 @@
-package handler
+package server
 
 import (
 	"fmt"
@@ -14,16 +14,16 @@ import (
 	proto "github.com/aromancev/confa/proto/sfu"
 )
 
-type SFUServer struct {
+type SFU struct {
 	proto.UnimplementedSFUServer
 	SFU *sfu.SFU
 }
 
-func NewServer(s *sfu.SFU) *SFUServer {
-	return &SFUServer{SFU: s}
+func NewSFU(s *sfu.SFU) *SFU {
+	return &SFU{SFU: s}
 }
 
-func (s *SFUServer) Signal(signal proto.SFU_SignalServer) error {
+func (s *SFU) Signal(signal proto.SFU_SignalServer) error {
 	stream := newStream(signal)
 
 	peer := sfu.NewPeer(s.SFU)
@@ -74,7 +74,7 @@ func (s *SFUServer) Signal(signal proto.SFU_SignalServer) error {
 				}
 			}
 
-			err = peer.Join(payload.Join.SessionId)
+			err = peer.Join(payload.Join.SessionId, payload.Join.UserId)
 			if err != nil {
 				_ = stream.Error(request.Id, err.Error())
 				log.Err(err).Msg("Failed to join.")

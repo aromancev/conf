@@ -99,7 +99,7 @@ func main() {
 		return conn, nil
 	})
 
-	sfuPool, err := grpcpool.New(sfuFactory, 1, config.RTC.SFUConnPool, time.Duration(config.RTC.SFUConnIdleSec)*time.Second)
+	sfuPool, err := grpcpool.New(sfuFactory, 0, config.RTC.SFUConnPool, time.Duration(config.RTC.SFUConnIdleSec)*time.Second)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create verifier")
 	}

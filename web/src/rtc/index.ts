@@ -16,6 +16,7 @@ interface Request {
 
 interface Join {
   sid: string
+  uid: string
   offer: RTCSessionDescriptionInit
 }
 
@@ -28,8 +29,8 @@ interface Response {
 export class Signal {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
-  onopen?: () => void
 
+  private _onopen?: () => void
   private socket: WebSocket
   private requestId: number
   private pendingRequests: Record<number, (resp: Response) => void>
@@ -40,8 +41,8 @@ export class Signal {
 
     this.socket = new WebSocket(url)
     this.socket.onopen = () => {
-      if (this.onopen) {
-        this.onopen()
+      if (this._onopen) {
+        this._onopen()
       }
     }
     this.socket.onmessage = msg => {
@@ -65,14 +66,23 @@ export class Signal {
     }
   }
 
+  set onopen(onopen: () => void) {
+    if (this.socket.readyState === WebSocket.OPEN) {
+      onopen()
+    }
+    this._onopen = onopen
+  }
+
   join(
     sid: string,
+    uid: string,
     offer: RTCSessionDescriptionInit,
   ): Promise<RTCSessionDescriptionInit> {
     const send = this.send({
       type: Type.Join,
       payload: {
         sid: sid,
+        uid: uid,
         offer: offer,
       },
     })

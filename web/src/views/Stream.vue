@@ -10,6 +10,7 @@
 <script lang="ts">
 import { defineComponent } from "vue"
 import { MediaPlayer } from "dashjs"
+// import "shaka-player"
 
 export default defineComponent({
   name: "Stream",
@@ -19,7 +20,9 @@ export default defineComponent({
     }
   },
   mounted() {
-    const url = "/api/media/v1/v9manifest.mpd"
+    const url = "/api/media/v1/test_mkv.mpd"
+    // const player = new shaka.Player(this.$refs.videoPlayer as HTMLMediaElement)
+    // player.load(url)
     const player = MediaPlayer().create()
     player.initialize(this.$refs.videoPlayer as HTMLElement, url, false)
   },

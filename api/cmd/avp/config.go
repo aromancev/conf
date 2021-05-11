@@ -12,10 +12,8 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	ICEPortMin uint16 `envconfig:"ICE_PORT_MIN"`
-	ICEPortMax uint16 `envconfig:"ICE_PORT_MAX"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
+	Address   string `envconfig:"ADDRESS"`
+	LogFormat string `envconfig:"LOG_FORMAT"`
 }
 
 func (c Config) WithEnv() Config {
@@ -28,20 +26,12 @@ func (c Config) WithEnv() Config {
 
 func (c Config) WithDefault() Config {
 	c.Address = ":8080"
-	c.ICEPortMin = 5000
-	c.ICEPortMax = 5200
 	return c
 }
 
 func (c Config) Validate() error {
 	if c.Address == "" {
 		return errors.New("address not set")
-	}
-	if c.ICEPortMin == 0 {
-		return errors.New("ice port min not set")
-	}
-	if c.ICEPortMax == 0 {
-		return errors.New("ice port max not set")
 	}
 
 	return nil

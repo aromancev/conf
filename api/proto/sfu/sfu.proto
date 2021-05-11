@@ -7,7 +7,8 @@ service SFU {
 message SignalRequest {
     message JoinSession {
         string session_id = 1;
-        SessionDescription description = 2;
+        string user_id = 2;
+        SessionDescription description = 3;
     }
 
     uint32 id = 1;
@@ -44,7 +45,7 @@ message CandidateInit {
     bool sdpm_id_set = 2;
     string sdpm_id = 3;
     bool sdpm_line_index_set = 4;
-    int32 sdpm_line_index = 5;
+    uint32 sdpm_line_index = 5;
     bool username_fragment_set = 6;
     string username_fragment = 7;
 }

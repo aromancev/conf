@@ -9,6 +9,7 @@ import (
 	grpcpool "github.com/processout/grpc-go-pool"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/rtc"
 	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
 
@@ -24,7 +25,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/rtc/wsock"
-	"github.com/aromancev/confa/internal/sfu"
+	"github.com/aromancev/confa/proto/sfu"
 )
 
 type accessToken struct {
@@ -286,7 +287,7 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
+func serveRTC(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		ctx := r.Context()
 
@@ -297,32 +298,29 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 		}
 		defer conn.Close()
 
-		peer, err := sfu.NewPeer(
-			ctx,
-			pool,
-			sfu.Config{
-				OnOffer: func(offer webrtc.SessionDescription) {
-					err := conn.NotifyOffer(offer)
-					if err != nil {
-						log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
-						return
-					}
-				},
-				OnTrickle: func(target int32, candidate webrtc.ICECandidateInit) {
-					err := conn.NotifyTrickle(target, candidate)
-					if err != nil {
-						log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
-						return
-					}
-				},
-			},
-		)
+		peer, err := sfu.NewPeer(ctx, pool)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to create new SFU peer.")
 			return
 		}
 		defer peer.Close()
 
+		peer.OnOffer(func(offer webrtc.SessionDescription) {
+			err := conn.NotifyOffer(offer)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
+				return
+			}
+		})
+		peer.OnTrickle(func(target int, candidate webrtc.ICECandidateInit) {
+			err := conn.NotifyTrickle(target, candidate)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
+				return
+			}
+		})
+
+		sess := rtc.NewSession(pool, peer)
 		for {
 			request, err := conn.Receive()
 			if err != nil {
@@ -334,7 +332,7 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 
 			switch req := request.(type) {
 			case wsock.Join:
-				answer, err := peer.Join(ctx, req.Sid, req.Offer)
+				answer, err := sess.Join(ctx, req.SID, req.UID, req.Offer)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Failed to join.")
 					_ = req.Error(err.Error())
@@ -343,8 +341,12 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 				_ = req.Reply(answer)
 
 			case wsock.Offer:
-				answer, err := peer.Offer(ctx, req.Offer)
-				if err != nil {
+				answer, err := sess.Offer(ctx, req.Offer)
+				switch {
+				case errors.Is(err, rtc.ErrValidation):
+					_ = req.Error(err.Error())
+					return
+				case err != nil:
 					log.Ctx(ctx).Err(err).Msg("Failed to receive offer.")
 					_ = req.Error(err.Error())
 					return

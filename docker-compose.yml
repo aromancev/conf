@@ -24,6 +24,7 @@ services:
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
+      - ./.artifacts/media:/var/lib/media
 
   api:
     build:

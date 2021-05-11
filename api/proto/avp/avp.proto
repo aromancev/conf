@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+enum Process {
+    SAVE = 0;
+}
+
+service AVP {
+    rpc Signal(Request) returns (Reply) {}
+}
+
+message Request {
+    string session_id = 1;
+    string track_id = 2;
+    Process process = 3;
+}
+
+message Reply {
+}

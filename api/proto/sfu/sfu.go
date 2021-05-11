@@ -16,7 +16,7 @@ func CandidateInitFromRTC(init webrtc.ICECandidateInit) *CandidateInit {
 	}
 	if init.SDPMLineIndex != nil {
 		candidate.SdpmLineIndexSet = true
-		candidate.SdpmLineIndex = int32(*init.SDPMLineIndex)
+		candidate.SdpmLineIndex = uint32(*init.SDPMLineIndex)
 	}
 	if init.UsernameFragment != nil {
 		candidate.UsernameFragmentSet = true
@@ -27,10 +27,7 @@ func CandidateInitFromRTC(init webrtc.ICECandidateInit) *CandidateInit {
 
 func CandidateInitToRTC(init *CandidateInit) webrtc.ICECandidateInit {
 	candidate := webrtc.ICECandidateInit{
-		Candidate:        init.Candidate,
-		SDPMid:           nil,
-		SDPMLineIndex:    nil,
-		UsernameFragment: nil,
+		Candidate: init.Candidate,
 	}
 	if init.SdpmIdSet {
 		candidate.SDPMid = &init.SdpmId

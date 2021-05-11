@@ -108,7 +108,7 @@ func (c *Conn) NotifyOffer(offer webrtc.SessionDescription) error {
 	})
 }
 
-func (c *Conn) NotifyTrickle(target int32, candidate webrtc.ICECandidateInit) error {
+func (c *Conn) NotifyTrickle(target int, candidate webrtc.ICECandidateInit) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -131,7 +131,8 @@ func (c *Conn) Close() error {
 type Join struct {
 	socketRequest
 
-	Sid   string                    `json:"sid"`
+	SID   string                    `json:"sid"`
+	UID   string                    `json:"uid"`
 	Offer webrtc.SessionDescription `json:"offer"`
 }
 
@@ -160,7 +161,7 @@ func (r Offer) Reply(answer webrtc.SessionDescription) error {
 type Trickle struct {
 	socketRequest
 
-	Target    int32                   `json:"target"`
+	Target    int                     `json:"target"`
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 
