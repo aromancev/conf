@@ -16,5 +16,6 @@ ssh $USER@$IP \
   POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
   POSTGRES_DATABASE="$POSTGRES_DATABASE" \
   BEANSTALKD_POOL="$BEANSTALKD_POOL" \
+  SFU_ADDRESS="$SFU_ADDRESS" \
   "docker-compose up --no-deps -d"
 ssh $USER@$IP "docker image prune -f"

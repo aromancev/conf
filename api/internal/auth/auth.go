@@ -31,7 +31,7 @@ func (c EmailClaims) Valid() error {
 	if err := c.StandardClaims.Valid(); err != nil {
 		return err
 	}
-	if err := email.ValidateEmail(c.Address); err != nil {
+	if err := email.Validate(c.Address); err != nil {
 		return err
 	}
 	return nil

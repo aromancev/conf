@@ -24,7 +24,6 @@ specifiers:
   regenerator-runtime: ^0.13.7
   sass: ^1.26.5
   sass-loader: ^8.0.2
-  shaka-player: ^3.1.0
   typescript: ~3.9.3
   vue: ^3.0.0
   vue-router: ^4.0.0-0
@@ -35,7 +34,6 @@ dependencies:
   core-js: 3.8.3
   dashjs: 3.2.2
   ion-sdk-js: 1.6.3
-  shaka-player: 3.1.0
   vue: 3.0.5
   vue-router: 4.0.3_vue@3.0.5
 
@@ -3704,10 +3702,6 @@ packages:
       minimalistic-assert: 1.0.1
       minimalistic-crypto-utils: 1.0.1
     dev: true
-
-  /eme-encryption-scheme-polyfill/2.0.3:
-    resolution: {integrity: sha512-44CNFMsqzHdKHrzWxlS7xZ8KUHn5XutBqpmCuWzNIynmAyFInHrrD3ozv/RvK9ZhgV6QY6Easx8EWAmxteNodg==}
-    dev: false
 
   /emoji-regex/7.0.3:
     resolution: {integrity: sha512-CwBLREIQ7LvYFB0WyRvwhq5N5qPhc6PMjD6bYggFlI5YyDgl+0vxq5VHbMOFqLg7hfWzmu8T5Z1QofhmTIhItA==}
@@ -7715,12 +7709,6 @@ packages:
       inherits: 2.0.4
       safe-buffer: 5.2.1
     dev: true
-
-  /shaka-player/3.1.0:
-    resolution: {integrity: sha512-Dd/+Fk3LgPeLMJSwhjduR+KyyGQU9jhgj8NeoGhmL6NyOFgpYFjOaFfQeq1UF1pXMCw3XB9EyEXns0KUNDNWTg==}
-    dependencies:
-      eme-encryption-scheme-polyfill: 2.0.3
-    dev: false
 
   /shallow-clone/3.0.1:
     resolution: {integrity: sha512-/6KqX+GVUdqPuPPd2LxDDxzX6CAbjJehAAOKlNpqqUpAqPM6HeL8f+o3a+JsyGjn2lv0WY8UsTgUJjU9Ok55NA==}

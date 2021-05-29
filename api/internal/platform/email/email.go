@@ -18,23 +18,23 @@ const (
 	sendTimeout = time.Minute
 )
 
+func Validate(email string) error {
+	if !emailPattern.MatchString(email) {
+		return errors.New("invalid email address")
+	}
+	return nil
+}
+
 type Email struct {
-	From      string `json:"from"`
-	ToAddress string `json:"toAddress"`
-	Subject   string `json:"subject"`
-	HTML      string `json:"html"`
+	FromName  string
+	ToAddress string
+	Subject   string
+	HTML      string
 }
 
 func (e Email) Validate() error {
 	if !emailPattern.MatchString(e.ToAddress) {
 		return errors.New("invalid ToAddress")
-	}
-	return nil
-}
-
-func ValidateEmail(email string) error {
-	if !emailPattern.MatchString(email) {
-		return errors.New("invalid email")
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func (e Email) write(w io.Writer, fromAddr string) error {
 		_, _ = fmt.Fprintf(w, "%s: %s\r\n", key, value)
 	}
 
-	from := mail.Address{Name: e.From, Address: fromAddr}
+	from := mail.Address{Name: e.FromName, Address: fromAddr}
 	to := mail.Address{Name: "", Address: e.ToAddress}
 
 	b := &bytes.Buffer{}

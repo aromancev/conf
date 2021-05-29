@@ -1,7 +1,8 @@
 <template>
-  <div class="container">
-    <div class="row">
-      <h1>Stream</h1>
+  <div class="d-flex justify-content-center">
+    <div class="content">
+      <input class="input px-3 py-2" v-model="mediaId">
+      <button class="btn px-3 py-1" @click="go">go</button>
       <video ref="videoPlayer" controls></video>
     </div>
   </div>
@@ -10,21 +11,21 @@
 <script lang="ts">
 import { defineComponent } from "vue"
 import { MediaPlayer } from "dashjs"
-// import "shaka-player"
 
 export default defineComponent({
   name: "Stream",
   components: {},
   data() {
     return {
+      mediaId: "",
     }
   },
-  mounted() {
-    const url = "/api/media/v1/test_mkv.mpd"
-    // const player = new shaka.Player(this.$refs.videoPlayer as HTMLMediaElement)
-    // player.load(url)
-    const player = MediaPlayer().create()
-    player.initialize(this.$refs.videoPlayer as HTMLElement, url, false)
+  methods: {
+    go() {
+      const url = `/api/media/v1/${this.mediaId}/manifest.mpd`
+      const player = MediaPlayer().create()
+      player.initialize(this.$refs.videoPlayer as HTMLElement, url, false)
+    },
   },
 })
 </script>

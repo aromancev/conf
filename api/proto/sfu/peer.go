@@ -171,7 +171,6 @@ func (p *Peer) Close() error {
 func (p *Peer) serve() {
 	defer func() {
 		_ = p.Close()
-		log.Info().Msg("Peer disconnected.")
 	}()
 
 	handle := func(reply *SignalReply) {

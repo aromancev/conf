@@ -4,13 +4,15 @@ WORKDIR /app
 COPY . /app
 
 RUN go build \
-  -o bin/avp \
-  ./cmd/avp
+  -o bin/media \
+  ./cmd/media
 
 FROM alpine:latest
 
 WORKDIR /app
 
+RUN apk add --no-cache mkvtoolnix ffmpeg
+
 COPY --from=builder /app/bin/* /app/
 
-CMD ["/app/avp"]
+CMD ["/app/media"]

@@ -23,15 +23,13 @@ require (
 	github.com/mitchellh/copystructure v1.1.1 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/ory/dockertest/v3 v3.6.3
-	github.com/pion/ion-avp v1.8.3
-	github.com/pion/ion-log v1.0.1 // indirect
-	github.com/pion/ion-sfu v1.10.3
+	github.com/pion/ion-avp v1.8.4
+	github.com/pion/ion-sfu v1.10.5
 	github.com/pion/sdp/v3 v3.0.4
 	github.com/pion/webrtc/v3 v3.0.29
 	github.com/prep/beanstalk v1.4.1
 	github.com/processout/grpc-go-pool v1.2.1
 	github.com/rs/zerolog v1.20.0
-	github.com/sirupsen/logrus v1.8.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.23.0 // indirect
 	google.golang.org/grpc v1.37.0

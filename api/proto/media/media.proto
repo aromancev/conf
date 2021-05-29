@@ -15,4 +15,5 @@ message Request {
 }
 
 message Reply {
+    bytes uid = 1;
 }

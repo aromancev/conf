@@ -8,6 +8,7 @@
         v-bind:mirrored="true"
         v-bind:muted="true"
       />
+      <input class="input px-3 py-2" disabled v-model="mediaId">
 
       <h3>Remote Video</h3>
       <Stream
@@ -35,6 +36,7 @@ export default defineComponent({
     return {
       localStream: null as MediaStream | null,
       remoteStreams: {} as { [key: string]: MediaStream },
+      mediaId: "",
     }
   },
 
@@ -61,10 +63,7 @@ export default defineComponent({
       })
       this.localStream = local
       client.publish(local)
-      console.log("stream", local.id)
-      for (const t of local.getTracks()) {
-        console.log("track", t.id)
-      }
+      this.mediaId = local.getTracks()[0].id
     }
 
     client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {

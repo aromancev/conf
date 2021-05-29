@@ -7,16 +7,6 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt/
 
-  sfu:
-    image: confa/sfu
-    restart: always
-    network_mode: host
-    environment:
-      - ADDRESS=:8001
-      - ICE_PORT_MIN=10000
-      - ICE_PORT_MAX=10999
-      - LOG_FORMAT=console
-
   api:
     image: confa/api
     restart: always
@@ -25,7 +15,7 @@ services:
       - postgres
     network_mode: host
     environment:
-      - ADDRESS=:8002
+      - ADDRESS=:8001
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - SECRET_KEY=$SECRET_KEY
@@ -41,7 +31,32 @@ services:
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
       - POSTGRES_DATABASE=$POSTGRES_DATABASE
       - BEANSTALKD_POOL=$BEANSTALKD_POOL
-      - RTC_SFU_ADDRESS=localhost:8001
+      - RTC_SFU_ADDRESS=localhost:8083
+      - RTC_MEDIA_ADDRESS=localhost:8082
+
+  media:
+    image: confa/media
+    restart: always
+    environment:
+      - HTTP_ADDRESS=:8002
+      - RPC_ADDRESS=:8082
+      - SFU_ADDRESS=:8083
+      - MEDIA_DIR=/var/lib/media
+      - BEANSTALKD_POOL=$BEANSTALKD_POOL
+      - LOG_FORMAT=console
+    volumes:
+      - ./api:/app
+      - ./.artifacts/media:/var/lib/media
+
+  sfu:
+    image: confa/sfu
+    restart: always
+    network_mode: host
+    environment:
+      - ADDRESS=:8083
+      - ICE_PORT_MIN=10000
+      - ICE_PORT_MAX=10999
+      - LOG_FORMAT=console
 
   beanstalkd:
     image: confa/beanstalkd

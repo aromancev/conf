@@ -9,9 +9,11 @@ import (
 	grpcpool "github.com/processout/grpc-go-pool"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/rtc"
 	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
+	"github.com/aromancev/confa/proto/queue"
 
 	"github.com/aromancev/confa/internal/confa/talk"
 
@@ -33,12 +35,16 @@ type accessToken struct {
 	ExpiresIn uint64 `json:"expiresIn"`
 }
 
+func ok(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	_, _ = w.Write([]byte("OK"))
+}
+
 type loginReq struct {
 	Email string `json:"email"`
 }
 
 func (r loginReq) Validate() error {
-	if err := email.ValidateEmail(r.Email); err != nil {
+	if err := email.Validate(r.Email); err != nil {
 		return err
 	}
 	return nil
@@ -72,14 +78,22 @@ func login(baseURL string, signer *auth.Signer, producer Producer) httprouter.Ha
 			_ = api.InternalError(w)
 			return
 		}
-		body, err := json.Marshal([]email.Email{msg})
+
+		body, err := queue.Marshal(&queue.EmailJob{
+			Emails: []*queue.Email{{
+				FromName:  msg.FromName,
+				ToAddress: msg.ToAddress,
+				Subject:   msg.Subject,
+				Html:      msg.HTML,
+			}},
+		}, trace.ID(ctx))
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to marshal email")
 			_ = api.InternalError(w)
 			return
 		}
 
-		id, err := producer.Put(ctx, TubeEmail, body, beanstalk.PutParams{})
+		id, err := producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to put email job")
 			_ = api.InternalError(w)
@@ -152,10 +166,6 @@ func createToken(signer *auth.Signer, sessions *session.CRUD) httprouter.Handle 
 			ExpiresIn: uint64(expiresIn.Seconds()),
 		})
 	}
-}
-
-func ok(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	_, _ = w.Write([]byte("OK"))
 }
 
 func createConfa(verifier *auth.Verifier, confas *confa.CRUD) httprouter.Handle {
@@ -287,7 +297,7 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func serveRTC(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
+func serveRTC(upgrader *wsock.Upgrader, sfuPool, mediaPool *grpcpool.Pool) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		ctx := r.Context()
 
@@ -298,7 +308,7 @@ func serveRTC(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 		}
 		defer conn.Close()
 
-		peer, err := sfu.NewPeer(ctx, pool)
+		peer, err := sfu.NewPeer(ctx, sfuPool)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to create new SFU peer.")
 			return
@@ -320,7 +330,7 @@ func serveRTC(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 			}
 		})
 
-		sess := rtc.NewSession(pool, peer)
+		sess := rtc.NewSession(mediaPool, peer)
 		for {
 			request, err := conn.Receive()
 			if err != nil {
@@ -368,12 +378,5 @@ func serveRTC(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 				}
 			}
 		}
-	}
-}
-
-func serveMedia(media http.Handler) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		r.URL.Path = ps.ByName("path")
-		media.ServeHTTP(w, r)
 	}
 }

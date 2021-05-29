@@ -10,7 +10,7 @@ import (
 	"github.com/pion/webrtc/v3"
 	grpcpool "github.com/processout/grpc-go-pool"
 
-	"github.com/aromancev/confa/proto/avp"
+	"github.com/aromancev/confa/proto/media"
 )
 
 var (
@@ -23,16 +23,16 @@ type SFU interface {
 }
 
 type Session struct {
-	sfu  SFU
-	pool *grpcpool.Pool
+	sfu       SFU
+	mediaPool *grpcpool.Pool
 
 	sessionID string
 }
 
-func NewSession(pool *grpcpool.Pool, sfu SFU) *Session {
+func NewSession(mediaPool *grpcpool.Pool, sfu SFU) *Session {
 	return &Session{
-		pool: pool,
-		sfu:  sfu,
+		mediaPool: mediaPool,
+		sfu:       sfu,
 	}
 }
 
@@ -51,17 +51,17 @@ func (s *Session) Offer(ctx context.Context, desc webrtc.SessionDescription) (we
 		return webrtc.SessionDescription{}, err
 	}
 
-	conn, err := s.pool.Get(ctx)
+	conn, err := s.mediaPool.Get(ctx)
 	if err != nil {
 		return webrtc.SessionDescription{}, err
 	}
 	defer conn.Close()
 
-	client := avp.NewAVPClient(conn)
-	_, err = client.Signal(ctx, &avp.Request{
+	client := media.NewAVPClient(conn)
+	_, err = client.Signal(ctx, &media.Request{
 		SessionId: s.sessionID,
 		TrackId:   off.videos[0].id,
-		Process:   avp.Process_SAVE,
+		Process:   media.Process_SAVE,
 	})
 	if err != nil {
 		return webrtc.SessionDescription{}, err
