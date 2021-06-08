@@ -94,5 +94,4 @@ func TestCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, claps, 2)
 	})
-
 }

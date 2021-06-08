@@ -71,7 +71,6 @@ func TestSQL(t *testing.T) {
 			}
 			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
-
 		})
 		t.Run("Create and Update", func(t *testing.T) {
 			t.Parallel()
@@ -118,7 +117,6 @@ func TestSQL(t *testing.T) {
 			require.NoError(t, err)
 			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClapUpdate)
 			require.NoError(t, err)
-
 		})
 		t.Run("Create and Aggregate", func(t *testing.T) {
 			t.Parallel()
@@ -213,7 +211,6 @@ func TestSQL(t *testing.T) {
 			claps, err = deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
 			require.Equal(t, 30, claps)
-
 		})
 		t.Run("Aggregate by Confa", func(t *testing.T) {
 			t.Parallel()
