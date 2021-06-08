@@ -326,7 +326,7 @@ func createClap(verifier *auth.Verifier, claps *clap.CRUD, talks *talk.CRUD) htt
 			return
 		}
 
-		_ = api.Created(w,nil)
+		_ = api.Created(w, nil)
 	}
 }
 
@@ -341,8 +341,8 @@ func getClapByConfa(claps *clap.CRUD) httprouter.Handle {
 		var lookup clap.Lookup
 		lookup.Confa = confaID
 		clapsCount, err := claps.Aggregate(ctx, lookup)
-		switch {
-		case err != nil:
+
+		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
 			_ = api.InternalError(w)
 			return
@@ -363,8 +363,8 @@ func getClapByTalk(claps *clap.CRUD) httprouter.Handle {
 		var lookup clap.Lookup
 		lookup.Talk = talkID
 		clapsCount, err := claps.Aggregate(ctx, lookup)
-		switch {
-		case err != nil:
+
+		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
 			_ = api.InternalError(w)
 			return

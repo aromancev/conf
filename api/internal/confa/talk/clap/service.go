@@ -13,10 +13,9 @@ type Repo interface {
 	Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup) (int, error)
 }
 
-
 type CRUD struct {
-	conn      psql.Conn
-	repo      Repo
+	conn psql.Conn
+	repo Repo
 }
 
 func NewCRUD(conn psql.Conn, repo Repo) *CRUD {

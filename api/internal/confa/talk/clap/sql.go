@@ -12,7 +12,6 @@ import (
 	"github.com/aromancev/confa/internal/platform/psql"
 )
 
-
 type SQL struct {
 }
 
@@ -49,7 +48,6 @@ func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Cl
 	}
 	return nil
 }
-
 
 func (s *SQL) Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup) (int, error) {
 	q := sq.Select("claps").From("claps")

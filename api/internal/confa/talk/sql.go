@@ -46,7 +46,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) 
 
 	q := sq.Insert("talks").Columns("id", "owner", "speaker", "confa", "handle", "created_at")
 	for _, r := range requests {
-		q = q.Values(r.ID, r.Owner,  r.Speaker, r.Confa, r.Handle, r.CreatedAt)
+		q = q.Values(r.ID, r.Owner, r.Speaker, r.Confa, r.Handle, r.CreatedAt)
 	}
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()

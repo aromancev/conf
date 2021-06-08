@@ -31,10 +31,9 @@ func TestCRUD(t *testing.T) {
 			Handle: "test",
 		}
 		requestTalk := talk.Talk{
-			Handle: "test",
+			Handle:  "test",
 			Speaker: userID,
 		}
-
 
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
 		require.NoError(t, err)
@@ -44,7 +43,7 @@ func TestCRUD(t *testing.T) {
 
 		requestClap := Clap{
 			Confa: createdConfa.ID,
-			Talk: createdTalk.ID,
+			Talk:  createdTalk.ID,
 			Claps: 2,
 		}
 		err = clapCRUD.CreateOrUpdate(ctx, userID, requestClap)
@@ -52,7 +51,7 @@ func TestCRUD(t *testing.T) {
 		lookup := Lookup{
 			Talk: createdTalk.ID,
 		}
-		claps, err:= clapCRUD.Aggregate(ctx, lookup)
+		claps, err := clapCRUD.Aggregate(ctx, lookup)
 		require.NoError(t, err)
 		require.Equal(t, claps, 2)
 	})
@@ -71,10 +70,9 @@ func TestCRUD(t *testing.T) {
 			Handle: "test",
 		}
 		requestTalk := talk.Talk{
-			Handle: "test",
+			Handle:  "test",
 			Speaker: userID,
 		}
-
 
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
 		require.NoError(t, err)
@@ -84,7 +82,7 @@ func TestCRUD(t *testing.T) {
 
 		requestClap := Clap{
 			Confa: createdConfa.ID,
-			Talk: createdTalk.ID,
+			Talk:  createdTalk.ID,
 			Claps: 2,
 		}
 		err = clapCRUD.CreateOrUpdate(ctx, userID, requestClap)
@@ -92,7 +90,7 @@ func TestCRUD(t *testing.T) {
 		lookup := Lookup{
 			Confa: createdConfa.ID,
 		}
-		claps, err:= clapCRUD.Aggregate(ctx, lookup)
+		claps, err := clapCRUD.Aggregate(ctx, lookup)
 		require.NoError(t, err)
 		require.Equal(t, claps, 2)
 	})

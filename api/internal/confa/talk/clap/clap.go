@@ -5,19 +5,18 @@ import (
 	"github.com/google/uuid"
 )
 
-
 var (
-	ErrDuplicatedEntry  = errors.New("duplicated entry")
-	ErrValidation       = errors.New("invalid clap")
+	ErrDuplicatedEntry = errors.New("duplicated entry")
+	ErrValidation      = errors.New("invalid clap")
 )
 
 type Clap struct {
-	ID        uuid.UUID `json:"id"`
-	Confa     uuid.UUID `json:"confa"`
-	Owner     uuid.UUID `json:"owner"`
-	Speaker   uuid.UUID `json:"speaker"`
-	Talk      uuid.UUID `json:"talk"`
-	Claps  	  int8 `json:"claps"`
+	ID      uuid.UUID `json:"id"`
+	Confa   uuid.UUID `json:"confa"`
+	Owner   uuid.UUID `json:"owner"`
+	Speaker uuid.UUID `json:"speaker"`
+	Talk    uuid.UUID `json:"talk"`
+	Claps   int8      `json:"claps"`
 }
 
 func (c Clap) Validate() error {
@@ -42,9 +41,8 @@ func (c Clap) Validate() error {
 	return nil
 }
 
-
 type Lookup struct {
-	Confa uuid.UUID
+	Confa   uuid.UUID
 	Speaker uuid.UUID
-	Talk uuid.UUID
+	Talk    uuid.UUID
 }
