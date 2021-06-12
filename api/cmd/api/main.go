@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/rtc/wsock"
@@ -21,7 +19,6 @@ import (
 	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/prep/beanstalk"
-	"github.com/processout/grpc-go-pool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -87,33 +84,6 @@ func main() {
 
 	upgrader := wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer)
 
-	sfuFactory := grpcpool.Factory(func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial(config.RTC.SFUAddress, grpc.WithInsecure(), grpc.WithBlock())
-		if err != nil {
-			log.Err(err).Msg("Failed to start gRPC connection.")
-			return nil, err
-		}
-		log.Info().Msg("SFU GRPC connection opened.")
-		return conn, nil
-	})
-	sfuPool, err := grpcpool.New(sfuFactory, 0, config.RTC.SFUConnPool, time.Duration(config.RTC.SFUConnIdleSec)*time.Second)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create verifier")
-	}
-	mediaFactory := grpcpool.Factory(func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial(config.RTC.MediaAddress, grpc.WithInsecure(), grpc.WithBlock())
-		if err != nil {
-			log.Err(err).Msg("Failed to start gRPC connection.")
-			return nil, err
-		}
-		log.Info().Msg("SFU GRPC connection opened.")
-		return conn, nil
-	})
-	mediaPool, err := grpcpool.New(mediaFactory, 0, config.RTC.MediaConnPool, time.Duration(config.RTC.MediaConnIdleSec)*time.Second)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create verifier")
-	}
-
 	sign, err := auth.NewSigner(config.SecretKey)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create signer")
@@ -139,7 +109,7 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, sfuPool, mediaPool)
+	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{

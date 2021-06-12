@@ -4,14 +4,13 @@ import (
 	"net"
 	"os"
 
+	psfu "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
+	"github.com/pion/ion-sfu/cmd/signal/grpc/server"
 	"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
 	"github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
-
-	"github.com/aromancev/confa/cmd/sfu/handler"
-	psfu "github.com/aromancev/confa/proto/sfu"
 )
 
 func main() {
@@ -25,8 +24,11 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
+	// TODO: Implement interface
+	// sfu.Logger = log.Logger
+
 	grpcServer := grpc.NewServer()
-	sfuServer := sfu.NewSFU(sfu.Config{
+	sfuService := sfu.NewSFU(sfu.Config{
 		Router: sfu.RouterConfig{
 			MaxBandwidth:        1500,
 			MaxPacketTrack:      500,
@@ -44,10 +46,10 @@ func main() {
 		},
 	})
 
-	dc := sfuServer.NewDatachannel(sfu.APIChannelLabel)
+	dc := sfuService.NewDatachannel(sfu.APIChannelLabel)
 	dc.Use(datachannel.SubscriberAPI)
 
-	psfu.RegisterSFUServer(grpcServer, handler.NewSFU(sfuServer))
+	psfu.RegisterSFUServer(grpcServer, server.NewServer(sfuService))
 
 	lis, err := net.Listen("tcp", config.Address)
 	if err != nil {

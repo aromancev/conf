@@ -8,66 +8,86 @@ import (
 
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
-	grpcpool "github.com/processout/grpc-go-pool"
-
-	"github.com/aromancev/confa/proto/media"
 )
 
 var (
 	ErrValidation = errors.New("validation error")
 )
 
-type SFU interface {
-	Join(ctx context.Context, sid, uid string, offer webrtc.SessionDescription) (webrtc.SessionDescription, error)
-	Offer(ctx context.Context, offer webrtc.SessionDescription) (webrtc.SessionDescription, error)
+type Signal interface {
+	OnAnswer(func(webrtc.SessionDescription))
+	OnOffer(func(webrtc.SessionDescription))
+	OnTrickle(func(cand webrtc.ICECandidateInit, target int))
+
+	Join(sid, uid string, offer webrtc.SessionDescription) error
+	Offer(webrtc.SessionDescription)
+	Trickle(cand webrtc.ICECandidateInit, target int)
+	Answer(webrtc.SessionDescription)
 }
 
 type Session struct {
-	sfu       SFU
-	mediaPool *grpcpool.Pool
-
-	sessionID string
+	signal            Signal
+	onAnswer, onOffer func(webrtc.SessionDescription)
+	onTrickle         func(webrtc.ICECandidateInit, int)
 }
 
-func NewSession(mediaPool *grpcpool.Pool, sfu SFU) *Session {
-	return &Session{
-		mediaPool: mediaPool,
-		sfu:       sfu,
-	}
-}
-
-func (s *Session) Join(ctx context.Context, sid, uid string, offer webrtc.SessionDescription) (webrtc.SessionDescription, error) {
-	s.sessionID = sid
-	return s.sfu.Join(ctx, sid, uid, offer)
-}
-
-func (s *Session) Offer(ctx context.Context, desc webrtc.SessionDescription) (webrtc.SessionDescription, error) {
-	if s.sessionID == "" {
-		return webrtc.SessionDescription{}, errors.New("must join before offer")
+func NewSession(sig Signal) *Session {
+	sess := &Session{
+		signal: sig,
 	}
 
-	off, err := parseOffer(desc)
-	if err != nil {
-		return webrtc.SessionDescription{}, err
-	}
-
-	conn, err := s.mediaPool.Get(ctx)
-	if err != nil {
-		return webrtc.SessionDescription{}, err
-	}
-	defer conn.Close()
-
-	client := media.NewAVPClient(conn)
-	_, err = client.Signal(ctx, &media.Request{
-		SessionId: s.sessionID,
-		TrackId:   off.videos[0].id,
-		Process:   media.Process_SAVE,
+	sig.OnOffer(func(desc webrtc.SessionDescription) {
+		if sess.onOffer != nil {
+			sess.onOffer(desc)
+		}
 	})
+	sig.OnAnswer(func(desc webrtc.SessionDescription) {
+		if sess.onAnswer != nil {
+			sess.onAnswer(desc)
+		}
+	})
+	sig.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
+		if sess.onTrickle != nil {
+			sess.onTrickle(cand, target)
+		}
+	})
+	return sess
+}
+
+func (s *Session) OnAnswer(f func(webrtc.SessionDescription)) {
+	s.onAnswer = f
+}
+
+func (s *Session) OnOffer(f func(webrtc.SessionDescription)) {
+	s.onOffer = f
+}
+
+func (s *Session) OnTrickle(f func(webrtc.ICECandidateInit, int)) {
+	s.onTrickle = f
+}
+
+func (s *Session) Join(_ context.Context, sid, uid string, offer webrtc.SessionDescription) error {
+	return s.signal.Join(sid, uid, offer)
+}
+
+func (s *Session) Offer(_ context.Context, desc webrtc.SessionDescription) error {
+	_, err := parseOffer(desc)
 	if err != nil {
-		return webrtc.SessionDescription{}, err
+		return err
 	}
 
-	return s.sfu.Offer(ctx, desc)
+	s.signal.Offer(desc)
+	return nil
+}
+
+func (s *Session) Trickle(_ context.Context, cand webrtc.ICECandidateInit, target int) error {
+	s.signal.Trickle(cand, target)
+	return nil
+}
+
+func (s *Session) Answer(_ context.Context, desc webrtc.SessionDescription) error {
+	s.signal.Answer(desc)
+	return nil
 }
 
 type track struct {

@@ -19,11 +19,11 @@ require (
 	github.com/jackc/tern v1.12.4
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/magefile/mage v1.11.0 // indirect
 	github.com/mitchellh/copystructure v1.1.1 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pion/ion-avp v1.8.4
+	github.com/pion/ion-sdk-go v0.5.0
 	github.com/pion/ion-sfu v1.10.5
 	github.com/pion/sdp/v3 v3.0.4
 	github.com/pion/webrtc/v3 v3.0.29
@@ -34,4 +34,5 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	google.golang.org/grpc v1.37.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
