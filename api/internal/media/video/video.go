@@ -2,6 +2,7 @@ package video
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/aromancev/confa/internal/platform/mkv"
@@ -16,16 +17,8 @@ func NewConverter(mediaDir string) *Converter {
 }
 
 func (p *Converter) Convert(mediaID string) error {
-	err := mkv.BuildClues(
-		path.Join(p.mediaDir, mediaID, "raw.webm"),
-		path.Join(p.mediaDir, mediaID, "clued.webm"),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to build clues: %w", err)
-	}
-
-	err = mkv.Convert(
-		path.Join(p.mediaDir, mediaID, "clued.webm"),
+	err := mkv.Convert(
+		path.Join(p.mediaDir, mediaID, "raw.ivf"),
 		path.Join(p.mediaDir, mediaID, "stream.webm"),
 	)
 	if err != nil {
@@ -40,7 +33,6 @@ func (p *Converter) Convert(mediaID string) error {
 		return fmt.Errorf("failed create manifest: %w", err)
 	}
 
-	//_ = os.Remove(path.Join(p.mediaDir, mediaID, "raw.webm"))
-	//_ = os.Remove(path.Join(p.mediaDir, mediaID, "clued.webm"))
+	_ = os.Remove(path.Join(p.mediaDir, mediaID, "raw.ivf"))
 	return nil
 }

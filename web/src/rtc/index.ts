@@ -82,8 +82,8 @@ export class Signal {
         offer: offer,
       },
     })
-    return new Promise((resolve) => {
-      this.onSignalAnswer = (desc) => {
+    return new Promise(resolve => {
+      this.onSignalAnswer = desc => {
         this.onSignalAnswer = null
         resolve(desc)
       }
@@ -95,8 +95,8 @@ export class Signal {
       type: Type.Offer,
       payload: offer,
     })
-    return new Promise((resolve) => {
-      this.onSignalAnswer = (desc) => {
+    return new Promise(resolve => {
+      this.onSignalAnswer = desc => {
         this.onSignalAnswer = null
         resolve(desc)
       }

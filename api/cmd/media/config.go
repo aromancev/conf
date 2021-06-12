@@ -13,11 +13,11 @@ const (
 )
 
 type Config struct {
-	HTTPAddress string `envconfig:"HTTP_ADDRESS"`
-	RPCAddress  string `envconfig:"RPC_ADDRESS"`
-	SFUAddress  string `envconfig:"SFU_ADDRESS"`
-	LogFormat   string `envconfig:"LOG_FORMAT"`
-	MediaDir    string `envconfig:"MEDIA_DIR"`
+	WebAddress string `envconfig:"WEB_ADDRESS"`
+	RPCAddress string `envconfig:"RPC_ADDRESS"`
+	SFUAddress string `envconfig:"SFU_ADDRESS"`
+	LogFormat  string `envconfig:"LOG_FORMAT"`
+	MediaDir   string `envconfig:"MEDIA_DIR"`
 
 	Beanstalkd BeanstalkdConfig
 }
@@ -35,13 +35,13 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) WithDefault() Config {
-	c.HTTPAddress = ":80"
+	c.WebAddress = ":80"
 	c.RPCAddress = ":8080"
 	return c
 }
 
 func (c Config) Validate() error {
-	if c.HTTPAddress == "" {
+	if c.WebAddress == "" {
 		return errors.New("http address not set")
 	}
 	if c.RPCAddress == "" {

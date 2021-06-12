@@ -4,6 +4,7 @@ run:
   timeout: 2m
   skip-files:
     - ".*\\.pb\\.go$"
+    - ".*\\.twirp\\.go$"
 
 linters:
   enable:

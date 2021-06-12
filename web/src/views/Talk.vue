@@ -8,7 +8,6 @@
         v-bind:mirrored="true"
         v-bind:muted="true"
       />
-      <input class="input px-3 py-2" disabled v-model="mediaId">
 
       <h3>Remote Video</h3>
       <Stream
@@ -36,7 +35,6 @@ export default defineComponent({
     return {
       localStream: null as MediaStream | null,
       remoteStreams: {} as { [key: string]: MediaStream },
-      mediaId: "",
     }
   },
 
@@ -51,7 +49,6 @@ export default defineComponent({
     const client = new Client(signal)
 
     const uid = Math.random().toString()
-    console.log("uid", uid)
     signal.onopen = async () => {
       await client.join("test session", uid)
       const local = await LocalStream.getUserMedia({
@@ -63,7 +60,6 @@ export default defineComponent({
       })
       this.localStream = local
       client.publish(local)
-      this.mediaId = local.getTracks()[0].id
     }
 
     client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
@@ -76,8 +72,6 @@ export default defineComponent({
         delete this.remoteStreams[stream.id]
       }
     }
-
-
   },
 })
 </script>

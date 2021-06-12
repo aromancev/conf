@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex justify-content-center">
     <div class="content">
-      <input class="input px-3 py-2" v-model="mediaId">
+      <input class="input px-3 py-2" v-model="mediaId" />
       <button class="btn px-3 py-1" @click="go">go</button>
       <video ref="videoPlayer" controls></video>
     </div>

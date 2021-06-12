@@ -11,7 +11,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-RUN apk add --no-cache mkvtoolnix ffmpeg
+RUN apk update \
+    && apk add --no-cache ffmpeg
 
 COPY --from=builder /app/bin/* /app/
 

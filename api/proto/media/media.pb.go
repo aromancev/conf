@@ -20,61 +20,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Process int32
-
-const (
-	Process_SAVE Process = 0
-)
-
-// Enum value maps for Process.
-var (
-	Process_name = map[int32]string{
-		0: "SAVE",
-	}
-	Process_value = map[string]int32{
-		"SAVE": 0,
-	}
-)
-
-func (x Process) Enum() *Process {
-	p := new(Process)
-	*p = x
-	return p
-}
-
-func (x Process) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (Process) Descriptor() protoreflect.EnumDescriptor {
-	return file_media_proto_enumTypes[0].Descriptor()
-}
-
-func (Process) Type() protoreflect.EnumType {
-	return &file_media_proto_enumTypes[0]
-}
-
-func (x Process) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Process.Descriptor instead.
-func (Process) EnumDescriptor() ([]byte, []int) {
-	return file_media_proto_rawDescGZIP(), []int{0}
-}
-
-type Request struct {
+type Session struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId string  `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TrackId   string  `protobuf:"bytes,2,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
-	Process   Process `protobuf:"varint,3,opt,name=process,proto3,enum=Process" json:"process,omitempty"`
+	TraceId   string `protobuf:"bytes,1,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 }
 
-func (x *Request) Reset() {
-	*x = Request{}
+func (x *Session) Reset() {
+	*x = Session{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_media_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -82,13 +38,13 @@ func (x *Request) Reset() {
 	}
 }
 
-func (x *Request) String() string {
+func (x *Session) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Request) ProtoMessage() {}
+func (*Session) ProtoMessage() {}
 
-func (x *Request) ProtoReflect() protoreflect.Message {
+func (x *Session) ProtoReflect() protoreflect.Message {
 	mi := &file_media_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -100,38 +56,29 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Request.ProtoReflect.Descriptor instead.
-func (*Request) Descriptor() ([]byte, []int) {
+// Deprecated: Use Session.ProtoReflect.Descriptor instead.
+func (*Session) Descriptor() ([]byte, []int) {
 	return file_media_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Request) GetSessionId() string {
+func (x *Session) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *Session) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
 	}
 	return ""
 }
 
-func (x *Request) GetTrackId() string {
-	if x != nil {
-		return x.TrackId
-	}
-	return ""
-}
-
-func (x *Request) GetProcess() Process {
-	if x != nil {
-		return x.Process
-	}
-	return Process_SAVE
-}
-
 type Reply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	Uid []byte `protobuf:"bytes,1,opt,name=uid,proto3" json:"uid,omitempty"`
 }
 
 func (x *Reply) Reset() {
@@ -166,30 +113,18 @@ func (*Reply) Descriptor() ([]byte, []int) {
 	return file_media_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Reply) GetUid() []byte {
-	if x != nil {
-		return x.Uid
-	}
-	return nil
-}
-
 var File_media_proto protoreflect.FileDescriptor
 
 var file_media_proto_rawDesc = []byte{
-	0x0a, 0x0b, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x67, 0x0a,
-	0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65,
-	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x74, 0x72, 0x61, 0x63, 0x6b,
-	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x74, 0x72, 0x61, 0x63, 0x6b,
-	0x49, 0x64, 0x12, 0x22, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x0e, 0x32, 0x08, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x52, 0x07, 0x70,
-	0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x22, 0x19, 0x0a, 0x05, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12,
-	0x10, 0x0a, 0x03, 0x75, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x03, 0x75, 0x69,
-	0x64, 0x2a, 0x13, 0x0a, 0x07, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x12, 0x08, 0x0a, 0x04,
-	0x53, 0x41, 0x56, 0x45, 0x10, 0x00, 0x32, 0x23, 0x0a, 0x03, 0x41, 0x56, 0x50, 0x12, 0x1c, 0x0a,
-	0x06, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x12, 0x08, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x06, 0x2e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x0a, 0x0b, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x43, 0x0a,
+	0x07, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x19, 0x0a, 0x08, 0x74, 0x72, 0x61, 0x63,
+	0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x74, 0x72, 0x61, 0x63,
+	0x65, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69,
+	0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
+	0x49, 0x64, 0x22, 0x07, 0x0a, 0x05, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x32, 0x29, 0x0a, 0x05, 0x4d,
+	0x65, 0x64, 0x69, 0x61, 0x12, 0x20, 0x0a, 0x0a, 0x53, 0x61, 0x76, 0x65, 0x54, 0x72, 0x61, 0x63,
+	0x6b, 0x73, 0x12, 0x08, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x1a, 0x06, 0x2e, 0x52,
+	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -204,22 +139,19 @@ func file_media_proto_rawDescGZIP() []byte {
 	return file_media_proto_rawDescData
 }
 
-var file_media_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_media_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_media_proto_goTypes = []interface{}{
-	(Process)(0),    // 0: Process
-	(*Request)(nil), // 1: Request
-	(*Reply)(nil),   // 2: Reply
+	(*Session)(nil), // 0: Session
+	(*Reply)(nil),   // 1: Reply
 }
 var file_media_proto_depIdxs = []int32{
-	0, // 0: Request.process:type_name -> Process
-	1, // 1: AVP.Signal:input_type -> Request
-	2, // 2: AVP.Signal:output_type -> Reply
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 0: Media.SaveTracks:input_type -> Session
+	1, // 1: Media.SaveTracks:output_type -> Reply
+	1, // [1:2] is the sub-list for method output_type
+	0, // [0:1] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_media_proto_init() }
@@ -229,7 +161,7 @@ func file_media_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_media_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Request); i {
+			switch v := v.(*Session); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -258,14 +190,13 @@ func file_media_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_media_proto_rawDesc,
-			NumEnums:      1,
+			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_media_proto_goTypes,
 		DependencyIndexes: file_media_proto_depIdxs,
-		EnumInfos:         file_media_proto_enumTypes,
 		MessageInfos:      file_media_proto_msgTypes,
 	}.Build()
 	File_media_proto = out.File

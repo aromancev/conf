@@ -31,7 +31,8 @@ services:
       dockerfile: Dockerfile
     command: "go run ./cmd/media/."
     environment:
-      - ADDRESS=:8080
+      - WEB_ADDRESS=:80
+      - RPC_ADDRESS=:8080
       - SFU_ADDRESS=sfu:8080
       - MEDIA_DIR=/var/lib/media
       - LOG_FORMAT=console

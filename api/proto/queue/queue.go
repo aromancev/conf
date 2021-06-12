@@ -4,7 +4,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//go:generate protoc --proto_path=. --go_opt=Mqueue.proto=github.com/aromancev/confa/proto/queue --go-grpc_opt=Mqueue.proto=github.com/aromancev/confa/proto/queue queue.proto --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative --go-grpc_out=. --go_out=.
+//go:generate protoc  queue.proto --go_opt=Mqueue.proto=github.com/aromancev/confa/proto/queue --proto_path=. --go_opt=paths=source_relative --go_out=. --twirp_out=.
 
 const (
 	TubeEmail = "email"

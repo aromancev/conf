@@ -1,19 +1,13 @@
 syntax = "proto3";
 
-enum Process {
-    SAVE = 0;
+service Media {
+    rpc SaveTracks(Session) returns (Reply) {}
 }
 
-service AVP {
-    rpc Signal(Request) returns (Reply) {}
-}
-
-message Request {
-    string session_id = 1;
-    string track_id = 2;
-    Process process = 3;
+message Session {
+    string trace_id = 1;
+    string session_id = 2;
 }
 
 message Reply {
-    bytes uid = 1;
 }

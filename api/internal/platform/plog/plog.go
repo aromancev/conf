@@ -45,3 +45,8 @@ func (w *ResponseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Ev
 func JobEvent(ctx context.Context, job beanstalk.Job) *zerolog.Event {
 	return log.Ctx(ctx).Info().Uint64("jobId", job.ID).Int("releases", job.Stats.Releases)
 }
+
+func WithContext(ctx context.Context, z zerolog.Context) context.Context {
+	l := z.Logger()
+	return l.WithContext(ctx)
+}

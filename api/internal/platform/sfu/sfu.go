@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Signal is a wrapper of grpc
 type Signal struct {
 	client pb.SFUClient
 	stream pb.SFU_SignalClient
@@ -31,9 +30,7 @@ type Signal struct {
 	handleOnce sync.Once
 }
 
-// NewSignal create a grpc signaler
 func NewSignal(ctx context.Context, sfuAddr string) (*Signal, error) {
-	// Set up a connection to the sfu server.
 	connectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(connectCtx, sfuAddr, grpc.WithInsecure())
@@ -55,8 +52,8 @@ func NewSignal(ctx context.Context, sfuAddr string) (*Signal, error) {
 }
 
 func (s *Signal) onSignalHandleOnce() {
-	// onSignalHandle is wrapped in a once and only started after another public
-	// method is called to ensure the user has the opportunity to register handlers
+	// onSignalHandle is wrapped in a once and only started after another public method is called to ensure the user
+	// has the opportunity to register handlers.
 	s.handleOnce.Do(func() {
 		err := s.onSignalHandle()
 		if err != nil {
@@ -134,7 +131,7 @@ func (s *Signal) OnTrickle(f func(webrtc.ICECandidateInit, int)) {
 	s.onTrickle = f
 }
 
-func (s *Signal) Join(sid string, uid string, offer webrtc.SessionDescription) error {
+func (s *Signal) Join(sid, uid string, offer webrtc.SessionDescription) error {
 	marshalled, err := json.Marshal(offer)
 	if err != nil {
 		return err
