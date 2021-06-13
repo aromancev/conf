@@ -62,7 +62,8 @@ cert-renew:
 
 .PHONY: check
 check:
-	make lint-api
 	make test
 	cd api && go fmt ./...
+	make lint-api
 	cd ./api/cmd/api && go build -o ./ && rm api
+	echo DONE!

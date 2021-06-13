@@ -73,12 +73,8 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRU
 		createClap(verifier, clapCRUD, talkCRUD),
 	)
 	r.GET(
-		"/confa/v1/confas/:confa_id/claps",
-		getClapByConfa(clapCRUD),
-	)
-	r.GET(
-		"/confa/v1/talks/:talk_id/claps",
-		getClapByTalk(clapCRUD),
+		"/confa/v1/claps",
+		getClap(clapCRUD),
 	)
 	r.POST(
 		"/confa/v1/confas/:confa_id/talks",
