@@ -59,3 +59,10 @@ cert-renew:
 	  -v /etc/letsencrypt:/etc/letsencrypt          \
 	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
 	  certbot/certbot renew
+
+.PHONY: check
+check:
+	make lint-api
+	make test
+	cd api && go fmt ./...
+	cd ./api/cmd/api && go build -o ./ && rm api
