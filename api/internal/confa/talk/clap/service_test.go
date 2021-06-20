@@ -22,7 +22,8 @@ func TestCRUD(t *testing.T) {
 
 		pg, done := double.NewDocker("", migrate)
 		defer done()
-		clapCRUD := NewCRUD(pg, NewSQL())
+		talkSQL := talk.NewSQL()
+		clapCRUD := NewCRUD(pg, NewSQL(), talkSQL)
 		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
 		talkCRUD := talk.NewCRUD(pg, talk.NewSQL(), confaCRUD)
 
@@ -61,7 +62,8 @@ func TestCRUD(t *testing.T) {
 
 		pg, done := double.NewDocker("", migrate)
 		defer done()
-		clapCRUD := NewCRUD(pg, NewSQL())
+		talkSQL := talk.NewSQL()
+		clapCRUD := NewCRUD(pg, NewSQL(), talkSQL)
 		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
 		talkCRUD := talk.NewCRUD(pg, talk.NewSQL(), confaCRUD)
 

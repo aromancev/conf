@@ -17,8 +17,8 @@ type TalkRepo interface {
 	FetchOne(ctx context.Context, queryer psql.Queryer, lookup talk.Lookup) (talk.Talk, error)
 }
 type CRUD struct {
-	conn psql.Conn
-	repo Repo
+	conn     psql.Conn
+	repo     Repo
 	talkRepo TalkRepo
 }
 

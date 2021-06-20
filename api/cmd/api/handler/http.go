@@ -302,19 +302,6 @@ func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
 			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
 			return
 		}
-		if request.Confa == uuid.Nil {
-			tlk, err := talks.Fetch(ctx, request.Talk)
-			switch {
-			case errors.Is(err, talk.ErrNotFound):
-				_ = api.NotFound(w, err.Error())
-				return
-			case err != nil:
-				log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
-				_ = api.InternalError(w)
-				return
-			}
-			request.Confa = tlk.Confa
-		}
 		err = claps.CreateOrUpdate(ctx, access.UserID, request)
 		switch {
 		case errors.Is(err, clap.ErrValidation):
