@@ -287,7 +287,7 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func createClap(verifier *auth.Verifier, claps *clap.CRUD, talks *talk.CRUD) httprouter.Handle {
+func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()
 

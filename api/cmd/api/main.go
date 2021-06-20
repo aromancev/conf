@@ -100,7 +100,7 @@ func main() {
 	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
 
 	clapSQL := clap.NewSQL()
-	clapCRUD := clap.NewCRUD(postgres, clapSQL)
+	clapCRUD := clap.NewCRUD(postgres, clapSQL, talkSQL)
 
 	sessionSQL := session.NewSQL()
 	sessionCRUD := session.NewCRUD(postgres, sessionSQL)
