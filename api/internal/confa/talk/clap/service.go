@@ -29,12 +29,12 @@ func NewCRUD(conn psql.Conn, repo Repo, talkRepo TalkRepo) *CRUD {
 func (c *CRUD) CreateOrUpdate(ctx context.Context, ownerID uuid.UUID, request Clap) error {
 	request.ID = uuid.New()
 	request.Owner = ownerID
-	request.Speaker = ownerID
 	fetchedTalk, err := c.talkRepo.FetchOne(ctx, c.conn, talk.Lookup{ID: request.Talk})
 	if err != nil {
 		return fmt.Errorf("failed to create clap: %w", err)
 	}
 	request.Confa = fetchedTalk.Confa
+	request.Speaker = fetchedTalk.Speaker
 	if err := request.Validate(); err != nil {
 		return fmt.Errorf("%w: %s", ErrValidation, err)
 	}
