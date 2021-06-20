@@ -16,7 +16,7 @@ CREATE TABLE talks (
 );
 
 CREATE TABLE claps (
-    id UUID PRIMARY KEY,
+    PRIMARY KEY (owner, talk),
     owner UUID NOT NULL,
     speaker UUID NOT NULL,
     confa UUID NOT NULL REFERENCES confas (id) ON DELETE CASCADE,

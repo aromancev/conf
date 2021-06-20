@@ -25,8 +25,8 @@ func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Cl
 		return fmt.Errorf("invalid request : %w", err)
 	}
 
-	q := sq.Insert("claps").Columns("id", "owner", "speaker", "confa", "talk", "claps")
-	q = q.Values(request.ID, request.Owner, request.Speaker, request.Confa, request.Talk, request.Claps)
+	q := sq.Insert("claps").Columns("owner", "speaker", "confa", "talk", "claps")
+	q = q.Values(request.Owner, request.Speaker, request.Confa, request.Talk, request.Claps)
 	q = q.Suffix("ON CONFLICT ON CONSTRAINT unique_owner_talk DO UPDATE SET claps = ?", request.Claps)
 	q = q.PlaceholderFormat(sq.Dollar)
 
