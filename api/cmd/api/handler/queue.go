@@ -2,24 +2,34 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/aromancev/confa/internal/platform/email"
+	"github.com/aromancev/confa/proto/queue"
 )
 
 func sendEmail(sender *email.Sender) JobHandle {
-	return func(ctx context.Context, job *beanstalk.Job) error {
-		var emails []email.Email
-		err := json.Unmarshal(job.Body, &emails)
+	return func(ctx context.Context, j *beanstalk.Job) error {
+		var job queue.EmailJob
+		err := proto.Unmarshal(j.Body, &job)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job")
-			if err := job.Delete(ctx); err != nil {
+			if err := j.Delete(ctx); err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to delete job")
 			}
 			return nil
+		}
+		emails := make([]email.Email, len(job.Emails))
+		for i, e := range job.Emails {
+			emails[i] = email.Email{
+				FromName:  e.FromName,
+				ToAddress: e.ToAddress,
+				Subject:   e.Subject,
+				HTML:      e.Html,
+			}
 		}
 		err, errs := sender.Send(ctx, emails...)
 		if err != nil {

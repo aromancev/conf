@@ -1,11 +1,10 @@
-FROM golang:1.16-alpine
+FROM golang:1.16
 
 WORKDIR /app
 
-RUN apk add --no-cache protoc \
-    && go install github.com/jackc/tern@v1.12.4 \
-    && go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26.0 \
-    && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
+RUN apt-get update \
+    && apt-get install -y ffmpeg \
+    && apt-get clean
 
 COPY go.mod go.sum /app/
 

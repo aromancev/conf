@@ -10,22 +10,16 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/internal/auth"
-	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/media/video"
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/backoff"
-	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/rtc/wsock"
-	"github.com/aromancev/confa/internal/user/ident"
-	"github.com/aromancev/confa/internal/user/session"
 	"github.com/aromancev/confa/proto/queue"
 )
 
 const (
-	jobRetries = 10
+	jobRetries = 1
 )
 
 type Producer interface {
@@ -38,46 +32,15 @@ type HTTP struct {
 	router http.Handler
 }
 
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
+func NewHTTP(media http.Handler) *HTTP {
 	r := httprouter.New()
 
-	r.GET("/iam/health", ok)
-	r.POST(
-		"/iam/v1/login",
-		login(baseURL, signer, producer),
-	)
-	r.POST(
-		"/iam/v1/sessions",
-		createSession(verifier, signer, identCRUD, sessionCRUD),
-	)
-	r.GET(
-		"/iam/v1/token",
-		createToken(signer, sessionCRUD),
-	)
-
-	r.GET("/confa/health", ok)
-	r.POST(
-		"/confa/v1/confas",
-		createConfa(verifier, confaCRUD),
-	)
-	r.GET(
-		"/confa/v1/confas/:confa_id",
-		getConfa(confaCRUD),
-	)
-	r.POST(
-		"/confa/v1/confas/:confa_id/talks",
-		createTalk(verifier, talkCRUD),
-	)
-	r.GET(
-		"/confa/v1/talks/:talk_id",
-		getTalk(talkCRUD),
-	)
+	r.GET("/health", ok)
 
 	r.GET(
-		"/rtc/v1/ws",
-		serveRTC(upgrader, sfuAddr),
+		"/v1/:media_id/:file",
+		serveMedia(media),
 	)
-
 	return &HTTP{
 		router: r,
 	}
@@ -104,12 +67,12 @@ type Job struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewJob(sender *email.Sender) *Job {
+func NewJob(converter *video.Converter) *Job {
 	return &Job{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
-			case queue.TubeEmail:
-				return sendEmail(sender)
+			case queue.TubeVideo:
+				return processVideo(converter)
 			default:
 				return nil
 			}

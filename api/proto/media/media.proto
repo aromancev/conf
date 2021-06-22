@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+service Media {
+    rpc SaveTracks(Session) returns (Reply) {}
+}
+
+message Session {
+    string trace_id = 1;
+    string session_id = 2;
+}
+
+message Reply {
+}

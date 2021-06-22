@@ -25,6 +25,22 @@ services:
     volumes:
       - ./api:/app
 
+  media:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/media/."
+    environment:
+      - WEB_ADDRESS=:80
+      - RPC_ADDRESS=:8080
+      - SFU_ADDRESS=sfu:8080
+      - MEDIA_DIR=/var/lib/media
+      - LOG_FORMAT=console
+      - BEANSTALKD_POOL=beanstalkd:11300
+    volumes:
+      - ./api:/app
+      - ./.artifacts/media:/var/lib/media
+
   api:
     build:
       context: ./api
@@ -52,6 +68,7 @@ services:
       - POSTGRES_DATABASE=confa
       - BEANSTALKD_POOL=beanstalkd:11300
       - RTC_SFU_ADDRESS=sfu:8080
+      - RTC_MEDIA_ADDRESS=media:8080
     volumes:
       - ./api:/app
 

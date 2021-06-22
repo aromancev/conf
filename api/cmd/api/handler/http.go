@@ -6,11 +6,14 @@ import (
 	"net/http"
 
 	"github.com/pion/webrtc/v3"
-	grpcpool "github.com/processout/grpc-go-pool"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/platform/sfu"
+	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/rtc"
 	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
+	"github.com/aromancev/confa/proto/queue"
 
 	"github.com/aromancev/confa/internal/confa/talk"
 
@@ -24,7 +27,6 @@ import (
 	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/rtc/wsock"
-	"github.com/aromancev/confa/internal/sfu"
 )
 
 type accessToken struct {
@@ -32,12 +34,16 @@ type accessToken struct {
 	ExpiresIn uint64 `json:"expiresIn"`
 }
 
+func ok(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	_, _ = w.Write([]byte("OK"))
+}
+
 type loginReq struct {
 	Email string `json:"email"`
 }
 
 func (r loginReq) Validate() error {
-	if err := email.ValidateEmail(r.Email); err != nil {
+	if err := email.Validate(r.Email); err != nil {
 		return err
 	}
 	return nil
@@ -71,14 +77,22 @@ func login(baseURL string, signer *auth.Signer, producer Producer) httprouter.Ha
 			_ = api.InternalError(w)
 			return
 		}
-		body, err := json.Marshal([]email.Email{msg})
+
+		body, err := queue.Marshal(&queue.EmailJob{
+			Emails: []*queue.Email{{
+				FromName:  msg.FromName,
+				ToAddress: msg.ToAddress,
+				Subject:   msg.Subject,
+				Html:      msg.HTML,
+			}},
+		}, trace.ID(ctx))
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to marshal email")
 			_ = api.InternalError(w)
 			return
 		}
 
-		id, err := producer.Put(ctx, TubeEmail, body, beanstalk.PutParams{})
+		id, err := producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to put email job")
 			_ = api.InternalError(w)
@@ -151,10 +165,6 @@ func createToken(signer *auth.Signer, sessions *session.CRUD) httprouter.Handle 
 			ExpiresIn: uint64(expiresIn.Seconds()),
 		})
 	}
-}
-
-func ok(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	_, _ = w.Write([]byte("OK"))
 }
 
 func createConfa(verifier *auth.Verifier, confas *confa.CRUD) httprouter.Handle {
@@ -286,7 +296,7 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
+func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		ctx := r.Context()
 
@@ -297,31 +307,32 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 		}
 		defer conn.Close()
 
-		peer, err := sfu.NewPeer(
-			ctx,
-			pool,
-			sfu.Config{
-				OnOffer: func(offer webrtc.SessionDescription) {
-					err := conn.NotifyOffer(offer)
-					if err != nil {
-						log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
-						return
-					}
-				},
-				OnTrickle: func(target int32, candidate webrtc.ICECandidateInit) {
-					err := conn.NotifyTrickle(target, candidate)
-					if err != nil {
-						log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
-						return
-					}
-				},
-			},
-		)
+		signal, err := sfu.NewSignal(ctx, sfuAddr)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to create new SFU peer.")
+			log.Ctx(ctx).Err(err).Msg("Failed to create new signal.")
 			return
 		}
-		defer peer.Close()
+		defer signal.Close()
+
+		sess := rtc.NewSession(signal)
+		sess.OnAnswer(func(desc webrtc.SessionDescription) {
+			err := conn.Answer(desc)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to notify about answer.")
+			}
+		})
+		sess.OnOffer(func(desc webrtc.SessionDescription) {
+			err := conn.Offer(desc)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
+			}
+		})
+		sess.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
+			err := conn.Trickle(cand, target)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
+			}
+		})
 
 		for {
 			request, err := conn.Receive()
@@ -334,35 +345,39 @@ func rtc(upgrader *wsock.Upgrader, pool *grpcpool.Pool) httprouter.Handle {
 
 			switch req := request.(type) {
 			case wsock.Join:
-				answer, err := peer.Join(ctx, req.Sid, req.Offer)
+				err := sess.Join(ctx, req.SID, req.UID, req.Offer)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Failed to join.")
-					_ = req.Error(err.Error())
+					_ = conn.Error(err.Error())
 					return
 				}
-				_ = req.Reply(answer)
 
 			case wsock.Offer:
-				answer, err := peer.Offer(ctx, req.Offer)
-				if err != nil {
+				err := sess.Offer(ctx, req.Description)
+				switch {
+				case errors.Is(err, rtc.ErrValidation):
+					_ = conn.Error(err.Error())
+					return
+				case err != nil:
 					log.Ctx(ctx).Err(err).Msg("Failed to receive offer.")
-					_ = req.Error(err.Error())
+					_ = conn.Error(err.Error())
 					return
 				}
-				_ = req.Reply(answer)
 
 			case wsock.Answer:
-				err = peer.Answer(ctx, req.Answer)
+				err := sess.Answer(ctx, req.Description)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed to receive answer.")
-					_ = req.Error(err.Error())
+					log.Ctx(ctx).Err(err).Msg("Failed to answer.")
+					_ = conn.Error(err.Error())
+					return
 				}
 
 			case wsock.Trickle:
-				err = peer.Trickle(ctx, req.Target, req.Candidate)
+				err := sess.Trickle(ctx, req.Candidate, req.Target)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed to receive trickle.")
-					_ = req.Error(err.Error())
+					log.Ctx(ctx).Err(err).Msg("Failed to trickle.")
+					_ = conn.Error(err.Error())
+					return
 				}
 			}
 		}

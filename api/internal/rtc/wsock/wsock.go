@@ -54,9 +54,7 @@ func (c *Conn) Receive() (interface{}, error) {
 	}
 	switch req.Type {
 	case typeJoin:
-		join := Join{
-			socketRequest: newSocketRequest(c, req.ID),
-		}
+		var join Join
 		err := json.Unmarshal(req.Payload, &join)
 		if err != nil {
 			return nil, err
@@ -64,29 +62,23 @@ func (c *Conn) Receive() (interface{}, error) {
 		return join, nil
 
 	case typeOffer:
-		offer := Offer{
-			socketRequest: newSocketRequest(c, req.ID),
-		}
-		err := json.Unmarshal(req.Payload, &offer.Offer)
+		var offer Offer
+		err := json.Unmarshal(req.Payload, &offer.Description)
 		if err != nil {
 			return nil, err
 		}
 		return offer, nil
 
 	case typeAnswer:
-		answer := Answer{
-			socketRequest: newSocketRequest(c, req.ID),
-		}
-		err := json.Unmarshal(req.Payload, &answer.Answer)
+		var answer Answer
+		err := json.Unmarshal(req.Payload, &answer.Description)
 		if err != nil {
 			return nil, err
 		}
 		return answer, nil
 
 	case typeTrickle:
-		trickle := Trickle{
-			socketRequest: newSocketRequest(c, req.ID),
-		}
+		var trickle Trickle
 		err := json.Unmarshal(req.Payload, &trickle)
 		if err != nil {
 			return nil, err
@@ -98,7 +90,17 @@ func (c *Conn) Receive() (interface{}, error) {
 	}
 }
 
-func (c *Conn) NotifyOffer(offer webrtc.SessionDescription) error {
+func (c *Conn) Answer(answer webrtc.SessionDescription) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	return c.conn.WriteJSON(response{
+		Type:    typeAnswer,
+		Payload: answer,
+	})
+}
+
+func (c *Conn) Offer(offer webrtc.SessionDescription) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -108,7 +110,7 @@ func (c *Conn) NotifyOffer(offer webrtc.SessionDescription) error {
 	})
 }
 
-func (c *Conn) NotifyTrickle(target int32, candidate webrtc.ICECandidateInit) error {
+func (c *Conn) Trickle(candidate webrtc.ICECandidateInit, target int) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -121,6 +123,16 @@ func (c *Conn) NotifyTrickle(target int32, candidate webrtc.ICECandidateInit) er
 	})
 }
 
+func (c *Conn) Error(err string) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	return c.conn.WriteJSON(response{
+		Type:    typeError,
+		Payload: err,
+	})
+}
+
 func (c *Conn) Close() error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -129,68 +141,22 @@ func (c *Conn) Close() error {
 }
 
 type Join struct {
-	socketRequest
-
-	Sid   string                    `json:"sid"`
+	SID   string                    `json:"sid"`
+	UID   string                    `json:"uid"`
 	Offer webrtc.SessionDescription `json:"offer"`
 }
 
-func (r Join) Reply(answer webrtc.SessionDescription) error {
-	return r.socket.response(response{
-		ID:      r.id,
-		Type:    typeOffer,
-		Payload: answer,
-	})
-}
-
 type Offer struct {
-	socketRequest
-
-	Offer webrtc.SessionDescription
-}
-
-func (r Offer) Reply(answer webrtc.SessionDescription) error {
-	return r.socket.response(response{
-		ID:      r.id,
-		Type:    typeOffer,
-		Payload: answer,
-	})
+	Description webrtc.SessionDescription
 }
 
 type Trickle struct {
-	socketRequest
-
-	Target    int32                   `json:"target"`
+	Target    int                     `json:"target"`
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 
 type Answer struct {
-	socketRequest
-
-	Answer webrtc.SessionDescription
-}
-
-func (c *Conn) response(resp response) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.conn.WriteJSON(resp)
-}
-
-type socketRequest struct {
-	id     uint32
-	socket *Conn
-}
-
-func newSocketRequest(s *Conn, id uint32) socketRequest {
-	return socketRequest{id: id, socket: s}
-}
-
-func (r socketRequest) Error(err string) error {
-	return r.socket.response(response{
-		ID:      r.id,
-		Type:    typeError,
-		Payload: err,
-	})
+	Description webrtc.SessionDescription
 }
 
 const (
@@ -202,13 +168,11 @@ const (
 )
 
 type request struct {
-	ID      uint32          `json:"id"`
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
 
 type response struct {
-	ID      uint32      `json:"id,omitempty"`
 	Type    string      `json:"type"`
 	Payload interface{} `json:"payload"`
 }

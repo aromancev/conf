@@ -169,24 +169,24 @@ func (c BeanstalkdConfig) Parsed() (BeanstalkdConfig, error) {
 }
 
 type RTCConfig struct {
-	SFUAddress     string `envconfig:"RTC_SFU_ADDRESS"`
-	SFUConnPool    int    `envconfig:"RTC_SFU_CONN_POOL"`
-	SFUConnIdleSec int    `envconfig:"RTC_SFU_CONN_IDLE_SEC"`
-	ReadBuffer     int    `envconfig:"RTC_READ_BUFFER"`
-	WriteBuffer    int    `envconfig:"RTC_WRITE_BUFFER"`
+	SFUAddress   string `envconfig:"RTC_SFU_ADDRESS"`
+	MediaAddress string `envconfig:"RTC_MEDIA_ADDRESS"`
+	ReadBuffer   int    `envconfig:"RTC_READ_BUFFER"`
+	WriteBuffer  int    `envconfig:"RTC_WRITE_BUFFER"`
 }
 
 func (c RTCConfig) WithDefault() RTCConfig {
 	c.ReadBuffer = 1024
 	c.WriteBuffer = 1024
-	c.SFUConnPool = 5
-	c.SFUConnIdleSec = 10
 	return c
 }
 
 func (c RTCConfig) Validate() error {
 	if c.SFUAddress == "" {
 		return errors.New("SFUAddress not set")
+	}
+	if c.MediaAddress == "" {
+		return errors.New("MediaAddress not set")
 	}
 	return nil
 }
