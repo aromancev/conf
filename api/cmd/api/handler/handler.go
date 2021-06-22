@@ -41,29 +41,6 @@ type HTTP struct {
 func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
 	r := httprouter.New()
 
-	r.GET("/iam/health", ok)
-	r.POST(
-		"/iam/v1/login",
-		login(baseURL, signer, producer),
-	)
-	r.POST(
-		"/iam/v1/sessions",
-		createSession(verifier, signer, identCRUD, sessionCRUD),
-	)
-	r.GET(
-		"/iam/v1/token",
-		createToken(signer, sessionCRUD),
-	)
-
-	r.GET("/confa/health", ok)
-	r.POST(
-		"/confa/v1/confas",
-		createConfa(verifier, confaCRUD),
-	)
-	r.GET(
-		"/confa/v1/confas/:confa_id",
-		getConfa(confaCRUD),
-	)
 	r.POST(
 		"/confa/v1/confas/:confa_id/talks",
 		createTalk(verifier, talkCRUD),

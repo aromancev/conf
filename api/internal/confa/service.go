@@ -11,6 +11,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Confa) ([]Confa, error)
+	Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Confa, error)
 	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Confa, error)
 }
 
@@ -41,10 +42,10 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 	return created[0], nil
 }
 
-func (c *CRUD) Fetch(ctx context.Context, id uuid.UUID) (Confa, error) {
-	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: id})
-	if err != nil {
-		return Confa{}, fmt.Errorf("failed to fetch confa: %w", err)
-	}
-	return fetched, nil
+func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
+	return c.repo.Fetch(ctx, c.conn, lookup)
+}
+
+func (c *CRUD) FetchOne(ctx context.Context, lookup Lookup) (Confa, error) {
+	return c.repo.FetchOne(ctx, c.conn, lookup)
 }

@@ -37,7 +37,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import { client, userStore } from "@/iam"
+import { client } from "@/api"
 import { isValid } from "@/platform/email"
 import Modal from "@/components/modals/Modal.vue"
 import InternalError from "@/components/modals/InternalError.vue"
@@ -65,7 +65,8 @@ export default defineComponent({
   },
   computed: {
     loggedIn() {
-      return userStore.getState().loggedIn
+      return false
+      // return userStore.getState().loggedIn
     },
   },
   watch: {
@@ -79,7 +80,7 @@ export default defineComponent({
     const token = this.$route.query.token as string
     if (token) {
       try {
-        await client.session(token)
+        await client.createSession(token)
       } catch (e) {
         this.modal = Dialog.Error
       }

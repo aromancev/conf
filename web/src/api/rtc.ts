@@ -31,10 +31,16 @@ export class Signal {
   private socket: WebSocket
   private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
 
-  constructor(url: string) {
+  constructor() {
+    let protocol = "wss"
+    if (process.env.NODE_ENV == "development") {
+      protocol = "ws"
+    }
     this.onSignalAnswer = null
 
-    this.socket = new WebSocket(url)
+    this.socket = new WebSocket(
+      `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
+    )
     this.socket.onopen = () => {
       if (this._onopen) {
         this._onopen()

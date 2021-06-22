@@ -126,7 +126,6 @@ func main() {
 	// TODO: On talk start.
 	go func() {
 		client := pmedia.NewMediaProtobufClient("http://localhost"+config.RPCAddress, &http.Client{})
-
 		_, err := client.SaveTracks(ctx, &pmedia.Session{
 			TraceId:   "main",
 			SessionId: "test session",
