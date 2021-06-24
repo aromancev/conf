@@ -74,66 +74,143 @@ func TestCRUD(t *testing.T) {
 	})
 
 	t.Run("Aggregate", func(t *testing.T) {
-		pg, done := double.NewDocker("", migrate)
+		t.Parallel()
+		deps, done := setup()
 		defer done()
-		talkSQL := talk.NewSQL()
-		clapCRUD := NewCRUD(pg, NewSQL(), talkSQL)
-		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
-		talkCRUD := talk.NewCRUD(pg, talk.NewSQL(), confaCRUD)
+		clapCRUD := NewCRUD(deps.pg, NewSQL(), deps.talkSQL)
 
-		userID := uuid.New()
-		userID2 := uuid.New()
-		requestConfa := confa.Confa{
-			Handle: "test",
-		}
-		requestTalk := talk.Talk{
-			Handle:  "test",
-			Speaker: userID,
-		}
-		requestTalk2 := talk.Talk{
-			Handle:  "test2",
-			Speaker: userID,
+		var ids [2]uuid.UUID
+		for i := range ids {
+			ids[i] = uuid.New()
 		}
 
-		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
+		requestConfas := []confa.Confa{
+			{
+				ID:     uuid.New(),
+				Owner:  ids[0],
+				Handle: "test1",
+			},
+			{
+				ID:     uuid.New(),
+				Owner:  ids[0],
+				Handle: "test2",
+			},
+			{
+				ID:     uuid.New(),
+				Owner:  ids[1],
+				Handle: "test3",
+			},
+		}
+
+		_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfas...)
 		require.NoError(t, err)
+		requestTalks := []talk.Talk{
+			{
+				ID:      uuid.New(),
+				Owner:   ids[0],
+				Speaker: ids[0],
+				Confa:   requestConfas[0].ID,
+				Handle:  "test1",
+			},
+			{
+				ID:      uuid.New(),
+				Owner:   ids[0],
+				Speaker: ids[0],
+				Confa:   requestConfas[1].ID,
+				Handle:  "test2",
+			},
+			{
+				ID:      uuid.New(),
+				Owner:   ids[1],
+				Speaker: ids[1],
+				Confa:   requestConfas[2].ID,
+				Handle:  "test3",
+			},
+		}
 
-		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk)
-		require.NoError(t, err)
-
-		createdTalk2, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk2)
+		_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalks...)
 		require.NoError(t, err)
 
 		requestClap := Clap{
-			Talk:  createdTalk.ID,
+			Talk:  requestTalks[0].ID,
 			Claps: 1,
 		}
-		err = clapCRUD.CreateOrUpdate(ctx, userID, requestClap)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[0], requestClap)
 		require.NoError(t, err)
-
 		requestClap2 := Clap{
-			Talk:  createdTalk2.ID,
-			Claps: 2,
+			Talk:  requestTalks[0].ID,
+			Claps: 1,
 		}
-		err = clapCRUD.CreateOrUpdate(ctx, userID2, requestClap2)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[1], requestClap2)
 		require.NoError(t, err)
-		var tests = []struct {
-			name string
-			in   Lookup
-			out  int
-		}{
-			{"ByTalk", Lookup{Talk: createdTalk.ID}, 1},
-			{"ByConfa", Lookup{Confa: createdConfa.ID}, 3},
-			{"BySpeaker", Lookup{Speaker: createdTalk.Speaker}, 3},
+		requestClap3 := Clap{
+			Talk:  requestTalks[1].ID,
+			Claps: 1,
 		}
+		err = clapCRUD.CreateOrUpdate(ctx, ids[0], requestClap3)
+		require.NoError(t, err)
+		requestClap4 := Clap{
+			Talk:  requestTalks[2].ID,
+			Claps: 1,
+		}
+		err = clapCRUD.CreateOrUpdate(ctx, ids[1], requestClap4)
+		require.NoError(t, err)
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				claps, err := clapCRUD.Aggregate(ctx, tt.in)
-				require.NoError(t, err)
-				require.Equal(t, tt.out, claps)
-			})
-		}
+		t.Run("bySpeaker", func(t *testing.T) {
+			lookup := Lookup{
+				Speaker: ids[0],
+			}
+			claps, err := clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 3, claps)
+			lookup = Lookup{
+				Speaker: ids[1],
+			}
+			claps, err = clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 1, claps)
+		})
+
+		t.Run("byTalk", func(t *testing.T) {
+			lookup := Lookup{
+				Talk: requestTalks[0].ID,
+			}
+			claps, err := clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 2, claps)
+			lookup = Lookup{
+				Talk: requestTalks[1].ID,
+			}
+			claps, err = clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 1, claps)
+			lookup = Lookup{
+				Talk: requestTalks[2].ID,
+			}
+			claps, err = clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 1, claps)
+		})
+
+		t.Run("byConfa", func(t *testing.T) {
+			lookup := Lookup{
+				Confa: requestConfas[0].ID,
+			}
+			claps, err := clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 2, claps)
+			lookup = Lookup{
+				Confa: requestConfas[1].ID,
+			}
+			claps, err = clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 1, claps)
+			lookup = Lookup{
+				Confa: requestConfas[2].ID,
+			}
+			claps, err = clapCRUD.Aggregate(ctx, lookup)
+			require.NoError(t, err)
+			require.Equal(t, 1, claps)
+		})
 	})
-
 }
