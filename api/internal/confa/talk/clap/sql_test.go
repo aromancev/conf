@@ -35,7 +35,7 @@ func TestSQL(t *testing.T) {
 			clapSQL:  NewSQL(),
 		}, done
 	}
-	t.Run("Create", func(t *testing.T) {
+	t.Run("CreateOrUpdate", func(t *testing.T) {
 		t.Run("Happy path", func(t *testing.T) {
 			t.Parallel()
 
@@ -158,7 +158,6 @@ func TestSQL(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 5, claps)
 		})
-
 		t.Run("Create, Update and Aggregate", func(t *testing.T) {
 			t.Parallel()
 

@@ -2,14 +2,9 @@ package clap
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"github.com/google/uuid"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgerrcode"
-
 	sq "github.com/Masterminds/squirrel"
 	"github.com/aromancev/confa/internal/platform/psql"
+	"github.com/google/uuid"
 )
 
 type SQL struct {
@@ -22,35 +17,25 @@ func NewSQL() *SQL {
 func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Clap) error {
 	err := request.Validate()
 	if err != nil {
-		return fmt.Errorf("invalid request : %w", err)
+		return err
 	}
-
 	q := sq.Insert("claps").Columns("owner", "speaker", "confa", "talk", "claps")
 	q = q.Values(request.Owner, request.Speaker, request.Confa, request.Talk, request.Claps)
 	q = q.Suffix("ON CONFLICT ON CONSTRAINT unique_owner_talk DO UPDATE SET claps = ?", request.Claps)
 	q = q.PlaceholderFormat(sq.Dollar)
-
 	query, args, err := q.ToSql()
 	if err != nil {
 		return err
 	}
 	_, err = execer.Exec(ctx, query, args...)
-	var pgErr *pgconn.PgError
-	switch {
-	case errors.As(err, &pgErr):
-		if pgErr.Code == pgerrcode.UniqueViolation {
-			return ErrDuplicatedEntry
-		}
-		return err
-
-	case err != nil:
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *SQL) Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup) (int, error) {
-	q := sq.Select("claps").From("claps")
+	q := sq.Select("SUM(claps)").From("claps")
 	if lookup.Speaker != uuid.Nil {
 		q = q.Where(sq.Eq{"speaker": lookup.Speaker})
 	}
@@ -72,14 +57,12 @@ func (s *SQL) Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup
 	}
 	var claps int
 	for rows.Next() {
-		var c Clap
 		err := rows.Scan(
-			&c.Claps,
+			&claps,
 		)
 		if err != nil {
 			return 0, err
 		}
-		claps += int(c.Claps)
 	}
 
 	return claps, nil
