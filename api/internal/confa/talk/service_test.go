@@ -29,8 +29,7 @@ func TestCRUD(t *testing.T) {
 			Handle: "test",
 		}
 		requestTalk := Talk{
-			Handle:  "test",
-			Speaker: userID,
+			Handle: "test",
 		}
 
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
@@ -59,8 +58,7 @@ func TestCRUD(t *testing.T) {
 			Handle: "test",
 		}
 		requestTalk := Talk{
-			Handle:  "test",
-			Speaker: userID,
+			Handle: "test",
 		}
 
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
