@@ -18,8 +18,6 @@ const (
 
 	emailExpire  = 24 * time.Hour
 	accessExpire = 15 * time.Minute
-
-	sessionKey = "session"
 )
 
 type EmailClaims struct {
@@ -37,12 +35,12 @@ func (c EmailClaims) Valid() error {
 	return nil
 }
 
-type AccessClaims struct {
+type APIClaims struct {
 	jwt.StandardClaims
 	UserID uuid.UUID `json:"uid"`
 }
 
-func (c AccessClaims) Valid() error {
+func (c APIClaims) Valid() error {
 	if err := c.StandardClaims.Valid(); err != nil {
 		return err
 	}
@@ -83,7 +81,7 @@ func (s *Signer) EmailToken(address string) (string, error) {
 
 func (s *Signer) AccessToken(userID uuid.UUID) (string, time.Duration, error) {
 	now := time.Now()
-	token := jwt.NewWithClaims(s.method, AccessClaims{
+	token := jwt.NewWithClaims(s.method, APIClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: now.Add(accessExpire).Unix(),
 		},
@@ -110,6 +108,19 @@ func NewVerifier(publicKey string) (*Verifier, error) {
 	}, nil
 }
 
+func (v *Verifier) Verify(token string, claims jwt.Claims) error {
+	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return v.key, nil
+	})
+	if err != nil {
+		return err
+	}
+	if !parsed.Valid {
+		return errors.New("invalid token")
+	}
+	return nil
+}
+
 func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 	var claims EmailClaims
 	parsed, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
@@ -124,16 +135,16 @@ func (v *Verifier) EmailToken(token string) (EmailClaims, error) {
 	return claims, nil
 }
 
-func (v *Verifier) AccessToken(token string) (AccessClaims, error) {
-	var claims AccessClaims
+func (v *Verifier) AccessToken(token string) (APIClaims, error) {
+	var claims APIClaims
 	parsed, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
 		return v.key, nil
 	})
 	if err != nil {
-		return AccessClaims{}, err
+		return APIClaims{}, err
 	}
 	if !parsed.Valid {
-		return AccessClaims{}, errors.New("invalid token")
+		return APIClaims{}, errors.New("invalid token")
 	}
 
 	return claims, nil

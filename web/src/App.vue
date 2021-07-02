@@ -20,7 +20,7 @@ export default defineComponent({
       isDark: false,
     }
   },
-  mounted() {
+  async mounted() {
     this.isDark = localStorage.isDark === "true" ? true : false
   },
   watch: {

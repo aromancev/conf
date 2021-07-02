@@ -76,7 +76,15 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 	if lookup.Owner != uuid.Nil {
 		q = q.Where(sq.Eq{"owner": lookup.Owner})
 	}
-	q = q.Limit(batchLimit)
+	if lookup.Handle != "" {
+		q = q.Where(sq.Eq{"handle": lookup.Handle})
+	}
+	if lookup.Limit > batchLimit || lookup.Limit == 0 {
+		lookup.Limit = batchLimit
+	}
+	q = q.OrderBy("id")
+	q = q.Where(sq.Gt{"id": lookup.From})
+	q = q.Limit(lookup.Limit)
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()
 	if err != nil {

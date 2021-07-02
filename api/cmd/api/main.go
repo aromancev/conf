@@ -23,6 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/cmd/api/handler"
+	"github.com/aromancev/confa/cmd/api/web"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/platform/psql"
@@ -109,7 +110,7 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	httpHandler := handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
+	_ = handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{
@@ -117,7 +118,15 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      httpHandler,
+		Handler: web.New(web.NewResolver(
+			config.BaseURL,
+			sign,
+			verify,
+			producer,
+			identCRUD,
+			sessionCRUD,
+			confaCRUD,
+		)),
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {

@@ -1,12 +1,3 @@
-.PHONY: build
-build:
-	docker-compose build
-	docker run \
-		--rm \
-		-w /app \
-		-v `pwd`/web:/app \
-		node:15.7.0 /bin/sh -c "npm install -g pnpm; pnpm install"
-
 .PHONY: start-api
 start-api:
 	docker-compose up nginx api media beanstalkd postgres email
@@ -37,6 +28,11 @@ lint-web:
 	-w /app \
 	-v `pwd`/web:/app \
 	node:15.7.0 npm run lint
+
+.PHONY: gen
+gen:
+	cd api && $(MAKE) gen
+	cd web && $(MAKE) gen
 
 .PHONY: cert-create
 cert-create:

@@ -20,16 +20,14 @@ func TestCRUD(t *testing.T) {
 
 		pg, done := double.NewDocker("", migrate)
 		defer done()
-		crud := NewCRUD(pg, NewSQL())
-		userID := uuid.New()
-		request := Confa{
-			Handle: "test",
-		}
 
-		confa, err := crud.Create(ctx, userID, request)
+		crud := NewCRUD(pg, NewSQL())
+		confa, err := crud.Create(ctx, uuid.New(), Confa{
+			Handle: "test",
+		})
 		require.NoError(t, err)
-		fetchedConfa, err := crud.Fetch(ctx, confa.ID)
+		fetched, err := crud.FetchOne(ctx, Lookup{ID: confa.ID})
 		require.NoError(t, err)
-		require.Equal(t, confa, fetchedConfa)
+		require.Equal(t, confa, fetched)
 	})
 }
