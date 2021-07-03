@@ -3,52 +3,44 @@ package clap
 import (
 	"context"
 	"fmt"
+
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/google/uuid"
-
-	"github.com/aromancev/confa/internal/platform/psql"
 )
 
 type Repo interface {
-	CreateOrUpdate(ctx context.Context, execer psql.Execer, request Clap) error
-	Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup) (int, error)
+	CreateOrUpdate(ctx context.Context, request Clap) (uuid.UUID, error)
+	Aggregate(ctx context.Context, lookup Lookup) (uint64, error)
 }
+
 type TalkRepo interface {
-	FetchOne(ctx context.Context, queryer psql.Queryer, lookup talk.Lookup) (talk.Talk, error)
+	FetchOne(ctx context.Context, lookup talk.Lookup) (talk.Talk, error)
 }
+
 type CRUD struct {
-	conn     psql.Conn
 	repo     Repo
 	talkRepo TalkRepo
 }
 
-func NewCRUD(conn psql.Conn, repo Repo, talkRepo TalkRepo) *CRUD {
-	return &CRUD{conn: conn, repo: repo, talkRepo: talkRepo}
+func NewCRUD(repo Repo, talkRepo TalkRepo) *CRUD {
+	return &CRUD{repo: repo, talkRepo: talkRepo}
 }
 
-func (c *CRUD) CreateOrUpdate(ctx context.Context, ownerID uuid.UUID, request Clap) error {
-	request.ID = uuid.New()
-	request.Owner = ownerID
-	fetchedTalk, err := c.talkRepo.FetchOne(ctx, c.conn, talk.Lookup{ID: request.Talk})
+func (c *CRUD) CreateOrUpdate(ctx context.Context, userID, talkID uuid.UUID, value uint) (uuid.UUID, error) {
+	tlk, err := c.talkRepo.FetchOne(ctx, talk.Lookup{ID: talkID})
 	if err != nil {
-		return fmt.Errorf("failed to create clap: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to fetch talk: %w", err)
 	}
-	request.Confa = fetchedTalk.Confa
-	request.Speaker = fetchedTalk.Speaker
-	if err := request.Validate(); err != nil {
-		return fmt.Errorf("%w: %s", ErrValidation, err)
-	}
-	err = c.repo.CreateOrUpdate(ctx, c.conn, request)
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrValidation, err)
-	}
-	return nil
+	return c.repo.CreateOrUpdate(ctx, Clap{
+		ID:      uuid.New(),
+		Owner:   userID,
+		Confa:   tlk.Confa,
+		Talk:    tlk.ID,
+		Speaker: tlk.Owner,
+		Value:   value,
+	})
 }
 
-func (c *CRUD) Aggregate(ctx context.Context, lookup Lookup) (int, error) {
-	aggregated, err := c.repo.Aggregate(ctx, c.conn, lookup)
-	if err != nil {
-		return 0, fmt.Errorf("failed to fetch clap: %w", err)
-	}
-	return aggregated, nil
+func (c *CRUD) Aggregate(ctx context.Context, lookup Lookup) (uint64, error) {
+	return c.repo.Aggregate(ctx, lookup)
 }

@@ -22,7 +22,7 @@ type Config struct {
 	PublicKey     string `envconfig:"PUBLIC_KEY"`
 	MigrationsDir string `envconfig:"MIGRATIONS_DIR"`
 	Email         EmailConfig
-	Postgres      PostgresConfig
+	Mongo         MongoConfig
 	Beanstalkd    BeanstalkdConfig
 	RTC           RTCConfig
 }
@@ -80,8 +80,8 @@ func (c Config) Validate() error {
 	if err := c.Email.Validate(); err != nil {
 		return fmt.Errorf("invalid email config: %w", err)
 	}
-	if err := c.Postgres.Validate(); err != nil {
-		return fmt.Errorf("invalid postgres config: %w", err)
+	if err := c.Mongo.Validate(); err != nil {
+		return fmt.Errorf("invalid mongo config: %w", err)
 	}
 	if err := c.Beanstalkd.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalkd config: %w", err)
@@ -100,6 +100,33 @@ type PostgresConfig struct {
 
 func (c PostgresConfig) Validate() error {
 	if c.Host == "" {
+		return errors.New("host not set")
+	}
+	if c.Port == 0 {
+		return errors.New("port not set")
+	}
+	if c.User == "" {
+		return errors.New("user not set")
+	}
+	if c.Password == "" {
+		return errors.New("password not set")
+	}
+	if c.Database == "" {
+		return errors.New("database not set")
+	}
+	return nil
+}
+
+type MongoConfig struct {
+	Hosts    string `envconfig:"MONGO_HOSTS"`
+	Port     uint16 `envconfig:"MONGO_PORT"`
+	User     string `envconfig:"MONGO_USER"`
+	Password string `envconfig:"MONGO_PASSWORD"`
+	Database string `envconfig:"MONGO_DATABASE"`
+}
+
+func (c MongoConfig) Validate() error {
+	if c.Hosts == "" {
 		return errors.New("host not set")
 	}
 	if c.Port == 0 {

@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "claps",
+    "index": "unique_owner_confa_talk_speaker"
+  }
+]

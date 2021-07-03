@@ -43,9 +43,9 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Confa struct {
-		Handle func(childComplexity int) int
-		ID     func(childComplexity int) int
-		Owner  func(childComplexity int) int
+		Handle  func(childComplexity int) int
+		ID      func(childComplexity int) int
+		OwnerID func(childComplexity int) int
 	}
 
 	Confas struct {
@@ -55,14 +55,32 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		CreateClap    func(childComplexity int, talkID string, value int) int
 		CreateConfa   func(childComplexity int, handle *string) int
 		CreateSession func(childComplexity int, emailToken string) int
+		CreateTalk    func(childComplexity int, confaID string, handle *string) int
 		Login         func(childComplexity int, address string) int
 	}
 
 	Query struct {
-		Confas func(childComplexity int, where ConfaInput, from string, limit int) int
-		Token  func(childComplexity int) int
+		AggregateClaps func(childComplexity int, where ClapInput) int
+		Confas         func(childComplexity int, where ConfaInput, from string, limit int) int
+		Talks          func(childComplexity int, where TalkInput, from string, limit int) int
+		Token          func(childComplexity int) int
+	}
+
+	Talk struct {
+		ConfaID   func(childComplexity int) int
+		Handle    func(childComplexity int) int
+		ID        func(childComplexity int) int
+		OwnerID   func(childComplexity int) int
+		SpeakerID func(childComplexity int) int
+	}
+
+	Talks struct {
+		Items    func(childComplexity int) int
+		Limit    func(childComplexity int) int
+		NextFrom func(childComplexity int) int
 	}
 
 	Token struct {
@@ -75,10 +93,14 @@ type MutationResolver interface {
 	Login(ctx context.Context, address string) (string, error)
 	CreateSession(ctx context.Context, emailToken string) (*Token, error)
 	CreateConfa(ctx context.Context, handle *string) (*Confa, error)
+	CreateTalk(ctx context.Context, confaID string, handle *string) (*Talk, error)
+	CreateClap(ctx context.Context, talkID string, value int) (string, error)
 }
 type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
 	Confas(ctx context.Context, where ConfaInput, from string, limit int) (*Confas, error)
+	Talks(ctx context.Context, where TalkInput, from string, limit int) (*Talks, error)
+	AggregateClaps(ctx context.Context, where ClapInput) (int, error)
 }
 
 type executableSchema struct {
@@ -110,12 +132,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Confa.ID(childComplexity), true
 
-	case "Confa.owner":
-		if e.complexity.Confa.Owner == nil {
+	case "Confa.ownerId":
+		if e.complexity.Confa.OwnerID == nil {
 			break
 		}
 
-		return e.complexity.Confa.Owner(childComplexity), true
+		return e.complexity.Confa.OwnerID(childComplexity), true
 
 	case "Confas.items":
 		if e.complexity.Confas.Items == nil {
@@ -137,6 +159,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Confas.NextFrom(childComplexity), true
+
+	case "Mutation.createClap":
+		if e.complexity.Mutation.CreateClap == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createClap_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateClap(childComplexity, args["talkId"].(string), args["value"].(int)), true
 
 	case "Mutation.createConfa":
 		if e.complexity.Mutation.CreateConfa == nil {
@@ -162,6 +196,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateSession(childComplexity, args["emailToken"].(string)), true
 
+	case "Mutation.createTalk":
+		if e.complexity.Mutation.CreateTalk == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTalk_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateTalk(childComplexity, args["confaId"].(string), args["handle"].(*string)), true
+
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
 			break
@@ -173,6 +219,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Login(childComplexity, args["address"].(string)), true
+
+	case "Query.aggregateClaps":
+		if e.complexity.Query.AggregateClaps == nil {
+			break
+		}
+
+		args, err := ec.field_Query_aggregateClaps_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AggregateClaps(childComplexity, args["where"].(ClapInput)), true
 
 	case "Query.confas":
 		if e.complexity.Query.Confas == nil {
@@ -186,12 +244,80 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaInput), args["from"].(string), args["limit"].(int)), true
 
+	case "Query.talks":
+		if e.complexity.Query.Talks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_talks_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Talks(childComplexity, args["where"].(TalkInput), args["from"].(string), args["limit"].(int)), true
+
 	case "Query.token":
 		if e.complexity.Query.Token == nil {
 			break
 		}
 
 		return e.complexity.Query.Token(childComplexity), true
+
+	case "Talk.confaId":
+		if e.complexity.Talk.ConfaID == nil {
+			break
+		}
+
+		return e.complexity.Talk.ConfaID(childComplexity), true
+
+	case "Talk.handle":
+		if e.complexity.Talk.Handle == nil {
+			break
+		}
+
+		return e.complexity.Talk.Handle(childComplexity), true
+
+	case "Talk.id":
+		if e.complexity.Talk.ID == nil {
+			break
+		}
+
+		return e.complexity.Talk.ID(childComplexity), true
+
+	case "Talk.ownerId":
+		if e.complexity.Talk.OwnerID == nil {
+			break
+		}
+
+		return e.complexity.Talk.OwnerID(childComplexity), true
+
+	case "Talk.speakerId":
+		if e.complexity.Talk.SpeakerID == nil {
+			break
+		}
+
+		return e.complexity.Talk.SpeakerID(childComplexity), true
+
+	case "Talks.items":
+		if e.complexity.Talks.Items == nil {
+			break
+		}
+
+		return e.complexity.Talks.Items(childComplexity), true
+
+	case "Talks.limit":
+		if e.complexity.Talks.Limit == nil {
+			break
+		}
+
+		return e.complexity.Talks.Limit(childComplexity), true
+
+	case "Talks.nextFrom":
+		if e.complexity.Talks.NextFrom == nil {
+			break
+		}
+
+		return e.complexity.Talks.NextFrom(childComplexity), true
 
 	case "Token.expiresIn":
 		if e.complexity.Token.ExpiresIn == nil {
@@ -278,7 +404,7 @@ var sources = []*ast.Source{
 
 type Confa {
     id: String!
-    owner: String!
+    ownerId: String!
     handle: String!
 }
 
@@ -290,8 +416,36 @@ type Confas {
 
 input ConfaInput {
     id: String
-    owner: String
+    ownerId: String
     handle: String
+}
+
+type Talk {
+    id: String!
+    ownerId: String!
+    speakerId: String!
+    confaId: String!
+    handle: String!
+}
+
+type Talks {
+    items: [Talk!]!
+    limit: Int!
+    nextFrom: String!
+}
+
+input TalkInput {
+    id: String
+    ownerId: String
+    speakerId: String
+    confaId: String
+    handle: String
+}
+
+input ClapInput {
+    speakerId: String
+    confaId: String
+    talkId: String
 }
 
 type Mutation {
@@ -299,12 +453,16 @@ type Mutation {
     createSession(emailToken: String!): Token!
 
     createConfa(handle: String): Confa!
+    createTalk(confaId: String!, handle: String): Talk!
+    createClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
     confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
+    talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+    aggregateClaps(where: ClapInput! = {}): Int!
 }
 `, BuiltIn: false},
 }
@@ -313,6 +471,30 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_createClap_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["talkId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["talkId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["value"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["value"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createConfa_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -341,6 +523,30 @@ func (ec *executionContext) field_Mutation_createSession_args(ctx context.Contex
 		}
 	}
 	args["emailToken"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createTalk_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["confaId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confaId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["confaId"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["handle"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["handle"] = arg1
 	return args, nil
 }
 
@@ -374,6 +580,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_aggregateClaps_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ClapInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -381,6 +602,39 @@ func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
 		arg0, err = ec.unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["from"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["from"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_talks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 TalkInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNTalkInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -480,7 +734,7 @@ func (ec *executionContext) _Confa_id(ctx context.Context, field graphql.Collect
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Confa_owner(ctx context.Context, field graphql.CollectedField, obj *Confa) (ret graphql.Marshaler) {
+func (ec *executionContext) _Confa_ownerId(ctx context.Context, field graphql.CollectedField, obj *Confa) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -498,7 +752,7 @@ func (ec *executionContext) _Confa_owner(ctx context.Context, field graphql.Coll
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Owner, nil
+		return obj.OwnerID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -781,6 +1035,90 @@ func (ec *executionContext) _Mutation_createConfa(ctx context.Context, field gra
 	return ec.marshalNConfa2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfa(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createTalk_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateTalk(rctx, args["confaId"].(string), args["handle"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Talk)
+	fc.Result = res
+	return ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_createClap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createClap_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateClap(rctx, args["talkId"].(string), args["value"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_token(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -858,6 +1196,90 @@ func (ec *executionContext) _Query_confas(ctx context.Context, field graphql.Col
 	return ec.marshalNConfas2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfas(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_talks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_talks_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Talks(rctx, args["where"].(TalkInput), args["from"].(string), args["limit"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Talks)
+	fc.Result = res
+	return ec.marshalNTalks2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalks(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_aggregateClaps(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_aggregateClaps_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AggregateClaps(rctx, args["where"].(ClapInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -927,6 +1349,286 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_id(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_ownerId(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OwnerID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_speakerId(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpeakerID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_confaId(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConfaID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_handle(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Handle, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talks_items(ctx context.Context, field graphql.CollectedField, obj *Talks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talks",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Items, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Talk)
+	fc.Result = res
+	return ec.marshalNTalk2ᚕᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talks_limit(ctx context.Context, field graphql.CollectedField, obj *Talks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talks",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Limit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talks_nextFrom(ctx context.Context, field graphql.CollectedField, obj *Talks) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talks",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextFrom, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Token_token(ctx context.Context, field graphql.CollectedField, obj *Token) (ret graphql.Marshaler) {
@@ -2086,6 +2788,42 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputClapInput(ctx context.Context, obj interface{}) (ClapInput, error) {
+	var it ClapInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "speakerId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("speakerId"))
+			it.SpeakerID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "confaId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confaId"))
+			it.ConfaID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "talkId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
+			it.TalkID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj interface{}) (ConfaInput, error) {
 	var it ConfaInput
 	var asMap = obj.(map[string]interface{})
@@ -2100,11 +2838,63 @@ func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj in
 			if err != nil {
 				return it, err
 			}
-		case "owner":
+		case "ownerId":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
-			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownerId"))
+			it.OwnerID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "handle":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
+			it.Handle, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj interface{}) (TalkInput, error) {
+	var it TalkInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "ownerId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownerId"))
+			it.OwnerID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "speakerId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("speakerId"))
+			it.SpeakerID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "confaId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confaId"))
+			it.ConfaID, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2146,8 +2936,8 @@ func (ec *executionContext) _Confa(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "owner":
-			out.Values[i] = ec._Confa_owner(ctx, field, obj)
+		case "ownerId":
+			out.Values[i] = ec._Confa_ownerId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2234,6 +3024,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "createTalk":
+			out.Values[i] = ec._Mutation_createTalk(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createClap":
+			out.Values[i] = ec._Mutation_createClap(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2288,10 +3088,122 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "talks":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_talks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "aggregateClaps":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_aggregateClaps(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var talkImplementors = []string{"Talk"}
+
+func (ec *executionContext) _Talk(ctx context.Context, sel ast.SelectionSet, obj *Talk) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, talkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Talk")
+		case "id":
+			out.Values[i] = ec._Talk_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ownerId":
+			out.Values[i] = ec._Talk_ownerId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "speakerId":
+			out.Values[i] = ec._Talk_speakerId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "confaId":
+			out.Values[i] = ec._Talk_confaId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "handle":
+			out.Values[i] = ec._Talk_handle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var talksImplementors = []string{"Talks"}
+
+func (ec *executionContext) _Talks(ctx context.Context, sel ast.SelectionSet, obj *Talks) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, talksImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Talks")
+		case "items":
+			out.Values[i] = ec._Talks_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "limit":
+			out.Values[i] = ec._Talks_limit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "nextFrom":
+			out.Values[i] = ec._Talks_nextFrom(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2595,6 +3507,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx context.Context, v interface{}) (ClapInput, error) {
+	res, err := ec.unmarshalInputClapInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNConfa2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfa(ctx context.Context, sel ast.SelectionSet, v Confa) graphql.Marshaler {
 	return ec._Confa(ctx, sel, &v)
 }
@@ -2693,6 +3610,76 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTalk2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx context.Context, sel ast.SelectionSet, v Talk) graphql.Marshaler {
+	return ec._Talk(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTalk2ᚕᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkᚄ(ctx context.Context, sel ast.SelectionSet, v []*Talk) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx context.Context, sel ast.SelectionSet, v *Talk) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Talk(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTalkInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkInput(ctx context.Context, v interface{}) (TalkInput, error) {
+	res, err := ec.unmarshalInputTalkInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTalks2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalks(ctx context.Context, sel ast.SelectionSet, v Talks) graphql.Marshaler {
+	return ec._Talks(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTalks2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalks(ctx context.Context, sel ast.SelectionSet, v *Talks) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Talks(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNToken2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐToken(ctx context.Context, sel ast.SelectionSet, v Token) graphql.Marshaler {

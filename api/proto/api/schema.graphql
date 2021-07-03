@@ -5,7 +5,7 @@ type Token {
 
 type Confa {
     id: String!
-    owner: String!
+    ownerId: String!
     handle: String!
 }
 
@@ -17,8 +17,36 @@ type Confas {
 
 input ConfaInput {
     id: String
-    owner: String
+    ownerId: String
     handle: String
+}
+
+type Talk {
+    id: String!
+    ownerId: String!
+    speakerId: String!
+    confaId: String!
+    handle: String!
+}
+
+type Talks {
+    items: [Talk!]!
+    limit: Int!
+    nextFrom: String!
+}
+
+input TalkInput {
+    id: String
+    ownerId: String
+    speakerId: String
+    confaId: String
+    handle: String
+}
+
+input ClapInput {
+    speakerId: String
+    confaId: String
+    talkId: String
 }
 
 type Mutation {
@@ -26,10 +54,14 @@ type Mutation {
     createSession(emailToken: String!): Token!
 
     createConfa(handle: String): Confa!
+    createTalk(confaId: String!, handle: String): Talk!
+    createClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
     confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
+    talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+    aggregateClaps(where: ClapInput! = {}): Int!
 }

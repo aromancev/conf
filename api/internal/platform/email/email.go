@@ -51,7 +51,7 @@ func NewSender(server, port, fromAddress, password string, secure bool) *Sender 
 	return &Sender{server: server, port: port, fromAddress: fromAddress, password: password, secure: secure}
 }
 
-func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) { // nolint: golint, stylecheck
+func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) { // nolint: revive, stylecheck
 	dialer := net.Dialer{
 		Timeout: sendTimeout,
 	}

@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "confas",
+    "index": "unique_handle"
+  }
+]

@@ -2,13 +2,13 @@ package talk
 
 import (
 	"context"
-	"github.com/aromancev/confa/internal/confa"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
+	"github.com/aromancev/confa/internal/confa"
 
-	"github.com/aromancev/confa/internal/platform/psql/double"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCRUD(t *testing.T) {
@@ -16,55 +16,50 @@ func TestCRUD(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("Fetch", func(t *testing.T) {
-		t.Parallel()
+	t.Run("Create", func(t *testing.T) {
+		t.Run("Happy path", func(t *testing.T) {
+			t.Parallel()
 
-		pg, done := double.NewDocker("", migrate)
-		defer done()
-		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
-		talkCRUD := NewCRUD(pg, NewSQL(), confaCRUD)
+			db := dockerMongo(t)
+			confaMongo := confa.NewMongo(db)
+			talkCRUD := NewCRUD(NewMongo(db), confaMongo)
 
-		userID := uuid.New()
-		requestConfa := confa.Confa{
-			Handle: "test",
-		}
-		requestTalk := Talk{
-			Handle: "test",
-		}
+			conf := confa.Confa{
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test",
+			}
+			_, err := confaMongo.Create(ctx, conf)
+			require.NoError(t, err)
 
-		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
-		require.NoError(t, err)
+			created, err := talkCRUD.Create(ctx, conf.Owner, Talk{
+				Confa:  conf.ID,
+				Handle: "test",
+			})
+			require.NoError(t, err)
+			fetched, err := talkCRUD.Fetch(ctx, Lookup{ID: created.ID})
+			require.NoError(t, err)
+			assert.Equal(t, []Talk{created}, fetched)
+		})
 
-		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk)
-		require.NoError(t, err)
+		t.Run("Only the owner can create", func(t *testing.T) {
+			db := dockerMongo(t)
+			confaMongo := confa.NewMongo(db)
+			talkCRUD := NewCRUD(NewMongo(db), confaMongo)
 
-		fetchedTalk, err := talkCRUD.Fetch(ctx, createdTalk.ID)
-		require.NoError(t, err)
+			conf := confa.Confa{
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test",
+			}
+			_, err := confaMongo.Create(ctx, conf)
+			require.NoError(t, err)
 
-		require.Equal(t, createdTalk, fetchedTalk)
-	})
-
-	t.Run("Permission denied", func(t *testing.T) {
-		t.Parallel()
-
-		pg, done := double.NewDocker("", migrate)
-		defer done()
-		confaCRUD := confa.NewCRUD(pg, confa.NewSQL())
-		talkCRUD := NewCRUD(pg, NewSQL(), confaCRUD)
-
-		userID := uuid.New()
-		wronguserID := uuid.New()
-		requestConfa := confa.Confa{
-			Handle: "test",
-		}
-		requestTalk := Talk{
-			Handle: "test",
-		}
-
-		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
-		require.NoError(t, err)
-
-		_, err = talkCRUD.Create(ctx, createdConfa.ID, wronguserID, requestTalk)
-		require.ErrorIs(t, err, ErrPermissionDenied)
+			_, err = talkCRUD.Create(ctx, uuid.New(), Talk{
+				Confa:  conf.ID,
+				Handle: "test",
+			})
+			require.ErrorIs(t, err, ErrPermissionDenied)
+		})
 	})
 }

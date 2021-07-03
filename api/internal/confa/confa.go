@@ -12,14 +12,14 @@ var (
 	ErrValidation       = errors.New("invalid confa")
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
-	ErrDuplicatedEntry  = errors.New("duplicated entry")
+	ErrDuplicateEntry   = errors.New("confa already exists")
 )
 
 type Confa struct {
-	ID        uuid.UUID `json:"id"`
-	Owner     uuid.UUID `json:"owner"`
-	Handle    string    `json:"handle"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        uuid.UUID `bson:"_id" json:"id"`
+	Owner     uuid.UUID `bson:"owner" json:"owner"`
+	Handle    string    `bson:"handle" json:"handle"`
+	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 }
 
 var validHandle = regexp.MustCompile("^[A-z0-9-]{1,64}$")
@@ -41,6 +41,6 @@ type Lookup struct {
 	ID     uuid.UUID
 	Owner  uuid.UUID
 	Handle string
-	Limit  uint64
+	Limit  int64
 	From   uuid.UUID
 }

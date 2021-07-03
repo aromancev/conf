@@ -12,17 +12,17 @@ var (
 	ErrValidation       = errors.New("invalid talk")
 	ErrNotFound         = errors.New("not found")
 	ErrUnexpectedResult = errors.New("unexpected result")
-	ErrDuplicatedEntry  = errors.New("duplicated entry")
+	ErrDuplicateEntry   = errors.New("talk already exits")
 	ErrPermissionDenied = errors.New("permission denied")
 )
 
 type Talk struct {
-	ID        uuid.UUID `json:"id"`
-	Confa     uuid.UUID `json:"confa"`
-	Owner     uuid.UUID `json:"owner"`
-	Speaker   uuid.UUID `json:"speaker"`
-	Handle    string    `json:"handle"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID        uuid.UUID `bson:"_id" json:"id"`
+	Confa     uuid.UUID `bson:"confa" json:"confa"`
+	Owner     uuid.UUID `bson:"owner" json:"owner"`
+	Speaker   uuid.UUID `bson:"speaker" json:"speaker"`
+	Handle    string    `bson:"handle" json:"handle"`
+	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 }
 
 var validHandle = regexp.MustCompile("^[A-z0-9-]{1,64}$")
@@ -47,6 +47,11 @@ func (t Talk) Validate() error {
 }
 
 type Lookup struct {
-	ID    uuid.UUID
-	Confa uuid.UUID
+	ID      uuid.UUID
+	Owner   uuid.UUID
+	Confa   uuid.UUID
+	Speaker uuid.UUID
+	Handle  string
+	Limit   int64
+	From    uuid.UUID
 }

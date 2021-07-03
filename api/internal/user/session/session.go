@@ -17,13 +17,14 @@ var (
 )
 
 type Session struct {
-	Key       string    `json:"key"`
-	Owner     uuid.UUID `json:"owner"`
-	CreatedAt time.Time `json:"createdAt"`
+	Key       string    `bson:"_id" json:"key"`
+	Owner     uuid.UUID `bson:"owner" json:"owner"`
+	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 }
 
-const keyLength = 96 // you need 4*(n/3) chars to represent n bytes, field for key is VARCHAR(128)
-func NewSession() Session {
+func NewKey() string {
+	const keyLength = 96
+
 	b := make([]byte, keyLength)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -31,7 +32,7 @@ func NewSession() Session {
 	}
 	key := base64.StdEncoding.EncodeToString(b)
 
-	return Session{Key: key}
+	return key
 }
 
 func (s Session) Validate() error {
@@ -47,4 +48,5 @@ func (s Session) Validate() error {
 type Lookup struct {
 	Key   string
 	Owner uuid.UUID
+	Limit int64
 }

@@ -82,6 +82,14 @@ jobs:
       - run: |
           cd ./api/cmd/sfu
           go build -o ./
+  media_build:
+    docker:
+      - image: circleci/golang:1.16
+    steps:
+      - checkout
+      - run: |
+          cd ./api/cmd/media
+          go build -o ./
 
   lint_run:
     docker:

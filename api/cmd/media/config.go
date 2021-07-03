@@ -53,11 +53,7 @@ func (c Config) Validate() error {
 	if c.MediaDir == "" {
 		return errors.New("media dir not set")
 	}
-	if err := c.Beanstalkd.Validate(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.Beanstalkd.Validate()
 }
 
 type BeanstalkdConfig struct {

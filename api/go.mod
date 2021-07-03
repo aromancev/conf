@@ -10,9 +10,12 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/containerd/continuity v0.0.0-20210208174643-50096c924a4e // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jackc/pgconn v1.8.0
 	github.com/jackc/pgerrcode v0.0.0-20201024163028-a0d42d470451
@@ -35,6 +38,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/twitchtv/twirp v8.1.0+incompatible
 	github.com/vektah/gqlparser/v2 v2.1.0
+	go.mongodb.org/mongo-driver v1.5.4
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20210503195802-e9a32991a82e // indirect
 	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420 // indirect
