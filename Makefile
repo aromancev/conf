@@ -47,3 +47,14 @@ cert-renew:
 	  -v /etc/letsencrypt:/etc/letsencrypt          \
 	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
 	  certbot/certbot renew
+
+.PHONY: check
+check:
+	make test
+	cd api && go fmt ./...
+	make lint-api
+	cd api \
+	    && go build -o bin/ cmd/api/... \
+	    && go build -o bin/ cmd/media/... \
+	    && go build -o bin/ cmd/sfu/...
+	echo DONE!

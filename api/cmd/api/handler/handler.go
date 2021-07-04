@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 	"time"
 
@@ -38,9 +39,18 @@ type HTTP struct {
 	router http.Handler
 }
 
+
 func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
 	r := httprouter.New()
 
+	r.POST(
+		"/confa/v1/claps",
+		createClap(verifier, clapCRUD),
+	)
+	r.GET(
+		"/confa/v1/claps",
+		getClap(clapCRUD),
+	)
 	r.POST(
 		"/confa/v1/confas/:confa_id/talks",
 		createTalk(verifier, talkCRUD),

@@ -39,20 +39,22 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test1",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
-				ID:     uuid.New(),
-				Owner:  uuid.New(),
-				Confa:  requestConfa.ID,
-				Handle: "test1",
+				ID:      uuid.New(),
+				Owner:   userID,
+				Speaker: userID,
+				Confa:   requestConfa.ID,
+				Handle:  "test1",
 			}
 
 			createdTalk, err := deps.talkSQL.Create(ctx, deps.pg, requestTalk)
@@ -70,20 +72,22 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test2",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
-				ID:     uuid.New(),
-				Owner:  uuid.New(),
-				Confa:  requestConfa.ID,
-				Handle: uuid.New().String(),
+				ID:      uuid.New(),
+				Owner:   userID,
+				Speaker: userID,
+				Confa:   requestConfa.ID,
+				Handle:  uuid.New().String(),
 			}
 
 			createdTalk, err := deps.talkSQL.Create(ctx, deps.pg, requestTalk)
@@ -101,20 +105,22 @@ func TestSQL(t *testing.T) {
 
 			deps, done := setup()
 			defer done()
+			userID := uuid.New()
 
 			requestConfa := confa.Confa{
 				ID:     uuid.New(),
-				Owner:  uuid.New(),
+				Owner:  userID,
 				Handle: "test3",
 			}
 			_, err := deps.confaSQL.Create(ctx, deps.pg, requestConfa)
 			require.NoError(t, err)
 
 			requestTalk := Talk{
-				ID:     uuid.New(),
-				Owner:  uuid.New(),
-				Confa:  requestConfa.ID,
-				Handle: "test3",
+				ID:      uuid.New(),
+				Owner:   userID,
+				Speaker: userID,
+				Confa:   requestConfa.ID,
+				Handle:  "test3",
 			}
 
 			_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalk)
@@ -131,18 +137,20 @@ func TestSQL(t *testing.T) {
 		defer done()
 		talks := NewSQL()
 		confas := confa.NewSQL()
+		userID := uuid.New()
 
 		conf := confa.Confa{
 			ID:     uuid.New(),
-			Owner:  uuid.New(),
+			Owner:  userID,
 			Handle: "test",
 		}
 
 		tlk := Talk{
-			ID:     uuid.New(),
-			Owner:  uuid.New(),
-			Confa:  conf.ID,
-			Handle: "test",
+			ID:      uuid.New(),
+			Owner:   userID,
+			Speaker: userID,
+			Confa:   conf.ID,
+			Handle:  "test",
 		}
 
 		_, err := confas.Create(ctx, pg, conf)

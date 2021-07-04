@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 
 	"github.com/pion/webrtc/v3"
@@ -86,6 +87,70 @@ func getTalk(talks *talk.CRUD) httprouter.Handle {
 		}
 
 		_ = api.OK(w, tlk)
+	}
+}
+
+func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+
+		access, err := verifier.AccessToken(auth.Bearer(r))
+		if err != nil {
+			_ = api.Unauthorised(w)
+			return
+		}
+
+		var request clap.Clap
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
+			return
+		}
+		err = claps.CreateOrUpdate(ctx, access.UserID, request)
+		switch {
+		case errors.Is(err, clap.ErrValidation):
+			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to create clap")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.Created(w, nil)
+	}
+}
+
+func getClap(claps *clap.CRUD) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		confaID := r.URL.Query().Get("confa")
+		talkID := r.URL.Query().Get("talk")
+
+		var lookup clap.Lookup
+		var err error
+		if confaID != "" {
+			lookup.Confa, err = uuid.Parse(confaID)
+			if err != nil {
+				_ = api.NotFound(w, err.Error())
+				return
+			}
+		}
+		if talkID != "" {
+			lookup.Talk, err = uuid.Parse(talkID)
+			if err != nil {
+				_ = api.NotFound(w, err.Error())
+				return
+			}
+		}
+
+		clapsCount, err := claps.Aggregate(ctx, lookup)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
+			_ = api.InternalError(w)
+			return
+		}
+
+		_ = api.OK(w, clapsCount)
 	}
 }
 

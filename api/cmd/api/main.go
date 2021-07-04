@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 	"os"
 	"os/signal"
@@ -102,6 +103,9 @@ func main() {
 	talkSQL := talk.NewSQL()
 	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
 
+	clapSQL := clap.NewSQL()
+	clapCRUD := clap.NewCRUD(postgres, clapSQL, talkSQL)
+
 	sessionSQL := session.NewSQL()
 	sessionCRUD := session.NewCRUD(postgres, sessionSQL)
 
@@ -111,6 +115,7 @@ func main() {
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
 	_ = handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
+  
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{

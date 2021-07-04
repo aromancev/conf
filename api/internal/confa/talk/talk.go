@@ -20,6 +20,7 @@ type Talk struct {
 	ID        uuid.UUID `json:"id"`
 	Confa     uuid.UUID `json:"confa"`
 	Owner     uuid.UUID `json:"owner"`
+	Speaker   uuid.UUID `json:"speaker"`
 	Handle    string    `json:"handle"`
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -32,6 +33,9 @@ func (t Talk) Validate() error {
 	}
 	if t.Owner == uuid.Nil {
 		return errors.New("owner should not be empty")
+	}
+	if t.Speaker == uuid.Nil {
+		return errors.New("speaker should not be empty")
 	}
 	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")

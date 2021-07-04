@@ -34,6 +34,7 @@ func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request T
 	request.ID = uuid.New()
 	request.Confa = confaID
 	request.Owner = ownerID
+	request.Speaker = ownerID
 	if request.Handle == "" {
 		request.Handle = request.ID.String()
 	}
