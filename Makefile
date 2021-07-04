@@ -65,5 +65,8 @@ check:
 	make test
 	cd api && go fmt ./...
 	make lint-api
-	cd ./api/cmd/api && go build -o ./ && rm api
+	cd api \
+	    && go build -o bin/ cmd/api/... \
+	    && go build -o bin/ cmd/media/... \
+	    && go build -o bin/ cmd/sfu/...
 	echo DONE!
