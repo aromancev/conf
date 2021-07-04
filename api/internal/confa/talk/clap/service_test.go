@@ -131,29 +131,13 @@ func TestCRUD(t *testing.T) {
 		_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalks...)
 		require.NoError(t, err)
 
-		requestClap := Clap{
-			Talk:  requestTalks[0].ID,
-			Claps: 1,
-		}
-		err = clapCRUD.CreateOrUpdate(ctx, ids[0], requestClap)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[0].ID, Claps: 1})
 		require.NoError(t, err)
-		requestClap2 := Clap{
-			Talk:  requestTalks[0].ID,
-			Claps: 1,
-		}
-		err = clapCRUD.CreateOrUpdate(ctx, ids[1], requestClap2)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[0].ID, Claps: 1})
 		require.NoError(t, err)
-		requestClap3 := Clap{
-			Talk:  requestTalks[1].ID,
-			Claps: 1,
-		}
-		err = clapCRUD.CreateOrUpdate(ctx, ids[0], requestClap3)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[1].ID, Claps: 1})
 		require.NoError(t, err)
-		requestClap4 := Clap{
-			Talk:  requestTalks[2].ID,
-			Claps: 1,
-		}
-		err = clapCRUD.CreateOrUpdate(ctx, ids[1], requestClap4)
+		err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[2].ID, Claps: 1})
 		require.NoError(t, err)
 
 		t.Run("bySpeaker", func(t *testing.T) {

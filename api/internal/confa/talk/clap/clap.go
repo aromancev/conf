@@ -6,8 +6,7 @@ import (
 )
 
 var (
-	ErrDuplicatedEntry = errors.New("duplicated entry")
-	ErrValidation      = errors.New("invalid clap")
+	ErrValidation = errors.New("invalid clap")
 )
 
 type Clap struct {

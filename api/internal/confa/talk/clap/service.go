@@ -40,7 +40,7 @@ func (c *CRUD) CreateOrUpdate(ctx context.Context, ownerID uuid.UUID, request Cl
 	}
 	err = c.repo.CreateOrUpdate(ctx, c.conn, request)
 	if err != nil {
-		return fmt.Errorf("failed to create clap: %w", err)
+		return fmt.Errorf("%w: %s", ErrValidation, err)
 	}
 	return nil
 }
