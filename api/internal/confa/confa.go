@@ -38,6 +38,9 @@ func (c Confa) Validate() error {
 }
 
 type Lookup struct {
-	ID    uuid.UUID
-	Owner uuid.UUID
+	ID     uuid.UUID
+	Owner  uuid.UUID
+	Handle string
+	Limit  uint64
+	From   uuid.UUID
 }

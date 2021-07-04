@@ -1,23 +1,6 @@
-.PHONY: build
-build:
-	docker-compose -f docker-compose.yml build
-	docker run \
-		--rm \
-		-w /app \
-		-v `pwd`/web:/app \
-		node:15.7.0 /bin/sh -c "npm install -g pnpm; pnpm install"
-
-.PHONY: start
-start:
-	docker-compose -f docker-compose.yml up
-
 .PHONY: start-api
 start-api:
-	docker-compose -f docker-compose.yml up nginx api beanstalkd postgres email
-
-.PHONY: stop
-stop:
-	docker-compose down
+	docker-compose up nginx api media beanstalkd postgres email
 
 .PHONY: migrate
 migrate:
@@ -45,6 +28,11 @@ lint-web:
 	-w /app \
 	-v `pwd`/web:/app \
 	node:15.7.0 npm run lint
+
+.PHONY: gen
+gen:
+	cd api && $(MAKE) gen
+	cd web && $(MAKE) gen
 
 .PHONY: cert-create
 cert-create:

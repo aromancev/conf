@@ -4,13 +4,13 @@ import (
 	"net"
 	"os"
 
+	psfu "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
+	"github.com/pion/ion-sfu/cmd/signal/grpc/server"
+	"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
 	"github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
-
-	"github.com/aromancev/confa/cmd/sfu/handler"
-	psfu "github.com/aromancev/confa/proto/sfu"
 )
 
 func main() {
@@ -24,16 +24,37 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
+	// TODO: Implement interface
+	// sfu.Logger = log.Logger
+
 	grpcServer := grpc.NewServer()
-	sfuServer := sfu.NewSFU(sfu.Config{
+	sfuService := sfu.NewSFU(sfu.Config{
+		Router: sfu.RouterConfig{
+			MaxBandwidth:        1500,
+			MaxPacketTrack:      500,
+			AudioLevelThreshold: 40,
+			AudioLevelInterval:  1000,
+			AudioLevelFilter:    20,
+			Simulcast: sfu.SimulcastConfig{
+				BestQualityFirst: true,
+			},
+		},
 		WebRTC: sfu.WebRTCConfig{
+			ICEServers: []sfu.ICEServerConfig{
+				{
+					URLs: []string{"stun:stun.stunprotocol.org:3478", "stun:stun.l.google.com:19302"},
+				},
+			},
 			ICEPortRange: []uint16{config.ICEPortMin, config.ICEPortMax},
+			SDPSemantics: "unified-plan",
+			MDNS:         true,
 		},
 	})
-	dc := sfuServer.NewDatachannel(sfu.APIChannelLabel)
-	dc.Use(handler.SubscriberAPI)
 
-	psfu.RegisterSFUServer(grpcServer, handler.NewServer(sfuServer))
+	dc := sfuService.NewDatachannel(sfu.APIChannelLabel)
+	dc.Use(datachannel.SubscriberAPI)
+
+	psfu.RegisterSFUServer(grpcServer, server.NewServer(sfuService))
 
 	lis, err := net.Listen("tcp", config.Address)
 	if err != nil {

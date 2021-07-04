@@ -1,0 +1,26 @@
+schema:
+  - ../../../proto/api/*.graphql
+
+exec:
+  filename: ./schema.gql.go
+  package: web
+
+model:
+  filename: ./models.gql.go
+  package: web
+
+resolver:
+  layout: follow-schema
+  dir: .
+  package: web
+  filename_template: "{name}.resolver.go"
+
+autobind:
+  - "github.com/aromancev/confa/cmd/api/web"
+
+skip_validation: true
+
+models:
+  UInt64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Uint64

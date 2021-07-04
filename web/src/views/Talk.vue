@@ -24,7 +24,7 @@
 import { defineComponent } from "vue"
 import Stream from "@/components/Stream.vue"
 import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
-import { IonSFUJSONRPCSignal } from "ion-sdk-js/lib/signal/json-rpc-impl"
+import { signal } from "@/api"
 
 export default defineComponent({
   name: "Talk",
@@ -39,37 +39,31 @@ export default defineComponent({
   },
 
   async created() {
-    let protocol = "wss"
-    if (process.env.NODE_ENV == "development") {
-      protocol = "ws"
-    }
-    const signal = new IonSFUJSONRPCSignal(
-      `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
-    )
     const client = new Client(signal)
+
+    const uid = Math.random().toString()
     signal.onopen = async () => {
-      client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
-        if (track.kind !== "video") {
-          return
-        }
-
-        stream.preferLayer("low")
-        this.remoteStreams[stream.id] = stream
-        stream.onremovetrack = () => {
-          delete this.remoteStreams[stream.id]
-        }
-      }
-
+      await client.join("test session", uid)
       const local = await LocalStream.getUserMedia({
         codec: "vp8",
         resolution: "vga",
+        simulcast: true,
         video: true,
         audio: false,
       })
-
-      await client.join("test session")
-      client.publish(local)
       this.localStream = local
+      client.publish(local)
+    }
+
+    client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
+      if (track.kind !== "video") {
+        return
+      }
+
+      this.remoteStreams[stream.id] = stream
+      stream.onremovetrack = () => {
+        delete this.remoteStreams[stream.id]
+      }
     }
   },
 })

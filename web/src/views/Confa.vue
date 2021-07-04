@@ -1,7 +1,9 @@
 <template>
   <div class="container">
     <div class="row">
-      <h1>{{ confa.handle }}</h1>
+      <h1 v-if="confa">{{ confa.handle }}</h1>
+      <h1 v-else>NOT FOUND</h1>
+
       <InternalError
         v-if="modal === Dialog.Error"
         v-on:click="modal = Dialog.None"
@@ -13,8 +15,8 @@
 <script lang="ts">
 import InternalError from "@/components/modals/InternalError.vue"
 import { defineComponent } from "vue"
-import { userStore } from "@/iam"
-import { client, Confa } from "@/confa"
+import { userStore, Confa } from "@/api/models"
+import { confa } from "@/api"
 
 enum Dialog {
   None = "",
@@ -30,7 +32,7 @@ export default defineComponent({
     return {
       Dialog,
       user: userStore,
-      confa: {} as Confa,
+      confa: null as Confa | null,
       modal: Dialog.None,
     }
   },
@@ -38,13 +40,12 @@ export default defineComponent({
     const handle = this.$route.params.confa as string
     try {
       if (handle === "new") {
-        this.confa = await client.create()
+        this.confa = await confa.create()
         this.$router.replace("/" + this.confa.handle)
       } else {
-        const confas = await client.confas({
+        this.confa = await confa.fetchOne({
           handle: handle,
         })
-        this.confa = confas.items[0]
       }
     } catch (e) {
       this.modal = Dialog.Error

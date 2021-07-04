@@ -1,0 +1,35 @@
+type Token {
+    token: String!
+    expiresIn: Int!
+}
+
+type Confa {
+    id: String!
+    owner: String!
+    handle: String!
+}
+
+type Confas {
+    items: [Confa!]!
+    limit: Int!
+    nextFrom: String!
+}
+
+input ConfaInput {
+    id: String
+    owner: String
+    handle: String
+}
+
+type Mutation {
+    login(address: String!): String!
+    createSession(emailToken: String!): Token!
+
+    createConfa(handle: String): Confa!
+}
+
+type Query {
+    token: Token!
+
+    confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
+}

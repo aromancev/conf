@@ -27,11 +27,10 @@ func Login(baseURL, to, token string) (email.Email, error) {
 		return email.Email{}, err
 	}
 
-	msg := email.Email{
-		From:      "Confa",
+	return email.Email{
+		FromName:  "Confa",
 		Subject:   "Login",
 		ToAddress: to,
 		HTML:      html.String(),
-	}
-	return msg, nil
+	}, nil
 }

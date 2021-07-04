@@ -28,8 +28,8 @@ func (c Config) WithEnv() Config {
 
 func (c Config) WithDefault() Config {
 	c.Address = ":8080"
-	c.ICEPortMin = 10000
-	c.ICEPortMax = 10100
+	c.ICEPortMin = 5000
+	c.ICEPortMax = 5200
 	return c
 }
 

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
@@ -20,12 +19,10 @@ import (
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/rtc/wsock"
 	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
-)
-
-const (
-	TubeEmail = "email"
+	"github.com/aromancev/confa/proto/queue"
 )
 
 const (
@@ -42,32 +39,10 @@ type HTTP struct {
 	router http.Handler
 }
 
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRUD *clap.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader websocket.Upgrader, sfuAddress string) *HTTP {
+
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
 	r := httprouter.New()
 
-	r.GET("/iam/health", ok)
-	r.POST(
-		"/iam/v1/login",
-		login(baseURL, signer, producer),
-	)
-	r.POST(
-		"/iam/v1/sessions",
-		createSession(verifier, signer, identCRUD, sessionCRUD),
-	)
-	r.GET(
-		"/iam/v1/token",
-		createToken(signer, sessionCRUD),
-	)
-
-	r.GET("/confa/health", ok)
-	r.POST(
-		"/confa/v1/confas",
-		createConfa(verifier, confaCRUD),
-	)
-	r.GET(
-		"/confa/v1/confas/:confa_id",
-		getConfa(confaCRUD),
-	)
 	r.POST(
 		"/confa/v1/claps",
 		createClap(verifier, clapCRUD),
@@ -87,8 +62,9 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRU
 
 	r.GET(
 		"/rtc/v1/ws",
-		rtc(upgrader, sfuAddress),
+		serveRTC(upgrader, sfuAddr),
 	)
+
 	return &HTTP{
 		router: r,
 	}
@@ -119,7 +95,7 @@ func NewJob(sender *email.Sender) *Job {
 	return &Job{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
-			case TubeEmail:
+			case queue.TubeEmail:
 				return sendEmail(sender)
 			default:
 				return nil
@@ -129,7 +105,13 @@ func NewJob(sender *email.Sender) *Job {
 }
 
 func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
-	ctx, _ = trace.Job(ctx, job)
+	j, err := queue.Unmarshal(job.Body)
+	if err != nil {
+		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
+		return
+	}
+	ctx = trace.New(ctx, j.TraceId)
+	job.Body = j.Payload
 
 	plog.JobEvent(ctx, *job).Msg("Job received")
 
@@ -145,7 +127,7 @@ func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
 		return
 	}
 
-	err := handle(ctx, job)
+	err = handle(ctx, job)
 	if err != nil {
 		if job.Stats.Releases >= jobRetries {
 			log.Ctx(ctx).Err(err).Msg("Job retries exceeded. Burying.")

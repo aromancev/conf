@@ -15,18 +15,19 @@ type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Talk) ([]Talk, error)
 	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Talk, error)
 }
-type ConfaCRUD interface {
-	Fetch(ctx context.Context, ID uuid.UUID) (confa.Confa, error)
+
+type ConfaRepo interface {
+	FetchOne(ctx context.Context, lookup confa.Lookup) (confa.Confa, error)
 }
 
 type CRUD struct {
-	conn      psql.Conn
-	repo      Repo
-	confaCRUD ConfaCRUD
+	conn   psql.Conn
+	repo   Repo
+	confas ConfaRepo
 }
 
-func NewCRUD(conn psql.Conn, repo Repo, confaCRUD ConfaCRUD) *CRUD {
-	return &CRUD{conn: conn, repo: repo, confaCRUD: confaCRUD}
+func NewCRUD(conn psql.Conn, repo Repo, confas ConfaRepo) *CRUD {
+	return &CRUD{conn: conn, repo: repo, confas: confas}
 }
 
 func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request Talk) (Talk, error) {
@@ -40,12 +41,12 @@ func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request T
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
-	fetchedConfa, err := c.confaCRUD.Fetch(ctx, confaID)
+	conf, err := c.confas.FetchOne(ctx, confa.Lookup{ID: confaID})
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
 	}
 
-	if fetchedConfa.Owner != ownerID {
+	if conf.Owner != ownerID {
 		return Talk{}, ErrPermissionDenied
 	}
 

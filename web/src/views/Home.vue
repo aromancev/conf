@@ -1,5 +1,5 @@
 <template>
-  <div v-if="user.loggedIn">
+  <div v-if="user.id">
     <router-link class="btn px-3 py-2" to="/new">Create confa</router-link>
   </div>
   <div v-else>
@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import { userStore } from "@/iam"
+import { userStore } from "@/api/models"
 
 export default defineComponent({
   name: "Home",

@@ -1,8 +1,7 @@
 #!/bin/bash -e
 
-export IMAGE=confa/api
+export IMAGE=confa/tools
 
-docker build . -t ${IMAGE}
 docker run \
   --rm \
   -w /app \
