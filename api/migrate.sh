@@ -2,6 +2,7 @@
 
 export IMAGE=confa/tools
 
+docker build . -f Dockerfile.dev -t ${IMAGE}
 docker run \
   --rm \
   -w /app \

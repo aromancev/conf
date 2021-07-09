@@ -114,8 +114,8 @@ func main() {
 	identSQL := ident.NewSQL()
 	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
 
-	_ = handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
-  
+	_ = handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, clapCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
+
 	jobHandler := handler.NewJob(sender)
 
 	srv := &http.Server{

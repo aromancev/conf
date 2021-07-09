@@ -39,8 +39,7 @@ type HTTP struct {
 	router http.Handler
 }
 
-
-func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
+func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRUD *clap.CRUD, sessionCRUD *session.CRUD, identCRUD *ident.CRUD, producer Producer, signer *auth.Signer, verifier *auth.Verifier, upgrader *wsock.Upgrader, sfuAddr string) *HTTP {
 	r := httprouter.New()
 
 	r.POST(
