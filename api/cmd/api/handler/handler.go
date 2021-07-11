@@ -54,10 +54,6 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRU
 		"/confa/v1/confas/:confa_id/talks",
 		createTalk(verifier, talkCRUD),
 	)
-	r.GET(
-		"/confa/v1/talks/:talk_id",
-		getTalk(talkCRUD),
-	)
 
 	r.GET(
 		"/rtc/v1/ws",

@@ -20,6 +20,28 @@ type Confas struct {
 	NextFrom string   `json:"nextFrom"`
 }
 
+type Talk struct {
+	ID      string `json:"id"`
+	Owner   string `json:"owner"`
+	Speaker string `json:"speaker"`
+	Confa   string `json:"confa"`
+	Handle  string `json:"handle"`
+}
+
+type TalkInput struct {
+	ID      *string `json:"id"`
+	Owner   *string `json:"owner"`
+	Speaker *string `json:"speaker"`
+	Confa   *string `json:"confa"`
+	Handle  *string `json:"handle"`
+}
+
+type Talks struct {
+	Items    []*Talk `json:"items"`
+	Limit    int     `json:"limit"`
+	NextFrom string  `json:"nextFrom"`
+}
+
 type Token struct {
 	Token     string `json:"token"`
 	ExpiresIn int    `json:"expiresIn"`

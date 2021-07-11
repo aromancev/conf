@@ -6,6 +6,7 @@ package web
 import (
 	"context"
 	"errors"
+	"github.com/aromancev/confa/internal/confa/talk"
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
@@ -195,11 +196,82 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, from strin
 	return res, nil
 }
 
+func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string, limit int) (*Talks, error) {
+	if limit < 0 || limit > 20 {
+		limit = 20
+	}
+	lookup := talk.Lookup{
+		Limit: uint64(limit),
+	}
+	var err error
+	if from != "" {
+		lookup.From, err = uuid.Parse(from)
+		if err != nil {
+			return &Talks{Limit: limit}, nil
+		}
+	}
+	if where.ID != nil {
+		lookup.ID, err = uuid.Parse(*where.ID)
+		if err != nil {
+			return &Talks{Limit: limit}, nil
+		}
+	}
+	if where.Confa != nil {
+		lookup.Confa, err = uuid.Parse(*where.Confa)
+		if err != nil {
+			return &Talks{Limit: limit}, nil
+		}
+	}
+	if where.Owner != nil {
+		lookup.Owner, err = uuid.Parse(*where.Owner)
+		if err != nil {
+			return &Talks{Limit: limit}, nil
+		}
+	}
+	if where.Speaker != nil {
+		lookup.Speaker, err = uuid.Parse(*where.Speaker)
+		if err != nil {
+			return &Talks{Limit: limit}, nil
+		}
+	}
+	if where.Handle != nil {
+		lookup.Handle = *where.Handle
+	}
+	log.Ctx(ctx).Info().Msg("TRYING TO FETCH TALK!!")
+	talks, err := r.talks.Fetch(ctx, lookup)
+	log.Ctx(ctx).Info().Msg("TALK FETCHED")
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa.")
+		return nil, newError(CodeInternal, "")
+	}
+
+	if len(talks) == 0 {
+		return &Talks{Limit: limit}, nil
+	}
+
+	res := &Talks{
+		Items:    make([]*Talk, len(talks)),
+		Limit:    limit,
+		NextFrom: talks[len(talks)-1].ID.String(),
+	}
+	for i, t := range talks {
+		res.Items[i] = &Talk{
+			ID:      t.ID.String(),
+			Confa:   t.Confa.String(),
+			Owner:   t.Owner.String(),
+			Speaker: t.Speaker.String(),
+			Handle:  t.Handle,
+		}
+	}
+
+	return res, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver } // nolint: gocritic
-type queryResolver struct{ *Resolver }    // nolint: gocritic
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

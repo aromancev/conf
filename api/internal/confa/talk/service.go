@@ -13,6 +13,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, execer psql.Execer, requests ...Talk) ([]Talk, error)
+	Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Talk, error)
 	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Talk, error)
 }
 
@@ -58,10 +59,10 @@ func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request T
 	return created[0], nil
 }
 
-func (c *CRUD) Fetch(ctx context.Context, id uuid.UUID) (Talk, error) {
-	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{ID: id})
+func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
+	fetched, err := c.repo.Fetch(ctx, c.conn, lookup)
 	if err != nil {
-		return Talk{}, fmt.Errorf("failed to fetch talk: %w", err)
+		return nil, fmt.Errorf("failed to fetch talk: %w", err)
 	}
 	return fetched, nil
 }

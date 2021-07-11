@@ -47,6 +47,11 @@ func (t Talk) Validate() error {
 }
 
 type Lookup struct {
-	ID    uuid.UUID
-	Confa uuid.UUID
+	ID     uuid.UUID
+	Confa  uuid.UUID
+	Owner  uuid.UUID
+	Speaker  uuid.UUID
+	Handle string
+	Limit  uint64
+	From   uuid.UUID
 }

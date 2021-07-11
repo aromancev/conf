@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -70,6 +71,7 @@ func (s *SQL) Create(ctx context.Context, execer psql.Execer, requests ...Talk) 
 
 func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([]Talk, error) {
 	q := sq.Select("id", "owner", "speaker", "confa", "handle", "created_at").From("talks")
+	log.Ctx(ctx).Info().Msg("FETCH TALK BEGIN")
 	if lookup.ID != uuid.Nil {
 		q = q.Where(sq.Eq{"id": lookup.ID})
 	}
@@ -104,7 +106,7 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 		t.CreatedAt = t.CreatedAt.UTC()
 		talks = append(talks, t)
 	}
-
+	log.Ctx(ctx).Info().Msg("RETURN TALK")
 	return talks, nil
 }
 

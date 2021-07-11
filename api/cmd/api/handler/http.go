@@ -65,31 +65,6 @@ func createTalk(verifier *auth.Verifier, talks *talk.CRUD) httprouter.Handle {
 	}
 }
 
-func getTalk(talks *talk.CRUD) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx := r.Context()
-
-		talkID, err := uuid.Parse(ps.ByName("talk_id"))
-		if err != nil {
-			_ = api.NotFound(w, err.Error())
-			return
-		}
-
-		tlk, err := talks.Fetch(ctx, talkID)
-		switch {
-		case errors.Is(err, talk.ErrNotFound):
-			_ = api.NotFound(w, err.Error())
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
-			_ = api.InternalError(w)
-			return
-		}
-
-		_ = api.OK(w, tlk)
-	}
-}
-
 func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()

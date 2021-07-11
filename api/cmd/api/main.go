@@ -131,6 +131,7 @@ func main() {
 			identCRUD,
 			sessionCRUD,
 			confaCRUD,
+			talkCRUD,
 		)),
 	}
 	go func() {
