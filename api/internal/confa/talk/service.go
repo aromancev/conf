@@ -66,3 +66,11 @@ func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 	}
 	return fetched, nil
 }
+
+func (c *CRUD) FetchOne(ctx context.Context, lookup Lookup) (Talk, error) {
+	fetched, err := c.repo.FetchOne(ctx, c.conn, lookup)
+	if err != nil {
+		return Talk{}, fmt.Errorf("failed to fetch talk: %w", err)
+	}
+	return fetched, nil
+}

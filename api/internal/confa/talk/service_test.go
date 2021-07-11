@@ -38,7 +38,7 @@ func TestCRUD(t *testing.T) {
 		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk)
 		require.NoError(t, err)
 
-		fetchedTalk, err := talkCRUD.Fetch(ctx, createdTalk.ID)
+		fetchedTalk, err := talkCRUD.FetchOne(ctx, Lookup{ID: createdTalk.ID})
 		require.NoError(t, err)
 
 		require.Equal(t, createdTalk, fetchedTalk)
