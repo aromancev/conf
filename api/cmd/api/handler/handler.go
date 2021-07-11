@@ -50,10 +50,10 @@ func NewHTTP(baseURL string, confaCRUD *confa.CRUD, talkCRUD *talk.CRUD, clapCRU
 		"/confa/v1/claps",
 		getClap(clapCRUD),
 	)
-	r.POST(
-		"/confa/v1/confas/:confa_id/talks",
-		createTalk(verifier, talkCRUD),
-	)
+	//r.POST(
+	//	"/confa/v1/confas/:confa_id/talks",
+	//	createTalk(verifier, talkCRUD),
+	//)
 
 	r.GET(
 		"/rtc/v1/ws",

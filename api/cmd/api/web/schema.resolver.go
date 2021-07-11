@@ -6,10 +6,11 @@ package web
 import (
 	"context"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk"
+	"fmt"
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
@@ -115,6 +116,41 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Co
 		ID:     created.ID.String(),
 		Owner:  created.Owner.String(),
 		Handle: created.Handle,
+	}, nil
+}
+
+func (r *mutationResolver) CreateTalk(ctx context.Context, handle *string, confa *string) (*Talk, error) {
+	var claims auth.APIClaims
+	if err := r.verifier.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	var req talk.Talk
+	if handle != nil {
+		req.Handle = *handle
+	}
+	if confa != nil {
+		var err error
+		req.Confa, err = uuid.Parse(*confa)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create talk: %w", err)
+		}
+	}
+	created, err := r.talks.Create(ctx, claims.UserID, req)
+	switch {
+	case errors.Is(err, talk.ErrValidation):
+		return nil, newError(CodeInvalidParam, err.Error())
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("failed to create talk.")
+		return nil, newError(CodeInternal, "")
+	}
+
+	return &Talk{
+		ID:      created.ID.String(),
+		Confa:   created.Confa.String(),
+		Owner:   created.Owner.String(),
+		Speaker: created.Speaker.String(),
+		Handle:  created.Handle,
 	}, nil
 }
 
@@ -237,9 +273,7 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string,
 	if where.Handle != nil {
 		lookup.Handle = *where.Handle
 	}
-	log.Ctx(ctx).Info().Msg("TRYING TO FETCH TALK!!")
 	talks, err := r.talks.Fetch(ctx, lookup)
-	log.Ctx(ctx).Info().Msg("TALK FETCHED")
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa.")
 		return nil, newError(CodeInternal, "")

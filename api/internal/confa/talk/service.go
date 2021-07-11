@@ -31,9 +31,8 @@ func NewCRUD(conn psql.Conn, repo Repo, confas ConfaRepo) *CRUD {
 	return &CRUD{conn: conn, repo: repo, confas: confas}
 }
 
-func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request Talk) (Talk, error) {
+func (c *CRUD) Create(ctx context.Context, ownerID uuid.UUID, request Talk) (Talk, error) {
 	request.ID = uuid.New()
-	request.Confa = confaID
 	request.Owner = ownerID
 	request.Speaker = ownerID
 	if request.Handle == "" {
@@ -42,7 +41,7 @@ func (c *CRUD) Create(ctx context.Context, confaID, ownerID uuid.UUID, request T
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
-	conf, err := c.confas.FetchOne(ctx, confa.Lookup{ID: confaID})
+	conf, err := c.confas.FetchOne(ctx, confa.Lookup{ID: request.Confa})
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
 	}

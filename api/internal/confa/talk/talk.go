@@ -41,7 +41,7 @@ func (t Talk) Validate() error {
 		return errors.New("invalid handle")
 	}
 	if t.Confa == uuid.Nil {
-		return errors.New("owner should not be empty")
+		return errors.New("confa should not be empty")
 	}
 	return nil
 }

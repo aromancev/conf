@@ -48,11 +48,14 @@ type Mutation {
     createSession(emailToken: String!): Token!
 
     createConfa(handle: String): Confa!
+
+    createTalk(handle: String, confa: String): Talk!
 }
 
 type Query {
     token: Token!
 
     confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
+
     talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
 }

@@ -78,6 +78,15 @@ func (s *SQL) Fetch(ctx context.Context, queryer psql.Queryer, lookup Lookup) ([
 	if lookup.Confa != uuid.Nil {
 		q = q.Where(sq.Eq{"confa": lookup.Confa})
 	}
+	if lookup.Owner != uuid.Nil {
+		q = q.Where(sq.Eq{"owner": lookup.Owner})
+	}
+	if lookup.Speaker != uuid.Nil {
+		q = q.Where(sq.Eq{"speaker": lookup.Speaker})
+	}
+	if lookup.Handle != "" {
+		q = q.Where(sq.Eq{"handle": lookup.Handle})
+	}
 	q = q.Limit(batchLimit)
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()
