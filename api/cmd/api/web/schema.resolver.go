@@ -107,6 +107,8 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Co
 	switch {
 	case errors.Is(err, confa.ErrValidation):
 		return nil, newError(CodeInvalidParam, err.Error())
+	case errors.Is(err, confa.ErrDuplicatedEntry):
+		return nil, newError(CodeDuplicatedEntity, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa.")
 		return nil, newError(CodeInternal, "")
@@ -140,6 +142,8 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, handle *string, confa
 	switch {
 	case errors.Is(err, talk.ErrValidation):
 		return nil, newError(CodeInvalidParam, err.Error())
+	case errors.Is(err, talk.ErrDuplicatedEntry):
+		return nil, newError(CodeDuplicatedEntity, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("failed to create talk.")
 		return nil, newError(CodeInternal, "")

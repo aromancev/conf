@@ -20,49 +20,6 @@ import (
 	"github.com/aromancev/confa/internal/rtc/wsock"
 )
 
-//func createTalk(verifier *auth.Verifier, talks *talk.CRUD) httprouter.Handle {
-//	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//		ctx := r.Context()
-//
-//		access, err := verifier.AccessToken(auth.Bearer(r))
-//		if err != nil {
-//			_ = api.Unauthorised(w)
-//			return
-//		}
-//
-//		var request talk.Talk
-//		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-//			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
-//			return
-//		}
-//
-//		confaID, err := uuid.Parse(ps.ByName("confa_id"))
-//		if err != nil {
-//			_ = api.NotFound(w, err.Error())
-//			return
-//		}
-//
-//		tlk, err := talks.Create(ctx, confaID, access.UserID, request)
-//		switch {
-//		case errors.Is(err, talk.ErrValidation):
-//			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
-//			return
-//		case errors.Is(err, talk.ErrDuplicatedEntry):
-//			_ = api.BadRequest(w, api.CodeDuplicatedEntry, err.Error())
-//			return
-//		case errors.Is(err, talk.ErrPermissionDenied):
-//			_ = api.Forbidden(w)
-//			return
-//		case err != nil:
-//			log.Ctx(ctx).Err(err).Msg("Failed to create talk")
-//			_ = api.InternalError(w)
-//			return
-//		}
-//
-//		_ = api.Created(w, tlk)
-//	}
-//}
-
 func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()

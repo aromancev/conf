@@ -21,6 +21,7 @@ type Code string
 const (
 	CodeInternal     = "INTERNAL"
 	CodeInvalidParam = "INVALID_PARAM"
+	CodeDuplicatedEntity = "DUPLICATED_ENTITY"
 	CodeUnauthorized = "UNAUTHORIZED"
 )
 
