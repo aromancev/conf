@@ -17,6 +17,14 @@ type Talk {
     handle: String!
 }
 
+type Clap {
+    owner: String!
+    speaker: String!
+    confa: String!
+    talk: String!
+    claps: Int!
+}
+
 type Confas {
     items: [Confa!]!
     limit: Int!
@@ -43,6 +51,13 @@ input TalkInput {
     handle: String
 }
 
+input ClapInput {
+    owner: String
+    speaker: String
+    confa: String
+    talk: String
+}
+
 type Mutation {
     login(address: String!): String!
     createSession(emailToken: String!): Token!
@@ -50,6 +65,8 @@ type Mutation {
     createConfa(handle: String): Confa!
 
     createTalk(handle: String, confa: String): Talk!
+
+    createClap(claps: Int, talk: String): Clap!
 }
 
 type Query {
@@ -58,4 +75,6 @@ type Query {
     confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
 
     talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+
+    clap(where: ClapInput! = {}): Int!
 }

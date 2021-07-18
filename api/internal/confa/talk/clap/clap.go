@@ -41,7 +41,9 @@ func (c Clap) Validate() error {
 }
 
 type Lookup struct {
+	Owner   uuid.UUID
 	Confa   uuid.UUID
 	Speaker uuid.UUID
 	Talk    uuid.UUID
+	Limit   uint64
 }

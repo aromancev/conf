@@ -42,6 +42,14 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Clap struct {
+		Claps   func(childComplexity int) int
+		Confa   func(childComplexity int) int
+		Owner   func(childComplexity int) int
+		Speaker func(childComplexity int) int
+		Talk    func(childComplexity int) int
+	}
+
 	Confa struct {
 		Handle func(childComplexity int) int
 		ID     func(childComplexity int) int
@@ -55,6 +63,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		CreateClap    func(childComplexity int, claps *int, talk *string) int
 		CreateConfa   func(childComplexity int, handle *string) int
 		CreateSession func(childComplexity int, emailToken string) int
 		CreateTalk    func(childComplexity int, handle *string, confa *string) int
@@ -62,6 +71,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Clap   func(childComplexity int, where ClapInput) int
 		Confas func(childComplexity int, where ConfaInput, from string, limit int) int
 		Talks  func(childComplexity int, where TalkInput, from string, limit int) int
 		Token  func(childComplexity int) int
@@ -92,11 +102,13 @@ type MutationResolver interface {
 	CreateSession(ctx context.Context, emailToken string) (*Token, error)
 	CreateConfa(ctx context.Context, handle *string) (*Confa, error)
 	CreateTalk(ctx context.Context, handle *string, confa *string) (*Talk, error)
+	CreateClap(ctx context.Context, claps *int, talk *string) (*Clap, error)
 }
 type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
 	Confas(ctx context.Context, where ConfaInput, from string, limit int) (*Confas, error)
 	Talks(ctx context.Context, where TalkInput, from string, limit int) (*Talks, error)
+	Clap(ctx context.Context, where ClapInput) (int, error)
 }
 
 type executableSchema struct {
@@ -113,6 +125,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Clap.claps":
+		if e.complexity.Clap.Claps == nil {
+			break
+		}
+
+		return e.complexity.Clap.Claps(childComplexity), true
+
+	case "Clap.confa":
+		if e.complexity.Clap.Confa == nil {
+			break
+		}
+
+		return e.complexity.Clap.Confa(childComplexity), true
+
+	case "Clap.owner":
+		if e.complexity.Clap.Owner == nil {
+			break
+		}
+
+		return e.complexity.Clap.Owner(childComplexity), true
+
+	case "Clap.speaker":
+		if e.complexity.Clap.Speaker == nil {
+			break
+		}
+
+		return e.complexity.Clap.Speaker(childComplexity), true
+
+	case "Clap.talk":
+		if e.complexity.Clap.Talk == nil {
+			break
+		}
+
+		return e.complexity.Clap.Talk(childComplexity), true
 
 	case "Confa.handle":
 		if e.complexity.Confa.Handle == nil {
@@ -155,6 +202,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Confas.NextFrom(childComplexity), true
+
+	case "Mutation.createClap":
+		if e.complexity.Mutation.CreateClap == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createClap_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateClap(childComplexity, args["claps"].(*int), args["talk"].(*string)), true
 
 	case "Mutation.createConfa":
 		if e.complexity.Mutation.CreateConfa == nil {
@@ -203,6 +262,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Login(childComplexity, args["address"].(string)), true
+
+	case "Query.clap":
+		if e.complexity.Query.Clap == nil {
+			break
+		}
+
+		args, err := ec.field_Query_clap_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Clap(childComplexity, args["where"].(ClapInput)), true
 
 	case "Query.confas":
 		if e.complexity.Query.Confas == nil {
@@ -388,6 +459,14 @@ type Talk {
     handle: String!
 }
 
+type Clap {
+    owner: String!
+    speaker: String!
+    confa: String!
+    talk: String!
+    claps: Int!
+}
+
 type Confas {
     items: [Confa!]!
     limit: Int!
@@ -414,6 +493,13 @@ input TalkInput {
     handle: String
 }
 
+input ClapInput {
+    owner: String
+    speaker: String
+    confa: String
+    talk: String
+}
+
 type Mutation {
     login(address: String!): String!
     createSession(emailToken: String!): Token!
@@ -421,6 +507,8 @@ type Mutation {
     createConfa(handle: String): Confa!
 
     createTalk(handle: String, confa: String): Talk!
+
+    createClap(claps: Int, talk: String): Clap!
 }
 
 type Query {
@@ -429,6 +517,8 @@ type Query {
     confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
 
     talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+
+    clap(where: ClapInput! = {}): Int!
 }
 `, BuiltIn: false},
 }
@@ -437,6 +527,30 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_createClap_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["claps"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("claps"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["claps"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["talk"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talk"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["talk"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_createConfa_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -519,6 +633,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_clap_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ClapInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg0
 	return args, nil
 }
 
@@ -625,6 +754,181 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _Clap_owner(ctx context.Context, field graphql.CollectedField, obj *Clap) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Clap",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Clap_speaker(ctx context.Context, field graphql.CollectedField, obj *Clap) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Clap",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Speaker, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Clap_confa(ctx context.Context, field graphql.CollectedField, obj *Clap) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Clap",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Confa, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Clap_talk(ctx context.Context, field graphql.CollectedField, obj *Clap) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Clap",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Talk, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Clap_claps(ctx context.Context, field graphql.CollectedField, obj *Clap) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Clap",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Claps, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _Confa_id(ctx context.Context, field graphql.CollectedField, obj *Confa) (ret graphql.Marshaler) {
 	defer func() {
@@ -1004,6 +1308,48 @@ func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field grap
 	return ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_createClap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createClap_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateClap(rctx, args["claps"].(*int), args["talk"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Clap)
+	fc.Result = res
+	return ec.marshalNClap2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClap(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_token(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1121,6 +1467,48 @@ func (ec *executionContext) _Query_talks(ctx context.Context, field graphql.Coll
 	res := resTmp.(*Talks)
 	fc.Result = res
 	return ec.marshalNTalks2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalks(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_clap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_clap_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Clap(rctx, args["where"].(ClapInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2631,6 +3019,50 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputClapInput(ctx context.Context, obj interface{}) (ClapInput, error) {
+	var it ClapInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "owner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
+			it.Owner, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "speaker":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("speaker"))
+			it.Speaker, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "confa":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confa"))
+			it.Confa, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "talk":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talk"))
+			it.Talk, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj interface{}) (ConfaInput, error) {
 	var it ConfaInput
 	var asMap = obj.(map[string]interface{})
@@ -2726,6 +3158,53 @@ func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj int
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var clapImplementors = []string{"Clap"}
+
+func (ec *executionContext) _Clap(ctx context.Context, sel ast.SelectionSet, obj *Clap) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clapImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Clap")
+		case "owner":
+			out.Values[i] = ec._Clap_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "speaker":
+			out.Values[i] = ec._Clap_speaker(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "confa":
+			out.Values[i] = ec._Clap_confa(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "talk":
+			out.Values[i] = ec._Clap_talk(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "claps":
+			out.Values[i] = ec._Clap_claps(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
 
 var confaImplementors = []string{"Confa"}
 
@@ -2836,6 +3315,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "createClap":
+			out.Values[i] = ec._Mutation_createClap(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2899,6 +3383,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_talks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "clap":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_clap(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -3293,6 +3791,25 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNClap2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClap(ctx context.Context, sel ast.SelectionSet, v Clap) graphql.Marshaler {
+	return ec._Clap(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNClap2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClap(ctx context.Context, sel ast.SelectionSet, v *Clap) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Clap(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx context.Context, v interface{}) (ClapInput, error) {
+	res, err := ec.unmarshalInputClapInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNConfa2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfa(ctx context.Context, sel ast.SelectionSet, v Confa) graphql.Marshaler {
@@ -3730,6 +4247,21 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalInt(*v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

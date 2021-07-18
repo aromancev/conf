@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
@@ -158,6 +158,41 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, handle *string, confa
 	}, nil
 }
 
+func (r *mutationResolver) CreateClap(ctx context.Context, claps *int, talk *string) (*Clap, error) {
+	var claims auth.APIClaims
+	if err := r.verifier.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	var req clap.Clap
+	if claps != nil {
+		req.Claps = int8(*claps)
+	}
+	if talk != nil {
+		var err error
+		req.Talk, err = uuid.Parse(*talk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create clap: %w", err)
+		}
+	}
+	created, err := r.claps.CreateOrUpdate(ctx, claims.UserID, req)
+	switch {
+	case errors.Is(err, clap.ErrValidation):
+		return nil, newError(CodeInvalidParam, err.Error())
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("failed to create clap.")
+		return nil, newError(CodeInternal, "")
+	}
+
+	return &Clap{
+		Claps:   int(created.Claps),
+		Owner:   created.Owner.String(),
+		Confa:   created.Confa.String(),
+		Speaker: created.Speaker.String(),
+		Talk:    created.Talk.String(),
+	}, nil
+}
+
 func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
 	sessKey := auth.Ctx(ctx).Session()
 	if sessKey == "" {
@@ -279,7 +314,7 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string,
 	}
 	talks, err := r.talks.Fetch(ctx, lookup)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa.")
+		log.Ctx(ctx).Err(err).Msg("failed to fetch talk.")
 		return nil, newError(CodeInternal, "")
 	}
 
@@ -303,6 +338,42 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string,
 	}
 
 	return res, nil
+}
+
+func (r *queryResolver) Clap(ctx context.Context, where ClapInput) (int, error) {
+	var err error
+	lookup := clap.Lookup{}
+	if where.Owner != nil {
+		lookup.Owner, err = uuid.Parse(*where.Owner)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if where.Confa != nil {
+		lookup.Confa, err = uuid.Parse(*where.Confa)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if where.Speaker != nil {
+		lookup.Speaker, err = uuid.Parse(*where.Speaker)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if where.Talk != nil {
+		lookup.Talk, err = uuid.Parse(*where.Talk)
+		if err != nil {
+			return 0, err
+		}
+	}
+	claps, err := r.claps.Aggregate(ctx, lookup)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("failed to aggregate clap.")
+		return 0, newError(CodeInternal, "")
+	}
+
+	return claps, nil
 }
 
 // Mutation returns MutationResolver implementation.

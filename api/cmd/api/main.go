@@ -132,6 +132,7 @@ func main() {
 			sessionCRUD,
 			confaCRUD,
 			talkCRUD,
+			clapCRUD,
 		)),
 	}
 	go func() {

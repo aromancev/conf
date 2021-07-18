@@ -14,10 +14,10 @@ func NewSQL() *SQL {
 	return &SQL{}
 }
 
-func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Clap) error {
+func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Clap) (Clap, error) {
 	err := request.Validate()
 	if err != nil {
-		return err
+		return Clap{}, err
 	}
 	q := sq.Insert("claps").Columns("owner", "speaker", "confa", "talk", "claps")
 	q = q.Values(request.Owner, request.Speaker, request.Confa, request.Talk, request.Claps)
@@ -25,13 +25,13 @@ func (s *SQL) CreateOrUpdate(ctx context.Context, execer psql.Execer, request Cl
 	q = q.PlaceholderFormat(sq.Dollar)
 	query, args, err := q.ToSql()
 	if err != nil {
-		return err
+		return Clap{}, err
 	}
 	_, err = execer.Exec(ctx, query, args...)
 	if err != nil {
-		return err
+		return Clap{}, err
 	}
-	return nil
+	return request, nil
 }
 
 func (s *SQL) Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup) (int, error) {

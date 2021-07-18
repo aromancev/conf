@@ -70,7 +70,7 @@ func TestSQL(t *testing.T) {
 				Claps:   int8(5),
 			}
 			clapLookup := Lookup{Talk: requestTalk.ID}
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
 			claps, err := deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
@@ -118,12 +118,12 @@ func TestSQL(t *testing.T) {
 				Claps:   int8(30),
 			}
 			clapLookup := Lookup{Talk: requestTalk.ID}
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
 			claps, err := deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
 			require.Equal(t, 5, claps)
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClapUpdate)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClapUpdate)
 			require.NoError(t, err)
 			claps, err = deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
@@ -182,9 +182,9 @@ func TestSQL(t *testing.T) {
 				Claps:   int8(30),
 			}
 			clapLookup := Lookup{Confa: requestConfa.ID}
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
 			require.NoError(t, err)
 			claps, err := deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
@@ -241,9 +241,9 @@ func TestSQL(t *testing.T) {
 				Claps:   int8(5),
 			}
 			clapLookup := Lookup{Speaker: ownerID}
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
 			require.NoError(t, err)
 			claps, err := deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)
@@ -300,9 +300,9 @@ func TestSQL(t *testing.T) {
 				Claps:   int8(5),
 			}
 			clapLookup := Lookup{Talk: anotherRequestTalk.ID}
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, requestClap)
 			require.NoError(t, err)
-			err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
+			_, err = deps.clapSQL.CreateOrUpdate(ctx, deps.pg, anotherRequestClap)
 			require.NoError(t, err)
 			claps, err := deps.clapSQL.Aggregate(ctx, deps.pg, clapLookup)
 			require.NoError(t, err)

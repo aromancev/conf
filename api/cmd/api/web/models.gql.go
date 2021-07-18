@@ -2,6 +2,21 @@
 
 package web
 
+type Clap struct {
+	Owner   string `json:"owner"`
+	Speaker string `json:"speaker"`
+	Confa   string `json:"confa"`
+	Talk    string `json:"talk"`
+	Claps   int    `json:"claps"`
+}
+
+type ClapInput struct {
+	Owner   *string `json:"owner"`
+	Speaker *string `json:"speaker"`
+	Confa   *string `json:"confa"`
+	Talk    *string `json:"talk"`
+}
+
 type Confa struct {
 	ID     string `json:"id"`
 	Owner  string `json:"owner"`

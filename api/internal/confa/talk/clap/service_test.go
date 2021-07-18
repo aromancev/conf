@@ -63,7 +63,7 @@ func TestCRUD(t *testing.T) {
 			Talk:  requestTalk.ID,
 			Claps: 2,
 		}
-		err = clapCRUD.CreateOrUpdate(ctx, userID, requestClap)
+		_, err = clapCRUD.CreateOrUpdate(ctx, userID, requestClap)
 		require.NoError(t, err)
 		lookup := Lookup{
 			Talk: requestTalk.ID,
@@ -131,13 +131,13 @@ func TestCRUD(t *testing.T) {
 		_, err = deps.talkSQL.Create(ctx, deps.pg, requestTalks...)
 		require.NoError(t, err)
 
-		err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[0].ID, Claps: 1})
+		_, err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[0].ID, Claps: 1})
 		require.NoError(t, err)
-		err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[0].ID, Claps: 1})
+		_, err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[0].ID, Claps: 1})
 		require.NoError(t, err)
-		err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[1].ID, Claps: 1})
+		_, err = clapCRUD.CreateOrUpdate(ctx, ids[0], Clap{Talk: requestTalks[1].ID, Claps: 1})
 		require.NoError(t, err)
-		err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[2].ID, Claps: 1})
+		_, err = clapCRUD.CreateOrUpdate(ctx, ids[1], Clap{Talk: requestTalks[2].ID, Claps: 1})
 		require.NoError(t, err)
 
 		t.Run("bySpeaker", func(t *testing.T) {

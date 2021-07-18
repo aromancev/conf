@@ -28,14 +28,16 @@ func TestCRUD(t *testing.T) {
 		requestConfa := confa.Confa{
 			Handle: "test",
 		}
-		requestTalk := Talk{
-			Handle: "test",
-		}
 
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
 		require.NoError(t, err)
 
-		createdTalk, err := talkCRUD.Create(ctx, createdConfa.ID, userID, requestTalk)
+		requestTalk := Talk{
+			Handle: "test",
+			Confa:  createdConfa.ID,
+		}
+
+		createdTalk, err := talkCRUD.Create(ctx, userID, requestTalk)
 		require.NoError(t, err)
 
 		fetchedTalk, err := talkCRUD.FetchOne(ctx, Lookup{ID: createdTalk.ID})
@@ -54,17 +56,18 @@ func TestCRUD(t *testing.T) {
 
 		userID := uuid.New()
 		wronguserID := uuid.New()
+
 		requestConfa := confa.Confa{
 			Handle: "test",
 		}
-		requestTalk := Talk{
-			Handle: "test",
-		}
-
 		createdConfa, err := confaCRUD.Create(ctx, userID, requestConfa)
 		require.NoError(t, err)
 
-		_, err = talkCRUD.Create(ctx, createdConfa.ID, wronguserID, requestTalk)
+		requestTalk := Talk{
+			Handle: "test",
+			Confa:  createdConfa.ID,
+		}
+		_, err = talkCRUD.Create(ctx, wronguserID, requestTalk)
 		require.ErrorIs(t, err, ErrPermissionDenied)
 	})
 }

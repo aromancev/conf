@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
@@ -22,11 +23,12 @@ type Resolver struct {
 	idents   *ident.CRUD
 	sessions *session.CRUD
 	confas   *confa.CRUD
-	talks   *talk.CRUD
+	talks    *talk.CRUD
+	claps    *clap.CRUD
 	producer Producer
 }
 
-func NewResolver(baseURL string, signer *auth.Signer, verifier *auth.Verifier, producer Producer, idents *ident.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD) *Resolver {
+func NewResolver(baseURL string, signer *auth.Signer, verifier *auth.Verifier, producer Producer, idents *ident.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD) *Resolver {
 	return &Resolver{
 		baseURL:  baseURL,
 		signer:   signer,
@@ -35,6 +37,7 @@ func NewResolver(baseURL string, signer *auth.Signer, verifier *auth.Verifier, p
 		idents:   idents,
 		sessions: sessions,
 		confas:   confas,
-		talks:   talks,
+		talks:    talks,
+		claps:    claps,
 	}
 }
