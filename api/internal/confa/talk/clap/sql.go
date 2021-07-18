@@ -61,7 +61,7 @@ func (s *SQL) Aggregate(ctx context.Context, queryer psql.Queryer, lookup Lookup
 			&claps,
 		)
 		if err != nil {
-			return 0, err
+			return 0, nil
 		}
 	}
 

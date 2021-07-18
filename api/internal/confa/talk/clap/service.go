@@ -2,11 +2,11 @@ package clap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/google/uuid"
-
 	"github.com/aromancev/confa/internal/platform/psql"
+	"github.com/google/uuid"
 )
 
 type Repo interface {
@@ -30,8 +30,11 @@ func (c *CRUD) CreateOrUpdate(ctx context.Context, ownerID uuid.UUID, request Cl
 	request.ID = uuid.New()
 	request.Owner = ownerID
 	fetchedTalk, err := c.talkRepo.FetchOne(ctx, c.conn, talk.Lookup{ID: request.Talk})
-	if err != nil {
-		return Clap{}, fmt.Errorf("failed to create clap: %w", err)
+	switch {
+		case errors.Is(err, talk.ErrNotFound):
+			return Clap{}, ErrValidation
+		case err != nil:
+			return Clap{}, fmt.Errorf("failed to create clap: %w", err)
 	}
 	request.Confa = fetchedTalk.Confa
 	request.Speaker = fetchedTalk.Speaker
