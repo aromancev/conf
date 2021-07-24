@@ -2,11 +2,11 @@ package double
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ory/dockertest/v3"
@@ -90,19 +90,23 @@ func clientFromContainer() *mongo.Client {
 			},
 		}})
 		if err := res.Err(); err != nil {
+			fmt.Println(err)
 			return err
 		}
-		res = client.Database("admin").RunCommand(ctx, bson.M{"replSetGetStatus": 1})
-		if err := res.Err(); err != nil {
-			return err
-		}
+
 		var repl struct {
-			OK int `bson:"ok"`
+			State int `bson:"myState"`
 		}
-		_ = res.Decode(&repl)
-		if repl.OK != 1 {
-			return errors.New("replset not ready")
+		// Wait for RS to initialize.
+		for repl.State != 1 {
+			time.Sleep(100 * time.Millisecond)
+			res = client.Database("admin").RunCommand(ctx, bson.M{"replSetGetStatus": 1})
+			if err := res.Err(); err != nil {
+				return err
+			}
+			_ = res.Decode(&repl)
 		}
+
 		return nil
 	})
 	if err != nil {

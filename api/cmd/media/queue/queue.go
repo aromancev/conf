@@ -1,74 +1,31 @@
-package handler
+package queue
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/prep/beanstalk"
-	"github.com/rs/zerolog/log"
-
 	"github.com/aromancev/confa/internal/media/video"
-	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/platform/backoff"
-	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/proto/queue"
+	"github.com/prep/beanstalk"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	jobRetries = 1
+	jobRetries = 10
 )
-
-type Producer interface {
-	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
-}
 
 type JobHandle func(ctx context.Context, job *beanstalk.Job) error
 
-type HTTP struct {
-	router http.Handler
-}
-
-func NewHTTP(media http.Handler) *HTTP {
-	r := httprouter.New()
-
-	r.GET("/health", ok)
-
-	r.GET(
-		"/v1/:media_id/:file",
-		serveMedia(media),
-	)
-	return &HTTP{
-		router: r,
-	}
-}
-
-func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, traceID := trace.Ctx(r.Context())
-	w.Header().Set("Trace-Id", traceID)
-
-	defer func() {
-		if err := recover(); err != nil {
-			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
-			_ = api.InternalError(w)
-		}
-	}()
-	lw := plog.NewResponseWriter(w)
-	r = r.WithContext(ctx)
-	h.router.ServeHTTP(lw, r)
-
-	lw.Event(ctx, r).Msg("HTTP served")
-}
-
-type Job struct {
+type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewJob(converter *video.Converter) *Job {
-	return &Job{
+func NewHandler(converter *video.Converter) *Handler {
+	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case queue.TubeVideo:
@@ -80,7 +37,10 @@ func NewJob(converter *video.Converter) *Job {
 	}
 }
 
-func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
+func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
+	l := log.Ctx(ctx).With().Uint64("jobId", job.ID).Str("tube", job.Stats.Tube).Logger()
+	ctx = l.WithContext(ctx)
+
 	j, err := queue.Unmarshal(job.Body)
 	if err != nil {
 		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
@@ -89,7 +49,7 @@ func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	ctx = trace.New(ctx, j.TraceId)
 	job.Body = j.Payload
 
-	plog.JobEvent(ctx, *job).Msg("Job received")
+	log.Ctx(ctx).Info().Msg("Job received.")
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -99,7 +59,7 @@ func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 	handle := h.route(job)
 	if handle == nil {
-		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
+		log.Ctx(ctx).Error().Msg("No handle for job. Burying.")
 		return
 	}
 
@@ -129,5 +89,21 @@ func (h *Job) ServeJob(ctx context.Context, job *beanstalk.Job) {
 		log.Ctx(ctx).Err(err).Msg("Failed to delete job")
 	}
 
-	plog.JobEvent(ctx, *job).Msg("Job served")
+	log.Ctx(ctx).Info().Msg("Job served.")
+}
+
+func processVideo(converter *video.Converter) JobHandle {
+	return func(ctx context.Context, j *beanstalk.Job) error {
+		var job queue.VideoJob
+		err := proto.Unmarshal(j.Body, &job)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job")
+			if err := j.Delete(ctx); err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to delete job")
+			}
+			return nil
+		}
+
+		return converter.Convert(job.MediaId)
+	}
 }

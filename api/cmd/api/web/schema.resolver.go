@@ -6,6 +6,7 @@ package web
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
@@ -51,7 +52,7 @@ func (r *mutationResolver) Login(ctx context.Context, address string) (string, e
 		return "", newError(CodeInternal, "")
 	}
 
-	id, err := r.producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{})
+	id, err := r.producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{TTR: 10 * time.Second})
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
 		return "", newError(CodeInternal, "")
@@ -365,5 +366,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver } // nolint: gocritic
+type queryResolver struct{ *Resolver }    // nolint: gocritic

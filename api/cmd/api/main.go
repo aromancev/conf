@@ -127,7 +127,7 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: web.New(web.NewResolver(
+		Handler: web.NewHandler(web.NewResolver(
 			config.BaseURL,
 			sign,
 			verify,

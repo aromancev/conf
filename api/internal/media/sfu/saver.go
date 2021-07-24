@@ -20,7 +20,6 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/proto/queue"
 )
@@ -71,10 +70,10 @@ func (s *TrackSaver) Close() {
 func (s *TrackSaver) saveTrack(ctx context.Context, track *webrtc.TrackRemote) {
 	mediaID := uuid.NewString()
 
-	ctx = plog.WithContext(ctx, log.Ctx(ctx).With().
+	l := log.Ctx(ctx).With().
 		Str("trackId", track.ID()).
-		Str("mediaId", mediaID),
-	)
+		Str("mediaId", mediaID).Logger()
+	ctx = l.WithContext(ctx)
 
 	var err error
 	codec := trackCodec(track)
@@ -97,7 +96,7 @@ func (s *TrackSaver) saveTrack(ctx context.Context, track *webrtc.TrackRemote) {
 		log.Ctx(ctx).Err(err).Msg("Failed to marshal video job.")
 		return
 	}
-	_, err = s.producer.Put(context.Background(), queue.TubeVideo, body, beanstalk.PutParams{})
+	_, err = s.producer.Put(context.Background(), queue.TubeVideo, body, beanstalk.PutParams{TTR: 10 * time.Minute})
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to put video job.")
 		return

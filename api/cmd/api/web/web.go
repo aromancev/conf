@@ -1,16 +1,19 @@
 package web
 
 import (
+	"bufio"
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/prep/beanstalk"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	"github.com/aromancev/confa/internal/platform/api"
-	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
@@ -26,11 +29,15 @@ const (
 	CodeNotFound       = "NOT_FOUND"
 )
 
-type Web struct {
+type Producer interface {
+	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
+}
+
+type Handler struct {
 	router http.Handler
 }
 
-func New(resolver *Resolver) *Web {
+func NewHandler(resolver *Resolver) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -47,22 +54,22 @@ func New(resolver *Resolver) *Web {
 	)
 	r.HandleFunc("/dev/", playground.Handler("API playground", "/api/query"))
 
-	return &Web{
+	return &Handler{
 		router: r,
 	}
 }
 
-func (h *Web) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, traceID := trace.Ctx(r.Context())
 	w.Header().Set("Trace-Id", traceID)
 
 	defer func() {
 		if err := recover(); err != nil {
 			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
-			_ = api.InternalError(w)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
-	lw := plog.NewResponseWriter(w)
+	lw := newResponseWriter(w)
 	r = r.WithContext(ctx)
 	h.router.ServeHTTP(lw, r)
 
@@ -80,6 +87,37 @@ func newError(code Code, message string) *gqlerror.Error {
 			"code": code,
 		},
 	}
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{ResponseWriter: w, code: http.StatusOK}
+}
+
+func (w *responseWriter) WriteHeader(code int) {
+	w.code = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	panic("ResponseWriter does not implement http.Hijacker")
+}
+
+func (w *responseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Event {
+	var event *zerolog.Event
+	if w.code >= http.StatusInternalServerError {
+		event = log.Ctx(ctx).Error()
+	} else {
+		event = log.Ctx(ctx).Info()
+	}
+	return event.Str("method", r.Method).Int("code", w.code).Str("url", r.URL.String())
 }
 
 const (
