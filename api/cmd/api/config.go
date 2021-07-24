@@ -118,28 +118,36 @@ func (c PostgresConfig) Validate() error {
 }
 
 type MongoConfig struct {
-	Hosts    string `envconfig:"MONGO_HOSTS"`
-	Port     uint16 `envconfig:"MONGO_PORT"`
-	User     string `envconfig:"MONGO_USER"`
-	Password string `envconfig:"MONGO_PASSWORD"`
-	Database string `envconfig:"MONGO_DATABASE"`
+	Hosts         string `envconfig:"MONGO_HOSTS"`
+	IAMUser       string `envconfig:"MONGO_IAM_USER"`
+	IAMPassword   string `envconfig:"MONGO_IAM_PASSWORD"`
+	IAMDatabase   string `envconfig:"MONGO_IAM_DATABASE"`
+	ConfaUser     string `envconfig:"MONGO_CONFA_USER"`
+	ConfaPassword string `envconfig:"MONGO_CONFA_PASSWORD"`
+	ConfaDatabase string `envconfig:"MONGO_CONFA_DATABASE"`
 }
 
 func (c MongoConfig) Validate() error {
 	if c.Hosts == "" {
-		return errors.New("host not set")
+		return errors.New("hosts not set")
 	}
-	if c.Port == 0 {
-		return errors.New("port not set")
+	if c.IAMUser == "" {
+		return errors.New("iam user not set")
 	}
-	if c.User == "" {
-		return errors.New("user not set")
+	if c.IAMPassword == "" {
+		return errors.New("iam password not set")
 	}
-	if c.Password == "" {
-		return errors.New("password not set")
+	if c.IAMDatabase == "" {
+		return errors.New("iam database not set")
 	}
-	if c.Database == "" {
-		return errors.New("database not set")
+	if c.ConfaUser == "" {
+		return errors.New("confa user not set")
+	}
+	if c.ConfaPassword == "" {
+		return errors.New("confa password not set")
+	}
+	if c.ConfaDatabase == "" {
+		return errors.New("confa database not set")
 	}
 	return nil
 }

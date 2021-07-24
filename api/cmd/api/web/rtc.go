@@ -1,22 +1,18 @@
-package handler
+package web
 
 import (
 	"errors"
 	"net/http"
 
-	"github.com/pion/webrtc/v3"
-
 	"github.com/aromancev/confa/internal/platform/sfu"
 	"github.com/aromancev/confa/internal/rtc"
-
-	"github.com/julienschmidt/httprouter"
-	"github.com/rs/zerolog/log"
-
 	"github.com/aromancev/confa/internal/rtc/wsock"
+	"github.com/pion/webrtc/v3"
+	"github.com/rs/zerolog/log"
 )
 
-func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		conn, err := upgrader.NewConn(w, r, nil)

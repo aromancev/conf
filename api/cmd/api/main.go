@@ -13,6 +13,7 @@ import (
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/platform/email"
+	"github.com/aromancev/confa/internal/rtc/wsock"
 	pqueue "github.com/aromancev/confa/proto/queue"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -43,17 +44,29 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
+	iamMongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
 		"mongodb://%s:%s@%s/%s",
-		config.Mongo.User,
-		config.Mongo.Password,
+		config.Mongo.IAMUser,
+		config.Mongo.IAMPassword,
 		config.Mongo.Hosts,
-		config.Mongo.Database,
+		config.Mongo.IAMDatabase,
 	)))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to mongo")
 	}
-	mongoDB := mongoClient.Database(config.Mongo.Database)
+	iamMongoDB := iamMongoClient.Database(config.Mongo.IAMDatabase)
+
+	confaMongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
+		"mongodb://%s:%s@%s/%s",
+		config.Mongo.ConfaUser,
+		config.Mongo.ConfaPassword,
+		config.Mongo.Hosts,
+		config.Mongo.ConfaDatabase,
+	)))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to mongo")
+	}
+	confaMongoDB := confaMongoClient.Database(config.Mongo.ConfaDatabase)
 
 	producer, err := beanstalk.NewProducer(config.Beanstalkd.Pool, beanstalk.Config{
 		Multiply:         1,
@@ -93,17 +106,17 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
-	confaMongo := confa.NewMongo(mongoDB)
-	confaCRUD := confa.NewCRUD(confaMongo)
-	talkMongo := talk.NewMongo(mongoDB)
-	talkCRUD := talk.NewCRUD(talkMongo, confaMongo)
-	clapMongo := clap.NewMongo(mongoDB)
-	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
-
-	userMongo := user.NewMongo(mongoDB)
+	userMongo := user.NewMongo(iamMongoDB)
 	userCRUD := user.NewCRUD(userMongo)
-	sessionMongo := session.NewMongo(mongoDB)
+	sessionMongo := session.NewMongo(iamMongoDB)
 	sessionCRUD := session.NewCRUD(sessionMongo)
+
+	confaMongo := confa.NewMongo(confaMongoDB)
+	confaCRUD := confa.NewCRUD(confaMongo)
+	talkMongo := talk.NewMongo(confaMongoDB)
+	talkCRUD := talk.NewCRUD(talkMongo, confaMongo)
+	clapMongo := clap.NewMongo(confaMongoDB)
+	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
 
 	jobHandler := queue.NewHandler(
 		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
@@ -124,6 +137,8 @@ func main() {
 			confaCRUD,
 			talkCRUD,
 			clapCRUD,
+			wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer),
+			config.RTC.SFUAddress,
 		)),
 	}
 	go func() {

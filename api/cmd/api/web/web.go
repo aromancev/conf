@@ -41,6 +41,10 @@ func New(resolver *Resolver) *Web {
 			),
 		),
 	)
+	r.HandleFunc(
+		"/rtc/v1/ws",
+		serveRTC(resolver.upgrader, resolver.sfuAddr),
+	)
 	r.HandleFunc("/dev/", playground.Handler("API playground", "/api/query"))
 
 	return &Web{

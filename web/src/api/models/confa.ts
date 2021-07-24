@@ -1,5 +1,5 @@
 export interface Confa {
   id: string
-  owner: string
+  ownerId: string
   handle: string
 }

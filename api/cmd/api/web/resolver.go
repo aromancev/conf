@@ -7,6 +7,7 @@ import (
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"github.com/aromancev/confa/internal/rtc/wsock"
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/session"
 	"github.com/prep/beanstalk"
@@ -26,9 +27,11 @@ type Resolver struct {
 	talks     *talk.CRUD
 	claps     *clap.CRUD
 	producer  Producer
+	upgrader  *wsock.Upgrader
+	sfuAddr   string
 }
 
-func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD) *Resolver {
+func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, upgrader *wsock.Upgrader, sfuAddr string) *Resolver {
 	return &Resolver{
 		baseURL:   baseURL,
 		secretKey: sk,
@@ -39,5 +42,7 @@ func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, produce
 		confas:    confas,
 		talks:     talks,
 		claps:     claps,
+		upgrader:  upgrader,
+		sfuAddr:   sfuAddr,
 	}
 }

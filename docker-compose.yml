@@ -18,6 +18,7 @@ services:
       - confa
     volumes:
       - ./web/src:/app/src
+      - ./web/public:/app/public
 
   sfu:
     build:
@@ -72,10 +73,13 @@ services:
       - EMAIL_ADDRESS=noreply@confa.io
       - EMAIL_PASSWORD=stub
       - EMAIL_SECURE=false
-      - MONGO_HOST=mongo:27017
-      - MONGO_USER=confa
-      - MONGO_PASSWORD=confa
-      - MONGO_DATABASE=confa
+      - MONGO_HOSTS=mongo:27017
+      - MONGO_IAM_USER=iam
+      - MONGO_IAM_PASSWORD=iam
+      - MONGO_IAM_DATABASE=iam
+      - MONGO_CONFA_USER=confa
+      - MONGO_CONFA_PASSWORD=confa
+      - MONGO_CONFA_DATABASE=confa
       - BEANSTALKD_POOL=beanstalkd:11300
       - RTC_SFU_ADDRESS=sfu:8080
       - RTC_MEDIA_ADDRESS=media:8080
@@ -90,17 +94,6 @@ services:
       - confa
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
-
-  postgres:
-    image: postgres:12.6-alpine
-    networks:
-      - confa
-    environment:
-      - POSTGRES_USER=confa
-      - POSTGRES_PASSWORD=confa
-      - POSTGRES_DB=confa
-    volumes:
-      - ./.artifacts/posrgresql/:/var/lib/postgresql/data/
 
   mongo:
     image: mongo:4.4
