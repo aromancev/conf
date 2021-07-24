@@ -21,7 +21,7 @@ class ConfaIterator {
           confas(where: $where, from: $from) {
             items {
               id
-              owner
+              ownerId
               handle
             }
             nextFrom
@@ -52,7 +52,7 @@ export class ConfaClient {
         mutation createConfa {
           createConfa {
             id
-            owner
+            ownerId
             handle
           }
         }
@@ -64,10 +64,11 @@ export class ConfaClient {
     const confa = resp.data.createConfa
     return {
       id: confa.id,
-      owner: confa.owner,
+      ownerId: confa.ownerId,
       handle: confa.handle,
     }
   }
+
 
   async fetchOne(input: ConfaInput): Promise<Confa | null> {
     const iter = this.fetch(input)

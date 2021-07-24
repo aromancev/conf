@@ -365,8 +365,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-// nolint: gocritic
 type mutationResolver struct{ *Resolver }
-
-// nolint: gocritic
 type queryResolver struct{ *Resolver }

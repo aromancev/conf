@@ -69,7 +69,7 @@ export interface token {
 export interface confas_confas_items {
   __typename: "Confa";
   id: string;
-  owner: string;
+  ownerId: string;
   handle: string;
 }
 
@@ -100,7 +100,7 @@ export interface confasVariables {
 export interface createConfa_createConfa {
   __typename: "Confa";
   id: string;
-  owner: string;
+  ownerId: string;
   handle: string;
 }
 
@@ -119,7 +119,7 @@ export interface createConfa {
 
 export interface ConfaInput {
   id?: string | null;
-  owner?: string | null;
+  ownerId?: string | null;
   handle?: string | null;
 }
 

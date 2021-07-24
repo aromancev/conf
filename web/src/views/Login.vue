@@ -38,6 +38,7 @@
 <script lang="ts">
 import { defineComponent } from "vue"
 import { client } from "@/api"
+import { userStore, User } from "@/api/models"
 import { isValid } from "@/platform/email"
 import Modal from "@/components/modals/Modal.vue"
 import InternalError from "@/components/modals/InternalError.vue"
@@ -64,14 +65,13 @@ export default defineComponent({
     }
   },
   computed: {
-    loggedIn() {
-      return false
-      // return userStore.getState().loggedIn
+    user() {
+      return userStore.getState()
     },
   },
   watch: {
-    loggedIn(newVal: boolean) {
-      if (newVal) {
+    user(user: User) {
+      if (user.id !== null) {
         this.$router.replace("/")
       }
     },
@@ -87,7 +87,7 @@ export default defineComponent({
     }
   },
   created() {
-    if (this.loggedIn) {
+    if (this.user.id !== null) {
       this.$router.replace("/")
     }
   },

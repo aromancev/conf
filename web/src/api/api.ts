@@ -195,7 +195,7 @@ export class Client {
       this.tokenResolve(token)
     }
 
-    // Set user in user store. This will trigger reacive state change.
+    // Set user in user store. This will trigger reactive state change.
     userStore.id = "todo"
 
     // If expiresIn is set, schedule a new refresh.
