@@ -1,12 +1,15 @@
 package clap
 
 import (
-	"context"
-	"github.com/aromancev/confa/internal/confa/migrations"
-	"github.com/aromancev/confa/internal/platform/psql/double"
-	"github.com/jackc/pgx/v4"
 	"os"
 	"testing"
+
+	"github.com/aromancev/confa/internal/platform/mongo/double"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/mongodb"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestMain(m *testing.M) {
@@ -15,15 +18,16 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func migrate(conn *pgx.Conn) {
-	migrator, err := migrations.NewMigrator(context.Background(), conn)
-	if err != nil {
-		panic(err)
-	}
-	if err := migrator.LoadMigrations("."); err != nil {
-		panic(err)
-	}
-	if err := migrator.Migrate(context.Background()); err != nil {
-		panic(err)
-	}
+func dockerMongo(t *testing.T) *mongo.Database {
+	t.Helper()
+
+	db := double.NewDocker()
+	driver, err := mongodb.WithInstance(db.Client(), &mongodb.Config{
+		DatabaseName: db.Name(),
+	})
+	require.NoError(t, err)
+	migrator, err := migrate.NewWithDatabaseInstance("file://../../migrations", db.Name(), driver)
+	require.NoError(t, err)
+	require.NoError(t, migrator.Up())
+	return db
 }

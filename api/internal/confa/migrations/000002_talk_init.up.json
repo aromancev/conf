@@ -1,0 +1,14 @@
+[
+  {
+    "createIndexes": "talks",
+    "indexes": [
+      {
+        "key": {
+          "handle": 1
+        },
+        "name": "unique_handle",
+        "unique": true
+      }
+    ]
+  }
+]

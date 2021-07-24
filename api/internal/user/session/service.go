@@ -5,29 +5,26 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
-	"github.com/aromancev/confa/internal/platform/psql"
 )
 
 type Repo interface {
-	Create(ctx context.Context, execer psql.Execer, requests ...Session) ([]Session, error)
-	FetchOne(ctx context.Context, queryer psql.Queryer, lookup Lookup) (Session, error)
+	Create(ctx context.Context, requests ...Session) ([]Session, error)
+	FetchOne(ctx context.Context, lookup Lookup) (Session, error)
 }
 
 type CRUD struct {
-	conn psql.Conn
 	repo Repo
 }
 
-func NewCRUD(conn psql.Conn, repo Repo) *CRUD {
-	return &CRUD{conn: conn, repo: repo}
+func NewCRUD(repo Repo) *CRUD {
+	return &CRUD{repo: repo}
 }
 
 func (c *CRUD) Create(ctx context.Context, userID uuid.UUID) (Session, error) {
-	sess := NewSession()
-	sess.Owner = userID
-
-	created, err := c.repo.Create(ctx, c.conn, sess)
+	created, err := c.repo.Create(ctx, Session{
+		Key:   NewKey(),
+		Owner: userID,
+	})
 	if err != nil {
 		return Session{}, fmt.Errorf("failed to create session: %w", err)
 	}
@@ -35,11 +32,6 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID) (Session, error) {
 	return created[0], nil
 }
 
-func (c *CRUD) Fetch(ctx context.Context, sessionKey string) (Session, error) {
-	fetched, err := c.repo.FetchOne(ctx, c.conn, Lookup{Key: sessionKey})
-	if err != nil {
-		return Session{}, fmt.Errorf("failed to fetch session: %w", err)
-	}
-
-	return fetched, nil
+func (c *CRUD) Fetch(ctx context.Context, key string) (Session, error) {
+	return c.repo.FetchOne(ctx, Lookup{Key: key})
 }

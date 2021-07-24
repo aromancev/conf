@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,23 +11,23 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/rtc/wsock"
-	"github.com/aromancev/confa/proto/queue"
+	pqueue "github.com/aromancev/confa/proto/queue"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/aromancev/confa/internal/user"
-	"github.com/aromancev/confa/internal/user/ident"
 	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/cmd/api/handler"
+	"github.com/aromancev/confa/cmd/api/queue"
 	"github.com/aromancev/confa/cmd/api/web"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/platform/psql"
 )
 
 func main() {
@@ -43,17 +43,17 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	pgConf := psql.Config{
-		Host:     config.Postgres.Host,
-		Port:     config.Postgres.Port,
-		User:     config.Postgres.User,
-		Password: config.Postgres.Password,
-		Database: config.Postgres.Database,
-	}
-	postgres, err := psql.New(ctx, pgConf)
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
+		"mongodb://%s:%s@%s/%s",
+		config.Mongo.User,
+		config.Mongo.Password,
+		config.Mongo.Hosts,
+		config.Mongo.Database,
+	)))
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to postgres")
+		log.Fatal().Err(err).Msg("Failed to connect to mongo")
 	}
+	mongoDB := mongoClient.Database(config.Mongo.Database)
 
 	producer, err := beanstalk.NewProducer(config.Beanstalkd.Pool, beanstalk.Config{
 		Multiply:         1,
@@ -68,7 +68,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{queue.TubeEmail}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEmail}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   5 * time.Second,
@@ -84,39 +84,30 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
-	upgrader := wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer)
-
-	sign, err := auth.NewSigner(config.SecretKey)
+	sign, err := auth.NewSecretKey(config.SecretKey)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create signer")
+		log.Fatal().Err(err).Msg("Failed to create secret key")
 	}
-	verify, err := auth.NewVerifier(config.PublicKey)
+	verify, err := auth.NewPublicKey(config.PublicKey)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create verifier")
+		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
-	sender := email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false")
+	confaMongo := confa.NewMongo(mongoDB)
+	confaCRUD := confa.NewCRUD(confaMongo)
+	talkMongo := talk.NewMongo(mongoDB)
+	talkCRUD := talk.NewCRUD(talkMongo, confaMongo)
+	clapMongo := clap.NewMongo(mongoDB)
+	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
 
-	confaSQL := confa.NewSQL()
-	confaCRUD := confa.NewCRUD(postgres, confaSQL)
+	userMongo := user.NewMongo(mongoDB)
+	userCRUD := user.NewCRUD(userMongo)
+	sessionMongo := session.NewMongo(mongoDB)
+	sessionCRUD := session.NewCRUD(sessionMongo)
 
-	talkSQL := talk.NewSQL()
-	talkCRUD := talk.NewCRUD(postgres, talkSQL, confaCRUD)
-
-	clapSQL := clap.NewSQL()
-	clapCRUD := clap.NewCRUD(postgres, clapSQL, talkSQL)
-
-	sessionSQL := session.NewSQL()
-	sessionCRUD := session.NewCRUD(postgres, sessionSQL)
-
-	userSQL := user.NewSQL()
-
-	identSQL := ident.NewSQL()
-	identCRUD := ident.NewCRUD(postgres, identSQL, userSQL)
-
-	_ = handler.NewHTTP(config.BaseURL, confaCRUD, talkCRUD, sessionCRUD, identCRUD, producer, sign, verify, upgrader, config.RTC.SFUAddress)
-  
-	jobHandler := handler.NewJob(sender)
+	jobHandler := queue.NewHandler(
+		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
+	)
 
 	srv := &http.Server{
 		Addr:         config.Address,
@@ -128,9 +119,11 @@ func main() {
 			sign,
 			verify,
 			producer,
-			identCRUD,
+			userCRUD,
 			sessionCRUD,
 			confaCRUD,
+			talkCRUD,
+			clapCRUD,
 		)),
 	}
 	go func() {

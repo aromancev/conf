@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "talks",
+    "index": "unique_handle"
+  }
+]

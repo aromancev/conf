@@ -1,0 +1,15 @@
+[
+  {
+    "createIndexes": "users",
+    "indexes": [
+      {
+        "key": {
+          "idents.platform": 1,
+          "idents.value": 1
+        },
+        "name": "unique_idents_value",
+        "unique": true
+      }
+    ]
+  }
+]

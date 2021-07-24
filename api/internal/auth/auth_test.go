@@ -27,23 +27,25 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETrMd0Br7GOpE7US1jJ7LbL0L8vIi
 func TestEmailToken(t *testing.T) {
 	t.Parallel()
 
-	sign, err := NewSigner(secretKey)
+	sk, err := NewSecretKey(secretKey)
 	require.NoError(t, err)
-	verify, err := NewVerifier(publicKey)
+	pk, err := NewPublicKey(publicKey)
 	require.NoError(t, err)
 
 	t.Run("Happy path", func(t *testing.T) {
 		email := "test@test.com"
-		token, err := sign.EmailToken("test@test.com")
+		token, err := sk.Sign(NewEmailClaims(email))
 		require.NoError(t, err)
-		claims, err := verify.EmailToken(token)
+		var claims EmailClaims
+		err = pk.Verify(token, &claims)
 		require.NoError(t, err)
 		assert.Equal(t, email, claims.Address)
 		assert.NotZero(t, claims.ExpiresAt)
 	})
 
 	t.Run("Invalid signature returns error", func(t *testing.T) {
-		token, err := sign.EmailToken("test@test.com")
+		email := "test@test.com"
+		token, err := sk.Sign(NewEmailClaims(email))
 		require.NoError(t, err)
 		parts := strings.Split(token, ".")
 
@@ -56,7 +58,7 @@ func TestEmailToken(t *testing.T) {
 		parts[2] = base64.StdEncoding.EncodeToString(body)
 		token = strings.Join(parts, ".")
 
-		_, err = verify.EmailToken(token)
+		err = pk.Verify(token, nil)
 		assert.Error(t, err)
 	})
 }

@@ -1,33 +1,25 @@
-.PHONY: start-api
-start-api:
-	docker-compose up nginx api media beanstalkd postgres email
-
 .PHONY: migrate
 migrate:
-	cd api && \
-	./migrate.sh migrate -m internal/confa/migrations -c internal/confa/migrations/tern.conf && \
-	./migrate.sh migrate -m internal/user/migrations -c internal/user/migrations/tern.conf
+	./mongo/init.sh || true
+	./mongo/migrate.sh -source file://confa/migrations/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
+	
+.PHONY: mongosh
+mongosh:
+	docker run \
+		--rm \
+		-ti \
+		--network="confa" \
+		-v `pwd`/.artifacts/mongosh:/home/mongodb \
+		mongo:4.2 mongo mongodb://mongo:mongo@mongo:27017/admin
 
 .PHONY: test
 test:
-	cd api && \
-    go test ./...
+	cd api && $(MAKE) test
 
-.PHONY: lint-api
-lint-api:
-	docker run \
-	--rm \
-	-w /app \
-	-v `pwd`/api:/app \
-	golangci/golangci-lint:v1.39-alpine golangci-lint run
-
-.PHONY: lint-web
-lint-web:
-	docker run \
-	--rm \
-	-w /app \
-	-v `pwd`/web:/app \
-	node:15.7.0 npm run lint
+.PHONY: lint
+lint:
+	cd api && $(MAKE) lint
+	cd web && $(MAKE) lint
 
 .PHONY: gen
 gen:

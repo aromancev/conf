@@ -2,6 +2,7 @@ package clap
 
 import (
 	"errors"
+
 	"github.com/google/uuid"
 )
 
@@ -10,12 +11,12 @@ var (
 )
 
 type Clap struct {
-	ID      uuid.UUID `json:"id"`
-	Confa   uuid.UUID `json:"confa"`
-	Owner   uuid.UUID `json:"owner"`
-	Speaker uuid.UUID `json:"speaker"`
-	Talk    uuid.UUID `json:"talk"`
-	Claps   int8      `json:"claps"`
+	ID      uuid.UUID `bson:"_id" json:"id"`
+	Confa   uuid.UUID `bson:"confa" json:"confa"`
+	Owner   uuid.UUID `bson:"owner" json:"owner"`
+	Speaker uuid.UUID `bson:"speaker" json:"speaker"`
+	Talk    uuid.UUID `bson:"talk" json:"talk"`
+	Value   uint      `bson:"value" json:"value"`
 }
 
 func (c Clap) Validate() error {
@@ -34,8 +35,8 @@ func (c Clap) Validate() error {
 	if c.Talk == uuid.Nil {
 		return errors.New("talk should not be empty")
 	}
-	if c.Claps > 50 {
-		return errors.New("claps cannot be more than 50")
+	if c.Value > 50 {
+		return errors.New("value cannot be more than 50")
 	}
 	return nil
 }

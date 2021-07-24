@@ -19,9 +19,11 @@ import (
 type Code string
 
 const (
-	CodeInternal     = "INTERNAL"
-	CodeInvalidParam = "INVALID_PARAM"
-	CodeUnauthorized = "UNAUTHORIZED"
+	CodeInternal       = "INTERNAL"
+	CodeBadRequest     = "BAD_REQUEST"
+	CodeUnauthorized   = "UNAUTHORIZED"
+	CodeDuplicateEntry = "DUPLICATE_ENTRY"
+	CodeNotFound       = "NOT_FOUND"
 )
 
 type Web struct {
@@ -75,3 +77,7 @@ func newError(code Code, message string) *gqlerror.Error {
 		},
 	}
 }
+
+const (
+	batchLimit = 100
+)

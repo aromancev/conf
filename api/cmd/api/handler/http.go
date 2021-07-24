@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"net/http"
 
 	"github.com/pion/webrtc/v3"
@@ -11,148 +9,11 @@ import (
 	"github.com/aromancev/confa/internal/platform/sfu"
 	"github.com/aromancev/confa/internal/rtc"
 
-	"github.com/aromancev/confa/internal/confa/talk"
-
-	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/internal/auth"
-	"github.com/aromancev/confa/internal/platform/api"
 	"github.com/aromancev/confa/internal/rtc/wsock"
 )
-
-func createTalk(verifier *auth.Verifier, talks *talk.CRUD) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx := r.Context()
-
-		access, err := verifier.AccessToken(auth.Bearer(r))
-		if err != nil {
-			_ = api.Unauthorised(w)
-			return
-		}
-
-		var request talk.Talk
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
-			return
-		}
-
-		confaID, err := uuid.Parse(ps.ByName("confa_id"))
-		if err != nil {
-			_ = api.NotFound(w, err.Error())
-			return
-		}
-
-		tlk, err := talks.Create(ctx, confaID, access.UserID, request)
-		switch {
-		case errors.Is(err, talk.ErrValidation):
-			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
-			return
-		case errors.Is(err, talk.ErrDuplicatedEntry):
-			_ = api.BadRequest(w, api.CodeDuplicatedEntry, err.Error())
-			return
-		case errors.Is(err, talk.ErrPermissionDenied):
-			_ = api.Forbidden(w)
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to create talk")
-			_ = api.InternalError(w)
-			return
-		}
-
-		_ = api.Created(w, tlk)
-	}
-}
-
-func getTalk(talks *talk.CRUD) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx := r.Context()
-
-		talkID, err := uuid.Parse(ps.ByName("talk_id"))
-		if err != nil {
-			_ = api.NotFound(w, err.Error())
-			return
-		}
-
-		tlk, err := talks.Fetch(ctx, talkID)
-		switch {
-		case errors.Is(err, talk.ErrNotFound):
-			_ = api.NotFound(w, err.Error())
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to fetch talk")
-			_ = api.InternalError(w)
-			return
-		}
-
-		_ = api.OK(w, tlk)
-	}
-}
-
-func createClap(verifier *auth.Verifier, claps *clap.CRUD) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx := r.Context()
-
-		access, err := verifier.AccessToken(auth.Bearer(r))
-		if err != nil {
-			_ = api.Unauthorised(w)
-			return
-		}
-
-		var request clap.Clap
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			_ = api.BadRequest(w, api.CodeMalformedRequest, err.Error())
-			return
-		}
-		err = claps.CreateOrUpdate(ctx, access.UserID, request)
-		switch {
-		case errors.Is(err, clap.ErrValidation):
-			_ = api.BadRequest(w, api.CodeInvalidRequest, err.Error())
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to create clap")
-			_ = api.InternalError(w)
-			return
-		}
-
-		_ = api.Created(w, nil)
-	}
-}
-
-func getClap(claps *clap.CRUD) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		ctx := r.Context()
-		confaID := r.URL.Query().Get("confa")
-		talkID := r.URL.Query().Get("talk")
-
-		var lookup clap.Lookup
-		var err error
-		if confaID != "" {
-			lookup.Confa, err = uuid.Parse(confaID)
-			if err != nil {
-				_ = api.NotFound(w, err.Error())
-				return
-			}
-		}
-		if talkID != "" {
-			lookup.Talk, err = uuid.Parse(talkID)
-			if err != nil {
-				_ = api.NotFound(w, err.Error())
-				return
-			}
-		}
-
-		clapsCount, err := claps.Aggregate(ctx, lookup)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to aggregate clap")
-			_ = api.InternalError(w)
-			return
-		}
-
-		_ = api.OK(w, clapsCount)
-	}
-}
 
 func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
