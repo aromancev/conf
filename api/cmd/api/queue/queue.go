@@ -11,7 +11,6 @@ import (
 
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/platform/plog"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/proto/queue"
 )
@@ -40,6 +39,9 @@ func NewHandler(sender *email.Sender) *Handler {
 }
 
 func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
+	l := log.Ctx(ctx).With().Uint64("jobId", job.ID).Str("tube", job.Stats.Tube).Logger()
+	ctx = l.WithContext(ctx)
+
 	j, err := queue.Unmarshal(job.Body)
 	if err != nil {
 		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
@@ -48,7 +50,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	ctx = trace.New(ctx, j.TraceId)
 	job.Body = j.Payload
 
-	plog.JobEvent(ctx, *job).Msg("Job received")
+	log.Ctx(ctx).Info().Msg("Job received.")
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -58,7 +60,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 	handle := h.route(job)
 	if handle == nil {
-		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
+		log.Ctx(ctx).Error().Msg("No handle for job. Burying.")
 		return
 	}
 
@@ -88,7 +90,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 		log.Ctx(ctx).Err(err).Msg("Failed to delete job")
 	}
 
-	plog.JobEvent(ctx, *job).Msg("Job served")
+	log.Ctx(ctx).Info().Msg("Job served.")
 }
 
 func sendEmail(sender *email.Sender) JobHandle {

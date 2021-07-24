@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex justify-content-center">
     <div class="content">
-      <div class="title">Sign in to Confa</div>
+      <div class="title">Sign in to Confa {{ userId }}</div>
       <div>
         <div class="error" :class="{ active: invalid }">Email is invalid</div>
         <input
@@ -38,7 +38,7 @@
 <script lang="ts">
 import { defineComponent } from "vue"
 import { client } from "@/api"
-import { userStore, User } from "@/api/models"
+import { userStore } from "@/api/models"
 import { isValid } from "@/platform/email"
 import Modal from "@/components/modals/Modal.vue"
 import InternalError from "@/components/modals/InternalError.vue"
@@ -65,13 +65,13 @@ export default defineComponent({
     }
   },
   computed: {
-    user() {
-      return userStore.getState()
+    userId() {
+      return userStore.getState().id
     },
   },
   watch: {
-    user(user: User) {
-      if (user.id !== null) {
+    userId(userId: string) {
+      if (userId) {
         this.$router.replace("/")
       }
     },
@@ -87,7 +87,7 @@ export default defineComponent({
     }
   },
   created() {
-    if (this.user.id !== null) {
+    if (this.userId) {
       this.$router.replace("/")
     }
   },

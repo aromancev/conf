@@ -1,8 +1,6 @@
 package web
 
 import (
-	"context"
-
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
@@ -10,12 +8,7 @@ import (
 	"github.com/aromancev/confa/internal/rtc/wsock"
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/session"
-	"github.com/prep/beanstalk"
 )
-
-type Producer interface {
-	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
-}
 
 type Resolver struct {
 	baseURL   string
