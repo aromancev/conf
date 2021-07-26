@@ -15,10 +15,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/cmd/media/handler"
+	"github.com/aromancev/confa/cmd/media/queue"
+	"github.com/aromancev/confa/cmd/media/rpc"
+	"github.com/aromancev/confa/cmd/media/web"
 	"github.com/aromancev/confa/internal/media/video"
 	pmedia "github.com/aromancev/confa/proto/media"
-	"github.com/aromancev/confa/proto/queue"
+	pqueue "github.com/aromancev/confa/proto/queue"
 )
 
 func main() {
@@ -48,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{queue.TubeVideo}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeVideo}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   5 * time.Second,
@@ -66,14 +68,14 @@ func main() {
 
 	videoConverter := video.NewConverter(config.MediaDir)
 
-	jobHandler := handler.NewJob(videoConverter)
+	jobHandler := queue.NewHandler(videoConverter)
 
 	webServer := &http.Server{
 		Addr:         config.WebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: handler.NewHTTP(
+		Handler: web.NewHandler(
 			http.FileServer(
 				http.Dir(config.MediaDir),
 			),
@@ -84,7 +86,7 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: pmedia.NewMediaServer(handler.NewMediaServer(
+		Handler: pmedia.NewMediaServer(rpc.NewHandler(
 			config.SFUAddress,
 			config.MediaDir,
 			sdk.NewEngine(
