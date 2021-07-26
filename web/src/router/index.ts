@@ -4,29 +4,29 @@ import Home from "../views/Home.vue"
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    name: "Home",
+    name: "home",
     component: Home,
   },
   {
     path: "/login",
-    name: "Login",
+    name: "login",
     component: () =>
       import(/* webpackChunkName: "login" */ "../views/Login.vue"),
   },
   {
     path: "/:confa",
-    name: "Confa",
+    name: "confa",
     component: () =>
       import(/* webpackChunkName: "confa" */ "../views/Confa.vue"),
   },
   {
     path: "/:confa/:talk",
-    name: "Talk",
+    name: "talk",
     component: () => import(/* webpackChunkName: "talk" */ "../views/Talk.vue"),
   },
   {
     path: "/stream",
-    name: "Stream",
+    name: "stream",
     component: () =>
       import(/* webpackChunkName: "stream" */ "../views/Stream.vue"),
   },

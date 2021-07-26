@@ -55,13 +55,14 @@ type Mutation {
 
     createConfa(handle: String): Confa!
     createTalk(confaId: String!, handle: String): Talk!
-    createClap(talkId: String!, value: Int!): String!
+    startTalk(talkId: String!): String!
+    updateClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
-    confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
-    talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+    confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
+    talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
     aggregateClaps(where: ClapInput! = {}): Int!
 }

@@ -162,7 +162,31 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 	}, nil
 }
 
-func (r *mutationResolver) CreateClap(ctx context.Context, talkID string, value int) (string, error) {
+func (r *mutationResolver) StartTalk(ctx context.Context, talkID string) (string, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return "", newError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	id, err := uuid.Parse(talkID)
+	if err != nil {
+		return "", newError(CodeNotFound, "Talk not found.")
+	}
+
+	err = r.talks.Start(ctx, claims.UserID, id)
+	switch {
+	case errors.Is(err, talk.ErrNotFound):
+		return "", newError(CodeNotFound, "Talk not found.")
+	case errors.Is(err, talk.ErrPermissionDenied):
+		return "", newError(CodePermissionDenied, "Only the owner can start talks.")
+	case err != nil:
+		return "", newError(CodeInternal, "")
+	}
+
+	return talkID, nil
+}
+
+func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value int) (string, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return "", newError(CodeUnauthorized, "Invalid access token.")
@@ -206,7 +230,7 @@ func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
 	}, nil
 }
 
-func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, from string, limit int) (*Confas, error) {
+func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error) {
 	if limit < 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -215,8 +239,8 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, from strin
 		Limit: int64(limit),
 	}
 	var err error
-	if from != "" {
-		lookup.From, err = uuid.Parse(from)
+	if from != nil {
+		lookup.From, err = uuid.Parse(*from)
 		if err != nil {
 			return &Confas{Limit: limit}, nil
 		}
@@ -263,7 +287,7 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, from strin
 	return res, nil
 }
 
-func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string, limit int) (*Talks, error) {
+func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error) {
 	if limit < 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -271,8 +295,8 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, from string,
 		Limit: int64(limit),
 	}
 	var err error
-	if from != "" {
-		lookup.From, err = uuid.Parse(from)
+	if from != nil {
+		lookup.From, err = uuid.Parse(*from)
 		if err != nil {
 			return &Talks{Limit: limit}, nil
 		}

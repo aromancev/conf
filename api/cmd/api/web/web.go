@@ -22,11 +22,12 @@ import (
 type Code string
 
 const (
-	CodeInternal       = "INTERNAL"
-	CodeBadRequest     = "BAD_REQUEST"
-	CodeUnauthorized   = "UNAUTHORIZED"
-	CodeDuplicateEntry = "DUPLICATE_ENTRY"
-	CodeNotFound       = "NOT_FOUND"
+	CodeInternal         = "INTERNAL"
+	CodeBadRequest       = "BAD_REQUEST"
+	CodeUnauthorized     = "UNAUTHORIZED"
+	CodeDuplicateEntry   = "DUPLICATE_ENTRY"
+	CodeNotFound         = "NOT_FOUND"
+	CodePermissionDenied = "PERMISSION_DENIED"
 )
 
 type Producer interface {
