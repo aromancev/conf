@@ -55,17 +55,18 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateClap    func(childComplexity int, talkID string, value int) int
 		CreateConfa   func(childComplexity int, handle *string) int
 		CreateSession func(childComplexity int, emailToken string) int
 		CreateTalk    func(childComplexity int, confaID string, handle *string) int
 		Login         func(childComplexity int, address string) int
+		StartTalk     func(childComplexity int, talkID string) int
+		UpdateClap    func(childComplexity int, talkID string, value int) int
 	}
 
 	Query struct {
 		AggregateClaps func(childComplexity int, where ClapInput) int
-		Confas         func(childComplexity int, where ConfaInput, from string, limit int) int
-		Talks          func(childComplexity int, where TalkInput, from string, limit int) int
+		Confas         func(childComplexity int, where ConfaInput, limit int, from *string) int
+		Talks          func(childComplexity int, where TalkInput, limit int, from *string) int
 		Token          func(childComplexity int) int
 	}
 
@@ -94,12 +95,13 @@ type MutationResolver interface {
 	CreateSession(ctx context.Context, emailToken string) (*Token, error)
 	CreateConfa(ctx context.Context, handle *string) (*Confa, error)
 	CreateTalk(ctx context.Context, confaID string, handle *string) (*Talk, error)
-	CreateClap(ctx context.Context, talkID string, value int) (string, error)
+	StartTalk(ctx context.Context, talkID string) (string, error)
+	UpdateClap(ctx context.Context, talkID string, value int) (string, error)
 }
 type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
-	Confas(ctx context.Context, where ConfaInput, from string, limit int) (*Confas, error)
-	Talks(ctx context.Context, where TalkInput, from string, limit int) (*Talks, error)
+	Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error)
+	Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error)
 	AggregateClaps(ctx context.Context, where ClapInput) (int, error)
 }
 
@@ -160,18 +162,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Confas.NextFrom(childComplexity), true
 
-	case "Mutation.createClap":
-		if e.complexity.Mutation.CreateClap == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createClap_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.CreateClap(childComplexity, args["talkId"].(string), args["value"].(int)), true
-
 	case "Mutation.createConfa":
 		if e.complexity.Mutation.CreateConfa == nil {
 			break
@@ -220,6 +210,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.Login(childComplexity, args["address"].(string)), true
 
+	case "Mutation.startTalk":
+		if e.complexity.Mutation.StartTalk == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startTalk_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StartTalk(childComplexity, args["talkId"].(string)), true
+
+	case "Mutation.updateClap":
+		if e.complexity.Mutation.UpdateClap == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateClap_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateClap(childComplexity, args["talkId"].(string), args["value"].(int)), true
+
 	case "Query.aggregateClaps":
 		if e.complexity.Query.AggregateClaps == nil {
 			break
@@ -242,7 +256,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaInput), args["from"].(string), args["limit"].(int)), true
+		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaInput), args["limit"].(int), args["from"].(*string)), true
 
 	case "Query.talks":
 		if e.complexity.Query.Talks == nil {
@@ -254,7 +268,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Talks(childComplexity, args["where"].(TalkInput), args["from"].(string), args["limit"].(int)), true
+		return e.complexity.Query.Talks(childComplexity, args["where"].(TalkInput), args["limit"].(int), args["from"].(*string)), true
 
 	case "Query.token":
 		if e.complexity.Query.Token == nil {
@@ -454,14 +468,15 @@ type Mutation {
 
     createConfa(handle: String): Confa!
     createTalk(confaId: String!, handle: String): Talk!
-    createClap(talkId: String!, value: Int!): String!
+    startTalk(talkId: String!): String!
+    updateClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
-    confas(where: ConfaInput! = {}, from: String! = "", limit: Int! = 20): Confas!
-    talks(where: TalkInput! = {}, from: String! = "", limit: Int! = 20): Talks!
+    confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
+    talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
     aggregateClaps(where: ClapInput! = {}): Int!
 }
 `, BuiltIn: false},
@@ -471,30 +486,6 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
-
-func (ec *executionContext) field_Mutation_createClap_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["talkId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["talkId"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["value"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["value"] = arg1
-	return args, nil
-}
 
 func (ec *executionContext) field_Mutation_createConfa_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -565,6 +556,45 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_startTalk_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["talkId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["talkId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateClap_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["talkId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["talkId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["value"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["value"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -607,24 +637,24 @@ func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs
 		}
 	}
 	args["where"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["from"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["from"] = arg1
-	var arg2 int
+	var arg1 int
 	if tmp, ok := rawArgs["limit"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg2
+	args["limit"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["from"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["from"] = arg2
 	return args, nil
 }
 
@@ -640,24 +670,24 @@ func (ec *executionContext) field_Query_talks_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["where"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["from"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["from"] = arg1
-	var arg2 int
+	var arg1 int
 	if tmp, ok := rawArgs["limit"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg2
+	args["limit"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["from"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["from"] = arg2
 	return args, nil
 }
 
@@ -1077,7 +1107,7 @@ func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field grap
 	return ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_createClap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_startTalk(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1094,7 +1124,7 @@ func (ec *executionContext) _Mutation_createClap(ctx context.Context, field grap
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_createClap_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_startTalk_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -1102,7 +1132,49 @@ func (ec *executionContext) _Mutation_createClap(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateClap(rctx, args["talkId"].(string), args["value"].(int))
+		return ec.resolvers.Mutation().StartTalk(rctx, args["talkId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateClap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateClap_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateClap(rctx, args["talkId"].(string), args["value"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1179,7 +1251,7 @@ func (ec *executionContext) _Query_confas(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Confas(rctx, args["where"].(ConfaInput), args["from"].(string), args["limit"].(int))
+		return ec.resolvers.Query().Confas(rctx, args["where"].(ConfaInput), args["limit"].(int), args["from"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1221,7 +1293,7 @@ func (ec *executionContext) _Query_talks(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Talks(rctx, args["where"].(TalkInput), args["from"].(string), args["limit"].(int))
+		return ec.resolvers.Query().Talks(rctx, args["where"].(TalkInput), args["limit"].(int), args["from"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3029,8 +3101,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "createClap":
-			out.Values[i] = ec._Mutation_createClap(ctx, field)
+		case "startTalk":
+			out.Values[i] = ec._Mutation_startTalk(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateClap":
+			out.Values[i] = ec._Mutation_updateClap(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

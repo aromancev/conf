@@ -6,18 +6,18 @@ import { Confa } from "./models"
 class ConfaIterator {
   private api: Client
   private input: ConfaInput
-  private from: string
+  private from: string | null
 
   constructor(api: Client, input: ConfaInput) {
     this.api = api
     this.input = input
-    this.from = ""
+    this.from = null
   }
 
   async next(): Promise<Confa[]> {
     const resp = await this.api.query<confas, confasVariables>({
       query: gql`
-        query confas($where: ConfaInput!, $from: String!) {
+        query confas($where: ConfaInput!, $from: String) {
           confas(where: $where, from: $from) {
             items {
               id
@@ -59,7 +59,7 @@ export class ConfaClient {
       `,
     })
     if (!resp.data) {
-      throw new Error("No data in reponse.")
+      throw new Error("No data in response.")
     }
     const confa = resp.data.createConfa
     return {
@@ -68,7 +68,6 @@ export class ConfaClient {
       handle: confa.handle,
     }
   }
-
 
   async fetchOne(input: ConfaInput): Promise<Confa | null> {
     const iter = this.fetch(input)

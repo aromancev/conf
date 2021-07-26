@@ -12,6 +12,7 @@ import (
 type Repo interface {
 	Create(ctx context.Context, requests ...Talk) ([]Talk, error)
 	Fetch(ctx context.Context, lookup Lookup) ([]Talk, error)
+	FetchOne(ctx context.Context, lookup Lookup) (Talk, error)
 }
 
 type ConfaRepo interface {
@@ -53,4 +54,16 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk
 
 func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 	return c.repo.Fetch(ctx, lookup)
+}
+
+func (c *CRUD) Start(ctx context.Context, userID, talkID uuid.UUID) error {
+	talk, err := c.repo.FetchOne(ctx, Lookup{ID: talkID})
+	if err != nil {
+		return fmt.Errorf("failed to fetch talk: %w", err)
+	}
+	if talk.Owner != userID {
+		return ErrPermissionDenied
+	}
+	return nil
+
 }

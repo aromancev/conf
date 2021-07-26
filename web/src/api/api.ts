@@ -196,7 +196,8 @@ export class Client {
     }
 
     // Set user in user store. This will trigger reactive state change.
-    userStore.id = "todo"
+    const claims = JSON.parse(window.atob(token.split(".")[1]))
+    userStore.id = claims.uid
 
     // If expiresIn is set, schedule a new refresh.
     if (expiresIn === 0) {

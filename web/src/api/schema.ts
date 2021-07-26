@@ -85,7 +85,7 @@ export interface confas {
 
 export interface confasVariables {
   where: ConfaInput;
-  from: string;
+  from?: string | null;
 }
 
 /* tslint:disable */
@@ -113,6 +113,80 @@ export interface createConfa {
 // @generated
 // This file was automatically generated and should not be edited.
 
+// ====================================================
+// GraphQL query operation: talks
+// ====================================================
+
+export interface talks_talks_items {
+  __typename: "Talk";
+  id: string;
+  ownerId: string;
+  confaId: string;
+  handle: string;
+}
+
+export interface talks_talks {
+  __typename: "Talks";
+  items: talks_talks_items[];
+  nextFrom: string;
+}
+
+export interface talks {
+  talks: talks_talks;
+}
+
+export interface talksVariables {
+  where: TalkInput;
+  from?: string | null;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: createTalk
+// ====================================================
+
+export interface createTalk_createTalk {
+  __typename: "Talk";
+  id: string;
+  ownerId: string;
+  confaId: string;
+  handle: string;
+}
+
+export interface createTalk {
+  createTalk: createTalk_createTalk;
+}
+
+export interface createTalkVariables {
+  confaId: string;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: startTalk
+// ====================================================
+
+export interface startTalk {
+  startTalk: string;
+}
+
+export interface startTalkVariables {
+  talkId: string;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
 //==============================================================
 // START Enums and Input Objects
 //==============================================================
@@ -120,6 +194,14 @@ export interface createConfa {
 export interface ConfaInput {
   id?: string | null;
   ownerId?: string | null;
+  handle?: string | null;
+}
+
+export interface TalkInput {
+  id?: string | null;
+  ownerId?: string | null;
+  speakerId?: string | null;
+  confaId?: string | null;
   handle?: string | null;
 }
 

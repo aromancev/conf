@@ -1,7 +1,13 @@
 <template>
   <div class="container">
     <div class="row">
-      <h1 v-if="confa">{{ confa.handle }}</h1>
+      <div v-if="confa">
+        <router-link
+          class="btn px-3 py-2"
+          :to="{ name: 'talk', params: { confa: confa.handle, talk: 'new' } }"
+          >Create talk</router-link
+        >
+      </div>
       <h1 v-else>NOT FOUND</h1>
 
       <InternalError
@@ -46,6 +52,10 @@ export default defineComponent({
         this.confa = await confa.fetchOne({
           handle: handle,
         })
+        if (this.confa === null) {
+          alert("confa not found")
+          return
+        }
       }
     } catch (e) {
       this.modal = Dialog.Error
