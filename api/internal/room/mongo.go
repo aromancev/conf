@@ -1,4 +1,4 @@
-package talk
+package room
 
 import (
 	"context"
@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/google/uuid"
 )
 
 const (
-	batchLimit = 500
+	batchLimit = 100
 )
 
 type Mongo struct {
@@ -22,10 +21,12 @@ type Mongo struct {
 }
 
 func NewMongo(db *mongo.Database) *Mongo {
-	return &Mongo{db: db}
+	return &Mongo{
+		db: db,
+	}
 }
 
-func (m *Mongo) Create(ctx context.Context, requests ...Talk) ([]Talk, error) {
+func (m *Mongo) Create(ctx context.Context, requests ...Room) ([]Room, error) {
 	if len(requests) == 0 {
 		return nil, errors.New("trying to create zero objects")
 	}
@@ -36,25 +37,21 @@ func (m *Mongo) Create(ctx context.Context, requests ...Talk) ([]Talk, error) {
 	now := mongoNow()
 	docs := make([]interface{}, len(requests))
 	for i, r := range requests {
-		if err := r.ValidateAtRest(); err != nil {
+		if err := r.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err)
 		}
 		requests[i].CreatedAt = now
 		docs[i] = requests[i]
 	}
 
-	_, err := m.db.Collection("talks").InsertMany(ctx, docs)
-	switch {
-	case mongo.IsDuplicateKeyError(err):
-		return nil, ErrDuplicateEntry
-	case err != nil:
+	_, err := m.db.Collection("rooms").InsertMany(ctx, docs)
+	if err != nil {
 		return nil, err
 	}
-
 	return requests, nil
 }
 
-func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
+func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Room, error) {
 	filter := bson.M{}
 	switch {
 	case lookup.ID != uuid.Nil:
@@ -65,19 +62,13 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 		}
 	}
 	if lookup.Owner != uuid.Nil {
-		filter["ownerId"] = lookup.Owner
-	}
-	if lookup.Confa != uuid.Nil {
-		filter["confaId"] = lookup.Confa
-	}
-	if lookup.Handle != "" {
-		filter["handle"] = lookup.Handle
+		filter["owner"] = lookup.Owner
 	}
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
 
-	cur, err := m.db.Collection("talks").Find(
+	cur, err := m.db.Collection("rooms").Find(
 		ctx,
 		filter,
 		&options.FindOptions{
@@ -90,31 +81,31 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 	}
 	defer cur.Close(ctx)
 
-	var talks []Talk
+	var rooms []Room
 	for cur.Next(ctx) {
-		var c Talk
-		err := cur.Decode(&c)
+		var r Room
+		err := cur.Decode(&r)
 		if err != nil {
 			return nil, err
 		}
-		talks = append(talks, c)
+		rooms = append(rooms, r)
 	}
 
-	return talks, nil
+	return rooms, nil
 }
 
-func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Talk, error) {
-	talks, err := m.Fetch(ctx, lookup)
+func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Room, error) {
+	confas, err := m.Fetch(ctx, lookup)
 	if err != nil {
-		return Talk{}, err
+		return Room{}, err
 	}
-	if len(talks) == 0 {
-		return Talk{}, ErrNotFound
+	if len(confas) == 0 {
+		return Room{}, ErrNotFound
 	}
-	if len(talks) > 1 {
-		return Talk{}, ErrUnexpectedResult
+	if len(confas) > 1 {
+		return Room{}, ErrUnexpectedResult
 	}
-	return talks[0], nil
+	return confas[0], nil
 }
 
 func mongoNow() time.Time {

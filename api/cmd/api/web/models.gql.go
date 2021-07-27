@@ -31,6 +31,7 @@ type Talk struct {
 	OwnerID   string `json:"ownerId"`
 	SpeakerID string `json:"speakerId"`
 	ConfaID   string `json:"confaId"`
+	RoomID    string `json:"roomId"`
 	Handle    string `json:"handle"`
 }
 

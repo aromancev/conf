@@ -26,6 +26,7 @@ type Talk {
     ownerId: String!
     speakerId: String!
     confaId: String!
+    roomId: String!
     handle: String!
 }
 

@@ -17,9 +17,9 @@ var (
 )
 
 type Session struct {
-	Key       string    `bson:"_id" json:"key"`
-	Owner     uuid.UUID `bson:"owner" json:"owner"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
+	Key       string    `bson:"_id"`
+	Owner     uuid.UUID `bson:"owner"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 func NewKey() string {

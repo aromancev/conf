@@ -16,9 +16,9 @@ var (
 )
 
 type User struct {
-	ID        uuid.UUID `bson:"_id" json:"id"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
-	Idents    []Ident   `bson:"idents" json:"idents"`
+	ID        uuid.UUID `bson:"_id"`
+	CreatedAt time.Time `bson:"createdAt"`
+	Idents    []Ident   `bson:"idents"`
 }
 
 func (u User) Validate() error {

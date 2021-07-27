@@ -53,6 +53,45 @@ func (c *HTTPContext) Token() string {
 	return token
 }
 
+type WSockContext struct {
+	writer  http.ResponseWriter
+	request *http.Request
+}
+
+func NewWSockContext(w http.ResponseWriter, r *http.Request) *WSockContext {
+	return &WSockContext{
+		writer:  w,
+		request: r,
+	}
+}
+
+func (c *WSockContext) SetSession(value string) {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     sessionKey,
+		Value:    value,
+		HttpOnly: true,
+	})
+}
+
+func (c *WSockContext) Session() string {
+	session, err := c.request.Cookie(sessionKey)
+	if err != nil {
+		return ""
+	}
+	return session.Value
+}
+
+func (c *WSockContext) Token() string {
+	t, ok := c.request.URL.Query()["t"]
+	if !ok {
+		return ""
+	}
+	if len(t) != 1 {
+		return ""
+	}
+	return t[0]
+}
+
 func SetContext(parent context.Context, ctx Context) context.Context {
 	return context.WithValue(parent, ctxKey{}, ctx)
 }

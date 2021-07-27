@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/aromancev/confa/internal/auth"
+	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
@@ -30,13 +30,13 @@ func (r *mutationResolver) Login(ctx context.Context, address string) (string, e
 	token, err := r.secretKey.Sign(auth.NewEmailClaims(address))
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 
 	msg, err := emails.Login(r.baseURL, address, token)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to render login email.")
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 
 	body, err := queue.Marshal(&queue.EmailJob{
@@ -49,13 +49,13 @@ func (r *mutationResolver) Login(ctx context.Context, address string) (string, e
 	}, trace.ID(ctx))
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 
 	id, err := r.producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{TTR: 10 * time.Second})
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted.")
 	return address, nil
@@ -76,20 +76,20 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 		},
 	})
 	if err != nil {
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	sess, err := r.sessions.Create(ctx, usr.ID)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to create session.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
-	apiClaims := auth.NewAPIClaims(sess.Owner)
+	apiClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
 	access, err := r.secretKey.Sign(apiClaims)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to sign access token.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	auth.Ctx(ctx).SetSession(sess.Key)
@@ -99,10 +99,38 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 	}, nil
 }
 
+func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
+	var claims *auth.APIClaims
+	key := auth.Ctx(ctx).Session()
+	if key == "" {
+		claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+	} else {
+		s, err := r.sessions.Fetch(ctx, key)
+		if err == nil {
+			claims = auth.NewAPIClaims(s.Owner, auth.AccountUser)
+		} else {
+			claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+		}
+	}
+
+	access, err := r.secretKey.Sign(claims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
+		return nil, newInternalError()
+	}
+	return &Token{
+		Token:     access,
+		ExpiresIn: int(claims.ExpiresIn().Seconds()),
+	}, nil
+}
+
 func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	var req confa.Confa
@@ -117,7 +145,7 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Co
 		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	return &Confa{
@@ -131,6 +159,9 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	var req talk.Talk
@@ -150,7 +181,7 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("failed to create talk.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	return &Talk{
@@ -158,6 +189,7 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 		ConfaID:   created.Confa.String(),
 		OwnerID:   created.Owner.String(),
 		SpeakerID: created.Speaker.String(),
+		RoomID:    created.Room.String(),
 		Handle:    created.Handle,
 	}, nil
 }
@@ -166,6 +198,9 @@ func (r *mutationResolver) StartTalk(ctx context.Context, talkID string) (string
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return "", newError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return "", newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	id, err := uuid.Parse(talkID)
@@ -180,7 +215,7 @@ func (r *mutationResolver) StartTalk(ctx context.Context, talkID string) (string
 	case errors.Is(err, talk.ErrPermissionDenied):
 		return "", newError(CodePermissionDenied, "Only the owner can start talks.")
 	case err != nil:
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 
 	return talkID, nil
@@ -190,6 +225,9 @@ func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value 
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return "", newError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return "", newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	tID, err := uuid.Parse(talkID)
@@ -202,35 +240,18 @@ func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value 
 		return "", newError(CodeBadRequest, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create clap.")
-		return "", newError(CodeInternal, "")
+		return "", newInternalError()
 	}
 
 	return id.String(), nil
 }
 
-func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
-	sessKey := auth.Ctx(ctx).Session()
-	if sessKey == "" {
-		return nil, newError(CodeUnauthorized, "Session is not present.")
-	}
-	sess, err := r.sessions.Fetch(ctx, sessKey)
-	if err != nil {
-		return nil, newError(CodeUnauthorized, "Invalid session.")
-	}
-
-	claims := auth.NewAPIClaims(sess.Owner)
-	access, err := r.secretKey.Sign(claims)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
-		return nil, newError(CodeInternal, "")
-	}
-	return &Token{
-		Token:     access,
-		ExpiresIn: int(claims.ExpiresIn().Seconds()),
-	}, nil
-}
-
 func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
 	if limit < 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -264,7 +285,7 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int,
 	confas, err := r.confas.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	if len(confas) == 0 {
@@ -288,6 +309,11 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int,
 }
 
 func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
 	if limit < 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -331,7 +357,7 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 	talks, err := r.talks.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to fetch talk.")
-		return nil, newError(CodeInternal, "")
+		return nil, newInternalError()
 	}
 
 	if len(talks) == 0 {
@@ -349,6 +375,7 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 			ConfaID:   t.Confa.String(),
 			OwnerID:   t.Owner.String(),
 			SpeakerID: t.Speaker.String(),
+			RoomID:    t.Room.String(),
 			Handle:    t.Handle,
 		}
 	}
@@ -356,6 +383,11 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 }
 
 func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (int, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return 0, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
 	var lookup clap.Lookup
 	var err error
 	if where.ConfaID != nil {
@@ -379,7 +411,7 @@ func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (in
 	claps, err := r.claps.Aggregate(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to aggregate claps.")
-		return 0, newError(CodeInternal, "")
+		return 0, newInternalError()
 	}
 	return int(claps), nil
 }

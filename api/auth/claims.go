@@ -34,17 +34,27 @@ func (c EmailClaims) Valid() error {
 	return email.Validate(c.Address)
 }
 
+type Account int
+
+const (
+	AccountGuest Account = 0
+	AccountUser  Account = 1
+	AccountAdmin Account = 2
+)
+
 type APIClaims struct {
 	jwt.StandardClaims
-	UserID uuid.UUID `json:"uid"`
+	UserID  uuid.UUID `json:"uid"`
+	Account Account   `json:"acc"`
 }
 
-func NewAPIClaims(userID uuid.UUID) *APIClaims {
+func NewAPIClaims(userID uuid.UUID, acc Account) *APIClaims {
 	return &APIClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(apiExpire).Unix(),
 		},
-		UserID: userID,
+		UserID:  userID,
+		Account: acc,
 	}
 }
 
@@ -54,4 +64,8 @@ func (c APIClaims) Valid() error {
 
 func (c APIClaims) ExpiresIn() time.Duration {
 	return apiExpire
+}
+
+func (c APIClaims) AllowedWrite() bool {
+	return c.Account == AccountUser || c.Account == AccountAdmin
 }

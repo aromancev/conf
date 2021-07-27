@@ -31,18 +31,18 @@ func (m *Mongo) CreateOrUpdate(ctx context.Context, request Clap) (uuid.UUID, er
 	res, err := m.db.Collection("claps").UpdateOne(
 		ctx,
 		bson.M{
-			"confa":   request.Confa,
-			"owner":   request.Owner,
-			"speaker": request.Speaker,
-			"talk":    request.Talk,
+			"confaId":   request.Confa,
+			"ownerId":   request.Owner,
+			"speakerId": request.Speaker,
+			"talkId":    request.Talk,
 		},
 		bson.M{
 			"$set": bson.M{
-				"confa":   request.Confa,
-				"owner":   request.Owner,
-				"speaker": request.Speaker,
-				"talk":    request.Talk,
-				"value":   request.Value,
+				"confaId":   request.Confa,
+				"ownerId":   request.Owner,
+				"speakerId": request.Speaker,
+				"talkId":    request.Talk,
+				"value":     request.Value,
 			},
 			"$setOnInsert": bson.M{
 				"_id": request.ID,
@@ -68,13 +68,13 @@ func (m *Mongo) CreateOrUpdate(ctx context.Context, request Clap) (uuid.UUID, er
 func (m *Mongo) Aggregate(ctx context.Context, lookup Lookup) (uint64, error) {
 	var match bson.D
 	if lookup.Confa != uuid.Nil {
-		match = append(match, bson.E{Key: "confa", Value: lookup.Confa})
+		match = append(match, bson.E{Key: "confaId", Value: lookup.Confa})
 	}
 	if lookup.Speaker != uuid.Nil {
-		match = append(match, bson.E{Key: "speaker", Value: lookup.Speaker})
+		match = append(match, bson.E{Key: "speakerId", Value: lookup.Speaker})
 	}
 	if lookup.Talk != uuid.Nil {
-		match = append(match, bson.E{Key: "talk", Value: lookup.Talk})
+		match = append(match, bson.E{Key: "talkId", Value: lookup.Talk})
 	}
 	group := bson.M{
 		"_id": "",

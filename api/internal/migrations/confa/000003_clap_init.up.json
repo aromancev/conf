@@ -4,10 +4,10 @@
     "indexes": [
       {
         "key": {
-          "owner": 1,
-          "confa": 1,
-          "talk": 1,
-          "speaker": 1
+          "ownerId": 1,
+          "confaId": 1,
+          "talkId": 1,
+          "speakerId": 1
         },
         "name": "unique_owner_confa_talk_speaker",
         "unique": true

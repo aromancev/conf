@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/proto/rtc/double"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,8 @@ func TestCRUD(t *testing.T) {
 
 			db := dockerMongo(t)
 			confaMongo := confa.NewMongo(db)
-			talkCRUD := NewCRUD(NewMongo(db), confaMongo)
+			rooms := double.NewMemory()
+			talkCRUD := NewCRUD(NewMongo(db), confaMongo, rooms)
 
 			conf := confa.Confa{
 				ID:     uuid.New(),
@@ -40,12 +42,16 @@ func TestCRUD(t *testing.T) {
 			fetched, err := talkCRUD.Fetch(ctx, Lookup{ID: created.ID})
 			require.NoError(t, err)
 			assert.Equal(t, []Talk{created}, fetched)
+
+			room, err := rooms.Room(ctx, fetched[0].Room.String())
+			require.NoError(t, err)
+			assert.Equal(t, fetched[0].Room.String(), room.Id)
 		})
 
 		t.Run("Only the owner can create", func(t *testing.T) {
 			db := dockerMongo(t)
 			confaMongo := confa.NewMongo(db)
-			talkCRUD := NewCRUD(NewMongo(db), confaMongo)
+			talkCRUD := NewCRUD(NewMongo(db), confaMongo, nil)
 
 			conf := confa.Confa{
 				ID:     uuid.New(),

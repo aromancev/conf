@@ -40,6 +40,7 @@ func TestMongo(t *testing.T) {
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
+				Room:    uuid.New(),
 				Handle:  "test",
 			}
 
@@ -62,6 +63,7 @@ func TestMongo(t *testing.T) {
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
+				Room:    uuid.New(),
 				Handle:  uuid.New().String(),
 			}
 
@@ -84,6 +86,7 @@ func TestMongo(t *testing.T) {
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
+				Room:    uuid.New(),
 				Handle:  "test",
 			})
 			require.NoError(t, err)
@@ -92,6 +95,7 @@ func TestMongo(t *testing.T) {
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
+				Room:    uuid.New(),
 				Handle:  "test",
 			})
 			assert.ErrorIs(t, err, ErrDuplicateEntry)

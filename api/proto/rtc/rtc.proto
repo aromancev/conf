@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+service RTC {
+    rpc CreateRoom(Room) returns (Room) {}
+}
+
+message Room {
+    string id = 1;
+    string ownerId = 2;
+}
