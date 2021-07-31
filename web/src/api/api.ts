@@ -23,17 +23,14 @@ import {
   token,
 } from "./schema"
 import { userStore } from "./models"
-
-enum Code {
-  Unauthorised = "UNAUTHORIZED",
-}
+import { RTC } from "./rtc"
 
 const minRefresh = 10 * Duration.second
 
 export class Client {
   private graph: ApolloClient<NormalizedCacheObject>
   private refreshTimer = 0
-  private token: Promise<string> | null = null
+  private token: Promise<string>
   private tokenResolve: ((token: string) => void) | null = null
 
   constructor() {
@@ -51,11 +48,6 @@ export class Client {
       msg += "\nTrace = " + traceId
       for (const e of resp.response?.errors || resp.graphQLErrors || []) {
         const code = e.extensions?.code
-        // Ignoring auth erros when fetching token.
-        // There is no way to know if the user is authenticated or not without trying to fetch the token.
-        if (operation === "token" && code === Code.Unauthorised) {
-          return
-        }
         msg += `\n${code || "UNKNOWN_CODE"} (${e.message})`
       }
       console.error(msg)
@@ -82,6 +74,9 @@ export class Client {
       cache: new InMemoryCache(),
     })
 
+    this.token = new Promise<string>(resolve => {
+      resolve("")
+    })
     this.refreshToken()
   }
 
@@ -134,7 +129,7 @@ export class Client {
         },
       },
     )
-    if (!resp.data) {
+    if (!resp.data?.createSession.token) {
       console.error("No token present in session response. Trying to refresh.")
       // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
       this.refreshToken() // No point in waiting for it, so no `await`.
@@ -142,6 +137,10 @@ export class Client {
     }
     const token = resp.data.createSession
     this.setToken(token.token, token.expiresIn)
+  }
+
+  async rtc(roomId: string): Promise<RTC> {
+    return new RTC(roomId, await this.token)
   }
 
   private async refreshToken() {
@@ -195,6 +194,9 @@ export class Client {
       this.tokenResolve(token)
     }
 
+    if (!token) {
+      return
+    }
     // Set user in user store. This will trigger reactive state change.
     const claims = JSON.parse(window.atob(token.split(".")[1]))
     userStore.id = claims.uid

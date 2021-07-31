@@ -1,6 +1,14 @@
 import { gql } from "@apollo/client/core"
 import { Client } from "./api"
-import { TalkInput, createTalk, createTalkVariables, startTalk, startTalkVariables, talks, talksVariables } from "./schema"
+import {
+  TalkInput,
+  createTalk,
+  createTalkVariables,
+  startTalk,
+  startTalkVariables,
+  talks,
+  talksVariables,
+} from "./schema"
 import { Talk } from "./models"
 
 class TalkIterator {
@@ -23,6 +31,7 @@ class TalkIterator {
               id
               ownerId
               confaId
+              roomId
               handle
             }
             nextFrom
@@ -55,29 +64,24 @@ export class TalkClient {
             id
             ownerId
             confaId
+            roomId
             handle
           }
         }
       `,
       variables: {
         confaId: confaId,
-      }
+      },
     })
     if (!resp.data) {
       throw new Error("No data in response.")
     }
 
-    const talk = resp.data.createTalk
-    return {
-      id: talk.id,
-      ownerId: talk.ownerId,
-      confaId: talk.confaId,
-      handle: talk.handle,
-    }
+    return resp.data.createTalk
   }
 
   async start(talkId: string): Promise<void> {
-    const resp = await this.api.mutate<startTalk, startTalkVariables>({
+    await this.api.mutate<startTalk, startTalkVariables>({
       mutation: gql`
         mutation startTalk($talkId: String!) {
           startTalk(talkId: $talkId)
@@ -85,7 +89,7 @@ export class TalkClient {
       `,
       variables: {
         talkId: talkId,
-      }
+      },
     })
   }
 

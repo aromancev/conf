@@ -11,12 +11,12 @@ var (
 )
 
 type Clap struct {
-	ID      uuid.UUID `bson:"_id" json:"id"`
-	Confa   uuid.UUID `bson:"confa" json:"confa"`
-	Owner   uuid.UUID `bson:"owner" json:"owner"`
-	Speaker uuid.UUID `bson:"speaker" json:"speaker"`
-	Talk    uuid.UUID `bson:"talk" json:"talk"`
-	Value   uint      `bson:"value" json:"value"`
+	ID      uuid.UUID `bson:"_id"`
+	Confa   uuid.UUID `bson:"confaId"`
+	Owner   uuid.UUID `bson:"ownerId"`
+	Talk    uuid.UUID `bson:"talkId"`
+	Speaker uuid.UUID `bson:"speakerId"`
+	Value   uint      `bson:"value"`
 }
 
 func (c Clap) Validate() error {

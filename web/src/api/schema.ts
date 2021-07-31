@@ -122,6 +122,7 @@ export interface talks_talks_items {
   id: string;
   ownerId: string;
   confaId: string;
+  roomId: string;
   handle: string;
 }
 
@@ -154,6 +155,7 @@ export interface createTalk_createTalk {
   id: string;
   ownerId: string;
   confaId: string;
+  roomId: string;
   handle: string;
 }
 

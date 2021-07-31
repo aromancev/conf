@@ -13,8 +13,10 @@ import (
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/rtc/wsock"
+	"github.com/aromancev/confa/internal/room"
+	"github.com/aromancev/confa/internal/room/peer/wsock"
 	pqueue "github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/proto/rtc"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -25,9 +27,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/cmd/api/queue"
+	"github.com/aromancev/confa/cmd/api/rpc"
 	"github.com/aromancev/confa/cmd/api/web"
-	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/confa"
 )
 
@@ -55,6 +58,18 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to mongo")
 	}
 	iamMongoDB := iamMongoClient.Database(config.Mongo.IAMDatabase)
+
+	rtcMongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
+		"mongodb://%s:%s@%s/%s",
+		config.Mongo.RTCUser,
+		config.Mongo.RTCPassword,
+		config.Mongo.Hosts,
+		config.Mongo.RTCDatabase,
+	)))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to mongo")
+	}
+	rtcMongoDB := rtcMongoClient.Database(config.Mongo.RTCDatabase)
 
 	confaMongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
 		"mongodb://%s:%s@%s/%s",
@@ -106,6 +121,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
+	rtcClient := rtc.NewRTCProtobufClient(config.RTCAddress, &http.Client{})
+
 	userMongo := user.NewMongo(iamMongoDB)
 	userCRUD := user.NewCRUD(userMongo)
 	sessionMongo := session.NewMongo(iamMongoDB)
@@ -114,15 +131,17 @@ func main() {
 	confaMongo := confa.NewMongo(confaMongoDB)
 	confaCRUD := confa.NewCRUD(confaMongo)
 	talkMongo := talk.NewMongo(confaMongoDB)
-	talkCRUD := talk.NewCRUD(talkMongo, confaMongo)
+	talkCRUD := talk.NewCRUD(talkMongo, confaMongo, rtcClient)
 	clapMongo := clap.NewMongo(confaMongoDB)
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
+
+	roomMongo := room.NewMongo(rtcMongoDB)
 
 	jobHandler := queue.NewHandler(
 		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
 	)
 
-	srv := &http.Server{
+	webServer := &http.Server{
 		Addr:         config.Address,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
@@ -137,18 +156,39 @@ func main() {
 			confaCRUD,
 			talkCRUD,
 			clapCRUD,
+			roomMongo,
 			wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer),
 			config.RTC.SFUAddress,
 		)),
 	}
+	rpcServer := &http.Server{
+		Addr:         config.RPCAddress,
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      rtc.NewRTCServer(rpc.NewHandler(roomMongo)),
+	}
+
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
+		log.Info().Msg("Web listening on " + config.Address)
+		if err := webServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
 			log.Fatal().Err(err).Msg("Server failed")
 		}
 	}()
+
+	go func() {
+		log.Info().Msg("RPC listening on " + config.RPCAddress)
+		if err := rpcServer.ListenAndServe(); err != nil {
+			if errors.Is(err, http.ErrServerClosed) {
+				return
+			}
+			log.Fatal().Err(err).Msg("Server failed")
+		}
+	}()
+
 	var consumerDone sync.WaitGroup
 	consumerDone.Add(1)
 	go func() {
@@ -167,7 +207,8 @@ func main() {
 	defer shutdown()
 
 	cancel()
-	_ = srv.Shutdown(ctx)
+	_ = webServer.Shutdown(ctx)
+	_ = rpcServer.Shutdown(ctx)
 	producer.Stop()
 	consumerDone.Wait()
 

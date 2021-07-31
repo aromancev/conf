@@ -3,17 +3,48 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strings"
 
+	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/platform/sfu"
-	"github.com/aromancev/confa/internal/rtc"
-	"github.com/aromancev/confa/internal/rtc/wsock"
+	"github.com/aromancev/confa/internal/room"
+	"github.com/aromancev/confa/internal/room/peer"
+	"github.com/aromancev/confa/internal/room/peer/wsock"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
 )
 
-func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter, *http.Request) {
+func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		var claims auth.APIClaims
+		if err := pk.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) != 4 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		roomID, err := uuid.Parse(parts[3])
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		rm, err := rooms.FetchOne(ctx, room.Lookup{ID: roomID})
+		switch {
+		case errors.Is(err, room.ErrNotFound):
+			w.WriteHeader(http.StatusNotFound)
+			return
+		case err != nil:
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		conn, err := upgrader.NewConn(w, r, nil)
 		if err != nil {
@@ -29,20 +60,20 @@ func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter
 		}
 		defer signal.Close()
 
-		sess := rtc.NewSession(signal)
-		sess.OnAnswer(func(desc webrtc.SessionDescription) {
+		p := peer.NewPeer(rm, signal)
+		p.OnAnswer(func(desc webrtc.SessionDescription) {
 			err := conn.Answer(desc)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to notify about answer.")
 			}
 		})
-		sess.OnOffer(func(desc webrtc.SessionDescription) {
+		p.OnOffer(func(desc webrtc.SessionDescription) {
 			err := conn.Offer(desc)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
 			}
 		})
-		sess.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
+		p.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
 			err := conn.Trickle(cand, target)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
@@ -60,7 +91,7 @@ func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter
 
 			switch req := request.(type) {
 			case wsock.Join:
-				err := sess.Join(ctx, req.SID, req.UID, req.Offer)
+				err := p.Join(ctx, req.SID, req.UID, req.Offer)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Failed to join.")
 					_ = conn.Error(err.Error())
@@ -68,9 +99,9 @@ func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter
 				}
 
 			case wsock.Offer:
-				err := sess.Offer(ctx, req.Description)
+				err := p.Offer(ctx, req.Description)
 				switch {
-				case errors.Is(err, rtc.ErrValidation):
+				case errors.Is(err, peer.ErrValidation):
 					_ = conn.Error(err.Error())
 					return
 				case err != nil:
@@ -80,7 +111,7 @@ func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter
 				}
 
 			case wsock.Answer:
-				err := sess.Answer(ctx, req.Description)
+				err := p.Answer(ctx, req.Description)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Failed to answer.")
 					_ = conn.Error(err.Error())
@@ -88,7 +119,7 @@ func serveRTC(upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter
 				}
 
 			case wsock.Trickle:
-				err := sess.Trickle(ctx, req.Candidate, req.Target)
+				err := p.Trickle(ctx, req.Candidate, req.Target)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("Failed to trickle.")
 					_ = conn.Error(err.Error())

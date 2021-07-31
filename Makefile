@@ -1,8 +1,9 @@
 .PHONY: migrate
 migrate:
 	./mongo/init.sh
-	./mongo/migrate.sh -source file://confa/migrations/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
-	./mongo/migrate.sh -source file://user/migrations/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
+	./mongo/migrate.sh -source file://migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
+	./mongo/migrate.sh -source file://migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
+	./mongo/migrate.sh -source file://migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
 	
 .PHONY: mongosh
 mongosh:

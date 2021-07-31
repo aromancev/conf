@@ -1,4 +1,4 @@
-package rtc
+package peer
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/aromancev/confa/internal/room"
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
@@ -25,68 +26,68 @@ type Signal interface {
 	Answer(webrtc.SessionDescription)
 }
 
-type Session struct {
+type Peer struct {
 	signal            Signal
 	onAnswer, onOffer func(webrtc.SessionDescription)
 	onTrickle         func(webrtc.ICECandidateInit, int)
 }
 
-func NewSession(sig Signal) *Session {
-	sess := &Session{
+func NewPeer(_ room.Room, sig Signal) *Peer {
+	peer := &Peer{
 		signal: sig,
 	}
 
 	sig.OnOffer(func(desc webrtc.SessionDescription) {
-		if sess.onOffer != nil {
-			sess.onOffer(desc)
+		if peer.onOffer != nil {
+			peer.onOffer(desc)
 		}
 	})
 	sig.OnAnswer(func(desc webrtc.SessionDescription) {
-		if sess.onAnswer != nil {
-			sess.onAnswer(desc)
+		if peer.onAnswer != nil {
+			peer.onAnswer(desc)
 		}
 	})
 	sig.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
-		if sess.onTrickle != nil {
-			sess.onTrickle(cand, target)
+		if peer.onTrickle != nil {
+			peer.onTrickle(cand, target)
 		}
 	})
-	return sess
+	return peer
 }
 
-func (s *Session) OnAnswer(f func(webrtc.SessionDescription)) {
-	s.onAnswer = f
+func (p *Peer) OnAnswer(f func(webrtc.SessionDescription)) {
+	p.onAnswer = f
 }
 
-func (s *Session) OnOffer(f func(webrtc.SessionDescription)) {
-	s.onOffer = f
+func (p *Peer) OnOffer(f func(webrtc.SessionDescription)) {
+	p.onOffer = f
 }
 
-func (s *Session) OnTrickle(f func(webrtc.ICECandidateInit, int)) {
-	s.onTrickle = f
+func (p *Peer) OnTrickle(f func(webrtc.ICECandidateInit, int)) {
+	p.onTrickle = f
 }
 
-func (s *Session) Join(_ context.Context, sid, uid string, offer webrtc.SessionDescription) error {
-	return s.signal.Join(sid, uid, offer)
+func (p *Peer) Join(_ context.Context, sid, uid string, offer webrtc.SessionDescription) error {
+	return p.signal.Join(sid, uid, offer)
 }
 
-func (s *Session) Offer(_ context.Context, desc webrtc.SessionDescription) error {
+func (p *Peer) Offer(_ context.Context, desc webrtc.SessionDescription) error {
 	_, err := parseOffer(desc)
 	if err != nil {
 		return err
 	}
 
-	s.signal.Offer(desc)
+	p.signal.Offer(desc)
 	return nil
 }
 
-func (s *Session) Trickle(_ context.Context, cand webrtc.ICECandidateInit, target int) error {
-	s.signal.Trickle(cand, target)
+func (p *Peer) Trickle(_ context.Context, cand webrtc.ICECandidateInit, target int) error {
+	p.signal.Trickle(cand, target)
 	return nil
 }
 
-func (s *Session) Answer(_ context.Context, desc webrtc.SessionDescription) error {
-	s.signal.Answer(desc)
+func (p *Peer) Answer(_ context.Context, desc webrtc.SessionDescription) error {
+	p.signal.Answer(desc)
 	return nil
 }
 

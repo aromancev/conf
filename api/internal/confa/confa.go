@@ -16,10 +16,10 @@ var (
 )
 
 type Confa struct {
-	ID        uuid.UUID `bson:"_id" json:"id"`
-	Owner     uuid.UUID `bson:"owner" json:"owner"`
-	Handle    string    `bson:"handle" json:"handle"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
+	ID        uuid.UUID `bson:"_id"`
+	Owner     uuid.UUID `bson:"ownerId"`
+	Handle    string    `bson:"handle"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 var validHandle = regexp.MustCompile("^[A-z0-9-]{1,64}$")

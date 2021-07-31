@@ -66,7 +66,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 		}
 	}
 	if lookup.Owner != uuid.Nil {
-		filter["owner"] = lookup.Owner
+		filter["ownerId"] = lookup.Owner
 	}
 	if lookup.Handle != "" {
 		filter["handle"] = lookup.Handle

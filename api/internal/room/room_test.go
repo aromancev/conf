@@ -1,7 +1,6 @@
-package user
+package room
 
 import (
-	"os"
 	"testing"
 
 	"github.com/aromancev/confa/internal/platform/mongo/double"
@@ -12,12 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func TestMain(m *testing.M) {
-	code := m.Run()
-	double.Purge()
-	os.Exit(code)
-}
-
 func dockerMongo(t *testing.T) *mongo.Database {
 	t.Helper()
 
@@ -26,7 +19,7 @@ func dockerMongo(t *testing.T) *mongo.Database {
 		DatabaseName: db.Name(),
 	})
 	require.NoError(t, err)
-	migrator, err := migrate.NewWithDatabaseInstance("file://../migrations/iam", db.Name(), driver)
+	migrator, err := migrate.NewWithDatabaseInstance("file://../migrations/rtc", db.Name(), driver)
 	require.NoError(t, err)
 	require.NoError(t, migrator.Up())
 	return db

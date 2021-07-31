@@ -23,7 +23,7 @@ interface Response {
   payload: RTCSessionDescriptionInit | Trickle
 }
 
-export class Signal {
+export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
 
@@ -31,7 +31,7 @@ export class Signal {
   private socket: WebSocket
   private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
 
-  constructor() {
+  constructor(roomId: string, token: string) {
     let protocol = "wss"
     if (process.env.NODE_ENV == "development") {
       protocol = "ws"
@@ -39,7 +39,7 @@ export class Signal {
     this.onSignalAnswer = null
 
     this.socket = new WebSocket(
-      `${protocol}://${window.location.hostname}/api/rtc/v1/ws`,
+      `${protocol}://${window.location.hostname}/api/rtc/ws/${roomId}?t=${token}`,
     )
     this.socket.onopen = () => {
       if (this._onopen) {

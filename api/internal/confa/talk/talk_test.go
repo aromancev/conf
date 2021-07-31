@@ -26,7 +26,7 @@ func dockerMongo(t *testing.T) *mongo.Database {
 		DatabaseName: db.Name(),
 	})
 	require.NoError(t, err)
-	migrator, err := migrate.NewWithDatabaseInstance("file://../migrations", db.Name(), driver)
+	migrator, err := migrate.NewWithDatabaseInstance("file://../../migrations/confa", db.Name(), driver)
 	require.NoError(t, err)
 	require.NoError(t, migrator.Up())
 	return db

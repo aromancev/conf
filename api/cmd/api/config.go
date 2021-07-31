@@ -16,6 +16,8 @@ const (
 
 type Config struct {
 	Address       string `envconfig:"ADDRESS"`
+	RPCAddress    string `envconfig:"RPC_ADDRESS"`
+	RTCAddress    string `envconfig:"RTC_ADDRESS"`
 	LogFormat     string `envconfig:"LOG_FORMAT"`
 	BaseURL       string `envconfig:"BASE_URL"`
 	SecretKey     string `envconfig:"SECRET_KEY"`
@@ -122,6 +124,9 @@ type MongoConfig struct {
 	IAMUser       string `envconfig:"MONGO_IAM_USER"`
 	IAMPassword   string `envconfig:"MONGO_IAM_PASSWORD"`
 	IAMDatabase   string `envconfig:"MONGO_IAM_DATABASE"`
+	RTCUser       string `envconfig:"MONGO_RTC_USER"`
+	RTCPassword   string `envconfig:"MONGO_RTC_PASSWORD"`
+	RTCDatabase   string `envconfig:"MONGO_RTC_DATABASE"`
 	ConfaUser     string `envconfig:"MONGO_CONFA_USER"`
 	ConfaPassword string `envconfig:"MONGO_CONFA_PASSWORD"`
 	ConfaDatabase string `envconfig:"MONGO_CONFA_DATABASE"`

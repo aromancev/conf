@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/proto/rtc"
 
 	"github.com/google/uuid"
 )
@@ -22,10 +23,15 @@ type ConfaRepo interface {
 type CRUD struct {
 	repo   Repo
 	confas ConfaRepo
+	rtc    rtc.RTC
 }
 
-func NewCRUD(repo Repo, confas ConfaRepo) *CRUD {
-	return &CRUD{repo: repo, confas: confas}
+func NewCRUD(repo Repo, confas ConfaRepo, r rtc.RTC) *CRUD {
+	return &CRUD{
+		repo:   repo,
+		confas: confas,
+		rtc:    r,
+	}
 }
 
 func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk, error) {
@@ -45,6 +51,19 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk
 	if conf.Owner != userID {
 		return Talk{}, ErrPermissionDenied
 	}
+
+	room, err := c.rtc.CreateRoom(ctx, &rtc.Room{
+		OwnerId: userID.String(),
+	})
+	if err != nil {
+		return Talk{}, fmt.Errorf("failed to create room: %w", err)
+	}
+	roomID, err := uuid.Parse(room.Id)
+	if err != nil {
+		return Talk{}, fmt.Errorf("failed to parse room id: %w", err)
+	}
+	request.Room = roomID
+
 	created, err := c.repo.Create(ctx, request)
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to create talk: %w", err)
@@ -64,6 +83,6 @@ func (c *CRUD) Start(ctx context.Context, userID, talkID uuid.UUID) error {
 	if talk.Owner != userID {
 		return ErrPermissionDenied
 	}
-	return nil
 
+	return nil
 }

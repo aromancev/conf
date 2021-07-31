@@ -22,12 +22,12 @@ import (
 type Code string
 
 const (
-	CodeInternal         = "INTERNAL"
 	CodeBadRequest       = "BAD_REQUEST"
 	CodeUnauthorized     = "UNAUTHORIZED"
 	CodeDuplicateEntry   = "DUPLICATE_ENTRY"
 	CodeNotFound         = "NOT_FOUND"
 	CodePermissionDenied = "PERMISSION_DENIED"
+	CodeUnknown          = "UNKNOWN_CODE"
 )
 
 type Producer interface {
@@ -43,15 +43,17 @@ func NewHandler(resolver *Resolver) *Handler {
 
 	r.HandleFunc("/health", ok)
 	r.Handle("/query",
-		withAuth(
+		withHTTPAuth(
 			handler.NewDefaultServer(
 				NewExecutableSchema(Config{Resolvers: resolver}),
 			),
 		),
 	)
 	r.HandleFunc(
-		"/rtc/v1/ws",
-		serveRTC(resolver.upgrader, resolver.sfuAddr),
+		"/rtc/ws/",
+		withWSockAuthFunc(
+			serveRTC(resolver.rooms, resolver.publicKey, resolver.upgrader, resolver.sfuAddr),
+		),
 	)
 	r.HandleFunc("/dev/", playground.Handler("API playground", "/api/query"))
 
@@ -86,6 +88,15 @@ func newError(code Code, message string) *gqlerror.Error {
 		Message: message,
 		Extensions: map[string]interface{}{
 			"code": code,
+		},
+	}
+}
+
+func newInternalError() *gqlerror.Error {
+	return &gqlerror.Error{
+		Message: "internal system error",
+		Extensions: map[string]interface{}{
+			"code": CodeUnknown,
 		},
 	}
 }

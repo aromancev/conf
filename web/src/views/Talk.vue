@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="row">
-      <!-- <h1></h1>
+      <h1></h1>
       <h3>Local Video</h3>
       <Stream
         v-bind:stream="localStream"
@@ -15,7 +15,7 @@
         v-bind:key="stream.id"
         v-bind:stream="stream"
         width="150"
-      /> -->
+      />
       <div
         v-if="userId === talk?.ownerId"
         class="btn px-3 py-2"
@@ -36,9 +36,8 @@
 import InternalError from "@/components/modals/InternalError.vue"
 import { defineComponent } from "vue"
 import Stream from "@/components/Stream.vue"
-// import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
-// import { Signal } from "@/api/rtc"
-import { userStore, confa, Talk, talk } from "@/api"
+import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
+import { client, userStore, confa, Talk, talk } from "@/api"
 
 enum Dialog {
   None = "",
@@ -48,7 +47,7 @@ enum Dialog {
 export default defineComponent({
   name: "Talk",
   components: {
-    // Stream,
+    Stream,
     InternalError,
   },
 
@@ -67,64 +66,39 @@ export default defineComponent({
     }
   },
 
-  async beforeCreate() {
-    const confaHanle = this.$route.params.confa as string
-    const talkHandle = this.$route.params.talk as string
-
-    if (talkHandle !== "new") {
-      try {
-        this.talk = await talk.fetchOne({
-          handle: talkHandle,
-        })
-      } catch (e) {
-        this.modal = Dialog.Error
-      }
-      if (this.talk === null) {
-        alert("talk not found")
-      }
+  async created() {
+    this.talk = await this.fetchTalk()
+    if (this.talk === null) {
+      alert("talk not found")
       return
     }
 
-    try {
-      const conf = await confa.fetchOne({
-        handle: confaHanle,
+    const rtc = await client.rtc(this.talk.roomId)
+    const sfu = new Client(rtc)
+    rtc.onopen = async () => {
+      if (!this.talk) {
+        throw new Error("Talk not set")
+      }
+      await sfu.join(this.talk.roomId, this.userId)
+      const local = await LocalStream.getUserMedia({
+        codec: "vp8",
+        resolution: "vga",
+        simulcast: true,
+        video: true,
+        audio: false,
       })
-      if (conf === null) {
-        alert("confa not found")
+      this.localStream = local
+      sfu.publish(local)
+    }
+    sfu.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
+      if (track.kind !== "video") {
         return
       }
-      this.talk = await talk.create(conf.id)
-      this.$router.replace("/" + confaHanle + "/" + this.talk.handle)
-    } catch (e) {
-      this.modal = Dialog.Error
+      this.remoteStreams[stream.id] = stream
+      stream.onremovetrack = () => {
+        delete this.remoteStreams[stream.id]
+      }
     }
-  },
-
-  async created() {
-    // const signal = new Signal()
-    // const client = new Client(signal)
-    // const uid = Math.random().toString()
-    // signal.onopen = async () => {
-    //   await client.join("test session", uid)
-    //   const local = await LocalStream.getUserMedia({
-    //     codec: "vp8",
-    //     resolution: "vga",
-    //     simulcast: true,
-    //     video: true,
-    //     audio: false,
-    //   })
-    //   this.localStream = local
-    //   client.publish(local)
-    // }
-    // client.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
-    //   if (track.kind !== "video") {
-    //     return
-    //   }
-    //   this.remoteStreams[stream.id] = stream
-    //   stream.onremovetrack = () => {
-    //     delete this.remoteStreams[stream.id]
-    //   }
-    // }
   },
 
   methods: {
@@ -137,6 +111,37 @@ export default defineComponent({
       } catch (e) {
         this.modal = Dialog.Error
       }
+    },
+
+    async fetchTalk(): Promise<Talk | null> {
+      const confaHanle = this.$route.params.confa as string
+      const talkHandle = this.$route.params.talk as string
+
+      if (talkHandle !== "new") {
+        try {
+          return await talk.fetchOne({
+            handle: talkHandle,
+          })
+        } catch (e) {
+          this.modal = Dialog.Error
+        }
+      }
+
+      try {
+        const conf = await confa.fetchOne({
+          handle: confaHanle,
+        })
+        if (conf === null) {
+          return null
+        }
+        const tlk = await talk.create(conf.id)
+        this.$router.replace("/" + confaHanle + "/" + tlk.handle)
+        return tlk
+      } catch (e) {
+        this.modal = Dialog.Error
+      }
+
+      return null
     },
   },
 })

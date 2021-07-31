@@ -13,4 +13,4 @@ docker run \
   --rm \
   --network="confa" \
   -v ${DIR}/create-users.js:/app/create-users.js \
-  ${IMAGE} mongo --quiet --eval="const confaPwd = 'confa'; const iamPwd = 'iam';" "mongodb://mongo:mongo@mongo:27017/?replicaSet=rs" /app/create-users.js
+  ${IMAGE} mongo --quiet --eval="const iamPwd = 'iam'; const rtcPwd = 'rtc'; const confaPwd = 'confa'; " "mongodb://mongo:mongo@mongo:27017/?replicaSet=rs" /app/create-users.js

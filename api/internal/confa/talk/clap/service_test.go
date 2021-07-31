@@ -29,6 +29,7 @@ func TestCRUD(t *testing.T) {
 				Confa:   uuid.New(),
 				Owner:   uuid.New(),
 				Speaker: uuid.New(),
+				Room:    uuid.New(),
 				Handle:  "test",
 			}
 
