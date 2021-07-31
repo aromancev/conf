@@ -12,9 +12,9 @@ import (
 
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"github.com/aromancev/confa/internal/event/peer/wsock"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/room"
-	"github.com/aromancev/confa/internal/room/peer/wsock"
 	pqueue "github.com/aromancev/confa/proto/queue"
 	"github.com/aromancev/confa/proto/rtc"
 	"go.mongodb.org/mongo-driver/mongo"

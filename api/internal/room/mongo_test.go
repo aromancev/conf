@@ -17,17 +17,17 @@ func TestMongo(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
-		confas := NewMongo(dockerMongo(t))
+		rooms := NewMongo(dockerMongo(t))
 
 		request := Room{
 			ID:    uuid.New(),
 			Owner: uuid.New(),
 		}
-		created, err := confas.Create(ctx, request)
+		created, err := rooms.Create(ctx, request)
 		require.NoError(t, err)
 		assert.NotZero(t, created[0].CreatedAt)
 
-		fetched, err := confas.Fetch(ctx, Lookup{
+		fetched, err := rooms.Fetch(ctx, Lookup{
 			ID:    request.ID,
 			Owner: request.Owner,
 		})
@@ -38,15 +38,15 @@ func TestMongo(t *testing.T) {
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 
-		confas := NewMongo(dockerMongo(t))
+		rooms := NewMongo(dockerMongo(t))
 
-		conf := Room{
+		room := Room{
 			ID:    uuid.New(),
 			Owner: uuid.New(),
 		}
-		created, err := confas.Create(ctx, conf)
+		created, err := rooms.Create(ctx, room)
 		require.NoError(t, err)
-		_, err = confas.Create(
+		_, err = rooms.Create(
 			ctx,
 			Room{
 				ID:    uuid.New(),
@@ -60,30 +60,30 @@ func TestMongo(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("by id", func(t *testing.T) {
-			fetched, err := confas.Fetch(ctx, Lookup{
-				ID: conf.ID,
+			fetched, err := rooms.Fetch(ctx, Lookup{
+				ID: room.ID,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched)
 		})
 
 		t.Run("by owner", func(t *testing.T) {
-			fetched, err := confas.Fetch(ctx, Lookup{
-				Owner: conf.Owner,
+			fetched, err := rooms.Fetch(ctx, Lookup{
+				Owner: room.Owner,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched)
 		})
 
 		t.Run("with limit and offset", func(t *testing.T) {
-			fetched, err := confas.Fetch(ctx, Lookup{
+			fetched, err := rooms.Fetch(ctx, Lookup{
 				Limit: 1,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, 1, len(fetched))
 
 			// 3 in total, skipped one.
-			fetched, err = confas.Fetch(ctx, Lookup{
+			fetched, err = rooms.Fetch(ctx, Lookup{
 				From: fetched[0].ID,
 			})
 			require.NoError(t, err)

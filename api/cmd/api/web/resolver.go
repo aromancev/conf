@@ -5,8 +5,8 @@ import (
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"github.com/aromancev/confa/internal/event/peer/wsock"
 	"github.com/aromancev/confa/internal/room"
-	"github.com/aromancev/confa/internal/room/peer/wsock"
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/session"
 )

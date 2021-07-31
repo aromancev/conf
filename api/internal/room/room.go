@@ -15,7 +15,7 @@ var (
 
 type Room struct {
 	ID        uuid.UUID `bson:"_id"`
-	Owner     uuid.UUID `bson:"owner"`
+	Owner     uuid.UUID `bson:"ownerId"`
 	CreatedAt time.Time `bson:"createdAt"`
 }
 

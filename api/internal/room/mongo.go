@@ -62,7 +62,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Room, error) {
 		}
 	}
 	if lookup.Owner != uuid.Nil {
-		filter["owner"] = lookup.Owner
+		filter["ownerId"] = lookup.Owner
 	}
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
