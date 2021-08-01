@@ -1,0 +1,8 @@
+FROM mongo:4.4
+
+RUN mkdir /etc/mongo && \
+    rm -f /etc/mongo/keyfile && \
+    openssl rand -base64 756 >> etc/mongo/keyfile && \
+    chmod 400 /etc/mongo/keyfile
+
+CMD mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/keyfile

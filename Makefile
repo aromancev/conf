@@ -1,3 +1,8 @@
+
+.PHONY: start
+start:
+	docker-compose up
+
 .PHONY: migrate
 migrate:
 	./mongo/init.sh
@@ -52,3 +57,23 @@ check:
 	    && go build -o bin/ cmd/media/... \
 	    && go build -o bin/ cmd/sfu/...
 	echo DONE!
+
+.PHONY: mongo_build
+mongo_build:
+	docker build . -f mongo/Dockerfile.custom -t aromancev1/mongo_keyfile
+
+.PHONY: mongo_docker_bash
+mongo_docker_bash:
+	docker run --rm -it \
+	--name custom_mongo \
+	aromancev1/mongo_keyfile bash
+
+.PHONY: mongo_docker_start
+mongo_docker_start:
+	docker run --rm -it \
+	--name custom_mongo \
+	aromancev1/mongo_keyfile
+
+.PHONY: mongo_docker_push
+mongo_docker_push:
+	docker push aromancev1/mongo_keyfile
