@@ -55,8 +55,13 @@ func clientFromContainer() *mongo.Client {
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "mongo",
 		Tag:        "4.4",
-		Mounts:     []string{keyFile + ":/etc/keyfile"},
-		Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/keyfile"},
+		Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/mongo/mongo-repl.key"},
+		Entrypoint: []string{
+			"bash", "-c", "mkdir /etc/mongo\n" +
+				"openssl rand -base64 768 > /etc/mongo/mongo-repl.key\n" +
+				"chmod 400 /etc/mongo/mongo-repl.key\n" +
+				"chown 999:999 /etc/mongo/mongo-repl.key\n" +
+				"exec docker-entrypoint.sh $@"},
 		Env: []string{
 			"MONGO_INITDB_ROOT_USERNAME=mongo",
 			"MONGO_INITDB_ROOT_PASSWORD=mongo",
@@ -127,7 +132,7 @@ func tempKeyfile() string {
 		panic(err)
 	}
 	_, _ = file.WriteString("testkeyfile")
-	if err := file.Chmod(0600); err != nil { // nolint
+	if err := file.Chmod(400); err != nil { // nolint
 		_ = os.Remove(file.Name())
 		panic(err)
 	}
