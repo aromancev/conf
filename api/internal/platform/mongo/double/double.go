@@ -3,7 +3,6 @@ package double
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
@@ -43,9 +42,6 @@ func clientFromContainer() *mongo.Client {
 	}
 
 	ctx := context.Background()
-
-	keyFile := tempKeyfile()
-	defer os.Remove(keyFile)
 
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_HOST"))
 	if err != nil {
@@ -124,17 +120,4 @@ func clientFromContainer() *mongo.Client {
 	}
 
 	return client
-}
-
-func tempKeyfile() string {
-	file, err := ioutil.TempFile("", "key")
-	if err != nil {
-		panic(err)
-	}
-	_, _ = file.WriteString("testkeyfile")
-	if err := file.Chmod(400); err != nil { // nolint
-		_ = os.Remove(file.Name())
-		panic(err)
-	}
-	return file.Name()
 }
