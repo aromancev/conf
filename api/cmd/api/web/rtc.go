@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/internal/event/peer"
+	"github.com/aromancev/confa/internal/event/peer/wsock"
 	"github.com/aromancev/confa/internal/platform/sfu"
 	"github.com/aromancev/confa/internal/room"
-	"github.com/aromancev/confa/internal/room/peer"
-	"github.com/aromancev/confa/internal/room/peer/wsock"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
@@ -36,7 +36,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *wsock.Upgrader, s
 			return
 		}
 
-		rm, err := rooms.FetchOne(ctx, room.Lookup{ID: roomID})
+		_, err = rooms.FetchOne(ctx, room.Lookup{ID: roomID})
 		switch {
 		case errors.Is(err, room.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
@@ -60,7 +60,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *wsock.Upgrader, s
 		}
 		defer signal.Close()
 
-		p := peer.NewPeer(rm, signal)
+		p := peer.NewPeer(signal)
 		p.OnAnswer(func(desc webrtc.SessionDescription) {
 			err := conn.Answer(desc)
 			if err != nil {
