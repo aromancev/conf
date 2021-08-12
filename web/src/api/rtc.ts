@@ -7,21 +7,25 @@ enum Type {
   Trickle = "trickle",
 }
 
-interface Request {
+interface Message {
   type: Type
-  payload: Join | RTCSessionDescriptionInit | Trickle
+  payload: Join | Answer | Offer | Trickle
 }
 
 interface Join {
-  sid: string
-  uid: string
-  offer: RTCSessionDescriptionInit
+  sessionId: string
+  userId: string
+  description: RTCSessionDescriptionInit
 }
 
-interface Response {
-  type: Type
-  payload: RTCSessionDescriptionInit | Trickle
+interface Answer {
+  description: RTCSessionDescriptionInit
 }
+
+interface Offer {
+  description: RTCSessionDescriptionInit
+}
+
 
 export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
@@ -47,16 +51,16 @@ export class RTC {
       }
     }
     this.socket.onmessage = msg => {
-      const resp = JSON.parse(msg.data) as Response
+      const resp = JSON.parse(msg.data) as Message
       switch (resp.type) {
         case Type.Answer:
           if (this.onSignalAnswer) {
-            this.onSignalAnswer(resp.payload as RTCSessionDescriptionInit)
+            this.onSignalAnswer((resp.payload as Answer).description)
           }
           break
         case Type.Offer:
           if (this.onnegotiate) {
-            this.onnegotiate(resp.payload as RTCSessionDescriptionInit)
+            this.onnegotiate((resp.payload as Offer).description)
           }
           break
         case Type.Trickle:
@@ -83,9 +87,9 @@ export class RTC {
     this.send({
       type: Type.Join,
       payload: {
-        sid: sid,
-        uid: uid,
-        offer: offer,
+        sessionId: sid,
+        userId: uid,
+        description: offer,
       },
     })
     return new Promise(resolve => {
@@ -99,7 +103,7 @@ export class RTC {
   offer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     this.send({
       type: Type.Offer,
-      payload: offer,
+      payload: { description: offer },
     })
     return new Promise(resolve => {
       this.onSignalAnswer = desc => {
@@ -112,7 +116,7 @@ export class RTC {
   answer(answer: RTCSessionDescriptionInit): void {
     this.send({
       type: Type.Answer,
-      payload: answer,
+      payload: { description: answer },
     })
   }
 
@@ -127,7 +131,7 @@ export class RTC {
     this.socket.close()
   }
 
-  private send(req: Request): void {
+  private send(req: Message): void {
     this.socket.send(
       JSON.stringify({
         type: req.type,
