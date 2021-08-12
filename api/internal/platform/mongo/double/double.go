@@ -3,7 +3,6 @@ package double
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
@@ -44,9 +43,6 @@ func clientFromContainer() *mongo.Client {
 
 	ctx := context.Background()
 
-	keyFile := tempKeyfile()
-	defer os.Remove(keyFile)
-
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_HOST"))
 	if err != nil {
 		panic(err)
@@ -55,8 +51,13 @@ func clientFromContainer() *mongo.Client {
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "mongo",
 		Tag:        "4.4",
-		Mounts:     []string{keyFile + ":/etc/keyfile"},
-		Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/keyfile"},
+		Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/mongo/mongo-repl.key"},
+		Entrypoint: []string{
+			"bash", "-c", "mkdir /etc/mongo\n" +
+				"openssl rand -base64 768 > /etc/mongo/mongo-repl.key\n" +
+				"chmod 400 /etc/mongo/mongo-repl.key\n" +
+				"chown 999:999 /etc/mongo/mongo-repl.key\n" +
+				"exec docker-entrypoint.sh $@"},
 		Env: []string{
 			"MONGO_INITDB_ROOT_USERNAME=mongo",
 			"MONGO_INITDB_ROOT_PASSWORD=mongo",
@@ -119,17 +120,4 @@ func clientFromContainer() *mongo.Client {
 	}
 
 	return client
-}
-
-func tempKeyfile() string {
-	file, err := ioutil.TempFile("", "key")
-	if err != nil {
-		panic(err)
-	}
-	_, _ = file.WriteString("testkeyfile")
-	if err := file.Chmod(0600); err != nil { // nolint
-		_ = os.Remove(file.Name())
-		panic(err)
-	}
-	return file.Name()
 }

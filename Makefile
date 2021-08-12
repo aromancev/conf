@@ -1,3 +1,8 @@
+
+.PHONY: start
+start:
+	docker-compose up -V
+
 .PHONY: migrate
 migrate:
 	./mongo/init.sh
@@ -42,13 +47,18 @@ cert-renew:
 	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
 	  certbot/certbot renew
 
+.PHONY: build
+build:
+	cd api \
+	    && go build -o bin/ ./cmd/api/... \
+	    && go build -o bin/ ./cmd/media/... \
+	    && go build -o bin/ ./cmd/sfu/...
+
 .PHONY: check
 check:
 	make test
 	cd api && go fmt ./...
-	make lint-api
-	cd api \
-	    && go build -o bin/ cmd/api/... \
-	    && go build -o bin/ cmd/media/... \
-	    && go build -o bin/ cmd/sfu/...
+	make lint
+	make test
+	make build
 	echo DONE!

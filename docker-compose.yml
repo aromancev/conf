@@ -102,7 +102,7 @@ services:
 
   mongo:
     image: mongo:4.4
-    command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/keyfile"
+    command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
     networks:
       - confa
     environment:
@@ -110,8 +110,16 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=mongo
     volumes:
       - ./.artifacts/mongo/:/data/db
-      - ./mongo/keyfile:/etc/mongo/keyfile
-    
+    entrypoint:
+      - bash
+      - -c
+      - |
+        mkdir /etc/mongo
+        openssl rand -base64 768 > /etc/mongo/mongo-repl.key
+        chmod 400 /etc/mongo/mongo-repl.key
+        chown 999:999 /etc/mongo/mongo-repl.key
+        exec docker-entrypoint.sh $$@
+
   email:
     image: kbedel/fake-smtp-server
     command: fake-smtp-server -s 1025 -h 80
