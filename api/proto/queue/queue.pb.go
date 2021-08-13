@@ -240,6 +240,143 @@ func (x *VideoJob) GetMediaId() string {
 	return ""
 }
 
+type EventJob struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id      []byte `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OwnerId []byte `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	RoomId  []byte `protobuf:"bytes,3,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	// Types that are assignable to Event:
+	//	*EventJob_PeerStatus_
+	Event isEventJob_Event `protobuf_oneof:"event"`
+}
+
+func (x *EventJob) Reset() {
+	*x = EventJob{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_queue_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EventJob) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventJob) ProtoMessage() {}
+
+func (x *EventJob) ProtoReflect() protoreflect.Message {
+	mi := &file_queue_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventJob.ProtoReflect.Descriptor instead.
+func (*EventJob) Descriptor() ([]byte, []int) {
+	return file_queue_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EventJob) GetId() []byte {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *EventJob) GetOwnerId() []byte {
+	if x != nil {
+		return x.OwnerId
+	}
+	return nil
+}
+
+func (x *EventJob) GetRoomId() []byte {
+	if x != nil {
+		return x.RoomId
+	}
+	return nil
+}
+
+func (m *EventJob) GetEvent() isEventJob_Event {
+	if m != nil {
+		return m.Event
+	}
+	return nil
+}
+
+func (x *EventJob) GetPeerStatus() *EventJob_PeerStatus {
+	if x, ok := x.GetEvent().(*EventJob_PeerStatus_); ok {
+		return x.PeerStatus
+	}
+	return nil
+}
+
+type isEventJob_Event interface {
+	isEventJob_Event()
+}
+
+type EventJob_PeerStatus_ struct {
+	PeerStatus *EventJob_PeerStatus `protobuf:"bytes,10,opt,name=peer_status,json=peerStatus,proto3,oneof"`
+}
+
+func (*EventJob_PeerStatus_) isEventJob_Event() {}
+
+type EventJob_PeerStatus struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+}
+
+func (x *EventJob_PeerStatus) Reset() {
+	*x = EventJob_PeerStatus{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_queue_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EventJob_PeerStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventJob_PeerStatus) ProtoMessage() {}
+
+func (x *EventJob_PeerStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_queue_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventJob_PeerStatus.ProtoReflect.Descriptor instead.
+func (*EventJob_PeerStatus) Descriptor() ([]byte, []int) {
+	return file_queue_proto_rawDescGZIP(), []int{4, 0}
+}
+
+func (x *EventJob_PeerStatus) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_queue_proto protoreflect.FileDescriptor
 
 var file_queue_proto_rawDesc = []byte{
@@ -259,8 +396,19 @@ var file_queue_proto_rawDesc = []byte{
 	0x6c, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x06, 0x2e, 0x45, 0x6d, 0x61, 0x69, 0x6c,
 	0x52, 0x06, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x73, 0x22, 0x25, 0x0a, 0x08, 0x56, 0x69, 0x64, 0x65,
 	0x6f, 0x4a, 0x6f, 0x62, 0x12, 0x19, 0x0a, 0x08, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x5f, 0x69, 0x64,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x49, 0x64, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x49, 0x64, 0x22,
+	0xb6, 0x01, 0x0a, 0x08, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4a, 0x6f, 0x62, 0x12, 0x0e, 0x0a, 0x02,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x02, 0x69, 0x64, 0x12, 0x19, 0x0a, 0x08,
+	0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07,
+	0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f,
+	0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64,
+	0x12, 0x37, 0x0a, 0x0b, 0x70, 0x65, 0x65, 0x72, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4a, 0x6f, 0x62,
+	0x2e, 0x50, 0x65, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x48, 0x00, 0x52, 0x0a, 0x70,
+	0x65, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x1a, 0x24, 0x0a, 0x0a, 0x50, 0x65, 0x65,
+	0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75,
+	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x42,
+	0x07, 0x0a, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -275,20 +423,23 @@ func file_queue_proto_rawDescGZIP() []byte {
 	return file_queue_proto_rawDescData
 }
 
-var file_queue_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_queue_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_queue_proto_goTypes = []interface{}{
-	(*Job)(nil),      // 0: Job
-	(*Email)(nil),    // 1: Email
-	(*EmailJob)(nil), // 2: EmailJob
-	(*VideoJob)(nil), // 3: VideoJob
+	(*Job)(nil),                 // 0: Job
+	(*Email)(nil),               // 1: Email
+	(*EmailJob)(nil),            // 2: EmailJob
+	(*VideoJob)(nil),            // 3: VideoJob
+	(*EventJob)(nil),            // 4: EventJob
+	(*EventJob_PeerStatus)(nil), // 5: EventJob.PeerStatus
 }
 var file_queue_proto_depIdxs = []int32{
 	1, // 0: EmailJob.emails:type_name -> Email
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 1: EventJob.peer_status:type_name -> EventJob.PeerStatus
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_queue_proto_init() }
@@ -345,6 +496,33 @@ func file_queue_proto_init() {
 				return nil
 			}
 		}
+		file_queue_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EventJob); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_queue_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EventJob_PeerStatus); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+	}
+	file_queue_proto_msgTypes[4].OneofWrappers = []interface{}{
+		(*EventJob_PeerStatus_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -352,7 +530,7 @@ func file_queue_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_queue_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

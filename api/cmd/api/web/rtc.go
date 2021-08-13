@@ -1,12 +1,14 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
 	"sync"
 
 	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/event/peer"
 	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
@@ -15,9 +17,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool) func(http.ResponseWriter, *http.Request) {
+func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool, producer Producer, events event.Watcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
 
 		var claims auth.APIClaims
 		if err := pk.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -36,7 +39,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			return
 		}
 
-		_, err = rooms.FetchOne(ctx, room.Lookup{ID: roomID})
+		rm, err := rooms.FetchOne(ctx, room.Lookup{ID: roomID})
 		switch {
 		case errors.Is(err, room.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
@@ -52,15 +55,23 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			return
 		}
 		defer wsConn.Close()
-		log.Ctx(ctx).Info().Msg("Websocket connected.")
+		log.Ctx(ctx).Debug().Msg("Websocket connected.")
 
-		peerConn, err := peer.NewPeer(ctx, sfuPool)
+		signal, err := peer.NewGRPCSignal(ctx, sfuPool)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to connect to peer.")
 			return
 		}
+		log.Ctx(ctx).Debug().Msg("Signal connected.")
+		cursor, err := events.Watch(ctx, rm.ID)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to connect watch room events.")
+			return
+		}
+		log.Ctx(ctx).Debug().Msg("Event watching started.")
+		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, signal, cursor, producer, 10)
 		defer peerConn.Close(ctx)
-		log.Ctx(ctx).Info().Msg("Peer connected.")
+		log.Ctx(ctx).Debug().Msg("Peer connected.")
 
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -70,8 +81,8 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			for {
 				msg, err := peerConn.Receive(ctx)
 				switch {
-				case errors.Is(err, peer.ErrClosed):
-					_ = wsConn.Close()
+				case errors.Is(err, peer.ErrClosed), errors.Is(err, context.Canceled):
+					cancel() // If peer closed for any reason, terminate the whole connection.
 					log.Ctx(ctx).Info().Msg("Peer disconnected.")
 					return
 				case errors.Is(err, peer.ErrUnknownMessage):
@@ -95,8 +106,8 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 				var msg peer.Message
 				err := wsConn.ReadJSON(&msg)
 				switch {
-				case websocket.IsCloseError(err, websocket.CloseGoingAway):
-					_ = peerConn.Close(ctx)
+				case websocket.IsCloseError(err, websocket.CloseGoingAway), errors.Is(err, context.Canceled):
+					cancel() // If ws closed for any reason, terminate the whole connection.
 					log.Ctx(ctx).Info().Msg("Websocket disconnected.")
 					return
 				case err != nil:
@@ -113,6 +124,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			}
 		}()
 
+		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
 		wg.Wait()
 	}
 }

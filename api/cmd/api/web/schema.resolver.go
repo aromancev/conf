@@ -99,31 +99,6 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 	}, nil
 }
 
-func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
-	var claims *auth.APIClaims
-	key := auth.Ctx(ctx).Session()
-	if key == "" {
-		claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
-	} else {
-		s, err := r.sessions.Fetch(ctx, key)
-		if err == nil {
-			claims = auth.NewAPIClaims(s.Owner, auth.AccountUser)
-		} else {
-			claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
-		}
-	}
-
-	access, err := r.secretKey.Sign(claims)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
-		return nil, newInternalError()
-	}
-	return &Token{
-		Token:     access,
-		ExpiresIn: int(claims.ExpiresIn().Seconds()),
-	}, nil
-}
-
 func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -244,6 +219,31 @@ func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value 
 	}
 
 	return id.String(), nil
+}
+
+func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
+	var claims *auth.APIClaims
+	key := auth.Ctx(ctx).Session()
+	if key == "" {
+		claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+	} else {
+		s, err := r.sessions.Fetch(ctx, key)
+		if err == nil {
+			claims = auth.NewAPIClaims(s.Owner, auth.AccountUser)
+		} else {
+			claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+		}
+	}
+
+	access, err := r.secretKey.Sign(claims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
+		return nil, newInternalError()
+	}
+	return &Token{
+		Token:     access,
+		ExpiresIn: int(claims.ExpiresIn().Seconds()),
+	}, nil
 }
 
 func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error) {

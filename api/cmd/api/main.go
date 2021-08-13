@@ -12,6 +12,7 @@ import (
 
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
@@ -48,6 +49,7 @@ func main() {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
+	ctx = log.Logger.WithContext(ctx)
 
 	iamMongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
 		"mongodb://%s:%s@%s/%s",
@@ -98,10 +100,10 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEmail}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEmail, pqueue.TubeEvent}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
-		ReserveTimeout:   5 * time.Second,
+		ReserveTimeout:   1 * time.Second,
 		ReconnectTimeout: 3 * time.Second,
 		InfoFunc: func(message string) {
 			log.Info().Msg(message)
@@ -148,9 +150,12 @@ func main() {
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
 
 	roomMongo := room.NewMongo(rtcMongoDB)
+	eventMongo := event.NewMongo(rtcMongoDB)
+	eventWatcher := event.NewSharedWatcher(eventMongo, 30)
 
 	jobHandler := queue.NewHandler(
 		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
+		eventMongo,
 	)
 
 	webServer := &http.Server{
@@ -177,6 +182,7 @@ func main() {
 				WriteBufferSize: config.RTC.WriteBuffer,
 			},
 			sfuPool,
+			eventWatcher,
 		)),
 	}
 	rpcServer := &http.Server{
@@ -193,7 +199,7 @@ func main() {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
-			log.Fatal().Err(err).Msg("Server failed")
+			log.Fatal().Err(err).Msg("Web server failed")
 		}
 	}()
 
@@ -203,7 +209,17 @@ func main() {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
-			log.Fatal().Err(err).Msg("Server failed")
+			log.Fatal().Err(err).Msg("RPC server failed.")
+		}
+	}()
+
+	go func() {
+		log.Info().Msg("Serving event watcher.")
+		if err := eventWatcher.Serve(ctx, 10*time.Second); err != nil {
+			if errors.Is(err, event.ErrShuttingDown) {
+				return
+			}
+			log.Fatal().Err(err).Msg("Event watcher failed.")
 		}
 	}()
 

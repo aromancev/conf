@@ -5,11 +5,12 @@ enum Type {
   Offer = "offer",
   Answer = "answer",
   Trickle = "trickle",
+  Event = "event",
 }
 
 interface Message {
   type: Type
-  payload: Join | Answer | Offer | Trickle
+  payload: Join | Answer | Offer | Trickle | Event
 }
 
 interface Join {
@@ -24,6 +25,14 @@ interface Answer {
 
 interface Offer {
   description: RTCSessionDescriptionInit
+}
+
+interface Event {
+  id: string
+  roomId: string
+  owner: string
+  type: string
+  payload: string
 }
 
 export class RTC {
@@ -66,6 +75,9 @@ export class RTC {
           if (this.ontrickle) {
             this.ontrickle(resp.payload as Trickle)
           }
+          break
+        case Type.Event:
+          console.log(resp)
           break
       }
     }

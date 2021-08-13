@@ -20,7 +20,8 @@ func NewHandler(rooms *room.Mongo) *Handler {
 }
 
 func (h *Handler) CreateRoom(ctx context.Context, request *rtc.Room) (*rtc.Room, error) {
-	ownerID, err := uuid.Parse(request.OwnerId)
+	var ownerID uuid.UUID
+	err := ownerID.UnmarshalBinary(request.OwnerId)
 	if err != nil {
 		return nil, fmt.Errorf("invalid owner id:%w", err)
 	}
@@ -31,7 +32,8 @@ func (h *Handler) CreateRoom(ctx context.Context, request *rtc.Room) (*rtc.Room,
 	if err != nil {
 		return nil, err
 	}
+	roomID, _ := created[0].ID.MarshalBinary()
 	return &rtc.Room{
-		Id: created[0].ID.String(),
+		Id: roomID,
 	}, nil
 }

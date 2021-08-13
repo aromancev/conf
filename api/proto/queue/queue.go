@@ -9,6 +9,7 @@ import (
 const (
 	TubeEmail = "email"
 	TubeVideo = "video"
+	TubeEvent = "event"
 )
 
 func Marshal(payload proto.Message, trace string) ([]byte, error) {
