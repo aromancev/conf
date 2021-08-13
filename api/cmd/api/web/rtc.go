@@ -4,18 +4,18 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/event/peer"
-	"github.com/aromancev/confa/internal/event/peer/wsock"
-	"github.com/aromancev/confa/internal/platform/sfu"
+	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
 	"github.com/google/uuid"
-	"github.com/pion/webrtc/v3"
+	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 )
 
-func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *wsock.Upgrader, sfuAddr string) func(http.ResponseWriter, *http.Request) {
+func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -46,86 +46,69 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *wsock.Upgrader, s
 			return
 		}
 
-		conn, err := upgrader.NewConn(w, r, nil)
+		wsConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to upgrade connection.")
 			return
 		}
-		defer conn.Close()
+		defer wsConn.Close()
+		log.Ctx(ctx).Info().Msg("Websocket connected.")
 
-		signal, err := sfu.NewSignal(ctx, sfuAddr)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to create new signal.")
-			return
-		}
-		defer signal.Close()
+		peerConn, err := peer.NewPeer(ctx, sfuPool)
+		defer peerConn.Close(ctx)
+		log.Ctx(ctx).Info().Msg("Peer connected.")
 
-		p := peer.NewPeer(signal)
-		p.OnAnswer(func(desc webrtc.SessionDescription) {
-			err := conn.Answer(desc)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to notify about answer.")
-			}
-		})
-		p.OnOffer(func(desc webrtc.SessionDescription) {
-			err := conn.Offer(desc)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to notify about offer.")
-			}
-		})
-		p.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
-			err := conn.Trickle(cand, target)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to notify about trickle.")
-			}
-		})
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
 
-		for {
-			request, err := conn.Receive()
-			if err != nil {
-				if !errors.Is(err, wsock.ErrClosed) {
-					log.Ctx(ctx).Err(err).Msg("Failed to receive message.")
-				}
-				return
-			}
-
-			switch req := request.(type) {
-			case wsock.Join:
-				err := p.Join(ctx, req.SID, req.UID, req.Offer)
-				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed to join.")
-					_ = conn.Error(err.Error())
+			for {
+				msg, err := peerConn.Receive(ctx)
+				switch {
+				case errors.Is(err, peer.ErrClosed):
+					_ = wsConn.Close()
+					log.Ctx(ctx).Info().Msg("Peer disconnected.")
+					return
+				case errors.Is(err, peer.ErrUnknownMessage):
+					log.Ctx(ctx).Debug().Msg("Skipping unknown message from peer.")
+				case err != nil:
+					log.Ctx(ctx).Err(err).Msg("Failed to receive message from peer.")
 					return
 				}
 
-			case wsock.Offer:
-				err := p.Offer(ctx, req.Description)
+				err = wsConn.WriteJSON(msg)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed send message to websocket.")
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+
+			for {
+				var msg peer.Message
+				err := wsConn.ReadJSON(&msg)
 				switch {
-				case errors.Is(err, peer.ErrValidation):
-					_ = conn.Error(err.Error())
+				case websocket.IsCloseError(err, websocket.CloseGoingAway):
+					_ = peerConn.Close(ctx)
+					log.Ctx(ctx).Info().Msg("Websocket disconnected.")
 					return
 				case err != nil:
-					log.Ctx(ctx).Err(err).Msg("Failed to receive offer.")
-					_ = conn.Error(err.Error())
+					log.Ctx(ctx).Err(err).Msg("Failed to receive message from websocket.")
 					return
 				}
 
-			case wsock.Answer:
-				err := p.Answer(ctx, req.Description)
-				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed to answer.")
-					_ = conn.Error(err.Error())
-					return
-				}
-
-			case wsock.Trickle:
-				err := p.Trickle(ctx, req.Candidate, req.Target)
-				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed to trickle.")
-					_ = conn.Error(err.Error())
-					return
+				err = peerConn.Send(ctx, msg)
+				switch {
+				case errors.Is(err, peer.ErrValidation):
+				case err != nil:
+					log.Ctx(ctx).Err(err).Msg("Failed send peer message.")
 				}
 			}
-		}
+		}()
+
+		wg.Wait()
 	}
 }

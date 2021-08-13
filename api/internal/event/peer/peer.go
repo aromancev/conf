@@ -2,91 +2,135 @@ package peer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/pion/webrtc/v3"
 	"gortc.io/sdp"
 )
 
 var (
-	ErrValidation = errors.New("validation error")
+	ErrValidation     = errors.New("validation error")
+	ErrClosed         = errors.New("connection closed")
+	ErrUnknownMessage = errors.New("unknown message")
 )
 
-type Signal interface {
-	OnAnswer(func(webrtc.SessionDescription))
-	OnOffer(func(webrtc.SessionDescription))
-	OnTrickle(func(cand webrtc.ICECandidateInit, target int))
+type MessageType string
 
-	Join(sid, uid string, offer webrtc.SessionDescription) error
-	Offer(webrtc.SessionDescription)
-	Trickle(cand webrtc.ICECandidateInit, target int)
-	Answer(webrtc.SessionDescription)
+const (
+	TypeJoin    MessageType = "join"
+	TypeAnswer  MessageType = "answer"
+	TypeOffer   MessageType = "offer"
+	TypeTrickle MessageType = "trickle"
+	TypeError   MessageType = "error"
+)
+
+type Message struct {
+	Type    MessageType `json:"type"`
+	Payload interface{} `json:"payload"`
 }
 
-type Peer struct {
-	signal            Signal
-	onAnswer, onOffer func(webrtc.SessionDescription)
-	onTrickle         func(webrtc.ICECandidateInit, int)
-}
-
-func NewPeer(sig Signal) *Peer {
-	peer := &Peer{
-		signal: sig,
+func (m *Message) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		T MessageType     `json:"type"`
+		P json.RawMessage `json:"payload"`
 	}
-
-	sig.OnOffer(func(desc webrtc.SessionDescription) {
-		if peer.onOffer != nil {
-			peer.onOffer(desc)
-		}
-	})
-	sig.OnAnswer(func(desc webrtc.SessionDescription) {
-		if peer.onAnswer != nil {
-			peer.onAnswer(desc)
-		}
-	})
-	sig.OnTrickle(func(cand webrtc.ICECandidateInit, target int) {
-		if peer.onTrickle != nil {
-			peer.onTrickle(cand, target)
-		}
-	})
-	return peer
-}
-
-func (p *Peer) OnAnswer(f func(webrtc.SessionDescription)) {
-	p.onAnswer = f
-}
-
-func (p *Peer) OnOffer(f func(webrtc.SessionDescription)) {
-	p.onOffer = f
-}
-
-func (p *Peer) OnTrickle(f func(webrtc.ICECandidateInit, int)) {
-	p.onTrickle = f
-}
-
-func (p *Peer) Join(_ context.Context, sid, uid string, offer webrtc.SessionDescription) error {
-	return p.signal.Join(sid, uid, offer)
-}
-
-func (p *Peer) Offer(_ context.Context, desc webrtc.SessionDescription) error {
-	err := validateOffer(desc)
-	if err != nil {
+	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 
-	p.signal.Offer(desc)
+	switch raw.T {
+	case TypeJoin:
+		var p Join
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
+	case TypeOffer:
+		var p Offer
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
+	case TypeAnswer:
+		var p Answer
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
+	case TypeTrickle:
+		var p Trickle
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
+	default:
+		return ErrUnknownMessage
+	}
+
+	m.Type = raw.T
 	return nil
 }
 
-func (p *Peer) Trickle(_ context.Context, cand webrtc.ICECandidateInit, target int) error {
-	p.signal.Trickle(cand, target)
-	return nil
+type Peer struct {
+	signal *Signal
 }
 
-func (p *Peer) Answer(_ context.Context, desc webrtc.SessionDescription) error {
-	p.signal.Answer(desc)
-	return nil
+func NewPeer(ctx context.Context, sfuPool *grpcpool.Pool) (*Peer, error) {
+	signal, err := NewSignal(ctx, sfuPool)
+	if err != nil {
+		return nil, err
+	}
+	return &Peer{
+		signal: signal,
+	}, nil
+}
+
+func (p *Peer) Send(ctx context.Context, msg Message) error {
+	switch pl := msg.Payload.(type) {
+	case Join:
+		return p.signal.Join(ctx, pl)
+	case Offer:
+		if err := validateOffer(pl.Description); err != nil {
+			return fmt.Errorf("%w: %s", ErrValidation, err)
+		}
+		return p.signal.Offer(ctx, pl)
+	case Answer:
+		return p.signal.Answer(ctx, pl)
+	case Trickle:
+		return p.signal.Trickle(ctx, pl)
+	default:
+		return ErrUnknownMessage
+	}
+}
+
+func (p *Peer) Receive(ctx context.Context) (Message, error) {
+	msg, err := p.signal.Receive(ctx)
+	switch {
+	case errors.Is(err, ErrClosed):
+		return Message{}, ErrClosed
+	case errors.Is(err, ErrUnknownMessage):
+		return Message{}, ErrUnknownMessage
+	case err != nil:
+		return Message{}, err
+	}
+
+	switch msg.(type) {
+	case Answer:
+		return Message{Type: TypeAnswer, Payload: msg}, nil
+	case Offer:
+		return Message{Type: TypeOffer, Payload: msg}, nil
+	case Trickle:
+		return Message{Type: TypeTrickle, Payload: msg}, nil
+	}
+
+	return Message{}, errors.New("unknown msg type")
+}
+
+func (p *Peer) Close(ctx context.Context) error {
+	return p.signal.Close(ctx)
 }
 
 func validateOffer(desc webrtc.SessionDescription) error {

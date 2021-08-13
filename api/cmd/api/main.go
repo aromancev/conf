@@ -12,13 +12,15 @@ import (
 
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
-	"github.com/aromancev/confa/internal/event/peer/wsock"
 	"github.com/aromancev/confa/internal/platform/email"
+	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
 	pqueue "github.com/aromancev/confa/proto/queue"
 	"github.com/aromancev/confa/proto/rtc"
+	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
 
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/session"
@@ -112,6 +114,16 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
+	sfuPool, err := grpcpool.New(
+		grpcpool.Factory(func() (*grpc.ClientConn, error) {
+			return grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithInsecure())
+		}),
+		0, 3, 10*time.Minute,
+	)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initiate sfu RPC pool.")
+	}
+
 	sign, err := auth.NewSecretKey(config.SecretKey)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create secret key")
@@ -157,8 +169,14 @@ func main() {
 			talkCRUD,
 			clapCRUD,
 			roomMongo,
-			wsock.NewUpgrader(config.RTC.ReadBuffer, config.RTC.WriteBuffer),
-			config.RTC.SFUAddress,
+			&websocket.Upgrader{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+				ReadBufferSize:  config.RTC.ReadBuffer,
+				WriteBufferSize: config.RTC.WriteBuffer,
+			},
+			sfuPool,
 		)),
 	}
 	rpcServer := &http.Server{
