@@ -112,10 +112,11 @@ func TestTimeout(t *testing.T) {
 	// We want to fetch a second one, with a timeout. If the timeout was
 	// ommitted, the pool would wait indefinitely as it'd wait for another
 	// client to get back into the queue
-	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(10*time.Millisecond))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Millisecond))
+	defer cancel()
 	_, err2 := p.Get(ctx)
-	if err2 != ErrTimeout {
-		t.Errorf("Expected error \"%s\" but got \"%s\"", ErrTimeout, err2.Error())
+	if err2 != context.DeadlineExceeded {
+		t.Errorf("Expected error \"%s\" but got \"%s\"", context.DeadlineExceeded, err2.Error())
 	}
 }
 
@@ -171,7 +172,6 @@ func TestMaxLifeDuration(t *testing.T) {
 	if count > 1 {
 		t.Errorf("Dial function has been called multiple times")
 	}
-
 }
 
 func TestPoolClose(t *testing.T) {
@@ -212,13 +212,13 @@ func TestContextCancelation(t *testing.T) {
 		default:
 			return grpc.Dial("example.com", grpc.WithInsecure())
 		}
-
 	}, 1, 1, 0)
 
 	if err != context.Canceled {
 		t.Errorf("Returned error was not context.Canceled, but the context did cancel before the invocation")
 	}
 }
+
 func TestContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Microsecond)
 	defer cancel()
@@ -232,7 +232,6 @@ func TestContextTimeout(t *testing.T) {
 		case <-time.After(time.Millisecond):
 			return grpc.Dial("example.com", grpc.WithInsecure())
 		}
-
 	}, 1, 1, 0)
 
 	if err != context.DeadlineExceeded {
@@ -258,8 +257,8 @@ func TestGetContextTimeout(t *testing.T) {
 	// wait for the deadline to pass
 	time.Sleep(time.Millisecond)
 	_, err = p.Get(ctx)
-	if err != ErrTimeout { // it should be context.DeadlineExceeded
-		t.Errorf("Returned error was not ErrTimeout, but the context was timed out before the Get invocation")
+	if err != context.DeadlineExceeded {
+		t.Errorf("Returned error was not context.DeadlineExceeded, but the context was timed out before the Get invocation")
 	}
 }
 
@@ -273,7 +272,6 @@ func TestGetContextFactoryTimeout(t *testing.T) {
 		case <-time.After(time.Millisecond):
 			return grpc.Dial("example.com", grpc.WithInsecure())
 		}
-
 	}, 1, 1, 0)
 
 	if err != nil {

@@ -26,7 +26,6 @@ interface Offer {
   description: RTCSessionDescriptionInit
 }
 
-
 export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void

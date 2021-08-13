@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex justify-content-center">
     <div class="content">
-      <div class="title">Sign in to Confa {{ userId }}</div>
+      <div class="title">Sign in to Confa</div>
       <div>
         <div class="error" :class="{ active: invalid }">Email is invalid</div>
         <input
@@ -65,13 +65,13 @@ export default defineComponent({
     }
   },
   computed: {
-    userId() {
-      return userStore.getState().id
+    allowedWrite() {
+      return userStore.getState().allowedWrite
     },
   },
   watch: {
-    userId(userId: string) {
-      if (userId) {
+    allowedWrite(val: boolean) {
+      if (val) {
         this.$router.replace("/")
       }
     },
@@ -87,7 +87,7 @@ export default defineComponent({
     }
   },
   created() {
-    if (this.userId) {
+    if (this.allowedWrite) {
       this.$router.replace("/")
     }
   },
