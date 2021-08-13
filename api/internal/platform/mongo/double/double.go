@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,21 +49,29 @@ func clientFromContainer() *mongo.Client {
 		panic(err)
 	}
 
-	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "mongo",
-		Tag:        "4.4",
-		Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/mongo/mongo-repl.key"},
-		Entrypoint: []string{
-			"bash", "-c", "mkdir /etc/mongo\n" +
-				"openssl rand -base64 768 > /etc/mongo/mongo-repl.key\n" +
-				"chmod 400 /etc/mongo/mongo-repl.key\n" +
-				"chown 999:999 /etc/mongo/mongo-repl.key\n" +
-				"exec docker-entrypoint.sh $@"},
-		Env: []string{
-			"MONGO_INITDB_ROOT_USERNAME=mongo",
-			"MONGO_INITDB_ROOT_PASSWORD=mongo",
+	resource, err := pool.RunWithOptions(
+		&dockertest.RunOptions{
+			Repository: "mongo",
+			Tag:        "4.4",
+			Cmd:        []string{"mongod", "--replSet", "rs", "--keyFile", "/etc/mongo/mongo-repl.key"},
+			Entrypoint: []string{
+				"bash", "-c", "mkdir /etc/mongo\n" +
+					"openssl rand -base64 768 > /etc/mongo/mongo-repl.key\n" +
+					"chmod 400 /etc/mongo/mongo-repl.key\n" +
+					"chown 999:999 /etc/mongo/mongo-repl.key\n" +
+					"exec docker-entrypoint.sh $@"},
+			Env: []string{
+				"MONGO_INITDB_ROOT_USERNAME=mongo",
+				"MONGO_INITDB_ROOT_PASSWORD=mongo",
+			},
 		},
-	})
+		func(hc *docker.HostConfig) {
+			hc.AutoRemove = true
+			hc.RestartPolicy = docker.RestartPolicy{
+				Name: "no",
+			}
+		},
+	)
 	if err != nil {
 		panic(err)
 	}

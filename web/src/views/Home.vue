@@ -1,9 +1,8 @@
 <template>
-  <div v-if="userId">
+  <div v-if="allowedWrite">
     <router-link class="btn px-3 py-2" to="/new">Create confa</router-link>
   </div>
   <div v-else>
-    <div>{{ userId }}</div>
     <router-link class="btn px-3 py-2" to="/login">Sign in</router-link>
   </div>
 </template>
@@ -16,8 +15,8 @@ export default defineComponent({
   name: "Home",
   components: {},
   computed: {
-    userId() {
-      return userStore.getState().id
+    allowedWrite() {
+      return userStore.getState().allowedWrite
     },
   },
 })

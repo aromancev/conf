@@ -48,13 +48,17 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 
 		wsConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to upgrade connection.")
+			log.Ctx(ctx).Err(err).Msg("Failed to upgrade websocket connection.")
 			return
 		}
 		defer wsConn.Close()
 		log.Ctx(ctx).Info().Msg("Websocket connected.")
 
 		peerConn, err := peer.NewPeer(ctx, sfuPool)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to connect to peer.")
+			return
+		}
 		defer peerConn.Close(ctx)
 		log.Ctx(ctx).Info().Msg("Peer connected.")
 

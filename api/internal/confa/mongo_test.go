@@ -2,38 +2,12 @@ package confa
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
-
-func TestWatch(t *testing.T) {
-	ctx := context.Background()
-
-	db := dockerMongo(t)
-
-	coll := db.Collection("test")
-
-	stream, err := coll.Watch(ctx, mongo.Pipeline{})
-	require.NoError(t, err)
-
-	go func() {
-		for stream.Next(ctx) {
-			fmt.Println(stream.Current)
-		}
-	}()
-
-	_, err = coll.InsertOne(ctx, bson.M{"a": "b"})
-	require.NoError(t, err)
-
-	time.Sleep(time.Second)
-}
 
 func TestMongo(t *testing.T) {
 	t.Parallel()
