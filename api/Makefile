@@ -15,7 +15,7 @@ gen:
 
 .PHONY: test
 test:
-	go test ./...
+	go test ./... -race -timeout 2m
 
 .PHONY: lint
 lint:

@@ -5,6 +5,6 @@ service RTC {
 }
 
 message Room {
-    string id = 1;
-    string ownerId = 2;
+    bytes id = 1;
+    bytes ownerId = 2;
 }

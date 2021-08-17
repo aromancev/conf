@@ -52,13 +52,15 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk
 		return Talk{}, ErrPermissionDenied
 	}
 
+	ownerID, _ := userID.MarshalBinary()
 	room, err := c.rtc.CreateRoom(ctx, &rtc.Room{
-		OwnerId: userID.String(),
+		OwnerId: ownerID,
 	})
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to create room: %w", err)
 	}
-	roomID, err := uuid.Parse(room.Id)
+	var roomID uuid.UUID
+	err = roomID.UnmarshalBinary(room.Id)
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to parse room id: %w", err)
 	}

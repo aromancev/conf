@@ -57,6 +57,7 @@ func (w *SharedWatcher) Serve(ctx context.Context, gcPeriod time.Duration) error
 
 		candidates = candidates[:0]
 		w.m.RLock()
+		log.Ctx(ctx).Debug().Int("len", len(w.rooms)).Msg("Shared watcher total rooms.")
 		for _, room := range w.rooms {
 			if room.OpenedCursors() == 0 {
 				candidates = append(candidates, room)
@@ -72,6 +73,7 @@ func (w *SharedWatcher) Serve(ctx context.Context, gcPeriod time.Duration) error
 		}
 
 		if len(candidates) == 0 {
+			log.Ctx(ctx).Debug().Msg("Shared watcher GC cycle completed (no rooms removed).")
 			continue
 		}
 		w.m.Lock()
@@ -81,8 +83,10 @@ func (w *SharedWatcher) Serve(ctx context.Context, gcPeriod time.Duration) error
 			}
 			delete(w.rooms, room.ID())
 			go room.Close(ctx)
+			log.Ctx(ctx).Debug().Str("roomId", room.ID().String()).Msg("Room removed from shared watcher.")
 		}
 		w.m.Unlock()
+		log.Ctx(ctx).Debug().Msg("Shared watcher GC cycle completed.")
 	}
 }
 
@@ -142,12 +146,15 @@ type sharedRoom struct {
 	room     *Room
 	roomID   uuid.UUID
 	ctx      context.Context
+	cancel   func()
 }
 
 func newSharedRoom(ctx context.Context, w Watcher) *sharedRoom {
+	ctx, cancel := context.WithCancel(ctx)
 	return &sharedRoom{
 		watcher: w,
 		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -167,15 +174,19 @@ func (r *sharedRoom) GetOrStart(roomID uuid.UUID, maxEvents int64) (*Room, error
 
 	room := NewRoom(cur, maxEvents)
 	go func() {
-		log.Ctx(r.ctx).Info().Str("roomId", roomID.String()).Msg("Room iteration started.")
-		err := NewIter(room).Range(r.ctx, nil)
-		switch {
-		case errors.Is(err, ErrCursorClosed):
-			log.Ctx(r.ctx).Info().Str("roomId", roomID.String()).Msg("Room closed.")
-		case err != nil:
-			log.Ctx(r.ctx).Err(err).Str("roomId", roomID.String()).Msg("Room iteration failed.")
+		log.Ctx(r.ctx).Debug().Str("roomId", roomID.String()).Msg("Room iteration started.")
+		for {
+			_, err := room.Next(r.ctx)
+			if errors.Is(err, ErrCursorClosed) || errors.Is(err, context.Canceled) {
+				break
+			}
+			if err != nil {
+				log.Ctx(r.ctx).Err(err).Str("roomId", roomID.String()).Msg("Room iteration failed.")
+				return
+			}
 		}
 		r.iterator.Done()
+		log.Ctx(r.ctx).Debug().Str("roomId", roomID.String()).Msg("Room iteration finished.")
 	}()
 
 	r.room = room
@@ -196,9 +207,9 @@ func (r *sharedRoom) ID() uuid.UUID {
 }
 
 func (r *sharedRoom) Close(ctx context.Context) error {
-	err := r.room.Close(ctx)
+	r.cancel()
 	r.iterator.Wait()
-	return err
+	return r.room.Close(ctx)
 }
 
 type Room struct {
@@ -277,6 +288,7 @@ type SharedCursor struct {
 	node          *eventNode
 	closeOnce     sync.Once
 	openedCursors *int64
+	closed        chan struct{}
 }
 
 func newSharedCursor(node *eventNode, opened *int64) *SharedCursor {
@@ -284,21 +296,42 @@ func newSharedCursor(node *eventNode, opened *int64) *SharedCursor {
 	return &SharedCursor{
 		node:          node,
 		openedCursors: opened,
+		closed:        make(chan struct{}),
 	}
 }
 
 func (c *SharedCursor) Next(ctx context.Context) (Event, error) {
-	next, err := c.node.Next(ctx)
-	if err != nil {
-		c.Close(ctx)
-		return Event{}, err
+	if c.node.IsEvicted() {
+		_ = c.Close(ctx)
+		return Event{}, ErrCursorClosed
 	}
-	c.node = next
-	return c.node.event, nil
+
+	select {
+	case <-c.node.HasNext():
+		// Check evicted again in case it was evicted while waiting on HasNext.
+		if c.node.IsEvicted() {
+			_ = c.Close(ctx)
+			return Event{}, ErrCursorClosed
+		}
+		next, err := c.node.Next()
+		if err != nil {
+			_ = c.Close(ctx)
+			return Event{}, err
+		}
+		c.node = next
+		return next.event, nil
+	case <-c.closed:
+		_ = c.Close(ctx)
+		return Event{}, ErrCursorClosed
+	case <-ctx.Done():
+		_ = c.Close(ctx)
+		return Event{}, ctx.Err()
+	}
 }
 
 func (c *SharedCursor) Close(_ context.Context) error {
 	c.closeOnce.Do(func() {
+		close(c.closed)
 		atomic.AddInt64(c.openedCursors, -1)
 	})
 	return nil
@@ -319,21 +352,8 @@ func newEventNode(ev Event) *eventNode {
 	return node
 }
 
-func (e *eventNode) Next(ctx context.Context) (*eventNode, error) {
-	if atomic.LoadUint32(&e.evicted) != 0 {
-		return nil, ErrCursorClosed
-	}
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.hasNext:
-		// Check evicted again in case it was evicted while waiting on hasNext.
-		if atomic.LoadUint32(&e.evicted) != 0 || e.next == nil {
-			return nil, ErrCursorClosed
-		}
-		return e.next, nil
-	}
+func (e *eventNode) HasNext() <-chan struct{} {
+	return e.hasNext
 }
 
 func (e *eventNode) SetNext(ev Event) *eventNode {
@@ -343,10 +363,22 @@ func (e *eventNode) SetNext(ev Event) *eventNode {
 	return node
 }
 
+// Next is not safe to call before HasNext returned.
+func (e *eventNode) Next() (*eventNode, error) {
+	if e.next == nil {
+		return nil, ErrCursorClosed
+	}
+	return e.next, nil
+}
+
 func (e *eventNode) ResetNext() {
 	close(e.hasNext)
 }
 
 func (e *eventNode) Evict() {
 	atomic.CompareAndSwapUint32(&e.evicted, 0, 1)
+}
+
+func (e *eventNode) IsEvicted() bool {
+	return atomic.LoadUint32(&e.evicted) != 0
 }

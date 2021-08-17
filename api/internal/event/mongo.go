@@ -71,7 +71,10 @@ func (m *Mongo) Create(ctx context.Context, requests ...Event) ([]Event, error) 
 	}
 
 	_, err := m.db.Collection("events").InsertMany(ctx, docs)
-	if err != nil {
+	switch {
+	case mongo.IsDuplicateKeyError(err):
+		return nil, ErrDuplicatedEntry
+	case err != nil:
 		return nil, err
 	}
 	return requests, nil

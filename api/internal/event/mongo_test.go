@@ -10,30 +10,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMongo(t *testing.T) {
+func TestEventMongo(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
 	t.Run("Create", func(t *testing.T) {
-		t.Parallel()
+		t.Run("Happy path", func(t *testing.T) {
+			t.Parallel()
 
-		events := NewMongo(dockerMongo(t))
+			events := NewMongo(dockerMongo(t))
 
-		request := Event{
-			ID:    uuid.New(),
-			Owner: uuid.New(),
-			Room:  uuid.New(),
-		}
-		created, err := events.Create(ctx, request)
-		require.NoError(t, err)
-		assert.NotZero(t, created[0].CreatedAt)
+			request := Event{
+				ID:    uuid.New(),
+				Owner: uuid.New(),
+				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
+			}
+			created, err := events.Create(ctx, request)
+			require.NoError(t, err)
+			assert.NotZero(t, created[0].CreatedAt)
 
-		fetched, err := events.Fetch(ctx, Lookup{
-			ID: request.ID,
+			fetched, err := events.Fetch(ctx, Lookup{
+				ID: request.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created, fetched)
 		})
-		require.NoError(t, err)
-		assert.Equal(t, created, fetched)
+		t.Run("Duplicated event returns correct error", func(t *testing.T) {
+			t.Parallel()
+
+			events := NewMongo(dockerMongo(t))
+
+			request := Event{
+				ID:    uuid.New(),
+				Owner: uuid.New(),
+				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
+			}
+			_, err := events.Create(ctx, request)
+			require.NoError(t, err)
+			_, err = events.Create(ctx, request)
+			require.ErrorIs(t, err, ErrDuplicatedEntry)
+		})
 	})
 
 	t.Run("Fetch", func(t *testing.T) {
@@ -45,6 +74,12 @@ func TestMongo(t *testing.T) {
 			ID:    uuid.New(),
 			Owner: uuid.New(),
 			Room:  uuid.New(),
+			Payload: Payload{
+				Type: TypePeerStatus,
+				Payload: PayloadPeerStatus{
+					Status: PeerJoined,
+				},
+			},
 		}
 		created, err := events.Create(ctx, event)
 		require.NoError(t, err)
@@ -53,10 +88,24 @@ func TestMongo(t *testing.T) {
 			Event{
 				ID:    uuid.New(),
 				Owner: uuid.New(),
+				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
 			},
 			Event{
 				ID:    uuid.New(),
 				Owner: uuid.New(),
+				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
 			},
 		)
 		require.NoError(t, err)
@@ -103,6 +152,12 @@ func TestMongo(t *testing.T) {
 				ID:    uuid.New(),
 				Owner: uuid.New(),
 				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
 			}
 			cur, err := events.Watch(ctx, request.Room)
 			require.NoError(t, err)
@@ -114,7 +169,6 @@ func TestMongo(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, created, ev)
 		})
-
 		t.Run("Filters by room", func(t *testing.T) {
 			t.Parallel()
 
@@ -124,6 +178,12 @@ func TestMongo(t *testing.T) {
 				ID:    uuid.New(),
 				Owner: uuid.New(),
 				Room:  uuid.New(),
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
 			}
 			cur, err := events.Watch(ctx, uuid.New())
 			require.NoError(t, err)

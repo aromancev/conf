@@ -36,7 +36,9 @@ func TestRoom(t *testing.T) {
 		defer room.Close(ctx)
 
 		go func() {
-			_ = event.NewIter(room).Range(ctx, nil)
+			for i := 0; i < len(events); i++ {
+				_, _ = room.Next(ctx)
+			}
 		}()
 
 		fetched := make([]event.Event, 0, len(events))
@@ -89,6 +91,23 @@ func TestRoom(t *testing.T) {
 		_, err = room.SharedCursor().Next(ctx)
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
+	t.Run("Unblocks when cursor closed", func(t *testing.T) {
+		t.Parallel()
+
+		watcher := double.NewFakeWatcher()
+		wc, err := watcher.Watch(ctx, uuid.New())
+		require.NoError(t, err)
+		room := event.NewRoom(wc, 1)
+
+		cur := room.SharedCursor()
+		go func() {
+			time.Sleep(time.Second) // Giving the cursor time to lock.
+			cur.Close(ctx)
+		}()
+		_, err = cur.Next(ctx)
+		assert.ErrorIs(t, err, event.ErrCursorClosed)
+		assert.Zero(t, room.OpenedCursors())
+	})
 	t.Run("Cursor closes once", func(t *testing.T) {
 		t.Parallel()
 
@@ -113,11 +132,7 @@ func TestRoom(t *testing.T) {
 		room := event.NewRoom(c, 1)
 
 		cur := room.SharedCursor()
-		// Wait a bit for the cursor to hang.
-		go func() {
-			time.Sleep(time.Second)
-			_ = room.Close(ctx)
-		}()
+		_ = room.Close(ctx)
 		_, err = cur.Next(ctx)
 		require.ErrorIs(t, err, event.ErrCursorClosed)
 		assert.Zero(t, room.OpenedCursors())
@@ -207,7 +222,7 @@ func TestRoom(t *testing.T) {
 
 		// Iterating over room so it pulls events from the shared cursor.
 		go func() {
-			for i := 0; i < numCursors; i++ {
+			for i := 0; i < numEvents; i++ {
 				_, err = room.Next(ctx)
 			}
 		}()

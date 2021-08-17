@@ -21,7 +21,7 @@ func NewMemory() *Memory {
 func (m *Memory) CreateRoom(ctx context.Context, request *rtc.Room) (*rtc.Room, error) {
 	id := uuid.New()
 	m.rooms[id] = request
-	request.Id = id.String()
+	request.Id, _ = id.MarshalBinary()
 	return request, nil
 }
 

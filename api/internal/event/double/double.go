@@ -2,24 +2,36 @@ package double
 
 import (
 	"context"
+	"sync"
 
 	"github.com/aromancev/confa/internal/event"
 	"github.com/google/uuid"
 )
 
 type FakeCursor struct {
-	events <-chan event.Event
+	events    <-chan event.Event
+	closed    chan struct{}
+	closeOnce sync.Once
 }
 
 func (c *FakeCursor) Next(ctx context.Context) (event.Event, error) {
-	ev, ok := <-c.events
-	if !ok {
-		return event.Event{}, event.ErrCursorClosed
+	select {
+	case ev, ok := <-c.events:
+		if !ok {
+			return event.Event{}, event.ErrCursorClosed
+		}
+		return ev, nil
+	case <-ctx.Done():
+		return event.Event{}, ctx.Err()
+	case <-c.closed:
+		panic("reading from closed cursor")
 	}
-	return ev, nil
 }
 
 func (c *FakeCursor) Close(ctx context.Context) error {
+	c.closeOnce.Do(func() {
+		close(c.closed)
+	})
 	return nil
 }
 
@@ -38,7 +50,10 @@ func NewFakeWatcher(events ...event.Event) *FakeWatcher {
 }
 
 func (w *FakeWatcher) Watch(ctx context.Context, roomID uuid.UUID) (event.Cursor, error) {
-	return &FakeCursor{events: w.events}, nil
+	return &FakeCursor{
+		events: w.events,
+		closed: make(chan struct{}),
+	}, nil
 }
 
 func (w *FakeWatcher) Put(e event.Event) {

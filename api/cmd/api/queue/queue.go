@@ -2,13 +2,16 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
@@ -25,12 +28,14 @@ type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(sender *email.Sender) *Handler {
+func NewHandler(sender *email.Sender, events *event.Mongo) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case queue.TubeEmail:
 				return sendEmail(sender)
+			case queue.TubeEvent:
+				return saveEvent(events)
 			default:
 				return nil
 			}
@@ -89,7 +94,6 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	if err := job.Delete(ctx); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to delete job")
 	}
-
 	log.Ctx(ctx).Info().Msg("Job served.")
 }
 
@@ -98,10 +102,7 @@ func sendEmail(sender *email.Sender) JobHandle {
 		var job queue.EmailJob
 		err := proto.Unmarshal(j.Body, &job)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job")
-			if err := j.Delete(ctx); err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to delete job")
-			}
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job.")
 			return nil
 		}
 		emails := make([]email.Email, len(job.Emails))
@@ -119,11 +120,64 @@ func sendEmail(sender *email.Sender) JobHandle {
 		}
 		for _, err := range errs {
 			if err == nil {
-				log.Ctx(ctx).Info().Msg("Email sent")
+				log.Ctx(ctx).Info().Msg("Email sent.")
 			} else {
-				log.Ctx(ctx).Err(err).Msg("Failed to send email")
+				log.Ctx(ctx).Err(err).Msg("Failed to send email.")
 			}
 		}
 		return nil
+	}
+}
+
+func saveEvent(events *event.Mongo) JobHandle {
+	return func(ctx context.Context, j *beanstalk.Job) error {
+		var job queue.EventJob
+		err := proto.Unmarshal(j.Body, &job)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
+			return nil
+		}
+
+		var eventID, ownerID, roomID uuid.UUID
+		if err := eventID.UnmarshalBinary(job.Id); err != nil {
+			return err
+		}
+		if err := ownerID.UnmarshalBinary(job.OwnerId); err != nil {
+			return err
+		}
+		if err := roomID.UnmarshalBinary(job.RoomId); err != nil {
+			return err
+		}
+
+		ev := event.Event{
+			ID:    eventID,
+			Owner: ownerID,
+			Room:  roomID,
+		}
+		switch pl := job.Event.(type) {
+		case *queue.EventJob_PeerStatus_:
+			ev.Payload = event.Payload{
+				Type: event.TypePeerStatus,
+				Payload: event.PayloadPeerStatus{
+					Status: event.PeerStatus(pl.PeerStatus.Status),
+				},
+			}
+		default:
+			return errors.New("unknown event type")
+		}
+
+		_, err = events.CreateOne(ctx, ev)
+		switch {
+		case errors.Is(err, event.ErrValidation):
+			log.Ctx(ctx).Err(err).Msg("Invalid payload for event job. Deleting.")
+			return nil
+		case errors.Is(err, event.ErrDuplicatedEntry):
+			log.Ctx(ctx).Warn().Str("eventId", ev.ID.String()).Msg("Skipping duplicated event.")
+			return nil
+		case err != nil:
+			return err
+		default:
+			return nil
+		}
 	}
 }

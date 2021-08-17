@@ -45,7 +45,7 @@ func TestCRUD(t *testing.T) {
 
 			room, err := rooms.Room(ctx, fetched[0].Room.String())
 			require.NoError(t, err)
-			assert.Equal(t, fetched[0].Room.String(), room.Id)
+			assert.Equal(t, fetched[0].Room[:], room.Id)
 		})
 
 		t.Run("Only the owner can create", func(t *testing.T) {
