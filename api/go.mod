@@ -22,7 +22,6 @@ require (
 	github.com/pion/ion-sfu v1.10.5
 	github.com/pion/rtcp v1.2.6
 	github.com/pion/rtp v1.6.5
-	github.com/pion/sdp/v3 v3.0.4
 	github.com/pion/webrtc/v3 v3.0.29
 	github.com/prep/beanstalk v1.4.1
 	github.com/rs/zerolog v1.23.0
@@ -37,5 +36,5 @@ require (
 	google.golang.org/genproto v0.0.0-20210614143202-012ab6975634 // indirect
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
-	gortc.io/sdp v0.18.2 // indirect
+	gortc.io/sdp v0.18.2
 )

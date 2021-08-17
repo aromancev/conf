@@ -1,4 +1,5 @@
 import { Trickle } from "ion-sdk-js"
+import { Event } from "./models/event"
 
 enum Type {
   Join = "join",
@@ -27,17 +28,10 @@ interface Offer {
   description: RTCSessionDescriptionInit
 }
 
-interface Event {
-  id: string
-  roomId: string
-  owner: string
-  type: string
-  payload: string
-}
-
 export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
+  onevent?: (event: Event) => void
 
   private _onopen?: () => void
   private socket: WebSocket
@@ -77,7 +71,9 @@ export class RTC {
           }
           break
         case Type.Event:
-          console.log(resp)
+          if (this.onevent) {
+            this.onevent(resp.payload as Event)
+          }
           break
       }
     }

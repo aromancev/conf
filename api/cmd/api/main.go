@@ -215,7 +215,7 @@ func main() {
 
 	go func() {
 		log.Info().Msg("Serving event watcher.")
-		if err := eventWatcher.Serve(ctx, 10*time.Second); err != nil {
+		if err := eventWatcher.Serve(ctx, 60*time.Second); err != nil {
 			if errors.Is(err, event.ErrShuttingDown) {
 				return
 			}
