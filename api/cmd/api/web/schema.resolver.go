@@ -382,10 +382,10 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 	return res, nil
 }
 
-func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (int, error) {
+func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (*Claps, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return 0, newError(CodeUnauthorized, "Invalid access token.")
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 
 	var lookup clap.Lookup
@@ -393,27 +393,28 @@ func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (in
 	if where.ConfaID != nil {
 		lookup.Confa, err = uuid.Parse(*where.ConfaID)
 		if err != nil {
-			return 0, nil
+			return nil, nil
 		}
 	}
 	if where.SpeakerID != nil {
 		lookup.Speaker, err = uuid.Parse(*where.SpeakerID)
 		if err != nil {
-			return 0, nil
+			return nil, nil
 		}
 	}
 	if where.TalkID != nil {
 		lookup.Talk, err = uuid.Parse(*where.TalkID)
 		if err != nil {
-			return 0, nil
+			return nil, nil
 		}
 	}
-	claps, err := r.claps.Aggregate(ctx, lookup)
+	res, err := r.claps.Aggregate(ctx, lookup, claims.UserID)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to aggregate claps.")
-		return 0, newInternalError()
+		return nil, newInternalError()
 	}
-	return int(claps), nil
+	claps := &Claps{res.Value, res.UserValue}
+	return claps, nil
 }
 
 // Mutation returns MutationResolver implementation.

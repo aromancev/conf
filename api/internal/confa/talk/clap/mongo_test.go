@@ -161,6 +161,29 @@ func TestMongo(t *testing.T) {
 				},
 				expect: 2,
 			},
+			{
+				name: "Finds by owner",
+				inserts: []Clap{
+					{
+						Owner:   uuid.UUID{1},
+						Speaker: uuid.UUID{1},
+						Confa:   uuid.UUID{1},
+						Talk:    uuid.UUID{1},
+						Value:   1,
+					},
+					{
+						Owner:   uuid.UUID{2},
+						Speaker: uuid.UUID{1},
+						Confa:   uuid.UUID{1},
+						Talk:    uuid.UUID{1},
+						Value:   1,
+					},
+				},
+				lookup: Lookup{
+					Owner: uuid.UUID{1},
+				},
+				expect: 1,
+			},
 		}
 
 		for _, c := range tt {

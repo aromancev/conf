@@ -8,6 +8,11 @@ type ClapInput struct {
 	TalkID    *string `json:"talkId"`
 }
 
+type Claps struct {
+	Value     int `json:"value"`
+	UserValue int `json:"userValue"`
+}
+
 type Confa struct {
 	ID      string `json:"id"`
 	OwnerID string `json:"ownerId"`

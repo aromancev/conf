@@ -2,7 +2,6 @@ package clap
 
 import (
 	"errors"
-
 	"github.com/google/uuid"
 )
 
@@ -17,6 +16,11 @@ type Clap struct {
 	Talk    uuid.UUID `bson:"talkId"`
 	Speaker uuid.UUID `bson:"speakerId"`
 	Value   uint      `bson:"value"`
+}
+
+type Claps struct {
+	Value     int `json:"value"`
+	UserValue int `json:"userValue"`
 }
 
 func (c Clap) Validate() error {
@@ -45,4 +49,5 @@ type Lookup struct {
 	Confa   uuid.UUID
 	Speaker uuid.UUID
 	Talk    uuid.UUID
+	Owner   uuid.UUID
 }

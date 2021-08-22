@@ -44,6 +44,11 @@ input TalkInput {
     handle: String
 }
 
+type Claps {
+    value: Int!
+    userValue: Int!
+}
+
 input ClapInput {
     speakerId: String
     confaId: String
@@ -65,5 +70,5 @@ type Query {
 
     confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
     talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
-    aggregateClaps(where: ClapInput! = {}): Int!
+    aggregateClaps(where: ClapInput! = {}): Claps!
 }
