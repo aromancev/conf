@@ -42,6 +42,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Claps struct {
+		UserValue func(childComplexity int) int
+		Value     func(childComplexity int) int
+	}
+
 	Confa struct {
 		Handle  func(childComplexity int) int
 		ID      func(childComplexity int) int
@@ -103,7 +108,7 @@ type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
 	Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error)
 	Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error)
-	AggregateClaps(ctx context.Context, where ClapInput) (int, error)
+	AggregateClaps(ctx context.Context, where ClapInput) (*Claps, error)
 }
 
 type executableSchema struct {
@@ -120,6 +125,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Claps.userValue":
+		if e.complexity.Claps.UserValue == nil {
+			break
+		}
+
+		return e.complexity.Claps.UserValue(childComplexity), true
+
+	case "Claps.value":
+		if e.complexity.Claps.Value == nil {
+			break
+		}
+
+		return e.complexity.Claps.Value(childComplexity), true
 
 	case "Confa.handle":
 		if e.complexity.Confa.Handle == nil {
@@ -465,6 +484,11 @@ input TalkInput {
     handle: String
 }
 
+type Claps {
+    value: Int!
+    userValue: Int!
+}
+
 input ClapInput {
     speakerId: String
     confaId: String
@@ -486,7 +510,7 @@ type Query {
 
     confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
     talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
-    aggregateClaps(where: ClapInput! = {}): Int!
+    aggregateClaps(where: ClapInput! = {}): Claps!
 }
 `, BuiltIn: false},
 }
@@ -737,6 +761,76 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _Claps_value(ctx context.Context, field graphql.CollectedField, obj *Claps) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Claps",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Claps_userValue(ctx context.Context, field graphql.CollectedField, obj *Claps) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Claps",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserValue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _Confa_id(ctx context.Context, field graphql.CollectedField, obj *Confa) (ret graphql.Marshaler) {
 	defer func() {
@@ -1356,9 +1450,9 @@ func (ec *executionContext) _Query_aggregateClaps(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*Claps)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNClaps2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClaps(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3036,6 +3130,38 @@ func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj int
 
 // region    **************************** object.gotpl ****************************
 
+var clapsImplementors = []string{"Claps"}
+
+func (ec *executionContext) _Claps(ctx context.Context, sel ast.SelectionSet, obj *Claps) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clapsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Claps")
+		case "value":
+			out.Values[i] = ec._Claps_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "userValue":
+			out.Values[i] = ec._Claps_userValue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var confaImplementors = []string{"Confa"}
 
 func (ec *executionContext) _Confa(ctx context.Context, sel ast.SelectionSet, obj *Confa) graphql.Marshaler {
@@ -3636,6 +3762,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 func (ec *executionContext) unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx context.Context, v interface{}) (ClapInput, error) {
 	res, err := ec.unmarshalInputClapInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNClaps2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClaps(ctx context.Context, sel ast.SelectionSet, v Claps) graphql.Marshaler {
+	return ec._Claps(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNClaps2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClaps(ctx context.Context, sel ast.SelectionSet, v *Claps) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Claps(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNConfa2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfa(ctx context.Context, sel ast.SelectionSet, v Confa) graphql.Marshaler {

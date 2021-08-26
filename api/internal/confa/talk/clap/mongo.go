@@ -76,6 +76,9 @@ func (m *Mongo) Aggregate(ctx context.Context, lookup Lookup) (uint64, error) {
 	if lookup.Talk != uuid.Nil {
 		match = append(match, bson.E{Key: "talkId", Value: lookup.Talk})
 	}
+	if lookup.Owner != uuid.Nil {
+		match = append(match, bson.E{Key: "ownerId", Value: lookup.Owner})
+	}
 	group := bson.M{
 		"_id": "",
 		"sum": bson.M{"$sum": "$value"},

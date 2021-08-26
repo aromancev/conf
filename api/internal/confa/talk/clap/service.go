@@ -41,6 +41,16 @@ func (c *CRUD) CreateOrUpdate(ctx context.Context, userID, talkID uuid.UUID, val
 	})
 }
 
-func (c *CRUD) Aggregate(ctx context.Context, lookup Lookup) (uint64, error) {
-	return c.repo.Aggregate(ctx, lookup)
+func (c *CRUD) Aggregate(ctx context.Context, lookup Lookup, userID uuid.UUID) (Claps, error) {
+	claps, err := c.repo.Aggregate(ctx, lookup)
+	if err != nil {
+		return Claps{}, err
+	}
+	lookup.Owner = userID
+	userClaps, err := c.repo.Aggregate(ctx, lookup)
+	if err != nil {
+		return Claps{}, err
+	}
+	cl := Claps{int(claps), int(userClaps)}
+	return cl, nil
 }
