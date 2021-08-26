@@ -9,6 +9,7 @@ import (
 const (
 	TubeEmail = "email"
 	TubeVideo = "video"
+	TubeImage = "image"
 	TubeEvent = "event"
 )
 

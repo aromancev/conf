@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aromancev/confa/internal/media/image"
 	"github.com/aromancev/confa/internal/media/video"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/trace"
@@ -24,12 +25,14 @@ type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(converter *video.Converter) *Handler {
+func NewHandler(vc *video.Converter, ic *image.Converter) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case queue.TubeVideo:
-				return processVideo(converter)
+				return processVideo(vc)
+			case queue.TubeImage:
+				return processImage(ic)
 			default:
 				return nil
 			}
@@ -95,6 +98,22 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 func processVideo(converter *video.Converter) JobHandle {
 	return func(ctx context.Context, j *beanstalk.Job) error {
 		var job queue.VideoJob
+		err := proto.Unmarshal(j.Body, &job)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job")
+			if err := j.Delete(ctx); err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to delete job")
+			}
+			return nil
+		}
+
+		return converter.Convert(job.MediaId)
+	}
+}
+
+func processImage(converter *image.Converter) JobHandle {
+	return func(ctx context.Context, j *beanstalk.Job) error {
+		var job queue.ImageJob
 		err := proto.Unmarshal(j.Body, &job)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job")

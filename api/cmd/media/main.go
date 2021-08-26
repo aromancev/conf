@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aromancev/confa/internal/media/image"
+
 	sdk "github.com/pion/ion-sdk-go"
 	"github.com/pion/webrtc/v3"
 	"github.com/prep/beanstalk"
@@ -50,7 +52,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeVideo}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeVideo, pqueue.TubeImage}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   5 * time.Second,
@@ -67,8 +69,9 @@ func main() {
 	}
 
 	videoConverter := video.NewConverter(config.MediaDir)
+	imageConverter := image.NewConverter(config.MediaDir)
 
-	jobHandler := queue.NewHandler(videoConverter)
+	jobHandler := queue.NewHandler(videoConverter, imageConverter)
 
 	webServer := &http.Server{
 		Addr:         config.WebAddress,
@@ -79,6 +82,8 @@ func main() {
 			http.FileServer(
 				http.Dir(config.MediaDir),
 			),
+			config.MediaDir,
+			producer,
 		),
 	}
 	rpcServer := &http.Server{

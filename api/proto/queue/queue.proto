@@ -20,6 +20,10 @@ message VideoJob {
     string media_id = 1;
 }
 
+message ImageJob {
+    string media_id = 1;
+}
+
 message EventJob {
     message PeerStatus {
         string status = 1;
