@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/aromancev/confa/internal/event"
+	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/proto/queue"
 	"github.com/google/uuid"
@@ -96,19 +96,23 @@ type Signal interface {
 }
 
 type Peer struct {
+	ctx            context.Context
+	cancel         func()
+	sfuPool        *grpcpool.Pool
 	signal         Signal
 	out            chan Message
-	done           chan struct{}
 	producer       Producer
 	events         event.Cursor
 	userID, roomID uuid.UUID
 }
 
-func NewPeer(ctx context.Context, userID, roomID uuid.UUID, signal Signal, events event.Cursor, producer Producer, maxMessages int) *Peer {
+func NewPeer(ctx context.Context, userID, roomID uuid.UUID, sfuPool *grpcpool.Pool, events event.Cursor, producer Producer, maxMessages int) *Peer {
+	ctx, cancel := context.WithCancel(ctx)
 	p := &Peer{
-		signal:   signal,
+		ctx:      ctx,
+		cancel:   cancel,
+		sfuPool:  sfuPool,
 		out:      make(chan Message, maxMessages),
-		done:     make(chan struct{}),
 		producer: producer,
 		events:   events,
 		userID:   userID,
@@ -117,22 +121,37 @@ func NewPeer(ctx context.Context, userID, roomID uuid.UUID, signal Signal, event
 	if err := p.emitStatus(ctx, event.PeerJoined); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
-	go p.pullMessages(ctx)
+	go p.pullEvents()
 	return p
 }
 
 func (p *Peer) Send(ctx context.Context, msg Message) error {
 	switch pl := msg.Payload.(type) {
 	case Join:
+		var err error
+		p.signal, err = NewGRPCSignal(ctx, p.sfuPool)
+		if err != nil {
+			return err
+		}
+		go p.pullSignal()
 		return p.signal.Join(ctx, pl)
 	case Offer:
+		if p.signal == nil {
+			return fmt.Errorf("%w: must join before offer", ErrValidation)
+		}
 		if err := validateOffer(pl.Description); err != nil {
 			return fmt.Errorf("%w: %s", ErrValidation, err)
 		}
 		return p.signal.Offer(ctx, pl)
 	case Answer:
+		if p.signal == nil {
+			return fmt.Errorf("%w: must join before answer", ErrValidation)
+		}
 		return p.signal.Answer(ctx, pl)
 	case Trickle:
+		if p.signal == nil {
+			return fmt.Errorf("%w: must join before trickle", ErrValidation)
+		}
 		return p.signal.Trickle(ctx, pl)
 	default:
 		return ErrUnknownMessage
@@ -155,84 +174,76 @@ func (p *Peer) Close(ctx context.Context) error {
 	if err := p.emitStatus(ctx, event.PeerLeft); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
-	eventsErr := p.events.Close(ctx)
-	signalErr := p.signal.Close(ctx)
-	<-p.done
+	var eventsErr, signalErr error
+	eventsErr = p.events.Close(ctx)
+	if p.signal != nil {
+		signalErr = p.signal.Close(ctx)
+	}
 	if eventsErr != nil {
 		return eventsErr
 	}
 	return signalErr
 }
 
-func (p *Peer) pullMessages(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func (p *Peer) pullEvents() {
+	defer p.cancel() // If pulling exits, something went wrong.
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	ctx := p.ctx
 
-	go func() {
-		defer cancel() // If signal closes, should close all.
-		defer wg.Done()
-
-		for {
-			msg, err := p.signal.Receive(ctx)
-			switch {
-			case errors.Is(err, ErrUnknownMessage):
-				log.Ctx(ctx).Debug().Msg("Skipping unknown signal message.")
-				continue
-			case errors.Is(err, ErrClosed), errors.Is(err, context.Canceled):
-				log.Ctx(ctx).Debug().Msg("Signal was closed.")
-				return
-			case err != nil:
-				log.Ctx(ctx).Err(err).Msg("Failed to pull a message from signal.")
-				return
-			}
-
-			select {
-			case p.out <- msg:
-			default:
-				log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-				return
-			}
-			log.Ctx(ctx).Debug().Str("messageType", string(msg.Type)).Msg("RTC message pulled.")
+	for {
+		ev, err := p.events.Next(ctx)
+		switch {
+		case errors.Is(err, event.ErrUnknownEvent):
+			log.Ctx(ctx).Debug().Msg("Skipping unknown room event.")
+			continue
+		case errors.Is(err, event.ErrCursorClosed), errors.Is(err, context.Canceled):
+			log.Ctx(ctx).Debug().Msg("Event cursor was closed.")
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to pull an event from cursor.")
+			return
 		}
-	}()
 
-	go func() {
-		defer cancel() // If signal closes, should close all.
-		defer wg.Done()
-
-		for {
-			ev, err := p.events.Next(ctx)
-			switch {
-			case errors.Is(err, event.ErrUnknownEvent):
-				log.Ctx(ctx).Debug().Msg("Skipping unknown room event.")
-				continue
-			case errors.Is(err, event.ErrCursorClosed), errors.Is(err, context.Canceled):
-				log.Ctx(ctx).Debug().Msg("Event cursor was closed.")
-				return
-			case err != nil:
-				log.Ctx(ctx).Err(err).Msg("Failed to pull an event from cursor.")
-				return
-			}
-
-			select {
-			case p.out <- Message{
-				Type:    TypeEvent,
-				Payload: ev,
-			}:
-			default:
-				log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-				return
-			}
-			log.Ctx(ctx).Debug().Str("messageType", string(TypeEvent)).Str("eventType", string(ev.Payload.Type)).Msg("RTC message pulled.")
+		select {
+		case p.out <- Message{
+			Type:    TypeEvent,
+			Payload: ev,
+		}:
+		default:
+			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
+			return
 		}
-	}()
+		log.Ctx(ctx).Debug().Str("messageType", string(TypeEvent)).Str("eventType", string(ev.Payload.Type)).Msg("RTC message pulled.")
+	}
+}
 
-	wg.Wait()
-	close(p.out)
-	close(p.done)
+func (p *Peer) pullSignal() {
+	defer p.cancel() // If pulling exits, something went wrong.
+
+	ctx := p.ctx
+
+	for {
+		msg, err := p.signal.Receive(ctx)
+		switch {
+		case errors.Is(err, ErrUnknownMessage):
+			log.Ctx(p.ctx).Debug().Msg("Skipping unknown signal message.")
+			continue
+		case errors.Is(err, ErrClosed), errors.Is(err, context.Canceled):
+			log.Ctx(p.ctx).Debug().Msg("Signal was closed.")
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to pull a message from signal.")
+			return
+		}
+
+		select {
+		case p.out <- msg:
+		default:
+			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
+			return
+		}
+		log.Ctx(ctx).Debug().Str("messageType", string(msg.Type)).Msg("RTC message pulled.")
+	}
 }
 
 func (p *Peer) emitStatus(ctx context.Context, status event.PeerStatus) error {

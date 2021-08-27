@@ -57,19 +57,13 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 		defer wsConn.Close()
 		log.Ctx(ctx).Debug().Msg("Websocket connected.")
 
-		signal, err := peer.NewGRPCSignal(ctx, sfuPool)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to connect to peer.")
-			return
-		}
-		log.Ctx(ctx).Debug().Msg("Signal connected.")
 		cursor, err := events.Watch(ctx, rm.ID)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to connect watch room events.")
 			return
 		}
 		log.Ctx(ctx).Debug().Msg("Event watching started.")
-		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, signal, cursor, producer, 10)
+		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, sfuPool, cursor, producer, 10)
 		defer peerConn.Close(ctx)
 		log.Ctx(ctx).Debug().Msg("Peer connected.")
 
