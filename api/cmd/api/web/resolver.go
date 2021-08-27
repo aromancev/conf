@@ -1,6 +1,8 @@
 package web
 
 import (
+	"context"
+
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/confa/talk"
@@ -13,36 +15,42 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Resolver struct {
-	baseURL   string
-	secretKey *auth.SecretKey
-	publicKey *auth.PublicKey
-	users     *user.CRUD
-	sessions  *session.CRUD
-	confas    *confa.CRUD
-	talks     *talk.CRUD
-	claps     *clap.CRUD
-	rooms     *room.Mongo
-	events    event.Watcher
-	producer  Producer
-	upgrader  *websocket.Upgrader
-	sfuPool   *grpcpool.Pool
+type EventRepo interface {
+	Fetch(ctx context.Context, lookup event.Lookup) ([]event.Event, error)
 }
 
-func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, rooms *room.Mongo, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool, events event.Watcher) *Resolver {
+type Resolver struct {
+	baseURL      string
+	secretKey    *auth.SecretKey
+	publicKey    *auth.PublicKey
+	users        *user.CRUD
+	sessions     *session.CRUD
+	confas       *confa.CRUD
+	talks        *talk.CRUD
+	claps        *clap.CRUD
+	rooms        *room.Mongo
+	events       EventRepo
+	eventWatcher event.Watcher
+	producer     Producer
+	upgrader     *websocket.Upgrader
+	sfuPool      *grpcpool.Pool
+}
+
+func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, rooms *room.Mongo, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool, eventWatcher event.Watcher, events EventRepo) *Resolver {
 	return &Resolver{
-		baseURL:   baseURL,
-		secretKey: sk,
-		publicKey: pk,
-		producer:  producer,
-		users:     users,
-		sessions:  sessions,
-		confas:    confas,
-		talks:     talks,
-		claps:     claps,
-		rooms:     rooms,
-		upgrader:  upgrader,
-		sfuPool:   sfuPool,
-		events:    events,
+		baseURL:      baseURL,
+		secretKey:    sk,
+		publicKey:    pk,
+		producer:     producer,
+		users:        users,
+		sessions:     sessions,
+		confas:       confas,
+		talks:        talks,
+		claps:        claps,
+		rooms:        rooms,
+		upgrader:     upgrader,
+		sfuPool:      sfuPool,
+		eventWatcher: eventWatcher,
+		events:       events,
 	}
 }

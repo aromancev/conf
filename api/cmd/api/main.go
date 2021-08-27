@@ -183,6 +183,7 @@ func main() {
 			},
 			sfuPool,
 			eventWatcher,
+			eventMongo,
 		)),
 	}
 	rpcServer := &http.Server{

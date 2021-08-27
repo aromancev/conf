@@ -1,15 +1,24 @@
 export enum EventType {
   PeerStatus = "peer_status",
+  Message = "message",
 }
 
+export type EventPayload = PayloadPeerStatus | PayloadMessage
+
 export interface Event {
-  id: string
-  ownerId: string
-  roomId: string
+  id?: string
+  ownerId?: string
+  roomId?: string
+  createdAt?: string
   payload: {
     type: EventType
-    payload: PayloadPeerStatus
+    payload: EventPayload
   }
+}
+
+export interface EventProcessor {
+  forward(event: Event): void
+  backward(event: Event): void
 }
 
 export enum PeerStatus {
@@ -21,7 +30,6 @@ export interface PayloadPeerStatus {
   status: PeerStatus
 }
 
-export interface EventProcessor {
-  forward(event: Event): void
-  backward(event: Event): void
+export interface PayloadMessage {
+  text: string
 }

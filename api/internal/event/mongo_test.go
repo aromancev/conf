@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -69,26 +70,14 @@ func TestEventMongo(t *testing.T) {
 		t.Parallel()
 
 		events := NewMongo(dockerMongo(t))
+		roomID := uuid.New()
 
-		event := Event{
-			ID:    uuid.New(),
-			Owner: uuid.New(),
-			Room:  uuid.New(),
-			Payload: Payload{
-				Type: TypePeerStatus,
-				Payload: PayloadPeerStatus{
-					Status: PeerJoined,
-				},
-			},
-		}
-		created, err := events.Create(ctx, event)
-		require.NoError(t, err)
-		_, err = events.Create(
+		created, err := events.Create(
 			ctx,
 			Event{
 				ID:    uuid.New(),
 				Owner: uuid.New(),
-				Room:  uuid.New(),
+				Room:  roomID,
 				Payload: Payload{
 					Type: TypePeerStatus,
 					Payload: PayloadPeerStatus{
@@ -99,7 +88,18 @@ func TestEventMongo(t *testing.T) {
 			Event{
 				ID:    uuid.New(),
 				Owner: uuid.New(),
-				Room:  uuid.New(),
+				Room:  roomID,
+				Payload: Payload{
+					Type: TypePeerStatus,
+					Payload: PayloadPeerStatus{
+						Status: PeerJoined,
+					},
+				},
+			},
+			Event{
+				ID:    uuid.New(),
+				Owner: uuid.New(),
+				Room:  roomID,
 				Payload: Payload{
 					Type: TypePeerStatus,
 					Payload: PayloadPeerStatus{
@@ -109,18 +109,22 @@ func TestEventMongo(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
+		// Events are sorted by createdAt, id DESC.
+		sort.Slice(created, func(i, j int) bool {
+			return created[i].ID.String() > created[j].ID.String()
+		})
 
 		t.Run("by id", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
-				ID: event.ID,
+				ID: created[0].ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.Equal(t, []Event{created[0]}, fetched)
 		})
 
 		t.Run("by room", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
-				Room: event.Room,
+				Room: roomID,
 			})
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched)
@@ -128,14 +132,17 @@ func TestEventMongo(t *testing.T) {
 
 		t.Run("with limit and offset", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
-				Limit: 1,
+				Room:  roomID,
+				Limit: 3,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, 1, len(fetched))
+			assert.Equal(t, 3, len(fetched))
 
 			// 3 in total, skipped one.
 			fetched, err = events.Fetch(ctx, Lookup{
-				From: fetched[0].ID,
+				From: From{
+					ID: fetched[2].ID,
+				},
 			})
 			require.NoError(t, err)
 			assert.Equal(t, 2, len(fetched))

@@ -31,29 +31,42 @@ type Producer interface {
 type MessageType string
 
 const (
-	TypeJoin    MessageType = "join"
-	TypeAnswer  MessageType = "answer"
-	TypeOffer   MessageType = "offer"
-	TypeTrickle MessageType = "trickle"
-	TypeEvent   MessageType = "event"
-	TypeError   MessageType = "error"
+	TypeJoin     MessageType = "join"
+	TypeAnswer   MessageType = "answer"
+	TypeOffer    MessageType = "offer"
+	TypeTrickle  MessageType = "trickle"
+	TypeEvent    MessageType = "event"
+	TypeEventAck MessageType = "event_ack"
+	TypeError    MessageType = "error"
 )
 
 type Message struct {
-	Type    MessageType `json:"type"`
-	Payload interface{} `json:"payload"`
+	RequestID string      `json:"requestId,omitempty"`
+	Type      MessageType `json:"type"`
+	Payload   interface{} `json:"payload"`
+}
+
+type EventAck struct {
+	EventID string `json:"eventId"`
 }
 
 func (m *Message) UnmarshalJSON(b []byte) error {
 	var raw struct {
-		T MessageType     `json:"type"`
-		P json.RawMessage `json:"payload"`
+		RequestID string          `json:"requestId,omitempty"`
+		T         MessageType     `json:"type"`
+		P         json.RawMessage `json:"payload"`
 	}
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 
 	switch raw.T {
+	case TypeEvent:
+		var p event.Event
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
 	case TypeJoin:
 		var p Join
 		if err := json.Unmarshal(raw.P, &p); err != nil {
@@ -83,6 +96,7 @@ func (m *Message) UnmarshalJSON(b []byte) error {
 	}
 
 	m.Type = raw.T
+	m.RequestID = raw.RequestID
 	return nil
 }
 
@@ -96,29 +110,38 @@ type Signal interface {
 }
 
 type Peer struct {
-	ctx            context.Context
-	cancel         func()
-	sfuPool        *grpcpool.Pool
-	signal         Signal
-	out            chan Message
-	producer       Producer
-	events         event.Cursor
-	userID, roomID uuid.UUID
+	ctx                    context.Context
+	cancel                 func()
+	sfuPool                *grpcpool.Pool
+	signal                 Signal
+	out                    chan Message
+	producer               Producer
+	events                 event.Cursor
+	userID, roomID         uuid.UUID
+	eventsDone, signalDone chan struct{}
 }
 
 func NewPeer(ctx context.Context, userID, roomID uuid.UUID, sfuPool *grpcpool.Pool, events event.Cursor, producer Producer, maxMessages int) *Peer {
 	ctx, cancel := context.WithCancel(ctx)
 	p := &Peer{
-		ctx:      ctx,
-		cancel:   cancel,
-		sfuPool:  sfuPool,
-		out:      make(chan Message, maxMessages),
-		producer: producer,
-		events:   events,
-		userID:   userID,
-		roomID:   roomID,
+		ctx:        ctx,
+		cancel:     cancel,
+		sfuPool:    sfuPool,
+		out:        make(chan Message, maxMessages),
+		eventsDone: make(chan struct{}),
+		signalDone: make(chan struct{}),
+		producer:   producer,
+		events:     events,
+		userID:     userID,
+		roomID:     roomID,
 	}
-	if err := p.emitStatus(ctx, event.PeerJoined); err != nil {
+	err := p.emitEvent(ctx, uuid.New(), event.Payload{
+		Type: event.TypePeerStatus,
+		Payload: event.PayloadPeerStatus{
+			Status: event.PeerJoined,
+		},
+	})
+	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
 	go p.pullEvents()
@@ -127,6 +150,20 @@ func NewPeer(ctx context.Context, userID, roomID uuid.UUID, sfuPool *grpcpool.Po
 
 func (p *Peer) Send(ctx context.Context, msg Message) error {
 	switch pl := msg.Payload.(type) {
+	case event.Event:
+		id := uuid.New()
+		select {
+		case p.out <- Message{
+			RequestID: msg.RequestID,
+			Type:      TypeEventAck,
+			Payload:   EventAck{EventID: id.String()},
+		}:
+		default:
+			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
+			p.cancel()
+			return fmt.Errorf("%w: %s", ErrValidation, "peer too slow")
+		}
+		return p.emitEvent(ctx, id, pl.Payload)
 	case Join:
 		var err error
 		p.signal, err = NewGRPCSignal(ctx, p.sfuPool)
@@ -171,12 +208,20 @@ func (p *Peer) Receive(ctx context.Context) (Message, error) {
 }
 
 func (p *Peer) Close(ctx context.Context) error {
-	if err := p.emitStatus(ctx, event.PeerLeft); err != nil {
+	err := p.emitEvent(ctx, uuid.New(), event.Payload{
+		Type: event.TypePeerStatus,
+		Payload: event.PayloadPeerStatus{
+			Status: event.PeerLeft,
+		},
+	})
+	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
 	var eventsErr, signalErr error
+	<-p.eventsDone
 	eventsErr = p.events.Close(ctx)
 	if p.signal != nil {
+		<-p.signalDone
 		signalErr = p.signal.Close(ctx)
 	}
 	if eventsErr != nil {
@@ -186,6 +231,7 @@ func (p *Peer) Close(ctx context.Context) error {
 }
 
 func (p *Peer) pullEvents() {
+	defer close(p.eventsDone)
 	defer p.cancel() // If pulling exits, something went wrong.
 
 	ctx := p.ctx
@@ -218,6 +264,7 @@ func (p *Peer) pullEvents() {
 }
 
 func (p *Peer) pullSignal() {
+	defer close(p.signalDone)
 	defer p.cancel() // If pulling exits, something went wrong.
 
 	ctx := p.ctx
@@ -246,20 +293,33 @@ func (p *Peer) pullSignal() {
 	}
 }
 
-func (p *Peer) emitStatus(ctx context.Context, status event.PeerStatus) error {
-	eventID, _ := uuid.New().MarshalBinary()
+func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payload) error {
+	if err := payload.ValidateAtRest(); err != nil {
+		return fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	eventID, _ := id.MarshalBinary()
 	roomID, _ := p.roomID.MarshalBinary()
 	ownerID, _ := p.userID.MarshalBinary()
-	body, err := queue.Marshal(&queue.EventJob{
+	job := queue.EventJob{
 		Id:      eventID,
 		RoomId:  roomID,
 		OwnerId: ownerID,
-		Event: &queue.EventJob_PeerStatus_{
+	}
+	switch pl := payload.Payload.(type) {
+	case event.PayloadPeerStatus:
+		job.Event = &queue.EventJob_PeerStatus_{
 			PeerStatus: &queue.EventJob_PeerStatus{
-				Status: string(status),
+				Status: string(pl.Status),
 			},
-		},
-	}, trace.ID(ctx))
+		}
+	case event.PayloadMessage:
+		job.Event = &queue.EventJob_Message_{
+			Message: &queue.EventJob_Message{
+				Text: pl.Text,
+			},
+		}
+	}
+	body, err := queue.Marshal(&job, trace.ID(ctx))
 	if err != nil {
 		return err
 	}

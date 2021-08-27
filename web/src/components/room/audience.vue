@@ -16,13 +16,15 @@ import { defineComponent } from "vue"
 import { EventType, PeerStatus, PayloadPeerStatus } from "@/api/models"
 import { drawIcon } from "jdenticon"
 import { Record } from "./record"
-import { nameFromUUID } from "./gen"
+import { nameFromUUID, identiconConfig } from "./gen"
 
 const compaction = 0.3
 const padding = 0.25
+const colorOutline = "#7f70f5"
 
 interface Peer {
   id: string
+  joinedAt: string
   row: number
   col: number
   x: number
@@ -82,44 +84,44 @@ class Canvas {
   processRecords(records: Record[]): void {
     for (const record of records) {
       if (record.event.payload.type !== EventType.PeerStatus) {
-        return
+        continue
       }
       const payload = record.event.payload.payload as PayloadPeerStatus
+      const userId = record.event.ownerId || ""
       if (
         (record.forward && payload.status === PeerStatus.Joined) ||
         (!record.forward && payload.status === PeerStatus.Left)
       ) {
-        if (this.byId[record.event.ownerId]) {
-          return
+        if (this.byId[userId]) {
+          continue
         }
-        this.byId[record.event.ownerId] = {
-          id: record.event.ownerId,
+        const p: Peer = {
+          id: userId,
+          joinedAt: record.event.createdAt || "",
           row: 0,
           col: 0,
           x: 0,
           y: 0,
           dirty: true,
-          name: nameFromUUID(record.event.ownerId),
+          name: nameFromUUID(userId),
         }
+        this.byId[userId] = p
+        this.ordered.push(p)
       }
       if (
         (record.forward && payload.status === PeerStatus.Left) ||
         (!record.forward && payload.status === PeerStatus.Joined)
       ) {
-        delete this.byId[record.event.ownerId]
+        this.allDirty = true
+        delete this.byId[userId]
+        for (let i = 0; i < this.ordered.length; i++) {
+          if (this.ordered[i].id === userId) {
+            this.ordered.splice(i, 1)
+            break
+          }
+        }
       }
     }
-
-    this.ordered = Object.values<Peer>(this.byId)
-    this.ordered.sort((a: Peer, b: Peer): number => {
-      if (a.id < b.id) {
-        return -1
-      }
-      if (a.id == b.id) {
-        return 0
-      }
-      return 1
-    })
 
     this.calcPositions()
     this.renderAudience()
@@ -165,6 +167,9 @@ class Canvas {
   }
 
   private calcPositions() {
+    if (this.ordered.length <= 0) {
+      return
+    }
     this.chess = this.ordered.length > 3
     const height = this.height / compaction
     const width = this.width
@@ -176,10 +181,14 @@ class Canvas {
     this.rows = Math.ceil(this.ordered.length / this.columns)
 
     // Second size calculation round (making sure all peers fit into the actual dimentions).
+    cellSize = Math.min(cellSize, width, height) // Cell cannot be bigger that width or height.
     cellSize = Math.min(cellSize, (width - cellSize / 2) / this.columns) // Compensating for chess-like shift.
     const actualHeight = cellSize + (this.rows - 1) * cellSize * compaction // Calculating how much height was actually taken.
     cellSize = Math.min(cellSize, (cellSize * this.height) / actualHeight) // Compensating for the actual height.
 
+    if (cellSize !== this.cellSize) {
+      this.allDirty = true
+    }
     this.cellSize = cellSize
 
     this.padding =
@@ -218,8 +227,6 @@ class Canvas {
         index++
       }
     }
-
-    this.allDirty = true
   }
 
   private renderAudience() {
@@ -270,19 +277,11 @@ class Canvas {
         peer.x - this.renderSize / 2,
         peer.y - this.renderSize / 2,
       )
-      drawIcon(this.audicence, peer.id, this.renderSize, {
-        lightness: {
-          grayscale: [0.3, 0.3],
-        },
-        saturation: {
-          grayscale: 0.5,
-        },
-        backColor: "#fff",
-      })
+      drawIcon(ctx, peer.id, this.renderSize, identiconConfig)
 
       // Outline.
       ctx.setTransform(1, 0, 0, 1, peer.x, peer.y)
-      ctx.strokeStyle = "#6600cc"
+      ctx.strokeStyle = colorOutline
       ctx.lineWidth = 3
       ctx.beginPath()
       ctx.arc(0, 0, this.renderSize / 2, 0, Math.PI * 2, true)

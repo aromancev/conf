@@ -25,6 +25,7 @@ type Type string
 
 const (
 	TypePeerStatus Type = "peer_status"
+	TypeMessage    Type = "message"
 )
 
 type Event struct {
@@ -63,6 +64,10 @@ func (p Payload) ValidateAtRest() error {
 		if _, ok := p.Payload.(PayloadPeerStatus); !ok {
 			return fmt.Errorf("invalid payload for type: %s", p.Type)
 		}
+	case TypeMessage:
+		if _, ok := p.Payload.(PayloadMessage); !ok {
+			return fmt.Errorf("invalid payload for type: %s", p.Type)
+		}
 	default:
 		return fmt.Errorf("invalid type: %s", p.Type)
 	}
@@ -80,6 +85,12 @@ func (p *Payload) UnmarshalJSON(b []byte) error {
 	switch raw.T {
 	case TypePeerStatus:
 		var pl PayloadPeerStatus
+		if err := json.Unmarshal(raw.P, &pl); err != nil {
+			return err
+		}
+		p.Payload = pl
+	case TypeMessage:
+		var pl PayloadMessage
 		if err := json.Unmarshal(raw.P, &pl); err != nil {
 			return err
 		}
@@ -107,19 +118,18 @@ func (p *Payload) UnmarshalBSON(b []byte) error {
 			return err
 		}
 		p.Payload = pl
+	case TypeMessage:
+		var pl PayloadMessage
+		if err := bson.Unmarshal(raw.P, &pl); err != nil {
+			return err
+		}
+		p.Payload = pl
 	default:
 		return ErrUnknownEvent
 	}
 	p.Type = raw.T
 	return nil
 }
-
-type PeerStatus string
-
-const (
-	PeerJoined PeerStatus = "joined"
-	PeerLeft   PeerStatus = "left"
-)
 
 type PayloadPeerStatus struct {
 	Status PeerStatus `bson:"status" json:"status"`
@@ -134,11 +144,32 @@ func (p PayloadPeerStatus) Validate() error {
 	}
 }
 
+type PeerStatus string
+
+const (
+	PeerJoined PeerStatus = "joined"
+	PeerLeft   PeerStatus = "left"
+)
+
+type PayloadMessage struct {
+	Text string `bson:"text" json:"text"`
+}
+
+func (p PayloadMessage) Validate() error {
+	return nil
+}
+
 type Lookup struct {
 	ID    uuid.UUID
 	Room  uuid.UUID
 	Limit int64
-	From  uuid.UUID
+	From  From
+	Asc   bool
+}
+
+type From struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
 }
 
 type Watcher interface {

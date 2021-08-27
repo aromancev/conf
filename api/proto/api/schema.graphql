@@ -30,18 +30,17 @@ type Talk {
     handle: String!
 }
 
-type Talks {
-    items: [Talk!]!
-    limit: Int!
-    nextFrom: String!
-}
-
 input TalkInput {
     id: String
     ownerId: String
     speakerId: String
     confaId: String
     handle: String
+}
+type Talks {
+    items: [Talk!]!
+    limit: Int!
+    nextFrom: String!
 }
 
 type Claps {
@@ -53,6 +52,49 @@ input ClapInput {
     speakerId: String
     confaId: String
     talkId: String
+}
+
+type Event {
+    id: ID!
+    ownerId: ID!
+    roomId: ID!
+    createdAt: String!
+    payload: EventPayload!
+}
+
+type EventPayload {
+    type: String!
+    payload: String!
+}
+
+input EventInput {
+    roomId: ID!
+}
+
+type EventFrom {
+    id: ID!
+    createdAt: String!
+}
+
+input EventFromInput {
+    id: ID!
+    createdAt: String!
+}
+
+input EventLimit {
+    count: Int! = 100
+    seconds: Int!
+}
+
+enum EventOrder {
+    ASC
+    DESC
+}
+
+type Events {
+    items: [Event!]!
+    limit: Int!
+    nextFrom: EventFrom!
 }
 
 type Mutation {
@@ -70,5 +112,6 @@ type Query {
 
     confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
     talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
+    events(where: EventInput! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
     aggregateClaps(where: ClapInput! = {}): Claps!
 }

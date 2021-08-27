@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "dropIndexes": "events",
+    "index": "room_id_id_created_at"
+  }
+]

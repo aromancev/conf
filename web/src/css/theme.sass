@@ -6,6 +6,8 @@
   --color-font: #001f3f
   --color-font-disabled: #00000073
   --color-outline: #00000010
+  --color-highlight-background: #7f70f5
+  --color-highlight-font: #fefefe
 
 .theme-dark
   --color-background: #444444
@@ -15,7 +17,9 @@
   --color-font: #fefefe
   --color-font-disabled: #ffffff73
   --color-outline: #ffffff10
-  
+  --color-highlight-background: #7f70f5
+  --color-highlight-font: #fefefe
+
 @mixin clickable
   user-select: none
   cursor: pointer
@@ -27,8 +31,11 @@
 @mixin shadow-m
   box-shadow: 5px 5px 10px var(--color-shadow-start), -5px -5px 10px var(--color-shadow-end)
 
-@mixin shadow-sm  
+@mixin shadow-sm
   box-shadow: 3px 3px 7px var(--color-shadow-start), -3px -3px 7px var(--color-shadow-end)
+
+@mixin shadow-xs
+  box-shadow: 2px 2px 3px var(--color-shadow-start), -2px -2px 3px var(--color-shadow-end)
 
 @mixin shadow-inset-s
   box-shadow: inset 2px 2px 5px var(--color-shadow-start), inset -2px -2px 5px var(--color-shadow-end)

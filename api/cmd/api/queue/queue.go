@@ -162,6 +162,13 @@ func saveEvent(events *event.Mongo) JobHandle {
 					Status: event.PeerStatus(pl.PeerStatus.Status),
 				},
 			}
+		case *queue.EventJob_Message_:
+			ev.Payload = event.Payload{
+				Type: event.TypeMessage,
+				Payload: event.PayloadMessage{
+					Text: pl.Message.Text,
+				},
+			}
 		default:
 			return errors.New("unknown event type")
 		}

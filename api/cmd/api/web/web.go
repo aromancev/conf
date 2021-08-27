@@ -52,7 +52,7 @@ func NewHandler(resolver *Resolver) *Handler {
 	r.HandleFunc(
 		"/rtc/ws/",
 		withWSockAuthFunc(
-			serveRTC(resolver.rooms, resolver.publicKey, resolver.upgrader, resolver.sfuPool, resolver.producer, resolver.events),
+			serveRTC(resolver.rooms, resolver.publicKey, resolver.upgrader, resolver.sfuPool, resolver.producer, resolver.eventWatcher),
 		),
 	)
 	r.HandleFunc("/dev/", playground.Handler("API playground", "/api/query"))
@@ -133,5 +133,5 @@ func (w *responseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Ev
 }
 
 const (
-	batchLimit = 100
+	batchLimit = 500
 )
