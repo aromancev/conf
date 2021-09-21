@@ -174,3 +174,13 @@ export function nameFromUUID(uuid: string): string {
   const iSecond = bytes[bytes.length - 2] % second.length
   return first[iFirst] + " " + second[iSecond]
 }
+
+export const identiconConfig = {
+  lightness: {
+    grayscale: [0.3, 0.3],
+  },
+  saturation: {
+    grayscale: 0.5,
+  },
+  backColor: "#fff",
+}

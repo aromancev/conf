@@ -59,6 +59,30 @@ type ComplexityRoot struct {
 		NextFrom func(childComplexity int) int
 	}
 
+	Event struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		OwnerID   func(childComplexity int) int
+		Payload   func(childComplexity int) int
+		RoomID    func(childComplexity int) int
+	}
+
+	EventFrom struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+	}
+
+	EventPayload struct {
+		Payload func(childComplexity int) int
+		Type    func(childComplexity int) int
+	}
+
+	Events struct {
+		Items    func(childComplexity int) int
+		Limit    func(childComplexity int) int
+		NextFrom func(childComplexity int) int
+	}
+
 	Mutation struct {
 		CreateConfa   func(childComplexity int, handle *string) int
 		CreateSession func(childComplexity int, emailToken string) int
@@ -71,6 +95,7 @@ type ComplexityRoot struct {
 	Query struct {
 		AggregateClaps func(childComplexity int, where ClapInput) int
 		Confas         func(childComplexity int, where ConfaInput, limit int, from *string) int
+		Events         func(childComplexity int, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) int
 		Talks          func(childComplexity int, where TalkInput, limit int, from *string) int
 		Token          func(childComplexity int) int
 	}
@@ -108,6 +133,7 @@ type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
 	Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error)
 	Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error)
+	Events(ctx context.Context, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error)
 	AggregateClaps(ctx context.Context, where ClapInput) (*Claps, error)
 }
 
@@ -181,6 +207,90 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Confas.NextFrom(childComplexity), true
+
+	case "Event.createdAt":
+		if e.complexity.Event.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Event.CreatedAt(childComplexity), true
+
+	case "Event.id":
+		if e.complexity.Event.ID == nil {
+			break
+		}
+
+		return e.complexity.Event.ID(childComplexity), true
+
+	case "Event.ownerId":
+		if e.complexity.Event.OwnerID == nil {
+			break
+		}
+
+		return e.complexity.Event.OwnerID(childComplexity), true
+
+	case "Event.payload":
+		if e.complexity.Event.Payload == nil {
+			break
+		}
+
+		return e.complexity.Event.Payload(childComplexity), true
+
+	case "Event.roomId":
+		if e.complexity.Event.RoomID == nil {
+			break
+		}
+
+		return e.complexity.Event.RoomID(childComplexity), true
+
+	case "EventFrom.createdAt":
+		if e.complexity.EventFrom.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.EventFrom.CreatedAt(childComplexity), true
+
+	case "EventFrom.id":
+		if e.complexity.EventFrom.ID == nil {
+			break
+		}
+
+		return e.complexity.EventFrom.ID(childComplexity), true
+
+	case "EventPayload.payload":
+		if e.complexity.EventPayload.Payload == nil {
+			break
+		}
+
+		return e.complexity.EventPayload.Payload(childComplexity), true
+
+	case "EventPayload.type":
+		if e.complexity.EventPayload.Type == nil {
+			break
+		}
+
+		return e.complexity.EventPayload.Type(childComplexity), true
+
+	case "Events.items":
+		if e.complexity.Events.Items == nil {
+			break
+		}
+
+		return e.complexity.Events.Items(childComplexity), true
+
+	case "Events.limit":
+		if e.complexity.Events.Limit == nil {
+			break
+		}
+
+		return e.complexity.Events.Limit(childComplexity), true
+
+	case "Events.nextFrom":
+		if e.complexity.Events.NextFrom == nil {
+			break
+		}
+
+		return e.complexity.Events.NextFrom(childComplexity), true
 
 	case "Mutation.createConfa":
 		if e.complexity.Mutation.CreateConfa == nil {
@@ -277,6 +387,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaInput), args["limit"].(int), args["from"].(*string)), true
+
+	case "Query.events":
+		if e.complexity.Query.Events == nil {
+			break
+		}
+
+		args, err := ec.field_Query_events_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Events(childComplexity, args["where"].(EventInput), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder)), true
 
 	case "Query.talks":
 		if e.complexity.Query.Talks == nil {
@@ -470,18 +592,17 @@ type Talk {
     handle: String!
 }
 
-type Talks {
-    items: [Talk!]!
-    limit: Int!
-    nextFrom: String!
-}
-
 input TalkInput {
     id: String
     ownerId: String
     speakerId: String
     confaId: String
     handle: String
+}
+type Talks {
+    items: [Talk!]!
+    limit: Int!
+    nextFrom: String!
 }
 
 type Claps {
@@ -493,6 +614,49 @@ input ClapInput {
     speakerId: String
     confaId: String
     talkId: String
+}
+
+type Event {
+    id: ID!
+    ownerId: ID!
+    roomId: ID!
+    createdAt: String!
+    payload: EventPayload!
+}
+
+type EventPayload {
+    type: String!
+    payload: String!
+}
+
+input EventInput {
+    roomId: ID!
+}
+
+type EventFrom {
+    id: ID!
+    createdAt: String!
+}
+
+input EventFromInput {
+    id: ID!
+    createdAt: String!
+}
+
+input EventLimit {
+    count: Int! = 100
+    seconds: Int!
+}
+
+enum EventOrder {
+    ASC
+    DESC
+}
+
+type Events {
+    items: [Event!]!
+    limit: Int!
+    nextFrom: EventFrom!
 }
 
 type Mutation {
@@ -510,6 +674,7 @@ type Query {
 
     confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
     talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
+    events(where: EventInput! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
     aggregateClaps(where: ClapInput! = {}): Claps!
 }
 `, BuiltIn: false},
@@ -688,6 +853,48 @@ func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs
 		}
 	}
 	args["from"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 EventInput
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNEventInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg0
+	var arg1 EventLimit
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg1, err = ec.unmarshalNEventLimit2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLimit(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg1
+	var arg2 *EventFromInput
+	if tmp, ok := rawArgs["from"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+		arg2, err = ec.unmarshalOEventFromInput2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventFromInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["from"] = arg2
+	var arg3 *EventOrder
+	if tmp, ok := rawArgs["order"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("order"))
+		arg3, err = ec.unmarshalOEventOrder2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventOrder(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["order"] = arg3
 	return args, nil
 }
 
@@ -1040,6 +1247,426 @@ func (ec *executionContext) _Confas_nextFrom(ctx context.Context, field graphql.
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Event_id(ctx context.Context, field graphql.CollectedField, obj *Event) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Event",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Event_ownerId(ctx context.Context, field graphql.CollectedField, obj *Event) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Event",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OwnerID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Event_roomId(ctx context.Context, field graphql.CollectedField, obj *Event) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Event",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Event_createdAt(ctx context.Context, field graphql.CollectedField, obj *Event) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Event",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Event_payload(ctx context.Context, field graphql.CollectedField, obj *Event) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Event",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payload, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*EventPayload)
+	fc.Result = res
+	return ec.marshalNEventPayload2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EventFrom_id(ctx context.Context, field graphql.CollectedField, obj *EventFrom) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EventFrom",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EventFrom_createdAt(ctx context.Context, field graphql.CollectedField, obj *EventFrom) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EventFrom",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EventPayload_type(ctx context.Context, field graphql.CollectedField, obj *EventPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EventPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EventPayload_payload(ctx context.Context, field graphql.CollectedField, obj *EventPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EventPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Payload, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Events_items(ctx context.Context, field graphql.CollectedField, obj *Events) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Events",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Items, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Event)
+	fc.Result = res
+	return ec.marshalNEvent2ᚕᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Events_limit(ctx context.Context, field graphql.CollectedField, obj *Events) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Events",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Limit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Events_nextFrom(ctx context.Context, field graphql.CollectedField, obj *Events) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Events",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextFrom, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*EventFrom)
+	fc.Result = res
+	return ec.marshalNEventFrom2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventFrom(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1411,6 +2038,48 @@ func (ec *executionContext) _Query_talks(ctx context.Context, field graphql.Coll
 	res := resTmp.(*Talks)
 	fc.Result = res
 	return ec.marshalNTalks2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalks(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_events(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_events_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Events(rctx, args["where"].(EventInput), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Events)
+	fc.Result = res
+	return ec.marshalNEvents2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEvents(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_aggregateClaps(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3070,6 +3739,86 @@ func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj in
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEventFromInput(ctx context.Context, obj interface{}) (EventFromInput, error) {
+	var it EventFromInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "createdAt":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			it.CreatedAt, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputEventInput(ctx context.Context, obj interface{}) (EventInput, error) {
+	var it EventInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "roomId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomId"))
+			it.RoomID, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputEventLimit(ctx context.Context, obj interface{}) (EventLimit, error) {
+	var it EventLimit
+	var asMap = obj.(map[string]interface{})
+
+	if _, present := asMap["count"]; !present {
+		asMap["count"] = 100
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "count":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("count"))
+			it.Count, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "seconds":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("seconds"))
+			it.Seconds, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj interface{}) (TalkInput, error) {
 	var it TalkInput
 	var asMap = obj.(map[string]interface{})
@@ -3236,6 +3985,154 @@ func (ec *executionContext) _Confas(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var eventImplementors = []string{"Event"}
+
+func (ec *executionContext) _Event(ctx context.Context, sel ast.SelectionSet, obj *Event) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eventImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Event")
+		case "id":
+			out.Values[i] = ec._Event_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ownerId":
+			out.Values[i] = ec._Event_ownerId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "roomId":
+			out.Values[i] = ec._Event_roomId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Event_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "payload":
+			out.Values[i] = ec._Event_payload(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var eventFromImplementors = []string{"EventFrom"}
+
+func (ec *executionContext) _EventFrom(ctx context.Context, sel ast.SelectionSet, obj *EventFrom) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eventFromImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EventFrom")
+		case "id":
+			out.Values[i] = ec._EventFrom_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._EventFrom_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var eventPayloadImplementors = []string{"EventPayload"}
+
+func (ec *executionContext) _EventPayload(ctx context.Context, sel ast.SelectionSet, obj *EventPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eventPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EventPayload")
+		case "type":
+			out.Values[i] = ec._EventPayload_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "payload":
+			out.Values[i] = ec._EventPayload_payload(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var eventsImplementors = []string{"Events"}
+
+func (ec *executionContext) _Events(ctx context.Context, sel ast.SelectionSet, obj *Events) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eventsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Events")
+		case "items":
+			out.Values[i] = ec._Events_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "limit":
+			out.Values[i] = ec._Events_limit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "nextFrom":
+			out.Values[i] = ec._Events_nextFrom(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -3344,6 +4241,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_talks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "events":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_events(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -3848,6 +4759,112 @@ func (ec *executionContext) marshalNConfas2ᚖgithubᚗcomᚋaromancevᚋconfa�
 	return ec._Confas(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNEvent2ᚕᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*Event) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNEvent2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEvent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEvent(ctx context.Context, sel ast.SelectionSet, v *Event) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Event(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEventFrom2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventFrom(ctx context.Context, sel ast.SelectionSet, v *EventFrom) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._EventFrom(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNEventInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventInput(ctx context.Context, v interface{}) (EventInput, error) {
+	res, err := ec.unmarshalInputEventInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNEventLimit2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLimit(ctx context.Context, v interface{}) (EventLimit, error) {
+	res, err := ec.unmarshalInputEventLimit(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNEventPayload2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventPayload(ctx context.Context, sel ast.SelectionSet, v *EventPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._EventPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEvents2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEvents(ctx context.Context, sel ast.SelectionSet, v Events) graphql.Marshaler {
+	return ec._Events(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEvents2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEvents(ctx context.Context, sel ast.SelectionSet, v *Events) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Events(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
+	res, err := graphql.UnmarshalID(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4213,6 +5230,30 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) unmarshalOEventFromInput2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventFromInput(ctx context.Context, v interface{}) (*EventFromInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputEventFromInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOEventOrder2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventOrder(ctx context.Context, v interface{}) (*EventOrder, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(EventOrder)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOEventOrder2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventOrder(ctx context.Context, sel ast.SelectionSet, v *EventOrder) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

@@ -12,7 +12,8 @@ func TestMessage(t *testing.T) {
 	t.Parallel()
 
 	expected := Message{
-		Type: TypeTrickle,
+		RequestID: "test",
+		Type:      TypeTrickle,
 		Payload: Trickle{
 			Target: 1,
 		},

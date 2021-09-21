@@ -5,6 +5,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/emails"
+	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/user"
@@ -377,6 +379,80 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 			SpeakerID: t.Speaker.String(),
 			RoomID:    t.Room.String(),
 			Handle:    t.Handle,
+		}
+	}
+	return res, nil
+}
+
+func (r *queryResolver) Events(ctx context.Context, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	if limit.Count < 0 || limit.Count > batchLimit {
+		limit.Count = batchLimit
+	}
+
+	lookup := event.Lookup{
+		Limit: int64(limit.Count),
+		Asc:   order != nil && *order == EventOrderAsc,
+	}
+	if limit.Seconds != 0 {
+		delta := time.Second * time.Duration(limit.Seconds)
+		if lookup.Asc {
+			lookup.From.CreatedAt = time.Now().UTC().Add(delta)
+		} else {
+			lookup.From.CreatedAt = time.Now().UTC().Add(-delta)
+		}
+	}
+	var err error
+	lookup.Room, err = uuid.Parse(where.RoomID)
+	if err != nil {
+		return nil, nil
+	}
+	if from != nil {
+		id, err := uuid.Parse(from.ID)
+		if err != nil {
+			return nil, newError(CodeBadRequest, "Invalid from ID")
+		}
+		created, err := time.Parse(time.RFC3339, from.CreatedAt)
+		if err != nil {
+			return nil, newError(CodeBadRequest, "Invalid from CreatedAt")
+		}
+		lookup.From = event.From{
+			ID:        id,
+			CreatedAt: created,
+		}
+	}
+
+	events, err := r.events.Fetch(ctx, lookup)
+	if err != nil {
+		return nil, newInternalError()
+	}
+	lastEvent := events[len(events)-1]
+	res := &Events{
+		Items: make([]*Event, len(events)),
+		Limit: limit.Count,
+		NextFrom: &EventFrom{
+			ID:        lastEvent.ID.String(),
+			CreatedAt: lastEvent.CreatedAt.Format(time.RFC3339),
+		},
+	}
+	for i, e := range events {
+		payload, err := json.Marshal(e.Payload.Payload)
+		if err != nil {
+			return nil, newInternalError()
+		}
+		res.Items[i] = &Event{
+			ID:        e.ID.String(),
+			OwnerID:   e.Owner.String(),
+			RoomID:    e.Room.String(),
+			CreatedAt: e.CreatedAt.String(),
+			Payload: &EventPayload{
+				Type:    string(e.Payload.Type),
+				Payload: string(payload),
+			},
 		}
 	}
 	return res, nil

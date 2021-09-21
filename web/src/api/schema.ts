@@ -114,6 +114,53 @@ export interface createConfa {
 // This file was automatically generated and should not be edited.
 
 // ====================================================
+// GraphQL query operation: events
+// ====================================================
+
+export interface events_events_items_payload {
+  __typename: "EventPayload";
+  type: string;
+  payload: string;
+}
+
+export interface events_events_items {
+  __typename: "Event";
+  id: string;
+  ownerId: string;
+  roomId: string;
+  createdAt: string;
+  payload: events_events_items_payload;
+}
+
+export interface events_events_nextFrom {
+  __typename: "EventFrom";
+  id: string;
+  createdAt: string;
+}
+
+export interface events_events {
+  __typename: "Events";
+  items: events_events_items[];
+  nextFrom: events_events_nextFrom;
+}
+
+export interface events {
+  events: events_events;
+}
+
+export interface eventsVariables {
+  where: EventInput;
+  from?: EventFromInput | null;
+  limit: EventLimit;
+  order?: EventOrder | null;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
 // GraphQL query operation: talks
 // ====================================================
 
@@ -193,10 +240,29 @@ export interface startTalkVariables {
 // START Enums and Input Objects
 //==============================================================
 
+export enum EventOrder {
+  ASC = "ASC",
+  DESC = "DESC",
+}
+
 export interface ConfaInput {
   id?: string | null;
   ownerId?: string | null;
   handle?: string | null;
+}
+
+export interface EventFromInput {
+  id: string;
+  createdAt: string;
+}
+
+export interface EventInput {
+  roomId: string;
+}
+
+export interface EventLimit {
+  count: number;
+  seconds: number;
 }
 
 export interface TalkInput {

@@ -88,7 +88,8 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 
 				err = wsConn.WriteJSON(msg)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed send message to websocket.")
+					log.Ctx(ctx).Err(err).Msg("Failed send message to websocket. Closing.")
+					cancel()
 				}
 			}
 		}()

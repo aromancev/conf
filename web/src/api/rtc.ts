@@ -7,11 +7,13 @@ enum Type {
   Answer = "answer",
   Trickle = "trickle",
   Event = "event",
+  EventAck = "event_ack",
 }
 
 interface Message {
+  requestId?: string
   type: Type
-  payload: Join | Answer | Offer | Trickle | Event
+  payload: Join | Answer | Offer | Trickle | Event | EventAck
 }
 
 interface Join {
@@ -28,6 +30,10 @@ interface Offer {
   description: RTCSessionDescriptionInit
 }
 
+interface EventAck {
+  eventId: string
+}
+
 export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
@@ -36,6 +42,8 @@ export class RTC {
   private _onopen?: () => void
   private socket: WebSocket
   private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
+  private requestId = 0
+  private pendingEvents = {} as { [key: string]: (ack: EventAck) => void }
 
   constructor(roomId: string, token: string) {
     let protocol = "wss"
@@ -73,6 +81,14 @@ export class RTC {
         case Type.Event:
           if (this.onevent) {
             this.onevent(resp.payload as Event)
+          }
+          break
+        case Type.EventAck:
+          if (!resp.requestId) {
+            return
+          }
+          if (resp.requestId in this.pendingEvents) {
+            this.pendingEvents[resp.requestId](resp.payload as EventAck)
           }
           break
       }
@@ -134,16 +150,30 @@ export class RTC {
     })
   }
 
+  event(event: Event): Promise<string> {
+    this.requestId++
+    const requestId = this.requestId
+
+    return new Promise<string>((resolve) => {
+      this.pendingEvents[requestId] = (ack: EventAck) => {
+        resolve(ack.eventId)
+      }
+
+      this.send({
+        requestId: requestId.toString(),
+        type: Type.Event,
+        payload: event,
+      })
+    })
+  }
+
   close(): void {
     this.socket.close()
   }
 
   private send(req: Message): void {
     this.socket.send(
-      JSON.stringify({
-        type: req.type,
-        payload: req.payload,
-      }),
+      JSON.stringify(req),
     )
   }
 }

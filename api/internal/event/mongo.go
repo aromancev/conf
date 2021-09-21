@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	batchLimit = 100
+	batchLimit = 500
 )
 
 type MongoCursor struct {
@@ -99,9 +99,13 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Event, error) {
 	switch {
 	case lookup.ID != uuid.Nil:
 		filter["_id"] = lookup.ID
-	case lookup.From != uuid.Nil:
+	case lookup.From.ID != uuid.Nil:
 		filter["_id"] = bson.M{
-			"$gt": lookup.From,
+			"$gt": lookup.From.ID,
+		}
+	case lookup.From.CreatedAt != time.Time{}:
+		filter["createdAt"] = bson.M{
+			"$gt": lookup.From.CreatedAt,
 		}
 	}
 	if lookup.Room != uuid.Nil {
@@ -110,12 +114,16 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Event, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
+	order := -1
+	if lookup.Asc {
+		order = 1
+	}
 
 	cur, err := m.db.Collection("events").Find(
 		ctx,
 		filter,
 		&options.FindOptions{
-			Sort:  bson.M{"_id": 1},
+			Sort:  bson.D{{Key: "createdAt", Value: order}, {Key: "_id", Value: order}},
 			Limit: &lookup.Limit,
 		},
 	)
