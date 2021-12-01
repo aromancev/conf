@@ -1,5 +1,4 @@
 import { Event } from "@/api/models"
-import { RTC } from "@/api"
 
 export interface Record {
   event: Event

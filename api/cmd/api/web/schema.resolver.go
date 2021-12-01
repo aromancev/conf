@@ -78,6 +78,7 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 		},
 	})
 	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create session.")
 		return nil, newInternalError()
 	}
 
@@ -157,7 +158,7 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 	case errors.Is(err, talk.ErrDuplicateEntry):
 		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("failed to create talk.")
+		log.Ctx(ctx).Err(err).Msg("Failed to create talk.")
 		return nil, newInternalError()
 	}
 
@@ -192,6 +193,7 @@ func (r *mutationResolver) StartTalk(ctx context.Context, talkID string) (string
 	case errors.Is(err, talk.ErrPermissionDenied):
 		return "", newError(CodePermissionDenied, "Only the owner can start talks.")
 	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to start talk.")
 		return "", newInternalError()
 	}
 
@@ -216,7 +218,7 @@ func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value 
 	case errors.Is(err, clap.ErrValidation):
 		return "", newError(CodeBadRequest, err.Error())
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to create clap.")
+		log.Ctx(ctx).Err(err).Msg("Failed to update clap.")
 		return "", newInternalError()
 	}
 
@@ -428,6 +430,7 @@ func (r *queryResolver) Events(ctx context.Context, where EventInput, limit Even
 
 	events, err := r.events.Fetch(ctx, lookup)
 	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch events.")
 		return nil, newInternalError()
 	}
 	lastEvent := events[len(events)-1]
@@ -442,6 +445,7 @@ func (r *queryResolver) Events(ctx context.Context, where EventInput, limit Even
 	for i, e := range events {
 		payload, err := json.Marshal(e.Payload.Payload)
 		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to marshal event.")
 			return nil, newInternalError()
 		}
 		res.Items[i] = &Event{
@@ -486,7 +490,7 @@ func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (*C
 	}
 	res, err := r.claps.Aggregate(ctx, lookup, claims.UserID)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("failed to aggregate claps.")
+		log.Ctx(ctx).Err(err).Msg("Failed to aggregate claps.")
 		return nil, newInternalError()
 	}
 	claps := &Claps{res.Value, res.UserValue}

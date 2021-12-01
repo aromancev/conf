@@ -38,8 +38,8 @@ func TestEvent(t *testing.T) {
 			Owner: uuid.New(),
 			Room:  uuid.New(),
 			Payload: Payload{
-				Type: TypePeerStatus,
-				Payload: PayloadPeerStatus{
+				Type: TypePeerState,
+				Payload: PayloadPeerState{
 					Status: PeerJoined,
 				},
 			},
@@ -56,8 +56,8 @@ func TestEvent(t *testing.T) {
 			Owner: uuid.New(),
 			Room:  uuid.New(),
 			Payload: Payload{
-				Type: TypePeerStatus,
-				Payload: PayloadPeerStatus{
+				Type: TypePeerState,
+				Payload: PayloadPeerState{
 					Status: PeerJoined,
 				},
 			},

@@ -1,6 +1,12 @@
 import { gql } from "@apollo/client/core"
 import { Client } from "./api"
-import { EventInput, EventLimit, EventOrder, events, eventsVariables } from "./schema"
+import {
+  EventInput,
+  EventLimit,
+  EventOrder,
+  events,
+  eventsVariables,
+} from "./schema"
 import { Event, EventPayload, EventType } from "./models"
 
 interface From {
@@ -24,7 +30,12 @@ class EventIterator {
   async next(limit?: EventLimit): Promise<Event[]> {
     const resp = await this.api.query<events, eventsVariables>({
       query: gql`
-        query events($where: EventInput!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {
+        query events(
+          $where: EventInput!
+          $from: EventFromInput
+          $limit: EventLimit!
+          $order: EventOrder
+        ) {
           events(where: $where, limit: $limit, from: $from, order: $order) {
             items {
               id
@@ -62,7 +73,7 @@ class EventIterator {
         payload: {
           type: item.payload.type as EventType,
           payload: JSON.parse(item.payload.payload) as EventPayload,
-        }
+        },
       })
     }
     events.sort((a: Event, b: Event): number => {

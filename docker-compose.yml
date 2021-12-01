@@ -122,6 +122,7 @@ services:
 
   email:
     image: kbedel/fake-smtp-server
+    profiles: [ "email" ]
     command: fake-smtp-server -s 1025 -h 80
     networks:
       - confa

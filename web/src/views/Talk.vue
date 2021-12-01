@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="row">
-      <Room :roomId="talk?.roomId" />
+      <LiveRoom :roomId="talk?.roomId" />
 
       <InternalError
         v-if="modal === Dialog.Error"
@@ -14,7 +14,7 @@
 <script lang="ts">
 import InternalError from "@/components/modals/InternalError.vue"
 import { defineComponent } from "vue"
-import Room from "@/views/room/Room.vue"
+import LiveRoom from "@/views/room/LiveRoom.vue"
 import { confa, Talk, talk } from "@/api"
 
 enum Dialog {
@@ -25,7 +25,7 @@ enum Dialog {
 export default defineComponent({
   name: "Talk",
   components: {
-    Room,
+    LiveRoom,
     InternalError,
   },
 

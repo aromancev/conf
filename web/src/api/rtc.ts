@@ -1,5 +1,7 @@
 import { Trickle } from "ion-sdk-js"
-import { Event } from "./models/event"
+import { Event, Track } from "./models/event"
+
+const requestTimeout = 10 * 1000
 
 enum Type {
   Join = "join",
@@ -8,12 +10,13 @@ enum Type {
   Trickle = "trickle",
   Event = "event",
   EventAck = "event_ack",
+  State = "state",
 }
 
 interface Message {
   requestId?: string
   type: Type
-  payload: Join | Answer | Offer | Trickle | Event | EventAck
+  payload: Join | Answer | Offer | Trickle | Event | EventAck | State
 }
 
 interface Join {
@@ -34,6 +37,10 @@ interface EventAck {
   eventId: string
 }
 
+export interface State {
+  tracks: { [key: string]: Track }
+}
+
 export class RTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
@@ -43,7 +50,7 @@ export class RTC {
   private socket: WebSocket
   private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
   private requestId = 0
-  private pendingEvents = {} as { [key: string]: (ack: EventAck) => void }
+  private pendingRequests = {} as { [key: string]: (msg: Message) => void }
 
   constructor(roomId: string, token: string) {
     let protocol = "wss"
@@ -84,12 +91,8 @@ export class RTC {
           }
           break
         case Type.EventAck:
-          if (!resp.requestId) {
-            return
-          }
-          if (resp.requestId in this.pendingEvents) {
-            this.pendingEvents[resp.requestId](resp.payload as EventAck)
-          }
+        case Type.State:
+          this.closePending(resp)
           break
       }
     }
@@ -151,18 +154,29 @@ export class RTC {
   }
 
   event(event: Event): Promise<string> {
-    this.requestId++
-    const requestId = this.requestId
-
-    return new Promise<string>((resolve) => {
-      this.pendingEvents[requestId] = (ack: EventAck) => {
-        resolve(ack.eventId)
-      }
+    return new Promise<string>((resolve, reject) => {
+      const id = this.openPending((msg: Message) => {
+        resolve((msg.payload as EventAck).eventId)
+      }, reject)
 
       this.send({
-        requestId: requestId.toString(),
+        requestId: id,
         type: Type.Event,
         payload: event,
+      })
+    })
+  }
+
+  state(state: State): Promise<State> {
+    return new Promise<State>((resolve, reject) => {
+      const id = this.openPending((msg: Message) => {
+        resolve(msg.payload as State)
+      }, reject)
+
+      this.send({
+        requestId: id,
+        type: Type.State,
+        payload: state,
       })
     })
   }
@@ -172,8 +186,34 @@ export class RTC {
   }
 
   private send(req: Message): void {
-    this.socket.send(
-      JSON.stringify(req),
-    )
+    this.socket.send(JSON.stringify(req))
+  }
+
+  private openPending(
+    resolve: (msg: Message) => void,
+    reject: (reason: string) => void,
+  ): string {
+    this.requestId++
+    const pendingId = this.requestId
+
+    this.pendingRequests[pendingId] = resolve
+
+    setTimeout(() => {
+      if (pendingId in this.pendingRequests) {
+        delete this.pendingRequests[pendingId]
+        reject("Message to RTC timed out.")
+      }
+    }, requestTimeout)
+    return pendingId.toString()
+  }
+
+  private closePending(msg: Message): void {
+    if (!msg.requestId) {
+      return
+    }
+    if (msg.requestId in this.pendingRequests) {
+      this.pendingRequests[msg.requestId](msg)
+      delete this.pendingRequests[msg.requestId]
+    }
   }
 }

@@ -24,8 +24,8 @@ var (
 type Type string
 
 const (
-	TypePeerStatus Type = "peer_status"
-	TypeMessage    Type = "message"
+	TypePeerState Type = "peer_state"
+	TypeMessage   Type = "message"
 )
 
 type Event struct {
@@ -46,7 +46,7 @@ func (e Event) ValidateAtRest() error {
 	if e.Room == uuid.Nil {
 		return errors.New("room should not be empty")
 	}
-	return e.Payload.ValidateAtRest()
+	return e.Payload.Validate()
 }
 
 type Validatable interface {
@@ -58,10 +58,10 @@ type Payload struct {
 	Payload Validatable `bson:"payload" json:"payload"`
 }
 
-func (p Payload) ValidateAtRest() error {
+func (p Payload) Validate() error {
 	switch p.Type {
-	case TypePeerStatus:
-		if _, ok := p.Payload.(PayloadPeerStatus); !ok {
+	case TypePeerState:
+		if _, ok := p.Payload.(PayloadPeerState); !ok {
 			return fmt.Errorf("invalid payload for type: %s", p.Type)
 		}
 	case TypeMessage:
@@ -83,8 +83,8 @@ func (p *Payload) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	switch raw.T {
-	case TypePeerStatus:
-		var pl PayloadPeerStatus
+	case TypePeerState:
+		var pl PayloadPeerState
 		if err := json.Unmarshal(raw.P, &pl); err != nil {
 			return err
 		}
@@ -112,8 +112,8 @@ func (p *Payload) UnmarshalBSON(b []byte) error {
 		return err
 	}
 	switch raw.T {
-	case TypePeerStatus:
-		var pl PayloadPeerStatus
+	case TypePeerState:
+		var pl PayloadPeerState
 		if err := bson.Unmarshal(raw.P, &pl); err != nil {
 			return err
 		}
@@ -125,19 +125,31 @@ func (p *Payload) UnmarshalBSON(b []byte) error {
 		}
 		p.Payload = pl
 	default:
-		return ErrUnknownEvent
+		return fmt.Errorf("%w: %s", ErrUnknownEvent, raw.T)
 	}
 	p.Type = raw.T
 	return nil
 }
 
-type PayloadPeerStatus struct {
-	Status PeerStatus `bson:"status" json:"status"`
+type PayloadPeerState struct {
+	Status PeerStatus       `bson:"status,omitempty" json:"status,omitempty"`
+	Tracks map[string]Track `bson:"tracks,omitempty" json:"tracks,omitempty"`
 }
 
-func (p PayloadPeerStatus) Validate() error {
+func (p PayloadPeerState) Validate() error {
+	if len(p.Tracks) > 3 {
+		return errors.New("no more than 3 tracks allowed")
+	}
+	for id, t := range p.Tracks {
+		if id == "" {
+			return fmt.Errorf("invalid track: id cannot be zero")
+		}
+		if err := t.Validate(); err != nil {
+			return fmt.Errorf("invalid track: %w", err)
+		}
+	}
 	switch p.Status {
-	case PeerJoined, PeerLeft:
+	case "", PeerJoined, PeerLeft:
 		return nil
 	default:
 		return errors.New("unknown peer status")
@@ -149,6 +161,28 @@ type PeerStatus string
 const (
 	PeerJoined PeerStatus = "joined"
 	PeerLeft   PeerStatus = "left"
+)
+
+type Track struct {
+	Hint string `bson:"hint,omitempty" json:"hint,omitempty"`
+}
+
+func (t Track) Validate() error {
+	switch t.Hint {
+	case HintCamera, HintScreen, HintUserAudio, HintDeviceAudio:
+	default:
+		return errors.New("invalid hint")
+	}
+	return nil
+}
+
+type TrackHint string
+
+const (
+	HintCamera      = "camera"
+	HintScreen      = "screen"
+	HintUserAudio   = "user_audio"
+	HintDeviceAudio = "device_audio"
 )
 
 type PayloadMessage struct {
