@@ -1,23 +1,64 @@
 <template>
-  <div class="container">
-    <div class="row">
+  <div class="content">
+    <div class="room">
+      <div class="video-content">
+        <div class="videos">
+          <div class="screen video-container">
+            <video
+              v-if="remoteView.screen"
+              class="screen-video"
+              :srcObject="remoteView.screen"
+              autoplay
+              muted
+            />
+            <div v-else class="video-off">
+              <div class="video-off-icon material-icons">
+                desktop_access_disabled
+              </div>
+            </div>
+          </div>
+          <div class="camera video-container">
+            <video
+              v-if="remoteView.screen"
+              class="camera-video"
+              :srcObject="localCamera"
+              autoplay
+              muted
+            />
+            <div v-else class="video-off">
+              <div class="video-off-icon material-icons">videocam_off</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <audience ref="audience" />
+    </div>
+    <div class="controls">
+      <div
+        v-if="sidePanel !== SidePanel.None"
+        class="ctrl-btn btn-switch px-3 py-3 material-icons"
+        @click="switchSidePanel(SidePanel.None)"
+      >
+        close
+      </div>
+      <div
+        class="ctrl-btn btn-switch px-3 py-3 material-icons"
+        :class="{ pressed: sidePanel === SidePanel.Chat }"
+        @click="switchSidePanel(SidePanel.Chat)"
+      >
+        chat
+      </div>
+    </div>
+    <div class="side-panel" :class="{ opened: sidePanel !== SidePanel.None }">
       <messages ref="messages" :userId="userId" :emitter="rtc" />
-
-      <div class="btn px-3 py-1" @click="shareCamera">Share camera</div>
-      <div class="btn px-3 py-1" @click="shareScreen">Share screen</div>
-      <div class="btn px-3 py-1" @click="unshareCamera">UNShare camera</div>
-      <div class="btn px-3 py-1" @click="unshareScreen">UNShare screen</div>
-
-      <video :srcObject="remoteView.screen" autoplay muted />
-      <video :srcObject="remoteView.camera" autoplay muted />
-
-      <InternalError
-        v-if="modal === Dialog.Error"
-        v-on:click="modal = Dialog.None"
-      />
     </div>
   </div>
+
+  <InternalError
+    v-if="modal === Dialog.Error"
+    v-on:click="modal = Dialog.None"
+  />
 </template>
 
 <script lang="ts">
@@ -36,9 +77,18 @@ enum Dialog {
   Error = "error",
 }
 
+enum SidePanel {
+  None = "",
+  Chat = "chat",
+}
+
 interface RemoteView {
   camera?: RemoteStream
   screen?: RemoteStream
+}
+
+interface Resizer {
+  resize(): void
 }
 
 function trackId(s: MediaStream): string {
@@ -63,6 +113,7 @@ export default defineComponent({
   data() {
     return {
       Dialog,
+      SidePanel,
       modal: Dialog.None,
       rtc: null as RTC | null,
       sfu: null as Client | null,
@@ -74,7 +125,18 @@ export default defineComponent({
       tracksById: {} as { [key: string]: Track },
       remoteCamera: null as RemoteStream | null,
       state: { tracks: {} } as State,
+      sidePanel: SidePanel.None,
     }
+  },
+
+  async mounted() {
+    this.localCamera = await LocalStream.getUserMedia({
+      codec: "vp8",
+      resolution: "vga",
+      simulcast: true,
+      video: true,
+      audio: false,
+    })
   },
 
   computed: {
@@ -144,6 +206,15 @@ export default defineComponent({
   },
 
   methods: {
+    switchSidePanel(panel: SidePanel) {
+      if (this.sidePanel === panel) {
+        panel = SidePanel.None
+      }
+      this.sidePanel = panel
+      this.$nextTick(() => {
+        ;(this.$refs.audience as Resizer).resize()
+      })
+    },
     async shareCamera() {
       if (!this.sfu || this.localCameraLoading) {
         return
@@ -233,25 +304,114 @@ export default defineComponent({
 <style scoped lang="sass">
 @use '@/css/theme'
 
-.audience
-  @include theme.shadow-inset-s
+.content
+  width: 100%
+  height: 100%
 
+  display: flex
+  flex-direction: row
+  padding: 20px
+
+.room
+  flex: 1
+  display: flex
+  flex-direction: column
+
+.videos
+  display: flex
+  flex-direction: row
+  justify-content: center
+  align-items: flex-start
+  max-width: 1000px
+  width: 100%
+
+.video-container
+  overflow: hidden
+  position: relative
+
+.video-content
+  display: flex
+  flex-direction: row
+  justify-content: center
+
+video
   position: absolute
-  right: 0
-  width: 200px
-  height: 300px
+  left: 50%
+  top: 50%
+  transform: translate(-50%, -50%)
 
-.messages
-  @include theme.shadow-inset-s
-
+.video-off
+  top: 0
+  left: 0
   position: absolute
-  right: 0
-  margin-top: 300px
-  width: 200px
-  height: 300px
+  width: 100%
+  height: 100%
+  background: var(--color-background)
+  cursor: default
+  display: flex
+  align-items: center
+  justify-content: center
+  user-select: none
+  -webkit-tap-highlight-color: rgba(0,0,0,0)
+
+.video-off-icon
+  font-size: 50px
+  color: var(--color-highlight-background)
+
+.screen-video
+  max-height: 100%
+  max-width: 100%
+  width: 100%
+
+.camera-video
+  height: 100%
+
+.screen
+  @include theme.shadow-l
+
+  flex: 3
+  border-radius: 4px
+  background: black
+  margin: 10px
+  padding-top: 50%
 
 .camera
-  // width: 500px
-  // height: 500px
-  border: 1px solid red
+  @include theme.shadow-m
+
+  flex: 1
+  border-radius: 4px
+  background: black
+  margin: 10px
+  padding-top: 20%
+
+.audience
+  flex: 1
+  border-radius: 4px
+  margin: 10px
+
+.controls
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: flex-end
+  width: 60px
+  margin: 30px
+
+.ctrl-btn
+  border-radius: 50%
+  margin: 10px
+
+.side-panel
+  display: none
+  flex-direction: column
+  width: 450px
+  &.opened
+    display: flex
+
+.messages
+  @include theme.shadow-inset-m
+
+  border-radius: 4px
+  flex: 1
+  margin: 10px
 </style>

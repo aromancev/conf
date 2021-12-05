@@ -40,9 +40,8 @@
 import { defineComponent, PropType } from "vue"
 import { EventType, PayloadMessage } from "@/api/models"
 import { Record } from "./record"
-import { nameFromUUID, identiconConfig } from "./gen"
+import { genName, genAvatar } from "@/platform/gen"
 import { Emitter } from "./rtc"
-import { toSvg } from "jdenticon"
 
 const defaultInputHeight = "1px"
 const maxMessages = 100
@@ -122,8 +121,8 @@ export default defineComponent({
         const msg: Message = {
           id: r.event.id || "",
           from: r.event.ownerId || "",
-          fromName: nameFromUUID(r.event.ownerId || ""),
-          avatar: toSvg(r.event.ownerId || "", 32, identiconConfig),
+          fromName: genName(r.event.ownerId || ""),
+          avatar: genAvatar(r.event.ownerId || "", 32 + 1),
           text: payload.text,
           isSent: true,
           isFirstFrom: isFirstFrom,

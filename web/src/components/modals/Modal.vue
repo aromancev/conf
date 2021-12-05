@@ -74,7 +74,7 @@ td
   @include theme.clickable
   font-weight: 500
   &:hover
-    background-color: var(--color-outline)
+    background-color: var(--color-highlight-background)
 
 td + td
   border-left: 1px solid var(--color-outline)

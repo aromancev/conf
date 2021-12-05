@@ -1,26 +1,31 @@
 <template>
   <div
     class="audience"
-    v-on:mousemove="select"
-    v-on:onmouseleave="deselect"
+    @mousemove="select"
+    @mouseleave="deselect"
     v-bind:style="{ cursor: cursor }"
+    @click="test"
   >
-    <canvas ref="audience"></canvas>
-    <canvas class="shade" ref="shade"></canvas>
-    <div v-if="selected" class="badge">{{ selected.name }}</div>
+    <div class="selected">{{ selected?.name || "" }}</div>
+    <div class="divider"></div>
+    <div class="canvas">
+      <canvas ref="audience"></canvas>
+      <canvas class="shade" ref="shade"></canvas>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue"
 import { EventType, PeerStatus, PayloadPeerState } from "@/api/models"
-import { drawIcon } from "jdenticon"
 import { Record } from "./record"
-import { nameFromUUID, identiconConfig } from "./gen"
+import { genName, drawAvatar } from "@/platform/gen"
 
 const compaction = 0.3
 const padding = 0.25
+const offsetY = 20
 const colorOutline = "#7f70f5"
+const maxSize = 300
 
 interface Peer {
   id: string
@@ -79,6 +84,30 @@ class Canvas {
     this.shift = 0
 
     this.allDirty = true
+
+    for (let i = 0; i < 100; i++) {
+      const userId = Math.random().toString()
+      const p: Peer = {
+        id: userId,
+        joinedAt: "",
+        row: 0,
+        col: 0,
+        x: 0,
+        y: 0,
+        dirty: true,
+        name: genName(userId),
+      }
+      this.byId[userId] = p
+      this.ordered.push(p)
+    }
+  }
+
+  resize(width: number, height: number): void {
+    this.width = width
+    this.height = height
+    this.calcPositions()
+    this.renderAudience()
+    this.renderShade()
   }
 
   processRecords(records: Record[]): void {
@@ -107,7 +136,7 @@ class Canvas {
           x: 0,
           y: 0,
           dirty: true,
-          name: nameFromUUID(userId),
+          name: genName(userId),
         }
         this.byId[userId] = p
         this.ordered.push(p)
@@ -174,11 +203,12 @@ class Canvas {
     if (this.ordered.length <= 0) {
       return
     }
-    this.chess = this.ordered.length > 3
-    const height = this.height / compaction
+    const height = this.height / compaction - offsetY
     const width = this.width
     // First size calculation round (approximating).
     let cellSize = Math.sqrt((height * width) / this.ordered.length)
+    cellSize = Math.min(cellSize, maxSize) // Limiting the size of a cell.
+    this.chess = Math.ceil(width / cellSize) < this.ordered.length
     this.columns = this.chess
       ? Math.ceil(width / cellSize)
       : this.ordered.length
@@ -228,6 +258,7 @@ class Canvas {
         peer.y = row * this.cellSize // Base shift
         peer.y *= compaction // Compensate for compaction.
         peer.y += this.cellSize / 2 // Shift to the center of the cell.
+        peer.y += offsetY
         index++
       }
     }
@@ -248,49 +279,7 @@ class Canvas {
       peer.dirty = false
 
       ctx.save()
-
-      // Clip overlapping peers.
-      const overlapping = [
-        this.bottomLeft(peer.row, peer.col),
-        this.bottomMiddle(peer.row, peer.col),
-        this.bottomRight(peer.row, peer.col),
-      ]
-      for (const p of overlapping) {
-        if (!p) {
-          continue
-        }
-        ctx.beginPath()
-        ctx.rect(0, 0, this.width, this.height)
-        ctx.arc(p.x, p.y, this.renderSize / 2, 0, Math.PI * 2, true)
-        ctx.closePath()
-        ctx.clip("evenodd")
-      }
-
-      // Clip outer circle boundary.
-      ctx.beginPath()
-      ctx.arc(peer.x, peer.y, this.renderSize / 2, 0, Math.PI * 2, true)
-      ctx.closePath()
-      ctx.clip("nonzero")
-
-      // Icon.
-      ctx.setTransform(
-        1,
-        0,
-        0,
-        1,
-        peer.x - this.renderSize / 2,
-        peer.y - this.renderSize / 2,
-      )
-      drawIcon(ctx, peer.id, this.renderSize, identiconConfig)
-
-      // Outline.
-      ctx.setTransform(1, 0, 0, 1, peer.x, peer.y)
-      ctx.strokeStyle = colorOutline
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(0, 0, this.renderSize / 2, 0, Math.PI * 2, true)
-      ctx.stroke()
-
+      this.renderPeer(ctx, peer)
       ctx.restore()
     }
   }
@@ -302,43 +291,56 @@ class Canvas {
     ctx.clearRect(0, 0, this.width, this.height)
 
     if (this.selected) {
-      // Fill everything.
-      ctx.fillStyle = "black"
-      ctx.fillRect(0, 0, this.width, this.height)
-
-      // Cut a circle whole.
-      ctx.globalCompositeOperation = "destination-out"
-      ctx.beginPath()
-      ctx.arc(
-        this.selected.x,
-        this.selected.y,
-        this.renderSize / 2,
-        0,
-        Math.PI * 2,
-        true,
-      )
-      ctx.closePath()
-      ctx.fill()
-
-      // Draw neighbors on top.
-      ctx.globalCompositeOperation = "source-over"
-      const overlapping = [
-        this.bottomLeft(this.selected.row, this.selected.col),
-        this.bottomMiddle(this.selected.row, this.selected.col),
-        this.bottomRight(this.selected.row, this.selected.col),
-      ]
-      for (const p of overlapping) {
-        if (!p) {
-          continue
-        }
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, this.renderSize / 2, 0, Math.PI * 2, true)
-        ctx.closePath()
-        ctx.fill()
-      }
+      this.renderPeer(ctx, this.selected, 20, 1.2, 0.05)
     }
 
     ctx.restore()
+  }
+
+  private renderPeer(
+    ctx: CanvasRenderingContext2D,
+    peer: Peer,
+    border = 8,
+    scale = 1,
+    shift = 0,
+  ): void {
+    const renderSize = this.renderSize * scale
+    const x = peer.x
+    const y = peer.y - renderSize * shift
+    // Clip overlapping peers.
+    const overlapping = [
+      this.bottomLeft(peer.row, peer.col),
+      this.bottomMiddle(peer.row, peer.col),
+      this.bottomRight(peer.row, peer.col),
+    ]
+    for (const p of overlapping) {
+      if (!p) {
+        continue
+      }
+      ctx.beginPath()
+      ctx.rect(0, 0, this.width, this.height)
+      ctx.arc(p.x, p.y, this.renderSize / 2, 0, Math.PI * 2, true)
+      ctx.closePath()
+      ctx.clip("evenodd")
+    }
+
+    // Clip outer circle boundary.
+    ctx.beginPath()
+    ctx.arc(x, y, renderSize / 2, 0, Math.PI * 2, true)
+    ctx.closePath()
+    ctx.clip("nonzero")
+
+    // Icon.
+    ctx.setTransform(1, 0, 0, 1, x - renderSize / 2, y - renderSize / 2)
+    drawAvatar(ctx, peer.id, renderSize + 1)
+
+    // Outline.
+    ctx.setTransform(1, 0, 0, 1, x, y)
+    ctx.strokeStyle = colorOutline
+    ctx.lineWidth = border
+    ctx.beginPath()
+    ctx.arc(0, 0, renderSize / 2, 0, Math.PI * 2, true)
+    ctx.stroke()
   }
 
   private at(row: number, col: number): Peer | null {
@@ -391,16 +393,19 @@ export default defineComponent({
       canvas: null as Canvas | null,
       cursor: "default",
       selected: null as Peer | null,
+      resizeInterval: 0,
     }
   },
 
   async mounted() {
+    const dpr = window.devicePixelRatio || 1
+
     const aud = this.$refs.audience as HTMLCanvasElement
-    aud.width = aud.offsetWidth
-    aud.height = aud.offsetHeight
+    aud.width = aud.offsetWidth * dpr
+    aud.height = aud.offsetHeight * dpr
     const shade = this.$refs.shade as HTMLCanvasElement
-    shade.width = shade.offsetWidth
-    shade.height = shade.offsetHeight
+    shade.width = shade.offsetWidth * dpr
+    shade.height = shade.offsetHeight * dpr
 
     const audCtx = aud.getContext("2d")
     const shadeCtx = shade.getContext("2d")
@@ -409,9 +414,33 @@ export default defineComponent({
     }
 
     this.canvas = new Canvas(audCtx, shadeCtx, aud.width, aud.height)
+
+    clearInterval(this.resizeInterval)
+    this.resizeInterval = setInterval(this.resize.bind(this), 1000)
+  },
+
+  unmounted() {
+    clearInterval(this.resizeInterval)
   },
 
   methods: {
+    resize() {
+      const dpr = window.devicePixelRatio || 1
+
+      const aud = this.$refs.audience as HTMLCanvasElement
+      const shade = this.$refs.shade as HTMLCanvasElement
+      if (
+        aud.width === aud.offsetWidth * dpr &&
+        aud.height === aud.offsetHeight * dpr
+      ) {
+        return
+      }
+      aud.width = aud.offsetWidth * dpr
+      aud.height = aud.offsetHeight * dpr
+      shade.width = shade.offsetWidth * dpr
+      shade.height = shade.offsetHeight * dpr
+      this.canvas?.resize(aud.width, aud.height)
+    },
     processRecords(records: Record[]) {
       this.canvas?.processRecords(records)
     },
@@ -419,17 +448,19 @@ export default defineComponent({
       if (!this.canvas) {
         return
       }
+      const dpr = window.devicePixelRatio || 1
       const rect = (ev.target as HTMLElement).getBoundingClientRect()
       const peer = this.canvas.hover(
-        ev.clientX - rect.left,
-        ev.clientY - rect.top,
+        (ev.clientX - rect.left) * dpr,
+        (ev.clientY - rect.top) * dpr,
       )
       if (peer) {
-        this.cursor = "pointer"
+        // TODO: uncomment when can open profiles.
+        // this.cursor = "pointer"
         this.selected = peer
         this.canvas.select(peer.id)
       } else {
-        this.cursor = "default"
+        // this.cursor = "default"
         this.selected = null
         this.canvas.select("")
       }
@@ -444,22 +475,23 @@ export default defineComponent({
 
 <style scoped lang="sass">
 .audience
-  position: relative
+  display: flex
+  flex-direction: column
   background-color: transparent
-  border-radius: 2px
   overflow: hidden
 
-.shade
-  opacity: 0.7
-
-.badge
-  position: absolute
-  width: 100%
-  height: 2em
-  bottom: 0
+.selected
   font-weight: bold
-  user-select: none
-  color: #fefefe
+  margin: 10px
+  height: 1em
+
+.divider
+  height: 1px
+  background: linear-gradient(to right, transparent 0, var(--color-highlight-background) 50%, transparent)
+
+.canvas
+  position: relative
+  flex: 1
 
 canvas
   position: absolute
