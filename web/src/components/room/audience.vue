@@ -13,7 +13,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import { EventType, PeerStatus, PayloadPeerStatus } from "@/api/models"
+import { EventType, PeerStatus, PayloadPeerState } from "@/api/models"
 import { drawIcon } from "jdenticon"
 import { Record } from "./record"
 import { nameFromUUID, identiconConfig } from "./gen"
@@ -83,11 +83,15 @@ class Canvas {
 
   processRecords(records: Record[]): void {
     for (const record of records) {
-      if (record.event.payload.type !== EventType.PeerStatus) {
+      if (record.event.payload.type !== EventType.PeerState) {
         continue
       }
-      const payload = record.event.payload.payload as PayloadPeerStatus
+
+      const payload = record.event.payload.payload as PayloadPeerState
       const userId = record.event.ownerId || ""
+      if (!payload.status) {
+        continue
+      }
       if (
         (record.forward && payload.status === PeerStatus.Joined) ||
         (!record.forward && payload.status === PeerStatus.Left)
@@ -439,11 +443,7 @@ export default defineComponent({
 </script>
 
 <style scoped lang="sass">
-@use '@/css/theme'
-
 .audience
-  @include theme.shadow-inset-s
-
   position: relative
   background-color: transparent
   border-radius: 2px

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -139,41 +140,30 @@ func saveEvent(events *event.Mongo) JobHandle {
 		}
 
 		var eventID, ownerID, roomID uuid.UUID
+		var payload event.Payload
 		if err := eventID.UnmarshalBinary(job.Id); err != nil {
-			return err
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event id.")
+			return nil
 		}
 		if err := ownerID.UnmarshalBinary(job.OwnerId); err != nil {
-			return err
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal owner id.")
+			return nil
 		}
 		if err := roomID.UnmarshalBinary(job.RoomId); err != nil {
-			return err
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal room id.")
+			return nil
+		}
+		if err := json.Unmarshal(job.Payload, &payload); err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal payload.")
+			return nil
 		}
 
-		ev := event.Event{
-			ID:    eventID,
-			Owner: ownerID,
-			Room:  roomID,
-		}
-		switch pl := job.Event.(type) {
-		case *queue.EventJob_PeerStatus_:
-			ev.Payload = event.Payload{
-				Type: event.TypePeerStatus,
-				Payload: event.PayloadPeerStatus{
-					Status: event.PeerStatus(pl.PeerStatus.Status),
-				},
-			}
-		case *queue.EventJob_Message_:
-			ev.Payload = event.Payload{
-				Type: event.TypeMessage,
-				Payload: event.PayloadMessage{
-					Text: pl.Message.Text,
-				},
-			}
-		default:
-			return errors.New("unknown event type")
-		}
-
-		_, err = events.CreateOne(ctx, ev)
+		ev, err := events.CreateOne(ctx, event.Event{
+			ID:      eventID,
+			Owner:   ownerID,
+			Room:    roomID,
+			Payload: payload,
+		})
 		switch {
 		case errors.Is(err, event.ErrValidation):
 			log.Ctx(ctx).Err(err).Msg("Invalid payload for event job. Deleting.")

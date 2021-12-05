@@ -8,9 +8,11 @@ export {
   EventProcessor,
   EventType,
   EventPayload,
-  PayloadPeerStatus,
+  PayloadPeerState,
   PeerStatus,
   PayloadMessage,
+  Track,
+  Hint,
 } from "./event"
 
 export const userStore: UserStore = new UserStore()

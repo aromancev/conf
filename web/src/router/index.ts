@@ -25,6 +25,12 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import(/* webpackChunkName: "talk" */ "../views/Talk.vue"),
   },
   {
+    path: "/t/:confa/:talk",
+    name: "rtc",
+    component: () =>
+      import(/* webpackChunkName: "rtc" */ "../views/RTCExample.vue"),
+  },
+  {
     path: "/stream",
     name: "stream",
     component: () =>

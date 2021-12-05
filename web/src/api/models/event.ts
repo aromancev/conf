@@ -1,9 +1,9 @@
 export enum EventType {
-  PeerStatus = "peer_status",
+  PeerState = "peer_state",
   Message = "message",
 }
 
-export type EventPayload = PayloadPeerStatus | PayloadMessage
+export type EventPayload = PayloadPeerState | PayloadMessage
 
 export interface Event {
   id?: string
@@ -26,8 +26,20 @@ export enum PeerStatus {
   Left = "left",
 }
 
-export interface PayloadPeerStatus {
-  status: PeerStatus
+export enum Hint {
+  Camera = "camera",
+  Screen = "screen",
+  UserAudio = "user_audio",
+  DeviceAudio = "device_audio",
+}
+
+export interface Track {
+  hint: Hint
+}
+
+export interface PayloadPeerState {
+  status?: PeerStatus
+  tracks?: { [key: string]: Track }
 }
 
 export interface PayloadMessage {

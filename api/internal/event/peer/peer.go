@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aromancev/confa/internal/event"
@@ -37,6 +38,7 @@ const (
 	TypeTrickle  MessageType = "trickle"
 	TypeEvent    MessageType = "event"
 	TypeEventAck MessageType = "event_ack"
+	TypeState    MessageType = "state"
 	TypeError    MessageType = "error"
 )
 
@@ -48,6 +50,25 @@ type Message struct {
 
 type EventAck struct {
 	EventID string `json:"eventId"`
+}
+
+type State struct {
+	Tracks map[string]event.Track `json:"tracks"`
+}
+
+func (s State) Validate() error {
+	if len(s.Tracks) > 3 {
+		return errors.New("no more than 3 tracks allowed")
+	}
+	for id, t := range s.Tracks {
+		if id == "" {
+			return fmt.Errorf("invalid track: id cannot be zero")
+		}
+		if err := t.Validate(); err != nil {
+			return fmt.Errorf("invalid track: %w", err)
+		}
+	}
+	return nil
 }
 
 func (m *Message) UnmarshalJSON(b []byte) error {
@@ -91,6 +112,12 @@ func (m *Message) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		m.Payload = p
+	case TypeState:
+		var p State
+		if err := json.Unmarshal(raw.P, &p); err != nil {
+			return err
+		}
+		m.Payload = p
 	default:
 		return ErrUnknownMessage
 	}
@@ -118,6 +145,7 @@ type Peer struct {
 	producer               Producer
 	events                 event.Cursor
 	userID, roomID         uuid.UUID
+	state                  State
 	eventsDone, signalDone chan struct{}
 }
 
@@ -136,8 +164,8 @@ func NewPeer(ctx context.Context, userID, roomID uuid.UUID, sfuPool *grpcpool.Po
 		roomID:     roomID,
 	}
 	err := p.emitEvent(ctx, uuid.New(), event.Payload{
-		Type: event.TypePeerStatus,
-		Payload: event.PayloadPeerStatus{
+		Type: event.TypePeerState,
+		Payload: event.PayloadPeerState{
 			Status: event.PeerJoined,
 		},
 	})
@@ -163,7 +191,24 @@ func (p *Peer) Send(ctx context.Context, msg Message) error {
 			p.cancel()
 			return fmt.Errorf("%w: %s", ErrValidation, "peer too slow")
 		}
-		return p.emitEvent(ctx, id, pl.Payload)
+		return p.emitUserEvent(ctx, id, pl.Payload)
+	case State:
+		if err := pl.Validate(); err != nil {
+			return fmt.Errorf("%w: %s", ErrValidation, err)
+		}
+		p.state = pl
+		select {
+		case p.out <- Message{
+			RequestID: msg.RequestID,
+			Type:      TypeState,
+			Payload:   pl,
+		}:
+		default:
+			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
+			p.cancel()
+			return fmt.Errorf("%w: %s", ErrValidation, "peer too slow")
+		}
+		return nil
 	case Join:
 		var err error
 		p.signal, err = NewGRPCSignal(ctx, p.sfuPool)
@@ -176,10 +221,19 @@ func (p *Peer) Send(ctx context.Context, msg Message) error {
 		if p.signal == nil {
 			return fmt.Errorf("%w: must join before offer", ErrValidation)
 		}
-		if err := validateOffer(pl.Description); err != nil {
+		tracks, err := p.tracks(pl.Description)
+		if err != nil {
 			return fmt.Errorf("%w: %s", ErrValidation, err)
 		}
-		return p.signal.Offer(ctx, pl)
+		if err := p.signal.Offer(ctx, pl); err != nil {
+			return err
+		}
+		return p.emitEvent(ctx, uuid.New(), event.Payload{
+			Type: event.TypePeerState,
+			Payload: event.PayloadPeerState{
+				Tracks: tracks,
+			},
+		})
 	case Answer:
 		if p.signal == nil {
 			return fmt.Errorf("%w: must join before answer", ErrValidation)
@@ -209,8 +263,8 @@ func (p *Peer) Receive(ctx context.Context) (Message, error) {
 
 func (p *Peer) Close(ctx context.Context) error {
 	err := p.emitEvent(ctx, uuid.New(), event.Payload{
-		Type: event.TypePeerStatus,
-		Payload: event.PayloadPeerStatus{
+		Type: event.TypePeerState,
+		Payload: event.PayloadPeerState{
 			Status: event.PeerLeft,
 		},
 	})
@@ -293,31 +347,32 @@ func (p *Peer) pullSignal() {
 	}
 }
 
+func (p *Peer) emitUserEvent(ctx context.Context, id uuid.UUID, payload event.Payload) error {
+	switch payload.Type {
+	case event.TypeMessage:
+	default:
+		return fmt.Errorf("%w: invalid user-initiated event type (%s)", ErrValidation, payload.Type)
+	}
+	return p.emitEvent(ctx, id, payload)
+}
+
 func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payload) error {
-	if err := payload.ValidateAtRest(); err != nil {
+	if err := payload.Validate(); err != nil {
 		return fmt.Errorf("%w: %s", ErrValidation, err)
 	}
 	eventID, _ := id.MarshalBinary()
 	roomID, _ := p.roomID.MarshalBinary()
 	ownerID, _ := p.userID.MarshalBinary()
+	buf, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
 	job := queue.EventJob{
 		Id:      eventID,
 		RoomId:  roomID,
 		OwnerId: ownerID,
-	}
-	switch pl := payload.Payload.(type) {
-	case event.PayloadPeerStatus:
-		job.Event = &queue.EventJob_PeerStatus_{
-			PeerStatus: &queue.EventJob_PeerStatus{
-				Status: string(pl.Status),
-			},
-		}
-	case event.PayloadMessage:
-		job.Event = &queue.EventJob_Message_{
-			Message: &queue.EventJob_Message{
-				Text: pl.Text,
-			},
-		}
+		Payload: buf,
 	}
 	body, err := queue.Marshal(&job, trace.ID(ctx))
 	if err != nil {
@@ -327,36 +382,40 @@ func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payloa
 	return err
 }
 
-func validateOffer(desc webrtc.SessionDescription) error {
+// tracks parses tracks from offer and adds additional info from State to them (like hints).
+// Returns error if tracks are not allowed or not present in state. State should be
+// submitted by peer before sending the offer. This is because WebRTC does not support passing
+// additional info with offers.
+func (p *Peer) tracks(desc webrtc.SessionDescription) (map[string]event.Track, error) {
+	getID := func(m sdp.Media) string {
+		parts := strings.Split(m.Attribute("msid"), " ")
+		if len(parts) != 2 {
+			return ""
+		}
+		return parts[1]
+	}
+
 	msg, err := sdp.Decode([]byte(desc.SDP))
 	if err != nil {
-		return fmt.Errorf("%w %s", ErrValidation, err)
+		return nil, fmt.Errorf("%w %s", ErrValidation, err)
 	}
 
-	var video, audio, app uint
+	tracks := make(map[string]event.Track)
 	for _, m := range msg.Medias {
 		switch m.Description.Type {
-		case mediaVideo:
-			video++
-		case mediaAudio:
-			audio++
+		case mediaVideo, mediaAudio:
+			trackID := getID(m)
+			t, ok := p.state.Tracks[trackID]
+			if !ok {
+				return nil, fmt.Errorf("%w: track not in state", ErrValidation)
+			}
+			tracks[trackID] = t
 		case mediaApplication:
-			app++
 		default:
-			return fmt.Errorf("%w: %s (%s)", ErrValidation, "media type not allowed", m.Description.Type)
+			return nil, fmt.Errorf("%w: %s (%s)", ErrValidation, "media type not allowed", m.Description.Type)
 		}
 	}
-
-	if video > 2 {
-		return fmt.Errorf("%w %s", ErrValidation, "maximum 2 video tracks allowed")
-	}
-	if audio > 2 {
-		return fmt.Errorf("%w %s", ErrValidation, "maximum 2 audio tracks allowed")
-	}
-	if app > 1 {
-		return fmt.Errorf("%w %s", ErrValidation, "maximum 1 application track allowed")
-	}
-	return nil
+	return tracks, nil
 }
 
 const (

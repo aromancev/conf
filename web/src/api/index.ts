@@ -11,8 +11,10 @@ export {
   Event,
   EventType,
   EventProcessor,
+  Track,
+  Hint,
 } from "./models"
-export { RTC } from "./rtc"
+export { RTC, State } from "./rtc"
 
 export const client: Client = new Client()
 export const confa: ConfaClient = new ConfaClient(client)

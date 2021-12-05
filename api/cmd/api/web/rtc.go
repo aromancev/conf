@@ -113,6 +113,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 				err = peerConn.Send(ctx, msg)
 				switch {
 				case errors.Is(err, peer.ErrValidation):
+					log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
 				case err != nil:
 					log.Ctx(ctx).Err(err).Msg("Failed send peer message.")
 				}

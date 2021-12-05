@@ -1,9 +1,10 @@
 <template>
   <video
+    ref="video"
     v-if="stream"
-    :srcObject="stream"
     v-bind:class="{ mirrored: mirrored }"
     v-bind:muted="muted"
+    v-bind:srcObject="stream"
     autoplay
   />
   <div v-else>loading stream</div>
