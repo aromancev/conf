@@ -1,3 +1,9 @@
+import {
+  toSvg,
+  drawIcon,
+  JdenticonCompatibleCanvasRenderingContext2D,
+} from "jdenticon"
+
 const first: string[] = [
   "Affectionate",
   "Amiable",
@@ -164,18 +170,7 @@ const second: string[] = [
   "Zebra",
 ]
 
-function uuidToBytes(uuid: string): number[] {
-  return (uuid.replace(/-/g, "").match(/.{2}/g) || []).map(b => parseInt(b, 16))
-}
-
-export function nameFromUUID(uuid: string): string {
-  const bytes = uuidToBytes(uuid)
-  const iFirst = bytes[bytes.length - 1] % first.length
-  const iSecond = bytes[bytes.length - 2] % second.length
-  return first[iFirst] + " " + second[iSecond]
-}
-
-export const identiconConfig = {
+const identiconConfig = {
   lightness: {
     grayscale: [0.3, 0.3],
   },
@@ -183,4 +178,27 @@ export const identiconConfig = {
     grayscale: 0.5,
   },
   backColor: "#fff",
+}
+
+function uuidToBytes(uuid: string): number[] {
+  return (uuid.replace(/-/g, "").match(/.{2}/g) || []).map(b => parseInt(b, 16))
+}
+
+export function genName(uuid: string): string {
+  const bytes = uuidToBytes(uuid)
+  const iFirst = bytes[bytes.length - 1] % first.length
+  const iSecond = bytes[bytes.length - 2] % second.length
+  return first[iFirst] + " " + second[iSecond]
+}
+
+export function genAvatar(id: string, size: number): string {
+  return toSvg(id, size, identiconConfig)
+}
+
+export function drawAvatar(
+  ctx: JdenticonCompatibleCanvasRenderingContext2D,
+  id: string,
+  size: number,
+): void {
+  drawIcon(ctx, id, size, identiconConfig)
 }

@@ -1,6 +1,7 @@
 .theme-light
   --color-background: #e4ebf5
   --color-concave: linear-gradient(145deg, #cdd4dd, #f4fbff)
+  --color-convex: linear-gradient(145deg, #f4fbff, #cdd4dd)
   --color-shadow-start: #c2c8d0
   --color-shadow-end: #ffffff
   --color-font: #001f3f
@@ -12,6 +13,7 @@
 .theme-dark
   --color-background: #444444
   --color-concave: linear-gradient(145deg, #3d3d3d, #494949)
+  --color-convex: linear-gradient(145deg, #494949, #3d3d3d)
   --color-shadow-start: #3a3a3a
   --color-shadow-end: #4e4e4e
   --color-font: #fefefe
@@ -37,6 +39,12 @@
 @mixin shadow-xs
   box-shadow: 2px 2px 3px var(--color-shadow-start), -2px -2px 3px var(--color-shadow-end)
 
+@mixin shadow-inset-l
+  box-shadow: inset 5px 5px 10px var(--color-shadow-start), inset -5px -5px 10px var(--color-shadow-end)
+
+@mixin shadow-inset-m
+  box-shadow: inset 3px 3px 7px var(--color-shadow-start), inset -3px -3px 7px var(--color-shadow-end)
+
 @mixin shadow-inset-s
   box-shadow: inset 2px 2px 5px var(--color-shadow-start), inset -2px -2px 5px var(--color-shadow-end)
 
@@ -61,6 +69,45 @@
     @include shadow-sm
     cursor: default
     color: var(--color-font-disabled)
+
+.btn-convex
+  @include clickable
+  display: inline-block
+  text-decoration: none
+  font-weight: 500
+  border-radius: 1rem
+  background: var(--color-convex)
+  color: inherit
+  &:active
+    background: var(--color-concave)
+  &:disabled, &[disabled]
+    cursor: default
+    color: var(--color-font-disabled)
+
+.btn-switch
+  @include clickable
+  @include shadow-m
+  display: inline-block
+  text-decoration: none
+  font-weight: 500
+  border-radius: 4px
+  background: inherit
+  color: inherit
+  background: var(--color-convex)
+  &:hover
+    @include shadow-sm
+  &:active
+    @include shadow-inset-m
+    background: var(--color-concave)
+  &:disabled, &[disabled]
+    @include shadow-sm
+    cursor: default
+    color: var(--color-font-disabled)
+  &.pressed
+    @include shadow-inset-s
+    background: var(--color-concave)
+    &:active
+      @include shadow-inset-l
 
 .input
   @include shadow-inset-xs

@@ -1,36 +1,39 @@
 <template>
   <div
     class="page"
-    v-bind:class="{ 'theme-light': !isDark, 'theme-dark': isDark }"
+    :class="{
+      'theme-light': theme === Theme.Light,
+      'theme-dark': theme === Theme.Dark,
+    }"
   >
-    <div @click="toggleTheme" class="theme-toggle material-icons">
-      {{ this.isDark ? "light_mode" : "dark_mode" }}
+    <div class="page-header">
+      <Header @theme="switchTheme" />
     </div>
-    <router-view />
+    <div class="page-body">
+      <router-view />
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue"
+import Header from "@/components/header.vue"
+import { Theme } from "@/platform/theme"
 
 export default defineComponent({
   name: "App",
+  components: {
+    Header,
+  },
   data() {
     return {
-      isDark: false,
+      Theme,
+      theme: Theme.Light,
     }
   },
-  async mounted() {
-    this.isDark = localStorage.isDark === "true" ? true : false
-  },
-  watch: {
-    isDark(newIsDark) {
-      localStorage.isDark = newIsDark
-    },
-  },
   methods: {
-    toggleTheme() {
-      this.isDark = !this.isDark
+    switchTheme(theme: Theme) {
+      this.theme = theme
     },
   },
 })
@@ -44,7 +47,7 @@ export default defineComponent({
 html,
 body,
 #app
-  height: 100%
+  height: 100vh
 
 .page
   font-family: 'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif
@@ -55,6 +58,19 @@ body,
   text-align: center
   color: var(--color-font)
   background-color: var(--color-background)
+
+  display: flex
+  flex-flow: column
+
+.page-header
+  width: 100%
+  height: 60px
+
+.page-body
+  flex-grow: 1
+
+  width: 100%
+  height: 100px
 
 .theme-toggle
   @include theme.clickable
