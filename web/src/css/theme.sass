@@ -62,7 +62,7 @@
   color: inherit
   &:hover
     @include shadow-sm
-  &:active
+  &:active:not([disabled]):not(:disabled)
     @include shadow-inset-s
     background: inherit
   &:disabled, &[disabled]
@@ -78,7 +78,7 @@
   border-radius: 1rem
   background: var(--color-convex)
   color: inherit
-  &:active
+  &:active:not([disabled]):not(:disabled)
     background: var(--color-concave)
   &:disabled, &[disabled]
     cursor: default
@@ -96,13 +96,14 @@
   background: var(--color-convex)
   &:hover
     @include shadow-sm
-  &:active
+  &:active:not([disabled]):not(:disabled)
     @include shadow-inset-m
     background: var(--color-concave)
   &:disabled, &[disabled]
     @include shadow-sm
     cursor: default
     color: var(--color-font-disabled)
+
   &.pressed
     @include shadow-inset-s
     background: var(--color-concave)
