@@ -102,7 +102,7 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 	}, nil
 }
 
-func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Confa, error) {
+func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaInput) (*Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
@@ -111,9 +111,21 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Co
 		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
+	if request.ID != nil {
+		return nil, newError(CodeBadRequest, "Setting id is not allowed.")
+	}
+	if request.OwnerID != nil {
+		return nil, newError(CodeBadRequest, "Setting ownerId is not allowed.")
+	}
 	var req confa.Confa
-	if handle != nil {
-		req.Handle = *handle
+	if request.Handle != nil {
+		req.Handle = *request.Handle
+	}
+	if request.Title != nil {
+		req.Title = *request.Title
+	}
+	if request.Description != nil {
+		req.Description = *request.Description
 	}
 	created, err := r.confas.Create(ctx, claims.UserID, req)
 	switch {
@@ -131,6 +143,44 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, handle *string) (*Co
 		OwnerID: created.Owner.String(),
 		Handle:  created.Handle,
 	}, nil
+}
+
+func (r *mutationResolver) UpdateConfa(ctx context.Context, where ConfaInput, request ConfaInput) (int, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return 0, newError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return 0, newError(CodeUnauthorized, "Writes not allowed for guest.")
+	}
+
+	lookup, err := confaLookup(where, 0, nil)
+	if err != nil {
+		return 0, nil
+	}
+
+	if request.ID != nil {
+		return 0, newError(CodeBadRequest, "Updating id is not allowed.")
+	}
+	if request.OwnerID != nil {
+		return 0, newError(CodeBadRequest, "Updating ownerId is not allowed.")
+	}
+	mask := confa.Mask{
+		Handle:      request.Handle,
+		Title:       request.Title,
+		Description: request.Description,
+	}
+	res, err := r.confas.Update(ctx, claims.UserID, lookup, mask)
+	switch {
+	case errors.Is(err, confa.ErrValidation):
+		return 0, newError(CodeBadRequest, err.Error())
+	case errors.Is(err, confa.ErrDuplicateEntry):
+		return 0, newError(CodeDuplicateEntry, err.Error())
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to update confas.")
+		return 0, newInternalError()
+	}
+	return int(res.Updated), nil
 }
 
 func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handle *string) (*Talk, error) {
@@ -256,34 +306,9 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int,
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	if limit < 0 || limit > batchLimit {
-		limit = batchLimit
-	}
-
-	lookup := confa.Lookup{
-		Limit: int64(limit),
-	}
-	var err error
-	if from != nil {
-		lookup.From, err = uuid.Parse(*from)
-		if err != nil {
-			return &Confas{Limit: limit}, nil
-		}
-	}
-	if where.ID != nil {
-		lookup.ID, err = uuid.Parse(*where.ID)
-		if err != nil {
-			return &Confas{Limit: limit}, nil
-		}
-	}
-	if where.OwnerID != nil {
-		lookup.Owner, err = uuid.Parse(*where.OwnerID)
-		if err != nil {
-			return &Confas{Limit: limit}, nil
-		}
-	}
-	if where.Handle != nil {
-		lookup.Handle = *where.Handle
+	lookup, err := confaLookup(where, limit, from)
+	if err != nil {
+		return &Confas{Limit: limit}, nil
 	}
 
 	confas, err := r.confas.Fetch(ctx, lookup)
@@ -303,9 +328,11 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int,
 	}
 	for i, c := range confas {
 		res.Items[i] = &Confa{
-			ID:      c.ID.String(),
-			OwnerID: c.Owner.String(),
-			Handle:  c.Handle,
+			ID:          c.ID.String(),
+			OwnerID:     c.Owner.String(),
+			Handle:      c.Handle,
+			Title:       c.Title,
+			Description: c.Description,
 		}
 	}
 
@@ -433,14 +460,16 @@ func (r *queryResolver) Events(ctx context.Context, where EventInput, limit Even
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch events.")
 		return nil, newInternalError()
 	}
-	lastEvent := events[len(events)-1]
 	res := &Events{
 		Items: make([]*Event, len(events)),
 		Limit: limit.Count,
-		NextFrom: &EventFrom{
+	}
+	if len(events) != 0 {
+		lastEvent := events[len(events)-1]
+		res.NextFrom = &EventFrom{
 			ID:        lastEvent.ID.String(),
 			CreatedAt: lastEvent.CreatedAt.Format(time.RFC3339),
-		},
+		}
 	}
 	for i, e := range events {
 		payload, err := json.Marshal(e.Payload.Payload)
@@ -503,5 +532,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver } // nolint: gocritic
-type queryResolver struct{ *Resolver }    // nolint: gocritic
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

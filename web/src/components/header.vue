@@ -27,7 +27,7 @@
     </div>
 
     <div class="sidebar" :class="{ opened: modal === Modal.Sidebar }">
-      <router-link class="control-item" to="/">
+      <router-link v-if="allowedWrite" class="control-item" to="/">
         <span class="icon material-icons">hub</span>
         My content
       </router-link>
@@ -35,8 +35,8 @@
         <span class="icon material-icons">explore</span>
         Explore
       </router-link>
-      <div class="control-divider"></div>
-      <router-link class="control-item" to="/new">
+      <div v-if="allowedWrite" class="control-divider"></div>
+      <router-link v-if="allowedWrite" class="control-item" to="/new">
         <span class="icon material-icons">add</span>
         Create confa
       </router-link>

@@ -17,7 +17,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue"
-import Header from "@/components/header.vue"
+import Header from "@/components/Header.vue"
 import { Theme } from "@/platform/theme"
 
 export default defineComponent({
@@ -61,6 +61,7 @@ body,
 
   display: flex
   flex-flow: column
+  overflow: hidden
 
 .page-header
   width: 100%

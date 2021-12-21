@@ -1,14 +1,10 @@
 <template>
-  <!-- <div class="container"> -->
-  <!-- <div class="row"> -->
   <LiveTalkRoom :roomId="talk?.roomId" />
 
   <InternalError
     v-if="modal === Dialog.Error"
     v-on:click="modal = Dialog.None"
   />
-  <!-- </div> -->
-  <!-- </div> -->
 </template>
 
 <script lang="ts">

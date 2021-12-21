@@ -33,7 +33,7 @@
         </div>
       </div>
 
-      <audience ref="audience" />
+      <Audience ref="audience" />
     </div>
     <div class="controls">
       <div class="controls-top">
@@ -79,8 +79,13 @@
         </div>
       </div>
     </div>
-    <div class="side-panel" :class="{ opened: sidePanel !== SidePanel.None }">
-      <messages ref="messages" :userId="userId" :emitter="rtc" />
+    <div v-if="sidePanel !== SidePanel.None" class="side-panel">
+      <Messages
+        ref="messages"
+        :userId="userId"
+        :messages="messages"
+        @message="sendMessage"
+      />
     </div>
   </div>
 
@@ -99,14 +104,15 @@
 
 <script lang="ts">
 import InternalError from "@/components/modals/InternalError.vue"
-import Audience from "@/components/room/audience.vue"
-import Messages from "@/components/room/messages.vue"
+import Audience from "@/components/room/Audience.vue"
+import Messages from "@/components/room/Messages.vue"
 import { defineComponent } from "vue"
 import { Client, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { EventType, PayloadPeerState } from "@/api/models"
 import { userStore, RTC, Event, client, event, State, Hint, Track } from "@/api"
 import { RecordProcessor, BufferedProcessor } from "@/components/room"
 import { Record } from "@/components/room/record"
+import { MessageProcessor, Message } from "@/components/room/messages"
 
 enum Dialog {
   None = "",
@@ -164,12 +170,19 @@ export default defineComponent({
       tracksById: {} as { [key: string]: Track },
       state: { tracks: {} } as State,
       sidePanel: SidePanel.None,
+      messageProcessor: null as MessageProcessor | null,
     }
   },
 
   computed: {
     userId() {
       return userStore.getState().id
+    },
+    messages(): Message[] {
+      if (!this.messageProcessor) {
+        return []
+      }
+      return this.messageProcessor.messages()
     },
     remoteView(): RemoteView {
       const view = {
@@ -207,15 +220,17 @@ export default defineComponent({
     async roomId(val: string) {
       const roomId = val
 
+      const rtc = await client.rtc(roomId)
+      const sfu = new Client(rtc)
+
+      this.messageProcessor = new MessageProcessor(rtc)
+
       const processors = [
         this.$refs.audience,
-        this.$refs.messages,
+        this.messageProcessor,
         this,
       ] as RecordProcessor[]
       const buffered = new BufferedProcessor(processors, 500)
-
-      const rtc = await client.rtc(roomId)
-      const sfu = new Client(rtc)
 
       rtc.onevent = (event: Event) => {
         buffered.put([event], true)
@@ -246,6 +261,9 @@ export default defineComponent({
   },
 
   methods: {
+    sendMessage(message: string): void {
+      this.messageProcessor?.send(this.userId, message)
+    },
     switchSidePanel(panel: SidePanel) {
       if (this.sidePanel === panel) {
         panel = SidePanel.None
@@ -410,7 +428,7 @@ export default defineComponent({
 
   display: flex
   flex-direction: row
-  padding: 20px
+  padding: 30px
 
 .room
   flex: 1
@@ -479,7 +497,7 @@ video
   flex: 3
   border-radius: 4px
   background: black
-  margin: 10px
+  margin: 0 10px
   padding-top: 50%
 
 .camera
@@ -488,13 +506,12 @@ video
   flex: 1
   border-radius: 4px
   background: black
-  margin: 10px
+  margin: 0 10px
   padding-top: 20%
 
 .audience
   flex: 1
   border-radius: 4px
-  margin: 10px
 
 .controls
   display: flex
@@ -502,7 +519,7 @@ video
   align-items: center
   justify-content: flex-start
   width: 60px
-  margin: 30px
+  margin: 0 20px
 
 .controls-bottom
   margin-top: auto
@@ -514,16 +531,16 @@ video
     border: 1px solid var(--color-highlight-background)
 
 .side-panel
-  display: none
+  display: flex
   flex-direction: column
   width: 450px
-  &.opened
-    display: flex
+  max-height: 100%
+  overflow: hidden
 
 .messages
   @include theme.shadow-inset-m
 
   border-radius: 4px
   flex: 1
-  margin: 10px
+  max-height: 100%
 </style>

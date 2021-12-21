@@ -1,13 +1,13 @@
 <template>
   <div @click="close" class="background"></div>
   <div class="content">
-    <div class="px-5 py-2">
+    <div class="wrapper">
       <slot></slot>
     </div>
     <table v-if="buttons">
       <tr>
         <td
-          class="py-2"
+          class="cell"
           v-for="(text, id) in buttons"
           v-bind:key="id"
           @click="click(id)"
@@ -48,6 +48,7 @@ export default defineComponent({
   backdrop-filter: blur(3px)
   background-color: var(--color-background)
   opacity: 0.6
+  z-index: 200
 
 .aligner
   position: fixed
@@ -64,11 +65,20 @@ export default defineComponent({
   transform: translate(-50%, -50%)
   border-radius: 5px
   background-color: var(--color-background)
+  text-align: center
+  max-width: 500px
+  z-index: 250
+
+.wrapper
+  padding: 1rem 3rem
 
 table
   border-top: 1px solid var(--color-outline)
   min-width: 100%
   table-layout: fixed
+
+.cell
+  padding: 0.5rem 0
 
 td
   @include theme.clickable

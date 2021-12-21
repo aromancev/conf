@@ -2,7 +2,7 @@
   <div class="messages">
     <div class="browser" ref="browser" @scroll="onScroll">
       <div
-        v-for="msg in ordered"
+        v-for="msg in messages"
         :key="msg.id"
         class="message"
         v-bind:class="{ me: msg.from === userId }"
@@ -21,128 +21,64 @@
         </div>
       </div>
     </div>
-    <textarea
+    <Textarea
       class="message-input"
-      spellcheck="false"
+      :spellcheck="false"
       placeholder="message"
-      ref="input"
       v-on:keydown="keySend"
       v-model="message"
-      :style="inputStyle"
-      :disabled="!emitter"
     >
-    </textarea>
+    </Textarea>
     <div v-if="message" class="send material-icons" @click="send">send</div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue"
-import { EventType, PayloadMessage } from "@/api/models"
-import { Record } from "./record"
-import { genName, genAvatar } from "@/platform/gen"
-import { Emitter } from "./rtc"
-
-const defaultInputHeight = "1px"
-const maxMessages = 100
-
-interface Message {
-  id: string
-  from: string
-  fromName: string
-  avatar: string
-  text: string
-  isSent: boolean
-  isFirstFrom: boolean
-  isLatestFrom: boolean
-}
+import { Message } from "./messages"
+import Textarea from "@/components/fields/Textarea.vue"
 
 export default defineComponent({
   name: "Messages",
+  components: {
+    Textarea,
+  },
+  emits: ["message"],
   props: {
     userId: {
       type: String,
       required: true,
     },
-    emitter: Object as PropType<Emitter>,
+    messages: {
+      type: Array as PropType<Array<Message>>,
+      required: true,
+    },
   },
   data() {
     return {
       message: "",
       byId: {} as { [key: string]: Message },
       ordered: [] as Message[],
-      inputStyle: {
-        height: defaultInputHeight,
-      },
       autoScroll: true,
     }
   },
-
   watch: {
-    message(val: string) {
-      const el = this.$refs.input as HTMLTextAreaElement
-      if (val.length !== 0) {
-        el.style.height = "1px"
-        this.inputStyle["height"] = `${el.scrollHeight}px`
-      } else {
-        el.style.height = defaultInputHeight
-      }
-    },
-    ordered: {
+    messages: {
       deep: true,
       handler() {
-        const el = this.$refs.browser as HTMLElement
-        this.$nextTick(() => {
-          if (this.autoScroll) {
-            el.scrollTop = el.scrollHeight
-          }
-        })
+        if (this.autoScroll) {
+          this.alignScroll()
+        }
       },
     },
-  },
-
-  methods: {
-    processRecords(records: Record[]) {
-      for (const r of records) {
-        if (r.event.payload.type !== EventType.Message) {
-          continue
-        }
-
-        const payload = r.event.payload.payload as PayloadMessage
-
-        let isFirstFrom = true
-        if (this.ordered.length) {
-          const latest = this.ordered[this.ordered.length - 1]
-          if (latest.from === r.event.ownerId) {
-            latest.isLatestFrom = false
-            isFirstFrom = false
-          }
-        }
-        const msg: Message = {
-          id: r.event.id || "",
-          from: r.event.ownerId || "",
-          fromName: genName(r.event.ownerId || ""),
-          avatar: genAvatar(r.event.ownerId || "", 32 + 1),
-          text: payload.text,
-          isSent: true,
-          isFirstFrom: isFirstFrom,
-          isLatestFrom: true,
-        }
-
-        const existing = this.byId[msg.id]
-        if (existing) {
-          existing.isSent = true
-        } else {
-          this.byId[msg.id] = msg
-          this.ordered.push(msg)
-        }
-
-        if (this.ordered.length > maxMessages) {
-          delete this.byId[this.ordered[0].id]
-          this.ordered.shift()
-        }
-      }
+    message() {
+      this.alignScroll()
     },
+  },
+  mounted() {
+    this.alignScroll()
+  },
+  methods: {
     keySend(ev: KeyboardEvent) {
       if (ev.shiftKey || ev.code !== "Enter" || this.message.length === 0) {
         return
@@ -152,35 +88,15 @@ export default defineComponent({
       this.send()
     },
     async send() {
-      if (!this.emitter) {
-        return
-      }
-
-      const msg: Message = {
-        id: "",
-        from: this.userId,
-        fromName: "",
-        avatar: "",
-        text: this.message,
-        isSent: false,
-        isFirstFrom: false,
-        isLatestFrom: true,
-      }
-      const ev = {
-        payload: {
-          type: EventType.Message,
-          payload: {
-            text: this.message,
-          },
-        },
-      }
+      this.$emit("message", this.message)
       this.message = ""
-      this.inputStyle["height"] = defaultInputHeight
       this.autoScroll = true
-
-      this.ordered.push(msg)
-      msg.id = await this.emitter.event(ev)
-      this.byId[msg.id] = msg
+    },
+    alignScroll() {
+      // Because of vue3 bug $nextTick doesn't compile. Need to upgrade the version.
+      eval(
+        "this.$nextTick(()=>{ this.$refs.browser.scrollTop = this.$refs.browser.scrollHeight })",
+      )
     },
     onScroll() {
       const el = this.$refs.browser as HTMLElement
@@ -200,7 +116,7 @@ export default defineComponent({
 
 .browser
   width: 100%
-  flex-grow: 1
+  flex: 1
   overflow-y: auto
 
 .message
@@ -231,17 +147,14 @@ export default defineComponent({
   font-size: 0.7em
 
 .message-input
-  min-height: 2em
+  box-shadow: none
+  max-height: 50%
   width: 100%
-  border-top: 1px solid var(--color-outline)
-  padding: 0.5em
-  padding-right: 2em
+  padding-right: 2.5em
   color: var(--color-font)
-  resize: none
-  overflow: hidden
-  &:disabled
-    cursor: default
-    background-color: var(--color-outline)
+  background: var(--color-outline)
+  border-top-left-radius: 0
+  border-top-right-radius: 0
 
 .send
   position: absolute

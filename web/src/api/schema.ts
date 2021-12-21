@@ -71,6 +71,8 @@ export interface confas_confas_items {
   id: string;
   ownerId: string;
   handle: string;
+  title: string;
+  description: string;
 }
 
 export interface confas_confas {
@@ -102,10 +104,34 @@ export interface createConfa_createConfa {
   id: string;
   ownerId: string;
   handle: string;
+  title: string;
+  description: string;
 }
 
 export interface createConfa {
   createConfa: createConfa_createConfa;
+}
+
+export interface createConfaVariables {
+  request: ConfaInput;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: updateConfa
+// ====================================================
+
+export interface updateConfa {
+  updateConfa: number;
+}
+
+export interface updateConfaVariables {
+  where: ConfaInput;
+  request: ConfaInput;
 }
 
 /* tslint:disable */
@@ -141,7 +167,7 @@ export interface events_events_nextFrom {
 export interface events_events {
   __typename: "Events";
   items: events_events_items[];
-  nextFrom: events_events_nextFrom;
+  nextFrom: events_events_nextFrom | null;
 }
 
 export interface events {
@@ -153,6 +179,39 @@ export interface eventsVariables {
   from?: EventFromInput | null;
   limit: EventLimit;
   order?: EventOrder | null;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL query operation: talksHydrated
+// ====================================================
+
+export interface talksHydrated_talks_items {
+  __typename: "Talk";
+  id: string;
+  ownerId: string;
+  confaId: string;
+  roomId: string;
+  handle: string;
+}
+
+export interface talksHydrated_talks {
+  __typename: "Talks";
+  items: talksHydrated_talks_items[];
+  nextFrom: string;
+}
+
+export interface talksHydrated {
+  talks: talksHydrated_talks;
+}
+
+export interface talksHydratedVariables {
+  where: TalkInput;
+  from?: string | null;
 }
 
 /* tslint:disable */
@@ -249,6 +308,8 @@ export interface ConfaInput {
   id?: string | null;
   ownerId?: string | null;
   handle?: string | null;
+  title?: string | null;
+  description?: string | null;
 }
 
 export interface EventFromInput {

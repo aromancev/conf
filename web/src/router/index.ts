@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router"
+import { createRouter, createWebHistory, RouteRecordRaw, RouteLocationNormalized } from "vue-router"
 import Home from "../views/Home.vue"
 
 const routes: Array<RouteRecordRaw> = [
@@ -15,9 +15,27 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/:confa",
-    name: "confa",
+    name: "confaOverview",
+    props(to: RouteLocationNormalized): Record<string, any> {
+      return {
+        handle: to.params.confa,
+        tab: 'overview',
+      }
+    },
     component: () =>
-      import(/* webpackChunkName: "confa" */ "../views/Confa.vue"),
+      import(/* webpackChunkName: "confaOverview" */ "../views/confa/Confa.vue"),
+  },
+  {
+    path: "/:confa/edit",
+    name: "confaEdit",
+    props(to: RouteLocationNormalized): Record<string, any> {
+      return {
+        handle: to.params.confa,
+        tab: 'edit',
+      }
+    },
+    component: () =>
+      import(/* webpackChunkName: "confaEdit" */ "../views/confa/Confa.vue"),
   },
   {
     path: "/:confa/:talk",

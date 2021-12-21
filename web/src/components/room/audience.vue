@@ -85,21 +85,21 @@ class Canvas {
 
     this.allDirty = true
 
-    for (let i = 0; i < 100; i++) {
-      const userId = Math.random().toString()
-      const p: Peer = {
-        id: userId,
-        joinedAt: "",
-        row: 0,
-        col: 0,
-        x: 0,
-        y: 0,
-        dirty: true,
-        name: genName(userId),
-      }
-      this.byId[userId] = p
-      this.ordered.push(p)
-    }
+    // for (let i = 0; i < 100; i++) {
+    //   const userId = Math.random().toString()
+    //   const p: Peer = {
+    //     id: userId,
+    //     joinedAt: "",
+    //     row: 0,
+    //     col: 0,
+    //     x: 0,
+    //     y: 0,
+    //     dirty: true,
+    //     name: genName(userId),
+    //   }
+    //   this.byId[userId] = p
+    //   this.ordered.push(p)
+    // }
   }
 
   resize(width: number, height: number): void {

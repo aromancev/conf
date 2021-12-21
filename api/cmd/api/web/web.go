@@ -9,11 +9,13 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/google/uuid"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
+	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
@@ -132,6 +134,39 @@ func (w *responseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Ev
 	return event.Str("method", r.Method).Int("code", w.code).Str("url", r.URL.String())
 }
 
+func confaLookup(input ConfaInput, limit int, from *string) (confa.Lookup, error) {
+	if limit <= 0 || limit > batchLimit {
+		limit = batchLimit
+	}
+
+	lookup := confa.Lookup{
+		Limit: int64(limit),
+	}
+	var err error
+	if from != nil {
+		lookup.From, err = uuid.Parse(*from)
+		if err != nil {
+			return confa.Lookup{}, err
+		}
+	}
+	if input.ID != nil {
+		lookup.ID, err = uuid.Parse(*input.ID)
+		if err != nil {
+			return confa.Lookup{}, err
+		}
+	}
+	if input.OwnerID != nil {
+		lookup.Owner, err = uuid.Parse(*input.OwnerID)
+		if err != nil {
+			return confa.Lookup{}, err
+		}
+	}
+	if input.Handle != nil {
+		lookup.Handle = *input.Handle
+	}
+	return lookup, nil
+}
+
 const (
-	batchLimit = 500
+	batchLimit = 100
 )
