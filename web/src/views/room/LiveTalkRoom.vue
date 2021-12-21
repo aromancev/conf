@@ -19,9 +19,10 @@
           </div>
           <div class="camera video-container">
             <video
-              v-if="remoteView.screen"
+              v-if="remoteView.camera"
               class="camera-video"
-              :srcObject="localCamera"
+              :class="{ local: localCamera }"
+              :srcObject="remoteView.camera"
               autoplay
               muted
             />
@@ -35,25 +36,60 @@
       <audience ref="audience" />
     </div>
     <div class="controls">
-      <div
-        v-if="sidePanel !== SidePanel.None"
-        class="ctrl-btn btn-switch px-3 py-3 material-icons"
-        @click="switchSidePanel(SidePanel.None)"
-      >
-        close
+      <div class="controls-top">
+        <div
+          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          :class="{ active: localScreen }"
+          @click="switchScreen"
+          :disabled="localScreenLoading ? true : null"
+        >
+          {{ localScreen ? "desktop_windows" : "desktop_access_disabled" }}
+        </div>
+        <div
+          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          :class="{ active: localCamera }"
+          @click="switchCamera"
+          :disabled="localCameraLoading ? true : null"
+        >
+          {{ localCamera ? "videocam" : "videocam_off" }}
+        </div>
+        <div
+          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          :class="{ active: localMic }"
+          @click="switchMic"
+          :disabled="localMicLoading ? true : null"
+        >
+          {{ localMic ? "mic" : "mic_off" }}
+        </div>
       </div>
-      <div
-        class="ctrl-btn btn-switch px-3 py-3 material-icons"
-        :class="{ pressed: sidePanel === SidePanel.Chat }"
-        @click="switchSidePanel(SidePanel.Chat)"
-      >
-        chat
+      <div class="controls-bottom">
+        <div
+          v-if="sidePanel !== SidePanel.None"
+          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          @click="switchSidePanel(SidePanel.None)"
+        >
+          close
+        </div>
+        <div
+          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          :class="{ pressed: sidePanel === SidePanel.Chat }"
+          @click="switchSidePanel(SidePanel.Chat)"
+        >
+          chat
+        </div>
       </div>
     </div>
     <div class="side-panel" :class="{ opened: sidePanel !== SidePanel.None }">
       <messages ref="messages" :userId="userId" :emitter="rtc" />
     </div>
   </div>
+
+  <audio
+    v-for="stream in remoteView.audios"
+    :key="stream.id"
+    :srcObject="stream"
+    autoplay
+  />
 
   <InternalError
     v-if="modal === Dialog.Error"
@@ -66,7 +102,7 @@ import InternalError from "@/components/modals/InternalError.vue"
 import Audience from "@/components/room/audience.vue"
 import Messages from "@/components/room/messages.vue"
 import { defineComponent } from "vue"
-import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
+import { Client, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { EventType, PayloadPeerState } from "@/api/models"
 import { userStore, RTC, Event, client, event, State, Hint, Track } from "@/api"
 import { RecordProcessor, BufferedProcessor } from "@/components/room"
@@ -83,8 +119,9 @@ enum SidePanel {
 }
 
 interface RemoteView {
-  camera?: RemoteStream
-  screen?: RemoteStream
+  camera?: MediaStream
+  screen?: MediaStream
+  audios: MediaStream[]
 }
 
 interface Resizer {
@@ -100,7 +137,7 @@ function trackId(s: MediaStream): string {
 }
 
 export default defineComponent({
-  name: "LiveRoom",
+  name: "LiveTalkRoom",
   components: {
     Audience,
     Messages,
@@ -119,24 +156,15 @@ export default defineComponent({
       sfu: null as Client | null,
       localCamera: null as LocalStream | null,
       localScreen: null as LocalStream | null,
+      localMic: null as LocalStream | null,
       localCameraLoading: false,
       localScreenLoading: false,
+      localMicLoading: false,
       streamsByTrackId: {} as { [key: string]: RemoteStream },
       tracksById: {} as { [key: string]: Track },
-      remoteCamera: null as RemoteStream | null,
       state: { tracks: {} } as State,
       sidePanel: SidePanel.None,
     }
-  },
-
-  async mounted() {
-    this.localCamera = await LocalStream.getUserMedia({
-      codec: "vp8",
-      resolution: "vga",
-      simulcast: true,
-      video: true,
-      audio: false,
-    })
   },
 
   computed: {
@@ -144,7 +172,10 @@ export default defineComponent({
       return userStore.getState().id
     },
     remoteView(): RemoteView {
-      const view = {} as RemoteView
+      const view = {
+        audios: [],
+      } as RemoteView
+
       for (const id in this.streamsByTrackId) {
         const track = this.tracksById[id]
         if (!track) {
@@ -157,7 +188,16 @@ export default defineComponent({
           case Hint.Screen:
             view.screen = this.streamsByTrackId[id]
             break
+          case Hint.UserAudio:
+            view.audios.push(this.streamsByTrackId[id])
+            break
         }
+      }
+      if (this.localCamera) {
+        view.camera = this.localCamera
+      }
+      if (this.localScreen) {
+        view.screen = this.localScreen
       }
       return view
     },
@@ -186,7 +226,7 @@ export default defineComponent({
         this.rtc = rtc
       }
       sfu.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
-        if (track.kind !== "video") {
+        if (track.kind !== "video" && track.kind !== "audio") {
           return
         }
 
@@ -209,11 +249,33 @@ export default defineComponent({
     switchSidePanel(panel: SidePanel) {
       if (this.sidePanel === panel) {
         panel = SidePanel.None
+        return
       }
       this.sidePanel = panel
       this.$nextTick(() => {
         ;(this.$refs.audience as Resizer).resize()
       })
+    },
+    switchCamera() {
+      if (this.localCamera) {
+        this.unshareCamera()
+      } else {
+        this.shareCamera()
+      }
+    },
+    switchScreen() {
+      if (this.localScreen) {
+        this.unshareScreen()
+      } else {
+        this.shareScreen()
+      }
+    },
+    switchMic() {
+      if (this.localMic) {
+        this.unshareMic()
+      } else {
+        this.shareMic()
+      }
     },
     async shareCamera() {
       if (!this.sfu || this.localCameraLoading) {
@@ -242,6 +304,9 @@ export default defineComponent({
       }
       delete this.state.tracks[trackId(this.localCamera)]
       this.localCamera.unpublish()
+      for (const t of this.localCamera.getTracks()) {
+        t.stop()
+      }
       this.localCamera = null
     },
     async shareScreen() {
@@ -283,7 +348,42 @@ export default defineComponent({
       }
       delete this.state.tracks[trackId(this.localScreen)]
       this.localScreen.unpublish()
+      for (const t of this.localScreen.getTracks()) {
+        t.stop()
+      }
       this.localScreen = null
+    },
+    async shareMic() {
+      if (!this.sfu || this.localMicLoading) {
+        return
+      }
+
+      try {
+        this.localMicLoading = true
+        this.localMic = await LocalStream.getUserMedia({
+          // codec: "vp8",
+          // resolution: "vga",
+          // simulcast: true,
+          video: false,
+          audio: true,
+        } as Constraints)
+        this.state.tracks[trackId(this.localMic)] = { hint: Hint.UserAudio }
+        await this.rtc?.state(this.state)
+        this.sfu.publish(this.localMic)
+      } finally {
+        this.localMicLoading = false
+      }
+    },
+    unshareMic() {
+      if (!this.localMic) {
+        return
+      }
+      delete this.state.tracks[trackId(this.localMic)]
+      this.localMic.unpublish()
+      for (const t of this.localMic.getTracks()) {
+        t.stop()
+      }
+      this.localMic = null
     },
     processRecords(records: Record[]): void {
       for (const record of records) {
@@ -339,6 +439,13 @@ video
   left: 50%
   top: 50%
   transform: translate(-50%, -50%)
+  &.local
+    transform: scale(-1, 1)
+    left: 0
+    top: 0
+    max-height: 100%
+    max-width: 100%
+    width: 100%
 
 .video-off
   top: 0
@@ -393,13 +500,18 @@ video
   display: flex
   flex-direction: column
   align-items: center
-  justify-content: flex-end
+  justify-content: flex-start
   width: 60px
   margin: 30px
+
+.controls-bottom
+  margin-top: auto
 
 .ctrl-btn
   border-radius: 50%
   margin: 10px
+  &.active
+    border: 1px solid var(--color-highlight-background)
 
 .side-panel
   display: none

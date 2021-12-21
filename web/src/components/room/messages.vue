@@ -194,6 +194,7 @@ export default defineComponent({
 @use '@/css/theme'
 
 .messages
+  position: relative
   display: flex
   flex-direction: column
 
