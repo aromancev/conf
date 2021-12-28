@@ -1,77 +1,49 @@
 <template>
-  <LiveTalkRoom :roomId="talk?.roomId" />
+  <LiveTalkRoom v-if="talk" :room-id="talk.roomId" />
 
-  <InternalError
-    v-if="modal === Dialog.Error"
-    v-on:click="modal = Dialog.None"
-  />
+  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, watch } from "vue"
+import { Talk, talkClient, confaClient } from "@/api"
 import InternalError from "@/components/modals/InternalError.vue"
-import { defineComponent } from "vue"
 import LiveTalkRoom from "@/views/room/LiveTalkRoom.vue"
-import { confa, Talk, talk } from "@/api"
 
-enum Dialog {
+enum Modal {
   None = "",
   Error = "error",
 }
 
-export default defineComponent({
-  name: "Talk",
-  components: {
-    LiveTalkRoom,
-    InternalError,
-  },
+const modal = ref(Modal.None)
+const talk = ref<Talk | null>()
 
-  data() {
-    return {
-      Dialog,
-      talk: null as Talk | null,
-      modal: Dialog.None,
-    }
-  },
+const props = defineProps<{
+  handle: string
+  confaHandle: string
+  tab: string
+}>()
 
-  async created() {
-    this.talk = await this.fetchTalk()
-    if (this.talk === null) {
-      alert("talk not found")
+watch(
+  () => props.handle,
+  async (value) => {
+    if (value === "new") {
+      const confa = await confaClient.fetchOne({ handle: props.confaHandle })
+      if (!confa) {
+        throw new Error("Failed to feth confa.")
+      }
+      talk.value = await talkClient.create(confa.id)
       return
     }
+
+    try {
+      talk.value = await talkClient.fetchOne({
+        handle: value,
+      })
+    } catch (e) {
+      modal.value = Modal.Error
+    }
   },
-
-  methods: {
-    async fetchTalk(): Promise<Talk | null> {
-      const confaHanle = this.$route.params.confa as string
-      const talkHandle = this.$route.params.talk as string
-
-      if (talkHandle !== "new") {
-        try {
-          return await talk.fetchOne({
-            handle: talkHandle,
-          })
-        } catch (e) {
-          this.modal = Dialog.Error
-        }
-      }
-
-      try {
-        const conf = await confa.fetchOne({
-          handle: confaHanle,
-        })
-        if (conf === null) {
-          return null
-        }
-        const tlk = await talk.create(conf.id)
-        this.$router.replace("/" + confaHanle + "/" + tlk.handle)
-        return tlk
-      } catch (e) {
-        this.modal = Dialog.Error
-      }
-
-      return null
-    },
-  },
-})
+  { immediate: true },
+)
 </script>

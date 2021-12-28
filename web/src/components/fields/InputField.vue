@@ -5,7 +5,8 @@
       :value="modelValue"
       :placeholder="placeholder"
       :spellcheck="spellcheck"
-      @input="$emit('update:modelValue', $event.target.value)"
+      :disabled="disabled"
+      @input="input"
     />
     <div v-if="error && errExpanded" class="error">{{ error }}</div>
     <div
@@ -19,36 +20,27 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
+<script setup lang="ts">
+import { ref } from "vue"
 
-export default defineComponent({
-  name: "Loader",
-  props: {
-    type: {
-      type: String,
-      required: true,
-    },
-    placeholder: {
-      type: String,
-    },
-    spellcheck: {
-      type: String,
-    },
-    modelValue: {
-      type: String,
-      required: true,
-    },
-    error: {
-      type: String,
-    },
-  },
-  data() {
-    return {
-      errExpanded: false,
-    }
-  },
-})
+const emit = defineEmits<{
+  (e: "update:modelValue", value: string): void
+}>()
+
+defineProps<{
+  type: string
+  modelValue: string
+  placeholder?: string
+  spellcheck?: boolean
+  disabled?: boolean
+  error?: string
+}>()
+
+const errExpanded = ref(false)
+
+function input(event: Event) {
+  emit("update:modelValue", (event.target as HTMLInputElement).value)
+}
 </script>
 
 <style scoped lang="sass">
@@ -95,4 +87,3 @@ input:disabled
   white-space: pre-wrap
   z-index: 100
 </style>
- 

@@ -1,43 +1,11 @@
 <template>
-  <div class="container">
-    <div class="row">
-      <h1></h1>
-      <h3>Local Video</h3>
-      <Stream
-        v-bind:stream="localStream"
-        v-bind:mirrored="true"
-        v-bind:muted="true"
-      />
-
-      <h3>Remote Video</h3>
-      <Stream
-        v-for="stream in remoteStreams"
-        v-bind:key="stream.id"
-        v-bind:stream="stream"
-        width="150"
-      />
-      <div
-        v-if="userId === talk?.ownerId"
-        class="btn px-3 py-2"
-        v-on:click="start"
-      >
-        Start
-      </div>
-
-      <InternalError
-        v-if="modal === Dialog.Error"
-        v-on:click="modal = Dialog.None"
-      />
-    </div>
-  </div>
+  <div></div>
 </template>
 
 <script lang="ts">
-import InternalError from "@/components/modals/InternalError.vue"
 import { defineComponent } from "vue"
-import Stream from "@/components/Stream.vue"
 import { Client, LocalStream, RemoteStream } from "ion-sdk-js"
-import { client, userStore, confa, Talk, talk } from "@/api"
+import { client, userStore, confaClient, Talk, talkClient } from "@/api"
 
 enum Dialog {
   None = "",
@@ -46,16 +14,6 @@ enum Dialog {
 
 export default defineComponent({
   name: "RTCExample",
-  components: {
-    Stream,
-    InternalError,
-  },
-
-  computed: {
-    userId() {
-      return userStore.getState().id
-    },
-  },
   data() {
     return {
       Dialog,
@@ -64,6 +22,12 @@ export default defineComponent({
       remoteStreams: {} as { [key: string]: MediaStream },
       modal: Dialog.None,
     }
+  },
+
+  computed: {
+    userId() {
+      return userStore.getState().id
+    },
   },
 
   async created() {
@@ -107,7 +71,7 @@ export default defineComponent({
         return
       }
       try {
-        await talk.start(this.talk.id)
+        await talkClient.start(this.talk.id)
       } catch (e) {
         this.modal = Dialog.Error
       }
@@ -119,7 +83,7 @@ export default defineComponent({
 
       if (talkHandle !== "new") {
         try {
-          return await talk.fetchOne({
+          return await talkClient.fetchOne({
             handle: talkHandle,
           })
         } catch (e) {
@@ -128,13 +92,13 @@ export default defineComponent({
       }
 
       try {
-        const conf = await confa.fetchOne({
+        const conf = await confaClient.fetchOne({
           handle: confaHanle,
         })
         if (conf === null) {
           return null
         }
-        const tlk = await talk.create(conf.id)
+        const tlk = await talkClient.create(conf.id)
         this.$router.replace("/" + confaHanle + "/" + tlk.handle)
         return tlk
       } catch (e) {

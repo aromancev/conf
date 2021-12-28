@@ -1,6 +1,14 @@
 import { gql } from "@apollo/client/core"
 import { Client } from "./api"
-import { createConfa, createConfaVariables, confas, confasVariables, ConfaInput, updateConfa, updateConfaVariables } from "./schema"
+import {
+  createConfa,
+  createConfaVariables,
+  confas,
+  confasVariables,
+  ConfaInput,
+  updateConfa,
+  updateConfaVariables,
+} from "./schema"
 import { Confa } from "./models"
 
 class ConfaIterator {

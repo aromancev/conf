@@ -7,8 +7,8 @@
       :placeholder="placeholder"
       :disabled="disabled"
       :spellcheck="spellcheck"
-      @input="$emit('update:modelValue', $event.target.value)"
-    />
+      @input="input"
+    ></textarea>
     <div v-if="error && errExpanded" class="error">{{ error }}</div>
     <div
       v-if="error"
@@ -21,58 +21,54 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
+<script setup lang="ts">
+import { ref, watch, onMounted } from "vue"
 
-export default defineComponent({
-  name: "Loader",
-  props: {
-    placeholder: {
-      type: String,
-    },
-    spellcheck: {
-      type: Boolean,
-    },
-    modelValue: {
-      type: String,
-      required: true,
-    },
-    error: {
-      type: String,
-    },
-    disabled: {
-      type: Boolean,
-    },
-  },
-  watch: {
-    modelValue() {
-      this.alignHeight()
-    },
-  },
-  data() {
-    return {
-      errExpanded: false,
-      style: {
-        height: "0",
-      },
-    }
-  },
-  mounted() {
-    this.alignHeight()
-  },
-  methods: {
-    alignHeight() {
-      // Woodoo magic to auto-resize textarea based on content.
-      if (this.modelValue.length === 0) {
-        this.style["height"] = "0"
-        return
-      }
-      const textarea = this.$refs.textarea as HTMLTextAreaElement
-      textarea.style.height = "0"
-      this.style["height"] = `${textarea.scrollHeight}px`
-    },
-  },
+const emit = defineEmits<{
+  (e: "update:modelValue", value: string): void
+}>()
+
+const props = defineProps<{
+  modelValue: string
+  placeholder?: string
+  disabled?: boolean
+  spellcheck?: boolean
+  error?: string
+}>()
+
+const errExpanded = ref(false)
+const style = ref({
+  height: "0",
 })
+const textarea = ref<HTMLTextAreaElement | null>(null)
+
+watch(
+  () => props.modelValue,
+  () => {
+    alignHeight()
+  },
+)
+
+onMounted(() => {
+  alignHeight()
+})
+
+function input(event: Event) {
+  emit("update:modelValue", (event.target as HTMLInputElement).value)
+}
+
+function alignHeight() {
+  // Woodoo magic to auto-resize textarea based on content.
+  if (props.modelValue.length === 0) {
+    style.value["height"] = "0"
+    return
+  }
+  if (!textarea.value) {
+    return
+  }
+  textarea.value.style.height = "0"
+  style.value["height"] = `${textarea.value.scrollHeight}px`
+}
 </script>
 
 <style scoped lang="sass">
@@ -123,4 +119,3 @@ textarea:disabled
   white-space: pre-wrap
   z-index: 100
 </style>
- 

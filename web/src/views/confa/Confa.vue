@@ -1,12 +1,13 @@
 <template>
   <div v-if="loading" class="centered">
-    <Loader />
+    <PageLoader />
   </div>
 
   <div v-if="!loading && confa" class="confa">
     <div class="title">{{ confa.title || confa.id }}</div>
     <div class="path">
-      /<router-link
+      /
+      <router-link
         class="path-link"
         :to="{
           name: 'confaOverview',
@@ -43,95 +44,74 @@
     <div class="content">
       <div class="body">
         <ConfaPreview v-if="tab === 'overview'" :confa="confa" />
-        <ConfaEdit v-if="tab === 'edit'" :confa="confa" @updated="updated" />
+        <ConfaEdit v-if="tab === 'edit'" :confa="confa" @update="update" />
       </div>
     </div>
   </div>
 
   <NotFound v-if="!loading && !confa" />
 
-  <InternalError
-    v-if="modal === Dialog.Error"
-    v-on:click="modal = Dialog.None"
-  />
+  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { ref, watch } from "vue"
+import { useRouter } from "vue-router"
+import { confaClient, Confa, ConfaInput } from "@/api"
 import InternalError from "@/components/modals/InternalError.vue"
-import Loader from "@/components/Loader.vue"
+import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
-import { defineComponent } from "vue"
-import { confa, Confa, ConfaInput } from "@/api"
 import ConfaEdit from "./ConfaEdit.vue"
 import ConfaPreview from "./ConfaOverview.vue"
 
-enum Dialog {
+enum Modal {
   None = "",
   Error = "error",
 }
 
-export default defineComponent({
-  name: "Confa",
-  components: {
-    ConfaEdit,
-    ConfaPreview,
-    InternalError,
-    NotFound,
-    Loader,
-  },
-  props: {
-    tab: {
-      type: String,
-      required: true,
-    },
-    handle: {
-      type: String,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      Dialog,
-      confa: null as Confa | null,
-      loading: false,
-      modal: Dialog.None,
+const props = defineProps<{
+  tab: string
+  handle: string
+}>()
+
+const router = useRouter()
+
+const confa = ref<Confa | null>()
+const loading = ref(false)
+const modal = ref(Modal.None)
+
+watch(
+  () => props.handle,
+  async (value) => {
+    if (confa.value && props.handle === confa.value.handle) {
+      return
     }
-  },
-  watch: {
-    handle: {
-      immediate: true,
-      async handler(handle: string) {
-        if (this.confa && handle === this.confa.handle) {
+    loading.value = true
+    try {
+      if (value === "new") {
+        confa.value = await confaClient.create()
+        router.replace({ name: "confaOverview", params: { handle: confa.value.handle } })
+      } else {
+        confa.value = await confaClient.fetchOne({
+          handle: value,
+        })
+        if (confa.value === null) {
           return
         }
-        this.loading = true
-        try {
-          if (handle === "new") {
-            this.confa = await confa.create()
-            this.$router.replace("/" + this.confa.handle)
-          } else {
-            this.confa = await confa.fetchOne({
-              handle: handle,
-            })
-            if (this.confa === null) {
-              return
-            }
-          }
-        } catch (e) {
-          this.modal = Dialog.Error
-        } finally {
-          this.loading = false
-        }
-      },
-    },
+      }
+    } catch (e) {
+      modal.value = Modal.Error
+    } finally {
+      loading.value = false
+    }
   },
-  methods: {
-    updated(confa: ConfaInput) {
-      const current = Object.assign({}, this.confa)
-      this.confa = Object.assign(current, confa)
-    },
-  },
-})
+  { immediate: true },
+)
+
+function update(value: ConfaInput) {
+  const current = Object.assign({}, confa.value)
+  confa.value = Object.assign(current, value)
+}
 </script>
 
 <style scoped lang="sass">

@@ -1,1 +1,1 @@
-export { Record, RecordProcessor, BufferedProcessor } from "./record"
+export * from "./record"

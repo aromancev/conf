@@ -7,6 +7,8 @@ RUN go build \
   -o bin/media \
   ./cmd/media
 
+# Consider using
+# https://github.com/wader/static-ffmpeg
 FROM alpine:latest
 
 WORKDIR /app

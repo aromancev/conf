@@ -5,7 +5,7 @@
       <div class="form-cell">
         <Input
           v-model="handle"
-          spellcheck="false"
+          :spellcheck="false"
           class="form-input"
           type="text"
           placeholder="handle"
@@ -18,7 +18,7 @@
       <div class="form-cell">
         <Input
           v-model="title"
-          spellcheck="false"
+          :spellcheck="false"
           class="form-input"
           type="text"
           placeholder="title"
@@ -29,39 +29,25 @@
     <div class="form-row">
       <div class="form-cell label align-top">Description</div>
       <div class="form-cell">
-        <Textarea
-          v-model="description"
-          class="form-input description"
-          placeholder="description"
-        />
+        <Textarea v-model="description" class="form-input description" placeholder="description"></Textarea>
       </div>
     </div>
     <div class="form-row">
       <div class="form-cell"></div>
       <div class="form-cell controls">
         <div class="save-indicator"></div>
-        <div
-          class="btn save"
-          :disabled="!hasUpdate || saving || !formValid ? true : null"
-          @click="save"
-        >
+        <div class="btn save" :disabled="!hasUpdate || saving || !formValid ? true : null" @click="save">
           <div v-if="saving" class="save-loader">
-            <Loader />
+            <PageLoader />
           </div>
 
-          <span v-if="!saving">
-            {{ !hasUpdate ? "Saved" : "Save" }}
-          </span>
+          <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
         </div>
       </div>
     </div>
   </div>
 
-  <Modal
-    v-if="modal === Dialog.DuplicateEntry"
-    @click="modal = Dialog.None"
-    :buttons="{ ok: 'OK' }"
-  >
+  <Modal v-if="modal === Dialog.DuplicateEntry" :buttons="{ ok: 'OK' }" @click="modal = Dialog.None">
     <p>Confa with this handle already exits.</p>
     <p>Try a different handle.</p>
   </Modal>
@@ -69,13 +55,27 @@
 </template>
 
 <script lang="ts">
+import { RegexValidator } from "@/platform/validator"
+
+const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
+  "Must be from 4 to 64 characters long",
+  "Can only contain lower case letters, numbers, and '-'",
+])
+const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
+  "Must be from 0 to 64 characters long",
+  "Can only contain letters, numbers, spaces, and '-'",
+])
+</script>
+
+<script setup lang="ts">
+import { ref, computed, watch } from "vue"
+import { confaClient, Confa, ConfaInput, errorCode, Code } from "@/api"
+import { useRouter } from "vue-router"
 import InternalError from "@/components/modals/InternalError.vue"
-import Modal from "@/components/modals/Modal.vue"
-import Loader from "@/components/Loader.vue"
-import Input from "@/components/fields/Input.vue"
-import Textarea from "@/components/fields/Textarea.vue"
-import { defineComponent, PropType } from "vue"
-import { confa, Confa, ConfaInput, errorCode, Code } from "@/api"
+import Modal from "@/components/modals/ModalDialog.vue"
+import PageLoader from "@/components/PageLoader.vue"
+import Input from "@/components/fields/InputField.vue"
+import Textarea from "@/components/fields/TextareaField.vue"
 
 enum Dialog {
   None = "",
@@ -83,122 +83,88 @@ enum Dialog {
   DuplicateEntry = "duplicate_entry",
 }
 
-const defaultInputHeight = "1px"
-const validHandle = new RegExp("^[a-z0-9-]{4,64}$")
-const handleError = `• Must be from 4 to 64 characters long.
-• Can only contain lower case letters, numbers, and '-'.
-`
-const validTitle = new RegExp("^[a-zA-Z0-9- ]{0,64}$")
-const titleError = `• Must be from 0 to 64 characters long.
-• Can only contain letters, numbers, spaces, and '-'.
-`
+const emit = defineEmits<{
+  (e: "update", input: ConfaInput): void
+}>()
 
-export default defineComponent({
-  name: "ConfaEdit",
-  components: {
-    InternalError,
-    Modal,
-    Loader,
-    Input,
-    Textarea,
-  },
-  emits: ["updated"],
-  props: {
-    confa: {
-      type: Object as PropType<Confa>,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      Dialog,
-      modal: Dialog.None,
-      handle: this.confa.handle,
-      handleError: "",
-      title: this.confa.title,
-      titleError: "",
-      description: this.confa.description,
-      update: {} as ConfaInput,
-      saving: false,
-    }
-  },
-  computed: {
-    hasUpdate(): boolean {
-      return Object.keys(this.update).length !== 0
-    },
-    formValid(): boolean {
-      return !this.titleError && !this.handleError
-    },
-  },
-  watch: {
-    handle(val: string) {
-      if (!validHandle.test(val)) {
-        this.handleError = handleError
-        return
-      }
-      this.handleError = ""
+const props = defineProps<{
+  confa: Confa
+}>()
 
-      if (val === this.confa.handle) {
-        delete this.update["handle"]
-      } else {
-        this.update.handle = val
-      }
-    },
-    title(val: string) {
-      if (!validTitle.test(val)) {
-        this.titleError = titleError
-        return
-      }
-      this.titleError = ""
+const router = useRouter()
 
-      if (val === this.confa.title) {
-        delete this.update["title"]
-      } else {
-        this.update.title = val
-      }
-    },
-    description(val: string) {
-      if (val === this.confa.description) {
-        delete this.update["description"]
-      } else {
-        this.update.description = val
-      }
-    },
-  },
-  methods: {
-    async save() {
-      if (this.saving || !this.hasUpdate || !this.formValid) {
-        return
-      }
-      const update = Object.assign({}, this.update)
-      this.saving = true
-      try {
-        const updated = await confa.update({ id: this.confa.id }, update)
-        this.update = {}
-        if (updated === 0) {
-          throw new Error("Nothing updated.")
-        }
-        this.$emit("updated", update)
-        if (update.handle) {
-          // Silently replace url without triggering re-render.
-          const route = this.$router.resolve({
-            name: "confaEdit",
-            params: { confa: update.handle },
-          })
-          window.history.replaceState({}, "", route.path)
-        }
-      } catch (e) {
-        if (errorCode(e) === Code.DuplicateEntry) {
-          this.modal = Dialog.DuplicateEntry
-        } else {
-          this.modal = Dialog.Error
-        }
-      } finally {
-        this.saving = false
-      }
-    },
-  },
+const modal = ref(Dialog.None)
+const handle = ref(props.confa.handle)
+const title = ref(props.confa.title)
+const description = ref(props.confa.description)
+const update = ref<ConfaInput>({})
+const saving = ref(false)
+
+const handleError = handleValidator.reactive(handle)
+const titleError = titleValidator.reactive(title)
+const hasUpdate = computed(() => {
+  if (!update.value) {
+    return 0
+  }
+  return Object.keys(update.value).length !== 0
 })
+const formValid = computed(() => {
+  return !titleError.value && !handleError.value
+})
+
+watch(handle, (value) => {
+  if (value === props.confa.handle) {
+    delete update.value.handle
+  } else {
+    update.value.handle = value
+  }
+})
+watch(title, (value) => {
+  if (value === props.confa.title) {
+    delete update.value.title
+  } else {
+    update.value.title = value
+  }
+})
+watch(description, (value) => {
+  if (value === props.confa.description) {
+    delete update.value.description
+  } else {
+    update.value.description = value
+  }
+})
+
+async function save() {
+  if (saving.value || !hasUpdate.value || !formValid.value) {
+    return
+  }
+  saving.value = true
+  try {
+    const currentUpdate = Object.assign({}, update.value)
+    const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
+    update.value = {}
+    if (updated === 0) {
+      throw new Error("Nothing updated.")
+    }
+    emit("update", currentUpdate)
+    if (currentUpdate.handle) {
+      // Silently replace url without triggering re-render.
+      const route = router.resolve({
+        name: "confaEdit",
+        params: { confa: currentUpdate.handle },
+      })
+      window.history.replaceState({}, "", route.path)
+    }
+  } catch (e) {
+    if (errorCode(e) === Code.DuplicateEntry) {
+      modal.value = Dialog.DuplicateEntry
+    } else {
+      modal.value = Dialog.Error
+    }
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <style scoped lang="sass">

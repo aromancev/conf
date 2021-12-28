@@ -145,6 +145,7 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaInput) 
 	}, nil
 }
 
+// nolint paramTypeCombine
 func (r *mutationResolver) UpdateConfa(ctx context.Context, where ConfaInput, request ConfaInput) (int, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -532,5 +533,8 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// nolint typeDefFirst
 type mutationResolver struct{ *Resolver }
+
+// nolint typeDefFirst
 type queryResolver struct{ *Resolver }

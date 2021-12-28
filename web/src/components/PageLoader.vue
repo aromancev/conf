@@ -1,8 +1,8 @@
 <template>
   <svg
+    id="L3"
     class="loader"
     version="1.1"
-    id="L3"
     xmlns="http://www.w3.org/2000/svg"
     xmlns:xlink="http://www.w3.org/1999/xlink"
     x="0px"
@@ -11,14 +11,7 @@
     enable-background="new 0 0 0 0"
     xml:space="preserve"
   >
-    <circle
-      fill="none"
-      stroke="var(--color-highlight-background)"
-      stroke-width="4"
-      cx="50"
-      cy="50"
-      r="44"
-    />
+    <circle fill="none" stroke="var(--color-highlight-background)" stroke-width="4" cx="50" cy="50" r="44" />
     <circle fill="var(--color-red)" cx="8" cy="54" r="6">
       <animateTransform
         attributeName="transform"
@@ -32,14 +25,6 @@
   </svg>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
-
-export default defineComponent({
-  name: "Loader",
-})
-</script>
-
 <style scoped lang="sass">
 svg
   width: 70px
@@ -47,4 +32,3 @@ svg
   max-width: 100%
   max-height: 100%
 </style>
- 

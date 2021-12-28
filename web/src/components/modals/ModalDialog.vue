@@ -1,39 +1,29 @@
 <template>
-  <div @click="close" class="background"></div>
+  <div class="background" @click="close"></div>
   <div class="content">
     <div class="wrapper">
       <slot></slot>
     </div>
     <table v-if="buttons">
       <tr>
-        <td
-          class="cell"
-          v-for="(text, id) in buttons"
-          v-bind:key="id"
-          @click="click(id)"
-        >
-          {{ text }}
-        </td>
+        <td v-for="(text, id) in buttons" :key="id" class="cell" @click="click(id)">{{ text }}</td>
       </tr>
     </table>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
+<script setup lang="ts">
+defineProps<{
+  buttons: Record<string, string>
+}>()
 
-export default defineComponent({
-  name: "Modal",
-  props: {
-    buttons: {} as Record<string, string>,
-  },
-  emits: ["click"],
-  methods: {
-    click(id: string) {
-      this.$emit("click", id)
-    },
-  },
-})
+const emit = defineEmits<{
+  (e: "click", id: string): void
+}>()
+
+function click(id: string) {
+  emit("click", id)
+}
 </script>
 
 <style scoped lang="sass">

@@ -12,7 +12,7 @@ import {
 import { Talk } from "./models"
 
 const queryHydrated = gql`
-query talksHydrated($where: TalkInput!, $from: String) {
+  query talksHydrated($where: TalkInput!, $from: String) {
     talks(where: $where, from: $from) {
       items {
         id
@@ -27,18 +27,18 @@ query talksHydrated($where: TalkInput!, $from: String) {
 `
 
 const query = gql`
-query talks($where: TalkInput!, $from: String) {
-  talks(where: $where, from: $from) {
-    items {
-      id
-      ownerId
-      confaId
-      roomId
-      handle
+  query talks($where: TalkInput!, $from: String) {
+    talks(where: $where, from: $from) {
+      items {
+        id
+        ownerId
+        confaId
+        roomId
+        handle
+      }
+      nextFrom
     }
-    nextFrom
   }
-}
 `
 
 class TalkIterator {

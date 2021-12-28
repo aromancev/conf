@@ -59,15 +59,13 @@ export class RTC {
     }
     this.onSignalAnswer = null
 
-    this.socket = new WebSocket(
-      `${protocol}://${window.location.hostname}/api/rtc/ws/${roomId}?t=${token}`,
-    )
+    this.socket = new WebSocket(`${protocol}://${window.location.hostname}/api/rtc/ws/${roomId}?t=${token}`)
     this.socket.onopen = () => {
       if (this._onopen) {
         this._onopen()
       }
     }
-    this.socket.onmessage = msg => {
+    this.socket.onmessage = (msg) => {
       const resp = JSON.parse(msg.data) as Message
       switch (resp.type) {
         case Type.Answer:
@@ -105,11 +103,7 @@ export class RTC {
     this._onopen = onopen
   }
 
-  join(
-    sid: string,
-    uid: string,
-    offer: RTCSessionDescriptionInit,
-  ): Promise<RTCSessionDescriptionInit> {
+  join(sid: string, uid: string, offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     this.send({
       type: Type.Join,
       payload: {
@@ -118,8 +112,8 @@ export class RTC {
         description: offer,
       },
     })
-    return new Promise(resolve => {
-      this.onSignalAnswer = desc => {
+    return new Promise((resolve) => {
+      this.onSignalAnswer = (desc) => {
         this.onSignalAnswer = null
         resolve(desc)
       }
@@ -131,8 +125,8 @@ export class RTC {
       type: Type.Offer,
       payload: { description: offer },
     })
-    return new Promise(resolve => {
-      this.onSignalAnswer = desc => {
+    return new Promise((resolve) => {
+      this.onSignalAnswer = (desc) => {
         this.onSignalAnswer = null
         resolve(desc)
       }
@@ -189,10 +183,7 @@ export class RTC {
     this.socket.send(JSON.stringify(req))
   }
 
-  private openPending(
-    resolve: (msg: Message) => void,
-    reject: (reason: string) => void,
-  ): string {
+  private openPending(resolve: (msg: Message) => void, reject: (reason: string) => void): string {
     this.requestId++
     const pendingId = this.requestId
 

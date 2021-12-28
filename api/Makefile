@@ -21,6 +21,7 @@ test:
 lint:
 	docker run \
 		--rm \
+		-t \
 		-w /app \
 		-v `pwd`:/app \
 		golangci/golangci-lint:v1.41-alpine golangci-lint run

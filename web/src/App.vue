@@ -7,7 +7,7 @@
     }"
   >
     <div class="page-header">
-      <Header @theme="switchTheme" />
+      <PageHeader @theme="switchTheme"></PageHeader>
     </div>
     <div class="page-body">
       <router-view />
@@ -15,28 +15,16 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
-import Header from "@/components/Header.vue"
+<script setup lang="ts">
+import { ref } from "vue"
 import { Theme } from "@/platform/theme"
+import PageHeader from "@/components/PageHeader.vue"
 
-export default defineComponent({
-  name: "App",
-  components: {
-    Header,
-  },
-  data() {
-    return {
-      Theme,
-      theme: Theme.Light,
-    }
-  },
-  methods: {
-    switchTheme(theme: Theme) {
-      this.theme = theme
-    },
-  },
-})
+const theme = ref(Theme.Light)
+
+function switchTheme(value: Theme) {
+  theme.value = value
+}
 </script>
 
 <style lang="sass">
