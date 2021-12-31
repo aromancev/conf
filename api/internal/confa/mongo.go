@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -55,29 +54,35 @@ func (m *Mongo) Create(ctx context.Context, requests ...Confa) ([]Confa, error) 
 	return requests, nil
 }
 
-func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
-	filter := bson.M{}
+func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (UpdateResult, error) {
+	if lookup.Limit > batchLimit || lookup.Limit == 0 {
+		lookup.Limit = batchLimit
+	}
+
+	if err := request.Validate(); err != nil {
+		return UpdateResult{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	update := bson.M{
+		"$set": request,
+	}
+	res, err := m.db.Collection("confas").UpdateMany(ctx, lookup.Filter(), update)
 	switch {
-	case lookup.ID != uuid.Nil:
-		filter["_id"] = lookup.ID
-	case lookup.From != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": lookup.From,
-		}
+	case mongo.IsDuplicateKeyError(err):
+		return UpdateResult{}, ErrDuplicateEntry
+	case err != nil:
+		return UpdateResult{}, err
 	}
-	if lookup.Owner != uuid.Nil {
-		filter["ownerId"] = lookup.Owner
-	}
-	if lookup.Handle != "" {
-		filter["handle"] = lookup.Handle
-	}
+	return UpdateResult{Updated: res.ModifiedCount}, nil
+}
+
+func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
 
 	cur, err := m.db.Collection("confas").Find(
 		ctx,
-		filter,
+		lookup.Filter(),
 		&options.FindOptions{
 			Sort:  bson.M{"_id": 1},
 			Limit: &lookup.Limit,

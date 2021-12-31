@@ -1,33 +1,17 @@
 <template>
-  <div
-    class="shade"
-    :class="{ active: modal !== Modal.None }"
-    @click="switchModal(Modal.None)"
-  ></div>
+  <div class="shade" :class="{ active: modal !== Modal.None }" @click="switchModal(Modal.None)"></div>
   <div class="header">
     <div class="start">
-      <div class="menu material-icons" @click="switchModal(Modal.Sidebar)">
-        menu
-      </div>
+      <div class="menu material-icons" @click="switchModal(Modal.Sidebar)">menu</div>
     </div>
     <div class="end">
-      <div
-        v-if="allowedWrite"
-        class="avatar"
-        v-html="profile.avatar"
-        @click="switchModal(Modal.Profile)"
-      ></div>
-      <router-link
-        v-if="!allowedWrite"
-        class="px-3 py-2 btn-convex login"
-        to="/login"
-      >
-        Sign in
-      </router-link>
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div v-if="allowedWrite" class="avatar" @click="switchModal(Modal.Profile)" v-html="profile.avatar"></div>
+      <router-link v-if="!allowedWrite" class="px-3 py-2 btn-convex login" to="/login">Sign in</router-link>
     </div>
 
     <div class="sidebar" :class="{ opened: modal === Modal.Sidebar }">
-      <router-link class="control-item" to="/">
+      <router-link v-if="allowedWrite" class="control-item" to="/">
         <span class="icon material-icons">hub</span>
         My content
       </router-link>
@@ -35,25 +19,19 @@
         <span class="icon material-icons">explore</span>
         Explore
       </router-link>
-      <div class="control-divider"></div>
-      <router-link class="control-item" to="/new">
+      <div v-if="allowedWrite" class="control-divider"></div>
+      <router-link v-if="allowedWrite" class="control-item" to="/new">
         <span class="icon material-icons">add</span>
         Create confa
       </router-link>
       <div class="control-divider"></div>
       <div class="control-item" @click="toggleTheme">
-        <span class="icon material-icons">{{
-          theme === Theme.Dark ? "light_mode" : "dark_mode"
-        }}</span>
+        <span class="icon material-icons">{{ theme === Theme.Dark ? "light_mode" : "dark_mode" }}</span>
         Switch theme
       </div>
     </div>
 
-    <div
-      v-if="allowedWrite"
-      class="control"
-      :class="{ opened: modal === Modal.Profile }"
-    >
+    <div v-if="allowedWrite" class="control" :class="{ opened: modal === Modal.Profile }">
       <router-link class="control-item" to="/">
         <span class="icon material-icons">person</span>
         My profile
@@ -67,8 +45,8 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from "vue"
 import { userStore } from "@/api"
 import { genAvatar, genName } from "@/platform/gen"
 import { Theme } from "@/platform/theme"
@@ -84,50 +62,42 @@ enum Modal {
   Profile = "profile",
 }
 
-export default defineComponent({
-  name: "Header",
-  data() {
-    return {
-      Theme,
-      Modal,
-      modal: Modal.None,
-      theme: Theme.Light,
-    }
-  },
-  emits: ["theme"],
-  computed: {
-    allowedWrite(): boolean {
-      return userStore.getState().allowedWrite
-    },
-    profile(): Profile {
-      return {
-        avatar: genAvatar(userStore.getState().id, 35),
-        name: genName(userStore.getState().id),
-      }
-    },
-  },
-  watch: {
-    theme(theme: string) {
-      this.$emit("theme", theme)
-      localStorage.theme = theme
-    },
-  },
-  mounted() {
-    this.theme = localStorage.theme || Theme.Light
-  },
-  methods: {
-    switchModal(modal: Modal) {
-      if (this.modal === modal) {
-        this.modal = Modal.None
-        return
-      }
-      this.modal = modal
-    },
-    toggleTheme() {
-      this.theme = this.theme == Theme.Light ? Theme.Dark : Theme.Light
-    },
-  },
+const emit = defineEmits<{
+  (e: "theme", value: Theme): void
+}>()
+
+const theme = ref(Theme.Light)
+const modal = ref(Modal.None)
+
+const allowedWrite = computed<boolean>(() => {
+  return userStore.getState().allowedWrite
 })
+const profile = computed<Profile>(() => {
+  return {
+    avatar: genAvatar(userStore.getState().id, 35),
+    name: genName(userStore.getState().id),
+  }
+})
+
+watch(theme, (val: Theme) => {
+  emit("theme", val)
+  localStorage.theme = val
+})
+
+onMounted(() => {
+  theme.value = localStorage.theme || Theme.Light
+})
+
+function switchModal(val: Modal) {
+  if (modal.value === val) {
+    modal.value = Modal.None
+    return
+  }
+  modal.value = val
+}
+function toggleTheme() {
+  theme.value = theme.value === Theme.Light ? Theme.Dark : Theme.Light
+}
 </script>
 
 <style scoped lang="sass">

@@ -1,26 +1,104 @@
 <template>
-  <div
-    class="audience"
-    @mousemove="select"
-    @mouseleave="deselect"
-    v-bind:style="{ cursor: cursor }"
-    @click="test"
-  >
+  <div class="audience" :style="{ cursor: cursor }" @mousemove="select" @mouseleave="deselect">
     <div class="selected">{{ selected?.name || "" }}</div>
     <div class="divider"></div>
     <div class="canvas">
       <canvas ref="audience"></canvas>
-      <canvas class="shade" ref="shade"></canvas>
+      <canvas ref="shade" class="shade"></canvas>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from "vue"
 import { EventType, PeerStatus, PayloadPeerState } from "@/api/models"
 import { Record } from "./record"
 import { genName, drawAvatar } from "@/platform/gen"
 
+const audience = ref<HTMLCanvasElement>()
+const shade = ref<HTMLCanvasElement>()
+const cursor = ref("default")
+const selected = ref(null as Peer | null)
+
+let canvas = null as Canvas | null
+let resizeInterval = 0
+
+defineExpose({
+  processRecords,
+  resize,
+})
+
+onMounted(() => {
+  if (!audience.value || !shade.value) {
+    console.error("not created")
+    return
+  }
+
+  const audCtx = audience.value.getContext("2d")
+  const shadeCtx = shade.value.getContext("2d")
+  if (!audCtx || !shadeCtx) {
+    throw new Error("Failed to get canvas context.")
+  }
+  canvas = new Canvas(audCtx, shadeCtx, audience.value.width, audience.value.height)
+
+  clearInterval(resizeInterval)
+  resizeInterval = window.setInterval(resize, 1000)
+  resize()
+})
+
+onUnmounted(() => {
+  clearInterval(resizeInterval)
+})
+
+function resize() {
+  if (!audience.value || !shade.value) {
+    return
+  }
+
+  const dpr = window.devicePixelRatio || 1
+  const width = audience.value.offsetWidth * dpr
+  const height = audience.value.offsetHeight * dpr
+  if (audience.value.width === width && audience.value.height === height) {
+    return
+  }
+
+  audience.value.width = width
+  audience.value.height = height
+  shade.value.width = width
+  shade.value.height = height
+  canvas?.resize(width, height)
+}
+
+function select(ev: MouseEvent) {
+  if (!canvas) {
+    return
+  }
+  const dpr = window.devicePixelRatio || 1
+  const rect = (ev.target as HTMLElement).getBoundingClientRect()
+  const peer = canvas.hover((ev.clientX - rect.left) * dpr, (ev.clientY - rect.top) * dpr)
+  if (peer) {
+    cursor.value = "pointer"
+    selected.value = peer
+    canvas.select(peer.id)
+  } else {
+    cursor.value = "default"
+    selected.value = null
+    canvas.select("")
+  }
+}
+function deselect() {
+  if (!canvas) {
+    return
+  }
+  cursor.value = "default"
+  canvas.select("")
+}
+function processRecords(records: Record[]) {
+  canvas?.processRecords(records)
+}
+</script>
+
+<script lang="ts">
 const compaction = 0.3
 const padding = 0.25
 const offsetY = 20
@@ -59,12 +137,7 @@ class Canvas {
 
   private allDirty: boolean
 
-  constructor(
-    audicence: CanvasRenderingContext2D,
-    shade: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-  ) {
+  constructor(audicence: CanvasRenderingContext2D, shade: CanvasRenderingContext2D, width: number, height: number) {
     this.audicence = audicence
     this.shade = shade
 
@@ -84,22 +157,6 @@ class Canvas {
     this.shift = 0
 
     this.allDirty = true
-
-    for (let i = 0; i < 100; i++) {
-      const userId = Math.random().toString()
-      const p: Peer = {
-        id: userId,
-        joinedAt: "",
-        row: 0,
-        col: 0,
-        x: 0,
-        y: 0,
-        dirty: true,
-        name: genName(userId),
-      }
-      this.byId[userId] = p
-      this.ordered.push(p)
-    }
   }
 
   resize(width: number, height: number): void {
@@ -173,11 +230,7 @@ class Canvas {
     const right = Math.floor((x - this.padding + shift) / this.cellSize)
 
     // Four combinations in total.
-    const candidates = [
-      this.at(top, left),
-      this.at(center, right),
-      this.at(bottom, left),
-    ]
+    const candidates = [this.at(top, left), this.at(center, right), this.at(bottom, left)]
 
     let minDist = Infinity
     let closestPeer = null as Peer | null
@@ -209,9 +262,7 @@ class Canvas {
     let cellSize = Math.sqrt((height * width) / this.ordered.length)
     cellSize = Math.min(cellSize, maxSize) // Limiting the size of a cell.
     this.chess = Math.ceil(width / cellSize) < this.ordered.length
-    this.columns = this.chess
-      ? Math.ceil(width / cellSize)
-      : this.ordered.length
+    this.columns = this.chess ? Math.ceil(width / cellSize) : this.ordered.length
     this.rows = Math.ceil(this.ordered.length / this.columns)
 
     // Second size calculation round (making sure all peers fit into the actual dimentions).
@@ -225,8 +276,7 @@ class Canvas {
     }
     this.cellSize = cellSize
 
-    this.padding =
-      (this.width - cellSize * Math.min(this.columns, this.ordered.length)) / 2
+    this.padding = (this.width - cellSize * Math.min(this.columns, this.ordered.length)) / 2
 
     if (this.chess) {
       this.shift = this.cellSize * 0.25
@@ -297,13 +347,7 @@ class Canvas {
     ctx.restore()
   }
 
-  private renderPeer(
-    ctx: CanvasRenderingContext2D,
-    peer: Peer,
-    border = 8,
-    scale = 1,
-    shift = 0,
-  ): void {
+  private renderPeer(ctx: CanvasRenderingContext2D, peer: Peer, border = 8, scale = 1, shift = 0): void {
     const renderSize = this.renderSize * scale
     const x = peer.x
     const y = peer.y - renderSize * shift
@@ -384,93 +428,6 @@ class Canvas {
     return Math.sqrt(dx + dy)
   }
 }
-
-export default defineComponent({
-  name: "Audience",
-
-  data() {
-    return {
-      canvas: null as Canvas | null,
-      cursor: "default",
-      selected: null as Peer | null,
-      resizeInterval: 0,
-    }
-  },
-
-  async mounted() {
-    const dpr = window.devicePixelRatio || 1
-
-    const aud = this.$refs.audience as HTMLCanvasElement
-    aud.width = aud.offsetWidth * dpr
-    aud.height = aud.offsetHeight * dpr
-    const shade = this.$refs.shade as HTMLCanvasElement
-    shade.width = shade.offsetWidth * dpr
-    shade.height = shade.offsetHeight * dpr
-
-    const audCtx = aud.getContext("2d")
-    const shadeCtx = shade.getContext("2d")
-    if (!audCtx || !shadeCtx) {
-      throw new Error("Failed to get canvas context.")
-    }
-
-    this.canvas = new Canvas(audCtx, shadeCtx, aud.width, aud.height)
-
-    clearInterval(this.resizeInterval)
-    this.resizeInterval = setInterval(this.resize.bind(this), 1000)
-  },
-
-  unmounted() {
-    clearInterval(this.resizeInterval)
-  },
-
-  methods: {
-    resize() {
-      const dpr = window.devicePixelRatio || 1
-
-      const aud = this.$refs.audience as HTMLCanvasElement
-      const shade = this.$refs.shade as HTMLCanvasElement
-      if (
-        aud.width === aud.offsetWidth * dpr &&
-        aud.height === aud.offsetHeight * dpr
-      ) {
-        return
-      }
-      aud.width = aud.offsetWidth * dpr
-      aud.height = aud.offsetHeight * dpr
-      shade.width = shade.offsetWidth * dpr
-      shade.height = shade.offsetHeight * dpr
-      this.canvas?.resize(aud.width, aud.height)
-    },
-    processRecords(records: Record[]) {
-      this.canvas?.processRecords(records)
-    },
-    select(ev: MouseEvent) {
-      if (!this.canvas) {
-        return
-      }
-      const dpr = window.devicePixelRatio || 1
-      const rect = (ev.target as HTMLElement).getBoundingClientRect()
-      const peer = this.canvas.hover(
-        (ev.clientX - rect.left) * dpr,
-        (ev.clientY - rect.top) * dpr,
-      )
-      if (peer) {
-        // TODO: uncomment when can open profiles.
-        // this.cursor = "pointer"
-        this.selected = peer
-        this.canvas.select(peer.id)
-      } else {
-        // this.cursor = "default"
-        this.selected = null
-        this.canvas.select("")
-      }
-    },
-    deselect() {
-      this.cursor = "default"
-      this.canvas?.select("")
-    },
-  },
-})
 </script>
 
 <style scoped lang="sass">

@@ -20,15 +20,19 @@ type Claps struct {
 }
 
 type Confa struct {
-	ID      string `json:"id"`
-	OwnerID string `json:"ownerId"`
-	Handle  string `json:"handle"`
+	ID          string `json:"id"`
+	OwnerID     string `json:"ownerId"`
+	Handle      string `json:"handle"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 type ConfaInput struct {
-	ID      *string `json:"id"`
-	OwnerID *string `json:"ownerId"`
-	Handle  *string `json:"handle"`
+	ID          *string `json:"id"`
+	OwnerID     *string `json:"ownerId"`
+	Handle      *string `json:"handle"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
 }
 
 type Confas struct {

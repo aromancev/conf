@@ -1,3 +1,5 @@
+$content-width: 1200px
+
 .theme-light
   --color-background: #e4ebf5
   --color-concave: linear-gradient(145deg, #cdd4dd, #f4fbff)
@@ -9,6 +11,7 @@
   --color-outline: #00000010
   --color-highlight-background: #7f70f5
   --color-highlight-font: #fefefe
+  --color-red: #b80f0a
 
 .theme-dark
   --color-background: #444444
@@ -21,6 +24,7 @@
   --color-outline: #ffffff10
   --color-highlight-background: #7f70f5
   --color-highlight-font: #fefefe
+  --color-red: #b80f0a
 
 @mixin clickable
   user-select: none
@@ -60,6 +64,7 @@
   border-radius: 4px
   background: inherit
   color: inherit
+  padding: 0.5em 1em
   &:hover
     @include shadow-sm
   &:active:not([disabled]):not(:disabled)
@@ -78,6 +83,7 @@
   border-radius: 1rem
   background: var(--color-convex)
   color: inherit
+  padding: 0.5em 1em
   &:active:not([disabled]):not(:disabled)
     background: var(--color-concave)
   &:disabled, &[disabled]
@@ -94,6 +100,7 @@
   background: inherit
   color: inherit
   background: var(--color-convex)
+  padding: 0.5em 1em
   &:hover
     @include shadow-sm
   &:active:not([disabled]):not(:disabled)
@@ -110,8 +117,15 @@
     &:active
       @include shadow-inset-l
 
-.input
-  @include shadow-inset-xs
-  border-radius: 4px
-  &:disabled
-    color: var(--color-font-disabled)
+::-webkit-scrollbar
+  width: 5px
+
+::-webkit-scrollbar-track
+  background: transparent
+
+::-webkit-scrollbar-thumb
+  background: var(--color-font-disabled)
+  border-radius: 5px
+
+::-webkit-scrollbar-thumb:hover
+  background: var(--color-highlight-background)

@@ -1,8 +1,4 @@
-import {
-  toSvg,
-  drawIcon,
-  JdenticonCompatibleCanvasRenderingContext2D,
-} from "jdenticon"
+import { toSvg, drawIcon, JdenticonCompatibleCanvasRenderingContext2D } from "jdenticon"
 
 const first: string[] = [
   "Affectionate",
@@ -181,7 +177,7 @@ const identiconConfig = {
 }
 
 function uuidToBytes(uuid: string): number[] {
-  return (uuid.replace(/-/g, "").match(/.{2}/g) || []).map(b => parseInt(b, 16))
+  return (uuid.replace(/-/g, "").match(/.{2}/g) || []).map((b) => parseInt(b, 16))
 }
 
 export function genName(uuid: string): string {
@@ -195,10 +191,6 @@ export function genAvatar(id: string, size: number): string {
   return toSvg(id, size, identiconConfig)
 }
 
-export function drawAvatar(
-  ctx: JdenticonCompatibleCanvasRenderingContext2D,
-  id: string,
-  size: number,
-): void {
+export function drawAvatar(ctx: JdenticonCompatibleCanvasRenderingContext2D, id: string, size: number): void {
   drawIcon(ctx, id, size, identiconConfig)
 }

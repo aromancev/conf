@@ -1,6 +1,14 @@
 import { gql } from "@apollo/client/core"
 import { Client } from "./api"
-import { createConfa, confas, confasVariables, ConfaInput } from "./schema"
+import {
+  createConfa,
+  createConfaVariables,
+  confas,
+  confasVariables,
+  ConfaInput,
+  updateConfa,
+  updateConfaVariables,
+} from "./schema"
 import { Confa } from "./models"
 
 class ConfaIterator {
@@ -23,6 +31,8 @@ class ConfaIterator {
               id
               ownerId
               handle
+              title
+              description
             }
             nextFrom
           }
@@ -46,27 +56,45 @@ export class ConfaClient {
     this.api = api
   }
 
-  async create(): Promise<Confa> {
-    const resp = await this.api.mutate<createConfa>({
+  async create(request: ConfaInput = {}): Promise<Confa> {
+    const resp = await this.api.mutate<createConfa, createConfaVariables>({
       mutation: gql`
-        mutation createConfa {
-          createConfa {
+        mutation createConfa($request: ConfaInput!) {
+          createConfa(request: $request) {
             id
             ownerId
             handle
+            title
+            description
           }
         }
       `,
+      variables: {
+        request: request,
+      },
     })
     if (!resp.data) {
       throw new Error("No data in response.")
     }
-    const confa = resp.data.createConfa
-    return {
-      id: confa.id,
-      ownerId: confa.ownerId,
-      handle: confa.handle,
+    return resp.data.createConfa
+  }
+
+  async update(where: ConfaInput, request: ConfaInput = {}): Promise<number> {
+    const resp = await this.api.mutate<updateConfa, updateConfaVariables>({
+      mutation: gql`
+        mutation updateConfa($where: ConfaInput!, $request: ConfaInput!) {
+          updateConfa(where: $where, request: $request)
+        }
+      `,
+      variables: {
+        where: where,
+        request: request,
+      },
+    })
+    if (!resp.data) {
+      throw new Error("No data in response.")
     }
+    return resp.data.updateConfa
   }
 
   async fetchOne(input: ConfaInput): Promise<Confa | null> {

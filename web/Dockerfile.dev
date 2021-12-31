@@ -1,6 +1,6 @@
-FROM node:15.7.0
+FROM node:14.16
 
-RUN npm install -g pnpm apollo
+RUN npm install -g pnpm apollo@2.33.9
 
 WORKDIR /app
 
@@ -8,4 +8,4 @@ COPY package.json pnpm-lock.yaml ./
 
 RUN pnpm install
 
-COPY apollo.config.js babel.config.js tsconfig.json vue.config.js ./
+COPY index.html .eslintrc.js .prettierrc.js apollo.config.js vite.config.ts tsconfig.json ./

@@ -1,26 +1,18 @@
 <template>
-  <Modal v-on:click="click" :buttons="{ ok: 'OK' }">
+  <ModalDialog :buttons="{ ok: 'OK' }" @click="click">
     <p>Oh snap! Something unexpected happen.</p>
-    <p>
-      Our engineers are already working on the problem. Please try again later.
-    </p>
-  </Modal>
+    <p>Our engineers are already working on the problem. Please try again later.</p>
+  </ModalDialog>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue"
-import Modal from "./Modal.vue"
+<script setup lang="ts">
+import ModalDialog from "./ModalDialog.vue"
 
-export default defineComponent({
-  name: "InternalError",
-  emits: ["click"],
-  components: {
-    Modal,
-  },
-  methods: {
-    click(id: string) {
-      this.$emit("click", id)
-    },
-  },
-})
+const emit = defineEmits<{
+  (e: "click", id: string): void
+}>()
+
+function click(id: string) {
+  emit("click", id)
+}
 </script>

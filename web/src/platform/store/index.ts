@@ -1,6 +1,6 @@
 import { reactive, readonly } from "vue"
 
-export abstract class Store<T extends Object> { // eslint-disable-line
+export abstract class Store<T extends Record<string, unknown>> {
   protected state: T
 
   constructor() {

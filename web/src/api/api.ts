@@ -10,22 +10,53 @@ import {
   ApolloClient,
   createHttpLink,
   InMemoryCache,
+  FetchPolicy as ApolloFetchPolicy,
 } from "@apollo/client/core"
 import { onError, ErrorResponse } from "@apollo/client/link/error"
 import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
-import { gql } from "@apollo/client/core"
-import {
-  login,
-  loginVariables,
-  createSession,
-  createSessionVariables,
-  token,
-} from "./schema"
+import { gql, ApolloError } from "@apollo/client/core"
+import { login, loginVariables, createSession, createSessionVariables, token } from "./schema"
 import { userStore } from "./models"
 import { RTC } from "./rtc"
 
 const minRefresh = 10 * Duration.second
+
+export type FetchPolicy = ApolloFetchPolicy
+
+export enum Policy {
+  // Apollo Client first executes the query against the cache. If all requested data is present in the cache, that data is returned. Otherwise, Apollo Client executes the query against your GraphQL server and returns that data after caching it.
+  // Prioritizes minimizing the number of network requests sent by your application.
+  // This is the default fetch policy.
+  CacheFirst = "cache-first",
+  // Apollo Client executes the full query against your GraphQL server, without first checking the cache. The query's result is stored in the cache.
+  // Prioritizes consistency with server data, but can't provide a near-instantaneous response when cached data is available.
+  NetworkOnly = "network-only",
+  // Apollo Client executes the query only against the cache. It never queries your server in this case.
+  // A cache-only query throws an error if the cache does not contain data for all requested fields.
+  CacheOnly = "cache-only",
+  // Similar to network-only, except the query's result is not stored in the cache.
+  NoCache = "no-cache",
+  // Uses the same logic as cache-first, except this query does not automatically update when underlying field values change. You can still manually update this query with refetch and updateQueries.
+  Standby = "standby",
+}
+
+export enum Code {
+  DuplicateEntry = "DUPLICATE_ENTRY",
+  Unknown = "UNKNOWN_CODE",
+}
+
+export function errorCode(e: unknown): Code {
+  const resp = e as ApolloError
+  for (const err of resp.graphQLErrors || []) {
+    switch (err.extensions?.code) {
+      case Code.DuplicateEntry:
+        return Code.DuplicateEntry
+    }
+  }
+
+  return Code.Unknown
+}
 
 export class Client {
   private graph: ApolloClient<NormalizedCacheObject>
@@ -39,27 +70,26 @@ export class Client {
     })
 
     const errorLink = onError((resp: ErrorResponse) => {
-      const traceId = resp.operation
-        .getContext()
-        .response.headers.get("Trace-Id")
+      const traceId = resp.operation.getContext().response.headers.get("Trace-Id")
       const operation = resp.operation.operationName
 
       let msg = `Request "${operation}" failed:`
       msg += "\nTrace = " + traceId
+      let log = console.warn
       for (const e of resp.response?.errors || resp.graphQLErrors || []) {
         const code = e.extensions?.code
-        msg += `\n${code || "UNKNOWN_CODE"} (${e.message})`
+        msg += `\n${code || Code.Unknown} (${e.message})`
+        if (code === Code.Unknown) {
+          log = console.error
+        }
       }
-      console.error(msg)
+      log(msg)
     })
 
     const authLink = setContext(async (operation: GraphQLRequest) => {
       // Those operations are used to fetch token.
       // We don't wait for token to avoid a deadlock.
-      if (
-        operation.operationName === "token" ||
-        operation.operationName === "createSession"
-      ) {
+      if (operation.operationName === "token" || operation.operationName === "createSession") {
         return
       }
       return {
@@ -74,7 +104,7 @@ export class Client {
       cache: new InMemoryCache(),
     })
 
-    this.token = new Promise<string>(resolve => {
+    this.token = new Promise<string>((resolve) => {
       resolve("")
     })
     this.refreshToken()
@@ -114,21 +144,19 @@ export class Client {
   async createSession(emailToken: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await this.graph.mutate<createSession, createSessionVariables>(
-      {
-        mutation: gql`
-          mutation createSession($emailToken: String!) {
-            createSession(emailToken: $emailToken) {
-              token
-              expiresIn
-            }
+    const resp = await this.graph.mutate<createSession, createSessionVariables>({
+      mutation: gql`
+        mutation createSession($emailToken: String!) {
+          createSession(emailToken: $emailToken) {
+            token
+            expiresIn
           }
-        `,
-        variables: {
-          emailToken: emailToken,
-        },
+        }
+      `,
+      variables: {
+        emailToken: emailToken,
       },
-    )
+    })
     if (!resp.data?.createSession.token) {
       console.error("No token present in session response. Trying to refresh.")
       // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
@@ -137,6 +165,10 @@ export class Client {
     }
     const token = resp.data.createSession
     this.setToken(token.token, token.expiresIn)
+  }
+
+  async clearCache(): Promise<void> {
+    await this.graph.clearStore()
   }
 
   async rtc(roomId: string): Promise<RTC> {
@@ -171,7 +203,7 @@ export class Client {
     // Cancel refresh because this should not run in parallel.
     clearTimeout(this.refreshTimer)
     // Set a promise so all calls are waiting for refreshToken to finish to avoid race conditions.
-    this.token = new Promise<string>(resolve => {
+    this.token = new Promise<string>((resolve) => {
       // Need to combine with oldResolve because some calls might be already waiting.
       // If we just set a new tokenResolve, they will hang forever.
       const oldResolve = this.tokenResolve
@@ -186,7 +218,7 @@ export class Client {
 
   private setToken(token: string, expiresIn: number): void {
     // Set an instant promise for future calls.
-    this.token = new Promise<string>(resolve => {
+    this.token = new Promise<string>((resolve) => {
       resolve(token)
     })
     // Release the previous promise with the token.
@@ -206,9 +238,6 @@ export class Client {
       return
     }
     const after = duration({ seconds: expiresIn }) - 2 * Duration.minute
-    this.refreshTimer = setTimeout(
-      this.refreshToken.bind(this),
-      Math.max(after, minRefresh),
-    )
+    this.refreshTimer = window.setTimeout(this.refreshToken.bind(this), Math.max(after, minRefresh))
   }
 }

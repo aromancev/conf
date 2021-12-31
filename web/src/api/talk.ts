@@ -1,5 +1,5 @@
-import { gql } from "@apollo/client/core"
-import { Client } from "./api"
+import { gql, DocumentNode } from "@apollo/client/core"
+import { Client, FetchPolicy, Policy } from "./api"
 import {
   TalkInput,
   createTalk,
@@ -11,37 +11,59 @@ import {
 } from "./schema"
 import { Talk } from "./models"
 
+const queryHydrated = gql`
+  query talksHydrated($where: TalkInput!, $from: String) {
+    talks(where: $where, from: $from) {
+      items {
+        id
+        ownerId
+        confaId
+        roomId
+        handle
+      }
+      nextFrom
+    }
+  }
+`
+
+const query = gql`
+  query talks($where: TalkInput!, $from: String) {
+    talks(where: $where, from: $from) {
+      items {
+        id
+        ownerId
+        confaId
+        roomId
+        handle
+      }
+      nextFrom
+    }
+  }
+`
+
 class TalkIterator {
   private api: Client
   private input: TalkInput
   private from: string | null
+  private query: DocumentNode
+  private policy: FetchPolicy
 
-  constructor(api: Client, input: TalkInput) {
+  constructor(api: Client, input: TalkInput, hydrated: boolean, policy: FetchPolicy) {
     this.api = api
     this.input = input
     this.from = null
+    this.query = hydrated ? queryHydrated : query
+    this.policy = policy
   }
 
   async next(): Promise<Talk[]> {
     const resp = await this.api.query<talks, talksVariables>({
-      query: gql`
-        query talks($where: TalkInput!, $from: String) {
-          talks(where: $where, from: $from) {
-            items {
-              id
-              ownerId
-              confaId
-              roomId
-              handle
-            }
-            nextFrom
-          }
-        }
-      `,
+      query: this.query,
       variables: {
         where: this.input,
         from: this.from,
       },
+      fetchPolicy: this.policy,
     })
 
     this.from = resp.data.talks.nextFrom
@@ -77,6 +99,8 @@ export class TalkClient {
       throw new Error("No data in response.")
     }
 
+    await this.api.clearCache()
+
     return resp.data.createTalk
   }
 
@@ -93,8 +117,8 @@ export class TalkClient {
     })
   }
 
-  async fetchOne(input: TalkInput): Promise<Talk | null> {
-    const iter = this.fetch(input)
+  async fetchOne(input: TalkInput, hydrated = true): Promise<Talk | null> {
+    const iter = this.fetch(input, hydrated)
     const talks = await iter.next()
     if (talks.length === 0) {
       return null
@@ -105,7 +129,7 @@ export class TalkClient {
     return talks[0]
   }
 
-  fetch(input: TalkInput): TalkIterator {
-    return new TalkIterator(this.api, input)
+  fetch(input: TalkInput, hydrated = false, policy: FetchPolicy = Policy.CacheFirst): TalkIterator {
+    return new TalkIterator(this.api, input, hydrated, policy)
   }
 }

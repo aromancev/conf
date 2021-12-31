@@ -10,6 +10,7 @@ import (
 type Repo interface {
 	Create(ctx context.Context, requests ...Confa) ([]Confa, error)
 	Fetch(ctx context.Context, lookup Lookup) ([]Confa, error)
+	Update(ctx context.Context, lookup Lookup, request Mask) (UpdateResult, error)
 }
 
 type CRUD struct {
@@ -31,6 +32,11 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 		return Confa{}, fmt.Errorf("failed to create confa: %w", err)
 	}
 	return created[0], nil
+}
+
+func (c *CRUD) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Mask) (UpdateResult, error) {
+	lookup.Owner = userID
+	return c.repo.Update(ctx, lookup, request)
 }
 
 func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {

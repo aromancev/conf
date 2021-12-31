@@ -6,7 +6,7 @@ export enum Account {
   Admin = 2,
 }
 
-export interface User extends Object {
+export interface User extends Record<string, unknown> {
   id: string
   account: Account
   allowedWrite: boolean
