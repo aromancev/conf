@@ -1,15 +1,18 @@
 <template>
   <div class="messages">
+    <PageLoader v-if="loading"></PageLoader>
     <div ref="browser" class="browser" @scroll="onScroll">
-      <div v-for="msg in messages" :key="msg.id" class="message" :class="{ me: msg.from === userId }">
-        <div class="message-body" :class="{ me: msg.from === userId }">
-          <div v-if="msg.from !== userId && msg.isLatestFrom" class="avatar">
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="icon" v-html="msg.avatar"></div>
+      <div v-if="!loading" class="message-list">
+        <div v-for="msg in messages" :key="msg.id" class="message" :class="{ me: msg.from === userId }">
+          <div class="message-body" :class="{ me: msg.from === userId }">
+            <div v-if="msg.from !== userId && msg.isLatestFrom" class="avatar">
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="icon" v-html="msg.avatar"></div>
+            </div>
+            <div v-if="msg.from !== userId && msg.isFirstFrom" class="from">{{ msg.fromName }}</div>
+            {{ msg.text }}
+            <div v-if="msg.from === userId" class="status material-icons">{{ msg.isSent ? "done" : "schedule" }}</div>
           </div>
-          <div v-if="msg.from !== userId && msg.isFirstFrom" class="from">{{ msg.fromName }}</div>
-          {{ msg.text }}
-          <div v-if="msg.from === userId" class="status material-icons">{{ msg.isSent ? "done" : "schedule" }}</div>
         </div>
       </div>
     </div>
@@ -18,6 +21,7 @@
       class="message-input"
       :spellcheck="false"
       placeholder="message"
+      :disabled="loading"
       @keydown="keySend"
     ></Textarea>
     <div v-if="message" class="send material-icons" @click="send">send</div>
@@ -25,9 +29,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue"
+import { ref, watch, nextTick } from "vue"
 import { Message } from "./messages"
 import Textarea from "@/components/fields/TextareaField.vue"
+import PageLoader from "@/components/PageLoader.vue"
 
 const emit = defineEmits<{
   (e: "message", value: string): void
@@ -36,12 +41,13 @@ const emit = defineEmits<{
 const props = defineProps<{
   userId: string
   messages: Message[]
+  loading?: boolean
 }>()
 
 const browser = ref<HTMLElement>()
 const message = ref("")
 
-let autoScroll = false
+let autoScroll = true
 
 watch(
   () => props.messages,
@@ -50,12 +56,8 @@ watch(
       alignScroll()
     }
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
-
-onMounted(() => {
-  alignScroll()
-})
 
 function keySend(ev: KeyboardEvent) {
   if (ev.shiftKey || ev.code !== "Enter" || message.value.length === 0) {
@@ -97,11 +99,23 @@ function onScroll() {
   position: relative
   display: flex
   flex-direction: column
+  align-items: center
+  justify-content: center
+
+.loader
+  height: 100%
 
 .browser
+  position: relative
   width: 100%
   flex: 1
   overflow-y: auto
+
+.message-list
+  top: 0
+  left: 0
+  width: 100%
+  position: absolute
 
 .message
   width: 100%
@@ -136,7 +150,7 @@ function onScroll() {
   width: 100%
   padding-right: 2.5em
   color: var(--color-font)
-  background: var(--color-outline)
+  background: var(--color-fade-background)
   border-top-left-radius: 0
   border-top-right-radius: 0
 
@@ -146,7 +160,7 @@ function onScroll() {
   right: 0
   cursor: pointer
   font-size: 1.6em
-  padding: 0.2em
+  padding: 0.4em
 
 .status
   position: absolute

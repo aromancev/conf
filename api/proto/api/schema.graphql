@@ -17,9 +17,13 @@ type Confas {
     nextFrom: String!
 }
 
-input ConfaInput {
+input ConfaLookup {
     id: String
     ownerId: String
+    handle: String
+}
+
+input ConfaMask {
     handle: String
     title: String
     description: String
@@ -32,15 +36,24 @@ type Talk {
     confaId: String!
     roomId: String!
     handle: String!
+    title: String!
+    description: String!
 }
 
-input TalkInput {
+input TalkLookup {
     id: String
     ownerId: String
     speakerId: String
     confaId: String
     handle: String
 }
+
+input TalkMask {
+    handle: String
+    title: String
+    description: String
+}
+
 type Talks {
     items: [Talk!]!
     limit: Int!
@@ -52,7 +65,7 @@ type Claps {
     userValue: Int!
 }
 
-input ClapInput {
+input ClapLookup {
     speakerId: String
     confaId: String
     talkId: String
@@ -71,7 +84,7 @@ type EventPayload {
     payload: String!
 }
 
-input EventInput {
+input EventLookup {
     roomId: ID!
 }
 
@@ -105,18 +118,18 @@ type Mutation {
     login(address: String!): String!
     createSession(emailToken: String!): Token!
 
-    createConfa(request: ConfaInput!): Confa!
-    updateConfa(where: ConfaInput! = {}, request: ConfaInput!): Int!
-    createTalk(confaId: String!, handle: String): Talk!
-    startTalk(talkId: String!): String!
+    createConfa(request: ConfaMask!): Confa!
+    updateConfa(where: ConfaLookup! = {}, request: ConfaMask!): Confa!
+    createTalk(where: ConfaLookup!, request: TalkMask!): Talk!
+    updateTalk(where: TalkLookup! = {}, request: TalkMask!): Talk!
     updateClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
-    confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
-    talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
-    events(where: EventInput! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
-    aggregateClaps(where: ClapInput! = {}): Claps!
+    confas(where: ConfaLookup! = {}, limit: Int! = 100, from: ID): Confas!
+    talks(where: TalkLookup! = {}, limit: Int! = 100, from: ID): Talks!
+    events(where: EventLookup! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
+    aggregateClaps(where: ClapLookup! = {}): Claps!
 }

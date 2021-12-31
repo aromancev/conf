@@ -28,7 +28,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/confa/Confa.vue"),
   },
   {
-    path: "/:confa/edit",
+    path: "/:confa/ed",
     name: "confaEdit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
@@ -48,7 +48,31 @@ const routes: Array<RouteRecordRaw> = [
         tab: "overview",
       }
     },
-    component: () => import("../views/Talk.vue"),
+    component: () => import("@/views/talk/Talk.vue"),
+  },
+  {
+    path: "/:confa/:talk/on",
+    name: "talkOnline",
+    props(to: RouteLocationNormalized): Record<string, string> {
+      return {
+        handle: to.params.talk as string,
+        confaHandle: to.params.confa as string,
+        tab: "online",
+      }
+    },
+    component: () => import("@/views/talk/Talk.vue"),
+  },
+  {
+    path: "/:confa/:talk/ed",
+    name: "talkEdit",
+    props(to: RouteLocationNormalized): Record<string, string> {
+      return {
+        handle: to.params.talk as string,
+        confaHandle: to.params.confa as string,
+        tab: "edit",
+      }
+    },
+    component: () => import("@/views/talk/Talk.vue"),
   },
   {
     path: "/t/:confa/:talk",

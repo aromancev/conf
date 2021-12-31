@@ -86,30 +86,32 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateConfa   func(childComplexity int, request ConfaInput) int
+		CreateConfa   func(childComplexity int, request ConfaMask) int
 		CreateSession func(childComplexity int, emailToken string) int
-		CreateTalk    func(childComplexity int, confaID string, handle *string) int
+		CreateTalk    func(childComplexity int, where ConfaLookup, request TalkMask) int
 		Login         func(childComplexity int, address string) int
-		StartTalk     func(childComplexity int, talkID string) int
 		UpdateClap    func(childComplexity int, talkID string, value int) int
-		UpdateConfa   func(childComplexity int, where ConfaInput, request ConfaInput) int
+		UpdateConfa   func(childComplexity int, where ConfaLookup, request ConfaMask) int
+		UpdateTalk    func(childComplexity int, where TalkLookup, request TalkMask) int
 	}
 
 	Query struct {
-		AggregateClaps func(childComplexity int, where ClapInput) int
-		Confas         func(childComplexity int, where ConfaInput, limit int, from *string) int
-		Events         func(childComplexity int, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) int
-		Talks          func(childComplexity int, where TalkInput, limit int, from *string) int
+		AggregateClaps func(childComplexity int, where ClapLookup) int
+		Confas         func(childComplexity int, where ConfaLookup, limit int, from *string) int
+		Events         func(childComplexity int, where EventLookup, limit EventLimit, from *EventFromInput, order *EventOrder) int
+		Talks          func(childComplexity int, where TalkLookup, limit int, from *string) int
 		Token          func(childComplexity int) int
 	}
 
 	Talk struct {
-		ConfaID   func(childComplexity int) int
-		Handle    func(childComplexity int) int
-		ID        func(childComplexity int) int
-		OwnerID   func(childComplexity int) int
-		RoomID    func(childComplexity int) int
-		SpeakerID func(childComplexity int) int
+		ConfaID     func(childComplexity int) int
+		Description func(childComplexity int) int
+		Handle      func(childComplexity int) int
+		ID          func(childComplexity int) int
+		OwnerID     func(childComplexity int) int
+		RoomID      func(childComplexity int) int
+		SpeakerID   func(childComplexity int) int
+		Title       func(childComplexity int) int
 	}
 
 	Talks struct {
@@ -127,18 +129,18 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	Login(ctx context.Context, address string) (string, error)
 	CreateSession(ctx context.Context, emailToken string) (*Token, error)
-	CreateConfa(ctx context.Context, request ConfaInput) (*Confa, error)
-	UpdateConfa(ctx context.Context, where ConfaInput, request ConfaInput) (int, error)
-	CreateTalk(ctx context.Context, confaID string, handle *string) (*Talk, error)
-	StartTalk(ctx context.Context, talkID string) (string, error)
+	CreateConfa(ctx context.Context, request ConfaMask) (*Confa, error)
+	UpdateConfa(ctx context.Context, where ConfaLookup, request ConfaMask) (*Confa, error)
+	CreateTalk(ctx context.Context, where ConfaLookup, request TalkMask) (*Talk, error)
+	UpdateTalk(ctx context.Context, where TalkLookup, request TalkMask) (*Talk, error)
 	UpdateClap(ctx context.Context, talkID string, value int) (string, error)
 }
 type QueryResolver interface {
 	Token(ctx context.Context) (*Token, error)
-	Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error)
-	Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error)
-	Events(ctx context.Context, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error)
-	AggregateClaps(ctx context.Context, where ClapInput) (*Claps, error)
+	Confas(ctx context.Context, where ConfaLookup, limit int, from *string) (*Confas, error)
+	Talks(ctx context.Context, where TalkLookup, limit int, from *string) (*Talks, error)
+	Events(ctx context.Context, where EventLookup, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error)
+	AggregateClaps(ctx context.Context, where ClapLookup) (*Claps, error)
 }
 
 type executableSchema struct {
@@ -320,7 +322,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateConfa(childComplexity, args["request"].(ConfaInput)), true
+		return e.complexity.Mutation.CreateConfa(childComplexity, args["request"].(ConfaMask)), true
 
 	case "Mutation.createSession":
 		if e.complexity.Mutation.CreateSession == nil {
@@ -344,7 +346,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateTalk(childComplexity, args["confaId"].(string), args["handle"].(*string)), true
+		return e.complexity.Mutation.CreateTalk(childComplexity, args["where"].(ConfaLookup), args["request"].(TalkMask)), true
 
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
@@ -357,18 +359,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Login(childComplexity, args["address"].(string)), true
-
-	case "Mutation.startTalk":
-		if e.complexity.Mutation.StartTalk == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_startTalk_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.StartTalk(childComplexity, args["talkId"].(string)), true
 
 	case "Mutation.updateClap":
 		if e.complexity.Mutation.UpdateClap == nil {
@@ -392,7 +382,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateConfa(childComplexity, args["where"].(ConfaInput), args["request"].(ConfaInput)), true
+		return e.complexity.Mutation.UpdateConfa(childComplexity, args["where"].(ConfaLookup), args["request"].(ConfaMask)), true
+
+	case "Mutation.updateTalk":
+		if e.complexity.Mutation.UpdateTalk == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTalk_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateTalk(childComplexity, args["where"].(TalkLookup), args["request"].(TalkMask)), true
 
 	case "Query.aggregateClaps":
 		if e.complexity.Query.AggregateClaps == nil {
@@ -404,7 +406,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.AggregateClaps(childComplexity, args["where"].(ClapInput)), true
+		return e.complexity.Query.AggregateClaps(childComplexity, args["where"].(ClapLookup)), true
 
 	case "Query.confas":
 		if e.complexity.Query.Confas == nil {
@@ -416,7 +418,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaInput), args["limit"].(int), args["from"].(*string)), true
+		return e.complexity.Query.Confas(childComplexity, args["where"].(ConfaLookup), args["limit"].(int), args["from"].(*string)), true
 
 	case "Query.events":
 		if e.complexity.Query.Events == nil {
@@ -428,7 +430,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Events(childComplexity, args["where"].(EventInput), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder)), true
+		return e.complexity.Query.Events(childComplexity, args["where"].(EventLookup), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder)), true
 
 	case "Query.talks":
 		if e.complexity.Query.Talks == nil {
@@ -440,7 +442,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Talks(childComplexity, args["where"].(TalkInput), args["limit"].(int), args["from"].(*string)), true
+		return e.complexity.Query.Talks(childComplexity, args["where"].(TalkLookup), args["limit"].(int), args["from"].(*string)), true
 
 	case "Query.token":
 		if e.complexity.Query.Token == nil {
@@ -455,6 +457,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Talk.ConfaID(childComplexity), true
+
+	case "Talk.description":
+		if e.complexity.Talk.Description == nil {
+			break
+		}
+
+		return e.complexity.Talk.Description(childComplexity), true
 
 	case "Talk.handle":
 		if e.complexity.Talk.Handle == nil {
@@ -490,6 +499,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Talk.SpeakerID(childComplexity), true
+
+	case "Talk.title":
+		if e.complexity.Talk.Title == nil {
+			break
+		}
+
+		return e.complexity.Talk.Title(childComplexity), true
 
 	case "Talks.items":
 		if e.complexity.Talks.Items == nil {
@@ -609,9 +625,13 @@ type Confas {
     nextFrom: String!
 }
 
-input ConfaInput {
+input ConfaLookup {
     id: String
     ownerId: String
+    handle: String
+}
+
+input ConfaMask {
     handle: String
     title: String
     description: String
@@ -624,15 +644,24 @@ type Talk {
     confaId: String!
     roomId: String!
     handle: String!
+    title: String!
+    description: String!
 }
 
-input TalkInput {
+input TalkLookup {
     id: String
     ownerId: String
     speakerId: String
     confaId: String
     handle: String
 }
+
+input TalkMask {
+    handle: String
+    title: String
+    description: String
+}
+
 type Talks {
     items: [Talk!]!
     limit: Int!
@@ -644,7 +673,7 @@ type Claps {
     userValue: Int!
 }
 
-input ClapInput {
+input ClapLookup {
     speakerId: String
     confaId: String
     talkId: String
@@ -663,7 +692,7 @@ type EventPayload {
     payload: String!
 }
 
-input EventInput {
+input EventLookup {
     roomId: ID!
 }
 
@@ -697,20 +726,20 @@ type Mutation {
     login(address: String!): String!
     createSession(emailToken: String!): Token!
 
-    createConfa(request: ConfaInput!): Confa!
-    updateConfa(where: ConfaInput! = {}, request: ConfaInput!): Int!
-    createTalk(confaId: String!, handle: String): Talk!
-    startTalk(talkId: String!): String!
+    createConfa(request: ConfaMask!): Confa!
+    updateConfa(where: ConfaLookup! = {}, request: ConfaMask!): Confa!
+    createTalk(where: ConfaLookup!, request: TalkMask!): Talk!
+    updateTalk(where: TalkLookup! = {}, request: TalkMask!): Talk!
     updateClap(talkId: String!, value: Int!): String!
 }
 
 type Query {
     token: Token!
 
-    confas(where: ConfaInput! = {}, limit: Int! = 100, from: String): Confas!
-    talks(where: TalkInput! = {}, limit: Int! = 100, from: String): Talks!
-    events(where: EventInput! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
-    aggregateClaps(where: ClapInput! = {}): Claps!
+    confas(where: ConfaLookup! = {}, limit: Int! = 100, from: ID): Confas!
+    talks(where: TalkLookup! = {}, limit: Int! = 100, from: ID): Talks!
+    events(where: EventLookup! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
+    aggregateClaps(where: ClapLookup! = {}): Claps!
 }
 `, BuiltIn: false},
 }
@@ -723,10 +752,10 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_createConfa_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 ConfaInput
+	var arg0 ConfaMask
 	if tmp, ok := rawArgs["request"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
-		arg0, err = ec.unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx, tmp)
+		arg0, err = ec.unmarshalNConfaMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaMask(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -753,24 +782,24 @@ func (ec *executionContext) field_Mutation_createSession_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_createTalk_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["confaId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confaId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 ConfaLookup
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNConfaLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["confaId"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["handle"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	args["where"] = arg0
+	var arg1 TalkMask
+	if tmp, ok := rawArgs["request"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
+		arg1, err = ec.unmarshalNTalkMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkMask(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["handle"] = arg1
+	args["request"] = arg1
 	return args, nil
 }
 
@@ -786,21 +815,6 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 		}
 	}
 	args["address"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_startTalk_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["talkId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("talkId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["talkId"] = arg0
 	return args, nil
 }
 
@@ -831,19 +845,43 @@ func (ec *executionContext) field_Mutation_updateClap_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_updateConfa_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 ConfaInput
+	var arg0 ConfaLookup
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
-		arg0, err = ec.unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx, tmp)
+		arg0, err = ec.unmarshalNConfaLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["where"] = arg0
-	var arg1 ConfaInput
+	var arg1 ConfaMask
 	if tmp, ok := rawArgs["request"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
-		arg1, err = ec.unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx, tmp)
+		arg1, err = ec.unmarshalNConfaMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaMask(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["request"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTalk_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 TalkLookup
+	if tmp, ok := rawArgs["where"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
+		arg0, err = ec.unmarshalNTalkLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkLookup(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["where"] = arg0
+	var arg1 TalkMask
+	if tmp, ok := rawArgs["request"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("request"))
+		arg1, err = ec.unmarshalNTalkMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkMask(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -870,10 +908,10 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_aggregateClaps_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 ClapInput
+	var arg0 ClapLookup
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
-		arg0, err = ec.unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx, tmp)
+		arg0, err = ec.unmarshalNClapLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -885,10 +923,10 @@ func (ec *executionContext) field_Query_aggregateClaps_args(ctx context.Context,
 func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 ConfaInput
+	var arg0 ConfaLookup
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
-		arg0, err = ec.unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx, tmp)
+		arg0, err = ec.unmarshalNConfaLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -906,7 +944,7 @@ func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs
 	var arg2 *string
 	if tmp, ok := rawArgs["from"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg2, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -918,10 +956,10 @@ func (ec *executionContext) field_Query_confas_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 EventInput
+	var arg0 EventLookup
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
-		arg0, err = ec.unmarshalNEventInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventInput(ctx, tmp)
+		arg0, err = ec.unmarshalNEventLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -960,10 +998,10 @@ func (ec *executionContext) field_Query_events_args(ctx context.Context, rawArgs
 func (ec *executionContext) field_Query_talks_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 TalkInput
+	var arg0 TalkLookup
 	if tmp, ok := rawArgs["where"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("where"))
-		arg0, err = ec.unmarshalNTalkInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkInput(ctx, tmp)
+		arg0, err = ec.unmarshalNTalkLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkLookup(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -981,7 +1019,7 @@ func (ec *executionContext) field_Query_talks_args(ctx context.Context, rawArgs 
 	var arg2 *string
 	if tmp, ok := rawArgs["from"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg2, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1904,7 +1942,7 @@ func (ec *executionContext) _Mutation_createConfa(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateConfa(rctx, args["request"].(ConfaInput))
+		return ec.resolvers.Mutation().CreateConfa(rctx, args["request"].(ConfaMask))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1946,7 +1984,7 @@ func (ec *executionContext) _Mutation_updateConfa(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateConfa(rctx, args["where"].(ConfaInput), args["request"].(ConfaInput))
+		return ec.resolvers.Mutation().UpdateConfa(rctx, args["where"].(ConfaLookup), args["request"].(ConfaMask))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1958,9 +1996,9 @@ func (ec *executionContext) _Mutation_updateConfa(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(*Confa)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNConfa2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfa(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1988,7 +2026,7 @@ func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateTalk(rctx, args["confaId"].(string), args["handle"].(*string))
+		return ec.resolvers.Mutation().CreateTalk(rctx, args["where"].(ConfaLookup), args["request"].(TalkMask))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2005,7 +2043,7 @@ func (ec *executionContext) _Mutation_createTalk(ctx context.Context, field grap
 	return ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_startTalk(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_updateTalk(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2022,7 +2060,7 @@ func (ec *executionContext) _Mutation_startTalk(ctx context.Context, field graph
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_startTalk_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_updateTalk_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -2030,7 +2068,7 @@ func (ec *executionContext) _Mutation_startTalk(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StartTalk(rctx, args["talkId"].(string))
+		return ec.resolvers.Mutation().UpdateTalk(rctx, args["where"].(TalkLookup), args["request"].(TalkMask))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2042,9 +2080,9 @@ func (ec *executionContext) _Mutation_startTalk(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*Talk)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalk(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_updateClap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2149,7 +2187,7 @@ func (ec *executionContext) _Query_confas(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Confas(rctx, args["where"].(ConfaInput), args["limit"].(int), args["from"].(*string))
+		return ec.resolvers.Query().Confas(rctx, args["where"].(ConfaLookup), args["limit"].(int), args["from"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2191,7 +2229,7 @@ func (ec *executionContext) _Query_talks(ctx context.Context, field graphql.Coll
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Talks(rctx, args["where"].(TalkInput), args["limit"].(int), args["from"].(*string))
+		return ec.resolvers.Query().Talks(rctx, args["where"].(TalkLookup), args["limit"].(int), args["from"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2233,7 +2271,7 @@ func (ec *executionContext) _Query_events(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Events(rctx, args["where"].(EventInput), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder))
+		return ec.resolvers.Query().Events(rctx, args["where"].(EventLookup), args["limit"].(EventLimit), args["from"].(*EventFromInput), args["order"].(*EventOrder))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2275,7 +2313,7 @@ func (ec *executionContext) _Query_aggregateClaps(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().AggregateClaps(rctx, args["where"].(ClapInput))
+		return ec.resolvers.Query().AggregateClaps(rctx, args["where"].(ClapLookup))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2557,6 +2595,76 @@ func (ec *executionContext) _Talk_handle(ctx context.Context, field graphql.Coll
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Handle, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_title(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Talk_description(ctx context.Context, field graphql.CollectedField, obj *Talk) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Talk",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3835,8 +3943,8 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputClapInput(ctx context.Context, obj interface{}) (ClapInput, error) {
-	var it ClapInput
+func (ec *executionContext) unmarshalInputClapLookup(ctx context.Context, obj interface{}) (ClapLookup, error) {
+	var it ClapLookup
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -3871,8 +3979,8 @@ func (ec *executionContext) unmarshalInputClapInput(ctx context.Context, obj int
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj interface{}) (ConfaInput, error) {
-	var it ConfaInput
+func (ec *executionContext) unmarshalInputConfaLookup(ctx context.Context, obj interface{}) (ConfaLookup, error) {
+	var it ConfaLookup
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -3893,6 +4001,26 @@ func (ec *executionContext) unmarshalInputConfaInput(ctx context.Context, obj in
 			if err != nil {
 				return it, err
 			}
+		case "handle":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
+			it.Handle, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputConfaMask(ctx context.Context, obj interface{}) (ConfaMask, error) {
+	var it ConfaMask
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
 		case "handle":
 			var err error
 
@@ -3951,26 +4079,6 @@ func (ec *executionContext) unmarshalInputEventFromInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputEventInput(ctx context.Context, obj interface{}) (EventInput, error) {
-	var it EventInput
-	var asMap = obj.(map[string]interface{})
-
-	for k, v := range asMap {
-		switch k {
-		case "roomId":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomId"))
-			it.RoomID, err = ec.unmarshalNID2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputEventLimit(ctx context.Context, obj interface{}) (EventLimit, error) {
 	var it EventLimit
 	var asMap = obj.(map[string]interface{})
@@ -4003,8 +4111,28 @@ func (ec *executionContext) unmarshalInputEventLimit(ctx context.Context, obj in
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj interface{}) (TalkInput, error) {
-	var it TalkInput
+func (ec *executionContext) unmarshalInputEventLookup(ctx context.Context, obj interface{}) (EventLookup, error) {
+	var it EventLookup
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "roomId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomId"))
+			it.RoomID, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTalkLookup(ctx context.Context, obj interface{}) (TalkLookup, error) {
+	var it TalkLookup
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -4046,6 +4174,42 @@ func (ec *executionContext) unmarshalInputTalkInput(ctx context.Context, obj int
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
 			it.Handle, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTalkMask(ctx context.Context, obj interface{}) (TalkMask, error) {
+	var it TalkMask
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "handle":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handle"))
+			it.Handle, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "title":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			it.Title, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "description":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			it.Description, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4364,8 +4528,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "startTalk":
-			out.Values[i] = ec._Mutation_startTalk(ctx, field)
+		case "updateTalk":
+			out.Values[i] = ec._Mutation_updateTalk(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -4523,6 +4687,16 @@ func (ec *executionContext) _Talk(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "handle":
 			out.Values[i] = ec._Talk_handle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "title":
+			out.Values[i] = ec._Talk_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Talk_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -4866,8 +5040,8 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNClapInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapInput(ctx context.Context, v interface{}) (ClapInput, error) {
-	res, err := ec.unmarshalInputClapInput(ctx, v)
+func (ec *executionContext) unmarshalNClapLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐClapLookup(ctx context.Context, v interface{}) (ClapLookup, error) {
+	res, err := ec.unmarshalInputClapLookup(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -4936,8 +5110,13 @@ func (ec *executionContext) marshalNConfa2ᚖgithubᚗcomᚋaromancevᚋconfaᚋ
 	return ec._Confa(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNConfaInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaInput(ctx context.Context, v interface{}) (ConfaInput, error) {
-	res, err := ec.unmarshalInputConfaInput(ctx, v)
+func (ec *executionContext) unmarshalNConfaLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaLookup(ctx context.Context, v interface{}) (ConfaLookup, error) {
+	res, err := ec.unmarshalInputConfaLookup(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNConfaMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐConfaMask(ctx context.Context, v interface{}) (ConfaMask, error) {
+	res, err := ec.unmarshalInputConfaMask(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -5002,13 +5181,13 @@ func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋaromancevᚋconfaᚋ
 	return ec._Event(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNEventInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventInput(ctx context.Context, v interface{}) (EventInput, error) {
-	res, err := ec.unmarshalInputEventInput(ctx, v)
+func (ec *executionContext) unmarshalNEventLimit2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLimit(ctx context.Context, v interface{}) (EventLimit, error) {
+	res, err := ec.unmarshalInputEventLimit(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNEventLimit2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLimit(ctx context.Context, v interface{}) (EventLimit, error) {
-	res, err := ec.unmarshalInputEventLimit(ctx, v)
+func (ec *executionContext) unmarshalNEventLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐEventLookup(ctx context.Context, v interface{}) (EventLookup, error) {
+	res, err := ec.unmarshalInputEventLookup(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -5132,8 +5311,13 @@ func (ec *executionContext) marshalNTalk2ᚖgithubᚗcomᚋaromancevᚋconfaᚋc
 	return ec._Talk(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNTalkInput2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkInput(ctx context.Context, v interface{}) (TalkInput, error) {
-	res, err := ec.unmarshalInputTalkInput(ctx, v)
+func (ec *executionContext) unmarshalNTalkLookup2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkLookup(ctx context.Context, v interface{}) (TalkLookup, error) {
+	res, err := ec.unmarshalInputTalkLookup(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNTalkMask2githubᚗcomᚋaromancevᚋconfaᚋcmdᚋapiᚋwebᚐTalkMask(ctx context.Context, v interface{}) (TalkMask, error) {
+	res, err := ec.unmarshalInputTalkMask(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -5447,6 +5631,21 @@ func (ec *executionContext) marshalOEventOrder2ᚖgithubᚗcomᚋaromancevᚋcon
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

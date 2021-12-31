@@ -6,6 +6,7 @@ run:
     - ".*\\.pb\\.go$"
     - ".*\\.twirp\\.go$"
     - ".*\\.gql\\.go$"
+    - ".*schema.resolver.go$"
 
 linters:
   enable:

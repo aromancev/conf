@@ -26,7 +26,7 @@ type Confa struct {
 }
 
 var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
-var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,128}$")
+var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,64}$")
 
 func (c Confa) Validate() error {
 	if c.ID == uuid.Nil {
@@ -48,14 +48,13 @@ func (c Confa) Validate() error {
 }
 
 type Mask struct {
-	Owner       *uuid.UUID `bson:"ownerId,omitempty"`
-	Handle      *string    `bson:"handle,omitempty"`
-	Title       *string    `bson:"title,omitempty"`
-	Description *string    `bson:"description,omitempty"`
+	Handle      *string `bson:"handle,omitempty"`
+	Title       *string `bson:"title,omitempty"`
+	Description *string `bson:"description,omitempty"`
 }
 
 func (m Mask) Validate() error {
-	if m.Handle == nil && m.Title == nil && m.Description == nil && m.Owner == nil {
+	if m.Handle == nil && m.Title == nil && m.Description == nil {
 		return errors.New("no fields provided")
 	}
 	if m.Handle != nil && !validHandle.MatchString(*m.Handle) {
@@ -66,9 +65,6 @@ func (m Mask) Validate() error {
 	}
 	if m.Description != nil && len(*m.Description) > maxDescription {
 		return errors.New("ivalid description")
-	}
-	if m.Owner != nil && *m.Owner == uuid.Nil {
-		return errors.New("owner should not be empty")
 	}
 	return nil
 }
@@ -82,7 +78,7 @@ type Lookup struct {
 }
 
 func (l Lookup) Filter() bson.M {
-	filter := bson.M{}
+	filter := make(bson.M)
 	switch {
 	case l.ID != uuid.Nil:
 		filter["_id"] = l.ID

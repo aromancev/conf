@@ -13,6 +13,7 @@ import (
 
 const (
 	batchLimit = 500
+	collection = "confas"
 )
 
 type Mongo struct {
@@ -43,7 +44,7 @@ func (m *Mongo) Create(ctx context.Context, requests ...Confa) ([]Confa, error) 
 		docs[i] = requests[i]
 	}
 
-	_, err := m.db.Collection("confas").InsertMany(ctx, docs)
+	_, err := m.db.Collection(collection).InsertMany(ctx, docs)
 	switch {
 	case mongo.IsDuplicateKeyError(err):
 		return nil, ErrDuplicateEntry
@@ -65,7 +66,7 @@ func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (Update
 	update := bson.M{
 		"$set": request,
 	}
-	res, err := m.db.Collection("confas").UpdateMany(ctx, lookup.Filter(), update)
+	res, err := m.db.Collection(collection).UpdateMany(ctx, lookup.Filter(), update)
 	switch {
 	case mongo.IsDuplicateKeyError(err):
 		return UpdateResult{}, ErrDuplicateEntry
@@ -75,12 +76,37 @@ func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (Update
 	return UpdateResult{Updated: res.ModifiedCount}, nil
 }
 
+func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Confa, error) {
+	update := bson.M{
+		"$set": request,
+	}
+	ret := options.After
+	res := m.db.Collection(collection).FindOneAndUpdate(ctx, lookup.Filter(), update, &options.FindOneAndUpdateOptions{
+		ReturnDocument: &ret,
+	})
+	switch {
+	case errors.Is(res.Err(), mongo.ErrNoDocuments):
+		return Confa{}, ErrNotFound
+	case mongo.IsDuplicateKeyError(res.Err()):
+		return Confa{}, ErrDuplicateEntry
+	case res.Err() != nil:
+		return Confa{}, res.Err()
+	}
+
+	var c Confa
+	err := res.Decode(&c)
+	if err != nil {
+		return Confa{}, err
+	}
+	return c, nil
+}
+
 func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
 
-	cur, err := m.db.Collection("confas").Find(
+	cur, err := m.db.Collection(collection).Find(
 		ctx,
 		lookup.Filter(),
 		&options.FindOptions{

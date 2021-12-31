@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client/core"
 import { Client } from "./api"
-import { EventInput, EventLimit, EventOrder, events, eventsVariables } from "./schema"
+import { EventLookup, EventLimit, EventOrder, events, eventsVariables } from "./schema"
 import { Event, EventPayload, EventType } from "./models"
 
 interface From {
@@ -10,13 +10,13 @@ interface From {
 
 class EventIterator {
   private api: Client
-  private input: EventInput
+  private lookup: EventLookup
   private from: From | null
   private order: EventOrder | null
 
-  constructor(api: Client, input: EventInput, order?: EventOrder) {
+  constructor(api: Client, lookup: EventLookup, order?: EventOrder) {
     this.api = api
-    this.input = input
+    this.lookup = lookup
     this.from = null
     this.order = order || null
   }
@@ -24,7 +24,7 @@ class EventIterator {
   async next(limit?: EventLimit): Promise<Event[]> {
     const resp = await this.api.query<events, eventsVariables>({
       query: gql`
-        query events($where: EventInput!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {
+        query events($where: EventLookup!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {
           events(where: $where, limit: $limit, from: $from, order: $order) {
             items {
               id
@@ -44,7 +44,7 @@ class EventIterator {
         }
       `,
       variables: {
-        where: this.input,
+        where: this.lookup,
         from: this.from,
         limit: limit || { count: 100, seconds: 0 },
         order: this.order,
@@ -88,8 +88,8 @@ export class EventClient {
     this.api = api
   }
 
-  async fetchOne(input: EventInput, order?: EventOrder): Promise<Event | null> {
-    const iter = this.fetch(input, order)
+  async fetchOne(lookup: EventLookup, order?: EventOrder): Promise<Event | null> {
+    const iter = this.fetch(lookup, order)
     const events = await iter.next()
     if (events.length === 0) {
       return null
@@ -100,7 +100,7 @@ export class EventClient {
     return events[0]
   }
 
-  fetch(input: EventInput, order?: EventOrder): EventIterator {
-    return new EventIterator(this.api, input, order)
+  fetch(lookup: EventLookup, order?: EventOrder): EventIterator {
+    return new EventIterator(this.api, lookup, order)
   }
 }

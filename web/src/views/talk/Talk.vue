@@ -1,24 +1,35 @@
 <template>
   <PageLoader v-if="loading" />
 
-  <div v-if="!loading && confa" class="content">
-    <div class="title">{{ confa.title || confa.id }}</div>
+  <div v-if="!loading && talk" class="content">
+    <div class="title">{{ talk.title || talk.id }}</div>
     <div class="path">
       /
       <router-link
         class="path-link"
         :to="{
           name: 'confaOverview',
-          params: { confa: confa.handle },
+          params: { confa: confaHandle },
         }"
-        >{{ confa.handle }}</router-link
       >
+        {{ confaHandle }}
+      </router-link>
+      /
+      <router-link
+        class="path-link"
+        :to="{
+          name: 'talkOverview',
+          params: { talk: talk.handle },
+        }"
+      >
+        {{ talk.handle }}
+      </router-link>
     </div>
     <div class="header">
       <router-link
         :to="{
-          name: 'confaOverview',
-          params: { confa: confa.handle },
+          name: 'talkOverview',
+          params: { talk: talk.handle },
         }"
         class="header-item"
         :class="{ active: tab === 'overview' }"
@@ -27,10 +38,21 @@
         Overview
       </router-link>
       <router-link
-        v-if="confa.ownerId === user.id"
         :to="{
-          name: 'confaEdit',
-          params: { confa: confa.handle },
+          name: 'talkOnline',
+          params: { talk: talk.handle },
+        }"
+        class="header-item"
+        :class="{ active: tab === 'online' }"
+      >
+        <span class="material-icons icon">podcasts</span>
+        Online
+      </router-link>
+      <router-link
+        v-if="talk.ownerId === user.id"
+        :to="{
+          name: 'talkEdit',
+          params: { talk: talk.handle },
         }"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -41,12 +63,13 @@
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <ConfaOverview v-if="tab === 'overview'" :confa="confa" />
-      <ConfaEdit v-if="tab === 'edit'" :confa="confa" @update="update" />
+      <TalkOverview v-if="tab === 'overview'" :talk="talk" />
+      <TalkOnline v-if="tab === 'online'" :talk="talk" :join-confirmed="joinConfirmed" @join="join" />
+      <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />
     </div>
   </div>
 
-  <NotFound v-if="!loading && !confa" />
+  <NotFound v-if="!loading && !talk" />
 
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
@@ -54,12 +77,13 @@
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
-import { confaClient, Confa, userStore, errorCode, Code } from "@/api"
+import { talkClient, Talk, userStore, errorCode, Code } from "@/api"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
-import ConfaEdit from "./ConfaEdit.vue"
-import ConfaOverview from "./ConfaOverview.vue"
+import TalkEdit from "./TalkEdit.vue"
+import TalkOverview from "./TalkOverview.vue"
+import TalkOnline from "./TalkOnline.vue"
 
 enum Modal {
   None = "",
@@ -68,29 +92,31 @@ enum Modal {
 
 const props = defineProps<{
   tab: string
+  confaHandle: string
   handle: string
 }>()
 
 const router = useRouter()
 const user = userStore.getState()
 
-const confa = ref<Confa | null>()
+const talk = ref<Talk | null>()
 const loading = ref(false)
 const modal = ref(Modal.None)
+const joinConfirmed = ref(false)
 
 watch(
   () => props.handle,
   async (value) => {
-    if (confa.value && props.handle === confa.value.handle) {
+    if (talk.value && props.handle === talk.value.handle) {
       return
     }
     loading.value = true
     try {
       if (value === "new") {
-        confa.value = await confaClient.create()
-        router.replace({ name: "confaOverview", params: { confa: confa.value.handle } })
+        talk.value = await talkClient.create({ handle: props.confaHandle }, {})
+        router.replace({ name: "talkOverview", params: { confa: props.confaHandle, talk: talk.value.handle } })
       } else {
-        confa.value = await confaClient.fetchOne({
+        talk.value = await talkClient.fetchOne({
           handle: value,
         })
       }
@@ -109,8 +135,15 @@ watch(
   { immediate: true },
 )
 
-function update(value: Confa) {
-  confa.value = value
+function update(value: Talk) {
+  talk.value = value
+}
+
+function join(confirmed: boolean) {
+  joinConfirmed.value = confirmed
+  if (!confirmed) {
+    router.push({ name: "talkOverview", params: { confa: props.confaHandle, talk: props.handle } })
+  }
 }
 </script>
 
@@ -186,6 +219,8 @@ function update(value: Confa) {
 
 .tab
   width: 100%
-  max-width: theme.$content-width
+  display: flex
+  flex-direction: column
+  align-items: center
   flex: 1
 </style>

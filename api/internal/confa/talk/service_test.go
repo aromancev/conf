@@ -34,10 +34,15 @@ func TestCRUD(t *testing.T) {
 			_, err := confaMongo.Create(ctx, conf)
 			require.NoError(t, err)
 
-			created, err := talkCRUD.Create(ctx, conf.Owner, Talk{
-				Confa:  conf.ID,
-				Handle: "test",
-			})
+			created, err := talkCRUD.Create(
+				ctx, conf.Owner,
+				confa.Lookup{
+					ID: conf.ID,
+				},
+				Talk{
+					Handle: "test",
+				},
+			)
 			require.NoError(t, err)
 			fetched, err := talkCRUD.Fetch(ctx, Lookup{ID: created.ID})
 			require.NoError(t, err)
@@ -61,11 +66,16 @@ func TestCRUD(t *testing.T) {
 			_, err := confaMongo.Create(ctx, conf)
 			require.NoError(t, err)
 
-			_, err = talkCRUD.Create(ctx, uuid.New(), Talk{
-				Confa:  conf.ID,
-				Handle: "test",
-			})
-			require.ErrorIs(t, err, ErrPermissionDenied)
+			_, err = talkCRUD.Create(
+				ctx,
+				uuid.New(),
+				confa.Lookup{
+					ID: conf.ID,
+				},
+				Talk{
+					Handle: "test",
+				})
+			require.ErrorIs(t, err, confa.ErrNotFound)
 		})
 	})
 }

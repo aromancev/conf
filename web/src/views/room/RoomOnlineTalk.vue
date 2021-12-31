@@ -25,7 +25,7 @@
         </div>
       </div>
 
-      <RoomAudience ref="audience" />
+      <RoomAudience ref="audience" :loading="loading" />
     </div>
     <div class="controls">
       <div class="controls-top">
@@ -57,13 +57,13 @@
       <div class="controls-bottom">
         <div
           v-if="sidePanel !== SidePanel.None"
-          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          class="ctrl-btn btn-switch material-icons"
           @click="switchSidePanel(SidePanel.None)"
         >
           close
         </div>
         <div
-          class="ctrl-btn btn-switch px-3 py-3 material-icons"
+          class="ctrl-btn btn-switch material-icons"
           :class="{ pressed: sidePanel === SidePanel.Chat }"
           @click="switchSidePanel(SidePanel.Chat)"
         >
@@ -72,17 +72,22 @@
       </div>
     </div>
     <div v-if="sidePanel !== SidePanel.None" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="messages" @message="sendMessage" />
+      <RoomMessages :user-id="user.id" :messages="messages" :loading="loading" @message="sendMessage" />
     </div>
   </div>
 
-  <audio v-for="stream in remote.audios" :key="stream.id" :srcObject="stream" autoplay></audio>
+  <div v-if="joinConfirmed">
+    <audio v-for="stream in remote.audios" :key="stream.id" :srcObject="stream" autoplay></audio>
+  </div>
 
+  <ModalDialog v-if="modal === Modal.ConfirmJoin" :buttons="{ join: 'Join', leave: 'Leave' }" @click="confirmJoin">
+    <p>You are about to join the talk online.</p>
+  </ModalDialog>
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, nextTick } from "vue"
+import { reactive, computed, ref, watch, nextTick, onMounted } from "vue"
 import { Client, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { EventType, PayloadPeerState } from "@/api/models"
 import { userStore, RTC, Event, client, eventClient, State, Hint, Track } from "@/api"
@@ -92,10 +97,12 @@ import { MessageProcessor, Message } from "@/components/room/messages"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
+import ModalDialog from "@/components/modals/ModalDialog.vue"
 
 enum Modal {
   None = "",
   Error = "error",
+  ConfirmJoin = "confirm_join",
 }
 
 enum SidePanel {
@@ -113,17 +120,23 @@ interface Local {
   camera: LocalStream | null
   screen: LocalStream | null
   mic: LocalStream | null
-  test: string
 }
 
 interface Resizer {
   resize(): void
 }
 
+const emit = defineEmits<{
+  (e: "join", confirmed: boolean): void
+}>()
+
+const sidePanelKey = "roomSidePanel"
+
 const user = userStore.getState()
 
 const props = defineProps<{
   roomId: string
+  joinConfirmed?: boolean
 }>()
 
 const modal = ref(Modal.None)
@@ -131,25 +144,25 @@ const local = reactive<Local>({
   camera: null,
   screen: null,
   mic: null,
-  test: "123",
 }) as Local
 const publishing = ref(false)
-const sidePanel = ref(SidePanel.None)
+const loading = ref(false)
+const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
 const audience = ref<RecordProcessor & Resizer>()
 
 const streamsByTrackId = {} as { [key: string]: RemoteStream }
 const tracksById = {} as { [key: string]: Track }
 const state = { tracks: {} } as State
 
-let messageProcessor = null as MessageProcessor | null
+let messageProcessor = ref<MessageProcessor | null>(null)
 let rtcClient = null as RTC | null
 let sfuClient = null as Client | null
 
 const messages = computed((): Message[] => {
-  if (!messageProcessor) {
+  if (!messageProcessor.value) {
     return []
   }
-  return messageProcessor.messages()
+  return messageProcessor.value.messages()
 })
 
 const remote = computed((): Remote => {
@@ -187,13 +200,17 @@ watch(
   () => props.roomId,
   async (value: string) => {
     const roomId = value
+    loading.value = true
 
     const rtc = await client.rtc(roomId)
     const sfu = new Client(rtc)
 
-    messageProcessor = new MessageProcessor(rtc)
+    messageProcessor.value = new MessageProcessor(rtc)
 
-    const processors = [audience.value, messageProcessor, { processRecords }] as RecordProcessor[]
+    const processors: RecordProcessor[] = [messageProcessor.value, { processRecords }]
+    if (audience.value) {
+      processors.push(audience.value)
+    }
     const buffered = new BufferedProcessor(processors, 500)
 
     rtc.onevent = (event: Event) => {
@@ -218,12 +235,25 @@ watch(
 
     const iter = eventClient.fetch({ roomId: value })
     const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
-    buffered.flush()
     buffered.put(events, false)
     buffered.autoflush = true
+    buffered.flush()
+
+    loading.value = false
   },
   { immediate: true },
 )
+
+onMounted(() => {
+  if (!props.joinConfirmed) {
+    modal.value = Modal.ConfirmJoin
+  }
+})
+
+function confirmJoin(value: string) {
+  emit("join", value === "join")
+  modal.value = Modal.None
+}
 
 function trackId(s: MediaStream): string {
   const tracks = s.getTracks()
@@ -234,15 +264,20 @@ function trackId(s: MediaStream): string {
 }
 
 function sendMessage(message: string): void {
-  messageProcessor?.send(user.id, message)
+  if (!messageProcessor.value) {
+    return
+  }
+  messageProcessor.value.send(user.id, message)
 }
 
 function switchSidePanel(panel: SidePanel) {
   if (sidePanel.value === panel) {
     panel = SidePanel.None
-    return
+  } else {
+    sidePanel.value = panel
   }
-  sidePanel.value = panel
+  localStorage.setItem(sidePanelKey, panel)
+
   nextTick(() => {
     if (!audience.value) {
       return
@@ -402,7 +437,7 @@ function processRecords(records: Record[]): void {
   flex-direction: row
   justify-content: center
   align-items: flex-start
-  max-width: 1000px
+  max-width: min(90%, 800px)
   width: 100%
 
 .video-container
@@ -497,7 +532,8 @@ video
 .side-panel
   display: flex
   flex-direction: column
-  width: 450px
+  width: 30%
+  max-width: 450px
   max-height: 100%
   overflow: hidden
 

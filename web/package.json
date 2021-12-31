@@ -10,14 +10,13 @@
     "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts"
   },
   "dependencies": {
+    "vue": "^3.2.25",
+    "vue-router": "^4.0.12",
     "@apollo/client": "^3.3.20",
-    "bootstrap-4-grid": "^3.4.0",
     "dashjs": "^3.2.2",
     "graphql": "^15.5.1",
     "graphql-tag": "^2.12.4",
     "ion-sdk-js": "^1.6.3",
-    "vue": "^3.2.25",
-    "vue-router": "^4.0.12",
     "jdenticon": "^3.1.1"
   },
   "devDependencies": {

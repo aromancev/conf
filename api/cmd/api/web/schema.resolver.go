@@ -102,7 +102,7 @@ func (r *mutationResolver) CreateSession(ctx context.Context, emailToken string)
 	}, nil
 }
 
-func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaInput) (*Confa, error) {
+func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaMask) (*Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
@@ -111,12 +111,6 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaInput) 
 		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
-	if request.ID != nil {
-		return nil, newError(CodeBadRequest, "Setting id is not allowed.")
-	}
-	if request.OwnerID != nil {
-		return nil, newError(CodeBadRequest, "Setting ownerId is not allowed.")
-	}
 	var req confa.Confa
 	if request.Handle != nil {
 		req.Handle = *request.Handle
@@ -138,53 +132,44 @@ func (r *mutationResolver) CreateConfa(ctx context.Context, request ConfaInput) 
 		return nil, newInternalError()
 	}
 
-	return &Confa{
-		ID:      created.ID.String(),
-		OwnerID: created.Owner.String(),
-		Handle:  created.Handle,
-	}, nil
+	return newConfa(created), nil
 }
 
-// nolint paramTypeCombine
-func (r *mutationResolver) UpdateConfa(ctx context.Context, where ConfaInput, request ConfaInput) (int, error) {
+func (r *mutationResolver) UpdateConfa(ctx context.Context, where ConfaLookup, request ConfaMask) (*Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return 0, newError(CodeUnauthorized, "Invalid access token.")
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return 0, newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
-	lookup, err := confaLookup(where, 0, nil)
+	lookup, err := newConfaLookup(where, 0, nil)
 	if err != nil {
-		return 0, nil
+		return nil, nil
 	}
 
-	if request.ID != nil {
-		return 0, newError(CodeBadRequest, "Updating id is not allowed.")
-	}
-	if request.OwnerID != nil {
-		return 0, newError(CodeBadRequest, "Updating ownerId is not allowed.")
-	}
 	mask := confa.Mask{
 		Handle:      request.Handle,
 		Title:       request.Title,
 		Description: request.Description,
 	}
-	res, err := r.confas.Update(ctx, claims.UserID, lookup, mask)
+	updated, err := r.confas.Update(ctx, claims.UserID, lookup, mask)
 	switch {
 	case errors.Is(err, confa.ErrValidation):
-		return 0, newError(CodeBadRequest, err.Error())
+		return nil, newError(CodeBadRequest, err.Error())
+	case errors.Is(err, confa.ErrNotFound):
+		return nil, newError(CodeNotFound, err.Error())
 	case errors.Is(err, confa.ErrDuplicateEntry):
-		return 0, newError(CodeDuplicateEntry, err.Error())
+		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update confas.")
-		return 0, newInternalError()
+		return nil, newInternalError()
 	}
-	return int(res.Updated), nil
+	return newConfa(updated), nil
 }
 
-func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handle *string) (*Talk, error) {
+func (r *mutationResolver) CreateTalk(ctx context.Context, where ConfaLookup, request TalkMask) (*Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
@@ -194,16 +179,26 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 	}
 
 	var req talk.Talk
-	if handle != nil {
-		req.Handle = *handle
+	if request.Handle != nil {
+		req.Handle = *request.Handle
 	}
-	var err error
-	req.Confa, err = uuid.Parse(confaID)
+	if request.Title != nil {
+		req.Handle = *request.Title
+	}
+	if request.Description != nil {
+		req.Handle = *request.Description
+	}
+	confaLookup, err := newConfaLookup(where, 1, nil)
 	if err != nil {
 		return nil, newError(CodeNotFound, "Confa not found.")
 	}
-	created, err := r.talks.Create(ctx, claims.UserID, req)
+
+	created, err := r.talks.Create(ctx, claims.UserID, confaLookup, req)
 	switch {
+	case errors.Is(err, confa.ErrNotFound):
+		return nil, newError(CodeNotFound, err.Error())
+	case errors.Is(err, confa.ErrUnexpectedResult):
+		return nil, newError(CodeBadRequest, err.Error())
 	case errors.Is(err, talk.ErrValidation):
 		return nil, newError(CodeBadRequest, err.Error())
 	case errors.Is(err, talk.ErrDuplicateEntry):
@@ -213,42 +208,40 @@ func (r *mutationResolver) CreateTalk(ctx context.Context, confaID string, handl
 		return nil, newInternalError()
 	}
 
-	return &Talk{
-		ID:        created.ID.String(),
-		ConfaID:   created.Confa.String(),
-		OwnerID:   created.Owner.String(),
-		SpeakerID: created.Speaker.String(),
-		RoomID:    created.Room.String(),
-		Handle:    created.Handle,
-	}, nil
+	return newTalk(created), nil
 }
 
-func (r *mutationResolver) StartTalk(ctx context.Context, talkID string) (string, error) {
+func (r *mutationResolver) UpdateTalk(ctx context.Context, where TalkLookup, request TalkMask) (*Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return "", newError(CodeUnauthorized, "Invalid access token.")
+		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return "", newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return nil, newError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
-	id, err := uuid.Parse(talkID)
+	lookup, err := newTalkLookup(where, 0, nil)
 	if err != nil {
-		return "", newError(CodeNotFound, "Talk not found.")
+		return nil, nil
 	}
-
-	err = r.talks.Start(ctx, claims.UserID, id)
+	mask := talk.Mask{
+		Handle:      request.Handle,
+		Title:       request.Title,
+		Description: request.Description,
+	}
+	updated, err := r.talks.Update(ctx, claims.UserID, lookup, mask)
 	switch {
-	case errors.Is(err, talk.ErrNotFound):
-		return "", newError(CodeNotFound, "Talk not found.")
-	case errors.Is(err, talk.ErrPermissionDenied):
-		return "", newError(CodePermissionDenied, "Only the owner can start talks.")
+	case errors.Is(err, confa.ErrValidation):
+		return nil, newError(CodeBadRequest, err.Error())
+	case errors.Is(err, confa.ErrNotFound):
+		return nil, newError(CodeNotFound, err.Error())
+	case errors.Is(err, confa.ErrDuplicateEntry):
+		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to start talk.")
-		return "", newInternalError()
+		log.Ctx(ctx).Err(err).Msg("Failed to update confas.")
+		return nil, newInternalError()
 	}
-
-	return talkID, nil
+	return newTalk(updated), nil
 }
 
 func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value int) (string, error) {
@@ -301,13 +294,13 @@ func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
 	}, nil
 }
 
-func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int, from *string) (*Confas, error) {
+func (r *queryResolver) Confas(ctx context.Context, where ConfaLookup, limit int, from *string) (*Confas, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	lookup, err := confaLookup(where, limit, from)
+	lookup, err := newConfaLookup(where, limit, from)
 	if err != nil {
 		return &Confas{Limit: limit}, nil
 	}
@@ -323,68 +316,28 @@ func (r *queryResolver) Confas(ctx context.Context, where ConfaInput, limit int,
 	}
 
 	res := &Confas{
-		Items:    make([]*Confa, len(confas)),
-		Limit:    limit,
-		NextFrom: confas[len(confas)-1].ID.String(),
+		Items: make([]*Confa, len(confas)),
+		Limit: limit,
+	}
+	if len(confas) > 0 {
+		res.NextFrom = confas[len(confas)-1].ID.String()
 	}
 	for i, c := range confas {
-		res.Items[i] = &Confa{
-			ID:          c.ID.String(),
-			OwnerID:     c.Owner.String(),
-			Handle:      c.Handle,
-			Title:       c.Title,
-			Description: c.Description,
-		}
+		res.Items[i] = newConfa(c)
 	}
 
 	return res, nil
 }
 
-func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, from *string) (*Talks, error) {
+func (r *queryResolver) Talks(ctx context.Context, where TalkLookup, limit int, from *string) (*Talks, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	if limit < 0 || limit > batchLimit {
-		limit = batchLimit
-	}
-	lookup := talk.Lookup{
-		Limit: int64(limit),
-	}
-	var err error
-	if from != nil {
-		lookup.From, err = uuid.Parse(*from)
-		if err != nil {
-			return &Talks{Limit: limit}, nil
-		}
-	}
-	if where.ID != nil {
-		lookup.ID, err = uuid.Parse(*where.ID)
-		if err != nil {
-			return &Talks{Limit: limit}, nil
-		}
-	}
-	if where.ConfaID != nil {
-		lookup.Confa, err = uuid.Parse(*where.ConfaID)
-		if err != nil {
-			return &Talks{Limit: limit}, nil
-		}
-	}
-	if where.OwnerID != nil {
-		lookup.Owner, err = uuid.Parse(*where.OwnerID)
-		if err != nil {
-			return &Talks{Limit: limit}, nil
-		}
-	}
-	if where.SpeakerID != nil {
-		lookup.Speaker, err = uuid.Parse(*where.SpeakerID)
-		if err != nil {
-			return &Talks{Limit: limit}, nil
-		}
-	}
-	if where.Handle != nil {
-		lookup.Handle = *where.Handle
+	lookup, err := newTalkLookup(where, limit, from)
+	if err != nil {
+		return &Talks{Limit: limit}, nil
 	}
 	talks, err := r.talks.Fetch(ctx, lookup)
 	if err != nil {
@@ -397,24 +350,19 @@ func (r *queryResolver) Talks(ctx context.Context, where TalkInput, limit int, f
 	}
 
 	res := &Talks{
-		Items:    make([]*Talk, len(talks)),
-		Limit:    limit,
-		NextFrom: talks[len(talks)-1].ID.String(),
+		Items: make([]*Talk, len(talks)),
+		Limit: limit,
+	}
+	if len(talks) > 0 {
+		res.NextFrom = talks[len(talks)-1].ID.String()
 	}
 	for i, t := range talks {
-		res.Items[i] = &Talk{
-			ID:        t.ID.String(),
-			ConfaID:   t.Confa.String(),
-			OwnerID:   t.Owner.String(),
-			SpeakerID: t.Speaker.String(),
-			RoomID:    t.Room.String(),
-			Handle:    t.Handle,
-		}
+		res.Items[i] = newTalk(t)
 	}
 	return res, nil
 }
 
-func (r *queryResolver) Events(ctx context.Context, where EventInput, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error) {
+func (r *queryResolver) Events(ctx context.Context, where EventLookup, limit EventLimit, from *EventFromInput, order *EventOrder) (*Events, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
@@ -492,7 +440,7 @@ func (r *queryResolver) Events(ctx context.Context, where EventInput, limit Even
 	return res, nil
 }
 
-func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapInput) (*Claps, error) {
+func (r *queryResolver) AggregateClaps(ctx context.Context, where ClapLookup) (*Claps, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return nil, newError(CodeUnauthorized, "Invalid access token.")
@@ -533,8 +481,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-// nolint typeDefFirst
 type mutationResolver struct{ *Resolver }
-
-// nolint typeDefFirst
 type queryResolver struct{ *Resolver }

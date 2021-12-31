@@ -48,11 +48,11 @@
   </div>
 
   <ModalDialog v-if="modal === Modal.DuplicateEntry" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
-    <p>Confa with this handle already exits.</p>
+    <p>Talk with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
   <ModalDialog v-if="modal === Modal.NotFound" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
-    <p>Confa no longer exits.</p>
+    <p>Talk no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
@@ -73,7 +73,7 @@ const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { confaClient, Confa, ConfaInput, errorCode, Code, userStore } from "@/api"
+import { talkClient, Talk, ConfaInput, errorCode, Code, userStore } from "@/api"
 import { useRouter } from "vue-router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
@@ -89,20 +89,20 @@ enum Modal {
 }
 
 const emit = defineEmits<{
-  (e: "update", input: Confa): void
+  (e: "update", input: Talk): void
 }>()
 
 const props = defineProps<{
-  confa: Confa
+  talk: Talk
 }>()
 
 const router = useRouter()
 const user = userStore.getState()
 
 const modal = ref(Modal.None)
-const handle = ref(props.confa.handle)
-const title = ref(props.confa.title)
-const description = ref(props.confa.description)
+const handle = ref(props.talk.handle)
+const title = ref<string>(props.talk.title || "")
+const description = ref(props.talk.description || "")
 const update = ref<ConfaInput>({})
 const saving = ref(false)
 
@@ -119,31 +119,31 @@ const formValid = computed(() => {
 })
 
 watch(handle, (value) => {
-  if (value === props.confa.handle) {
+  if (value === props.talk.handle) {
     delete update.value.handle
   } else {
     update.value.handle = value
   }
 })
 watch(title, (value) => {
-  if (value === props.confa.title) {
+  if (value === props.talk.title) {
     delete update.value.title
   } else {
     update.value.title = value
   }
 })
 watch(description, (value) => {
-  if (value === props.confa.description) {
+  if (value === props.talk.description) {
     delete update.value.description
   } else {
     update.value.description = value
   }
 })
 watch(
-  () => props.confa,
+  () => props.talk,
   (value) => {
     if (value.ownerId !== user.id) {
-      router.replace({ name: "confaOverview", params: { confa: props.confa.handle } })
+      router.replace({ name: "talkOverview", params: { talk: props.talk.handle } })
     }
   },
   { immediate: true },
@@ -156,14 +156,14 @@ async function save() {
   saving.value = true
   try {
     const currentUpdate = Object.assign({}, update.value)
-    const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
+    const updated = await talkClient.update({ id: props.talk.id }, currentUpdate)
     update.value = {}
     emit("update", updated)
     if (currentUpdate.handle) {
       // Silently replace url without triggering re-render.
       const route = router.resolve({
-        name: "confaEdit",
-        params: { confa: currentUpdate.handle },
+        name: "talkEdit",
+        params: { talk: currentUpdate.handle },
       })
       window.history.replaceState({}, "", route.path)
     }
@@ -191,6 +191,7 @@ async function save() {
 .form
   margin: 30px
   margin-left: 100px
+  max-width: theme.$content-width
   display: table
 
 .form-row

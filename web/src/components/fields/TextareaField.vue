@@ -1,8 +1,7 @@
 <template>
-  <div class="field" :style="style">
+  <div class="field" :style="{ height: height }">
     <textarea
       ref="textarea"
-      :style="style"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
@@ -37,9 +36,7 @@ const props = defineProps<{
 }>()
 
 const errExpanded = ref(false)
-const style = ref({
-  height: "0",
-})
+const height = ref("0")
 const textarea = ref<HTMLTextAreaElement | null>(null)
 
 watch(
@@ -60,14 +57,14 @@ function input(event: Event) {
 function alignHeight() {
   // Woodoo magic to auto-resize textarea based on content.
   if (props.modelValue.length === 0) {
-    style.value["height"] = "0"
+    height.value = "0"
     return
   }
   if (!textarea.value) {
     return
   }
   textarea.value.style.height = "0"
-  style.value["height"] = `${textarea.value.scrollHeight}px`
+  height.value = `${textarea.value.scrollHeight}px`
 }
 </script>
 
@@ -83,11 +80,15 @@ function alignHeight() {
   min-height: 3em
 
 textarea
+  box-sizing: border-box
   width: 100%
   min-height: 100%
   max-height: 100%
   resize: none
   padding: 1em 1em
+  overflow: overlay
+  &:disabled
+    cursor: default
 
 textarea:disabled
   color: var(--color-font-disabled)

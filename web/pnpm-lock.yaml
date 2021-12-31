@@ -5,7 +5,6 @@ specifiers:
   '@typescript-eslint/eslint-plugin': ^5.8.1
   '@typescript-eslint/parser': ^5.8.1
   '@vitejs/plugin-vue': ^2.0.0
-  bootstrap-4-grid: ^3.4.0
   dashjs: ^3.2.2
   eslint: ^8.5.0
   eslint-config-prettier: ^8.3.0
@@ -25,7 +24,6 @@ specifiers:
 
 dependencies:
   '@apollo/client': 3.3.20_graphql@15.5.1
-  bootstrap-4-grid: 3.4.0
   dashjs: 3.2.2
   graphql: 15.5.1
   graphql-tag: 2.12.4_graphql@15.5.1
@@ -592,10 +590,6 @@ packages:
 
   /bluebird/3.7.2:
     resolution: {integrity: sha512-XpNj6GDQzdfW+r2Wnn7xiSAd7TM3jzkxGXBGTtWKuSXv1xUV+azxAm8jdWZN06QTQk+2N2XB9jRDkvbmQmcRtg==}
-    dev: false
-
-  /bootstrap-4-grid/3.4.0:
-    resolution: {integrity: sha512-0bemukOEqWgO3Fd1SPFd2yUTEuqLBsPOfX7haNTw4iAbZAqW8doSbqu7VBo1sKBP73mAJMLquIgGCRVBPTDZ8A==}
     dev: false
 
   /brace-expansion/1.1.11:

@@ -7,7 +7,7 @@
     <div class="end">
       <!-- eslint-disable-next-line vue/no-v-html -->
       <div v-if="allowedWrite" class="avatar" @click="switchModal(Modal.Profile)" v-html="profile.avatar"></div>
-      <router-link v-if="!allowedWrite" class="px-3 py-2 btn-convex login" to="/login">Sign in</router-link>
+      <router-link v-if="!allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
     <div class="sidebar" :class="{ opened: modal === Modal.Sidebar }">
@@ -81,11 +81,11 @@ const profile = computed<Profile>(() => {
 
 watch(theme, (val: Theme) => {
   emit("theme", val)
-  localStorage.theme = val
+  localStorage.setItem("theme", val)
 })
 
 onMounted(() => {
-  theme.value = localStorage.theme || Theme.Light
+  theme.value = (localStorage.getItem("theme") as Theme) || Theme.Light
 })
 
 function switchModal(val: Modal) {

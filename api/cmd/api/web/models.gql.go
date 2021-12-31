@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-type ClapInput struct {
+type ClapLookup struct {
 	SpeakerID *string `json:"speakerId"`
 	ConfaID   *string `json:"confaId"`
 	TalkID    *string `json:"talkId"`
@@ -27,9 +27,13 @@ type Confa struct {
 	Description string `json:"description"`
 }
 
-type ConfaInput struct {
-	ID          *string `json:"id"`
-	OwnerID     *string `json:"ownerId"`
+type ConfaLookup struct {
+	ID      *string `json:"id"`
+	OwnerID *string `json:"ownerId"`
+	Handle  *string `json:"handle"`
+}
+
+type ConfaMask struct {
 	Handle      *string `json:"handle"`
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
@@ -59,13 +63,13 @@ type EventFromInput struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-type EventInput struct {
-	RoomID string `json:"roomId"`
-}
-
 type EventLimit struct {
 	Count   int `json:"count"`
 	Seconds int `json:"seconds"`
+}
+
+type EventLookup struct {
+	RoomID string `json:"roomId"`
 }
 
 type EventPayload struct {
@@ -80,20 +84,28 @@ type Events struct {
 }
 
 type Talk struct {
-	ID        string `json:"id"`
-	OwnerID   string `json:"ownerId"`
-	SpeakerID string `json:"speakerId"`
-	ConfaID   string `json:"confaId"`
-	RoomID    string `json:"roomId"`
-	Handle    string `json:"handle"`
+	ID          string `json:"id"`
+	OwnerID     string `json:"ownerId"`
+	SpeakerID   string `json:"speakerId"`
+	ConfaID     string `json:"confaId"`
+	RoomID      string `json:"roomId"`
+	Handle      string `json:"handle"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
-type TalkInput struct {
+type TalkLookup struct {
 	ID        *string `json:"id"`
 	OwnerID   *string `json:"ownerId"`
 	SpeakerID *string `json:"speakerId"`
 	ConfaID   *string `json:"confaId"`
 	Handle    *string `json:"handle"`
+}
+
+type TalkMask struct {
+	Handle      *string `json:"handle"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
 }
 
 type Talks struct {

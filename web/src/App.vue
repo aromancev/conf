@@ -28,44 +28,39 @@ function switchTheme(value: Theme) {
 </script>
 
 <style lang="sass">
-@use 'bootstrap-4-grid/scss/grid.scss'
 @use '@/css/clear'
 @use '@/css/theme'
 
-html,
-body,
-#app
+$header-height: 60px
+
+html, body, #app
+  margin: 0
   height: 100vh
+  width: 100vw
+
+div
+  box-sizing: border-box
 
 .page
   font-family: 'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI','Oxygen','Ubuntu','Cantarell','Fira Sans','Droid Sans','Helvetica Neue',sans-serif
   -webkit-font-smoothing: antialiased
   -moz-osx-font-smoothing: grayscale
-  height: 100%
-  margin: -8px
-  text-align: center
+  min-height: 100vh
+  width: 100vw
   color: var(--color-font)
   background-color: var(--color-background)
 
+.page-body
+  width: 100vw
+  height: calc(100vh - $header-height)
   display: flex
-  flex-flow: column
-  overflow: hidden
+  flex-direction: column
+  justify-content: center
+  align-items: center
+  overflow-y: overlay
+  overflow-x: hidden
 
 .page-header
   width: 100%
-  height: 60px
-
-.page-body
-  flex-grow: 1
-
-  width: 100%
-  height: 100px
-
-.theme-toggle
-  @include theme.clickable
-
-  position: absolute
-  right: 10px
-  top: 10px
-  color: inherit
+  height: $header-height
 </style>

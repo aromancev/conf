@@ -4,4 +4,6 @@ export interface Talk {
   confaId: string
   roomId: string
   handle: string
+  title?: string
+  description?: string
 }
