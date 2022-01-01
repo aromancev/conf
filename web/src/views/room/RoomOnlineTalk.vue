@@ -81,7 +81,11 @@
   </div>
 
   <ModalDialog v-if="modal === Modal.ConfirmJoin" :buttons="{ join: 'Join', leave: 'Leave' }" @click="confirmJoin">
-    <p>You are about to join the talk online.</p>
+    <p>You are about to join the talk online</p>
+    <p v-if="inviteLink">
+      Share this link to invite people<br />
+      <CopyField :value="inviteLink">Test</CopyField>
+    </p>
   </ModalDialog>
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
@@ -98,6 +102,7 @@ import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
+import CopyField from "@/components/fields/CopyField.vue"
 
 enum Modal {
   None = "",
@@ -136,6 +141,7 @@ const user = userStore.getState()
 
 const props = defineProps<{
   roomId: string
+  inviteLink?: string
   joinConfirmed?: boolean
 }>()
 

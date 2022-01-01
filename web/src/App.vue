@@ -37,6 +37,10 @@ html, body, #app
   margin: 0
   height: 100vh
   width: 100vw
+  overflow: hidden
+
+a
+  text-decoration: none
 
 div
   box-sizing: border-box

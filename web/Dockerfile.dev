@@ -1,6 +1,6 @@
 FROM node:14.16
 
-RUN npm install -g pnpm apollo@2.33.9
+RUN npm install -g pnpm
 
 WORKDIR /app
 

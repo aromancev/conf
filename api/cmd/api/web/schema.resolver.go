@@ -163,7 +163,7 @@ func (r *mutationResolver) UpdateConfa(ctx context.Context, where ConfaLookup, r
 	case errors.Is(err, confa.ErrDuplicateEntry):
 		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to update confas.")
+		log.Ctx(ctx).Err(err).Msg("Failed to update confa.")
 		return nil, newInternalError()
 	}
 	return newConfa(updated), nil
@@ -235,10 +235,10 @@ func (r *mutationResolver) UpdateTalk(ctx context.Context, where TalkLookup, req
 		return nil, newError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrNotFound):
 		return nil, newError(CodeNotFound, err.Error())
-	case errors.Is(err, confa.ErrDuplicateEntry):
+	case errors.Is(err, talk.ErrDuplicateEntry):
 		return nil, newError(CodeDuplicateEntry, err.Error())
 	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to update confas.")
+		log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
 		return nil, newInternalError()
 	}
 	return newTalk(updated), nil

@@ -2,24 +2,14 @@
   <PageLoader v-if="loading" />
 
   <div v-if="!loading && confa" class="content">
-    <div class="title">{{ confa.title || confa.id }}</div>
+    <div class="title">{{ confa.title || confa.handle }}</div>
     <div class="path">
       /
-      <router-link
-        class="path-link"
-        :to="{
-          name: 'confaOverview',
-          params: { confa: confa.handle },
-        }"
-        >{{ confa.handle }}</router-link
-      >
+      <router-link class="path-link" :to="route.confa(handle, ConfaTab.Overview)">{{ confa.handle }}</router-link>
     </div>
     <div class="header">
       <router-link
-        :to="{
-          name: 'confaOverview',
-          params: { confa: confa.handle },
-        }"
+        :to="route.confa(handle, ConfaTab.Overview)"
         class="header-item"
         :class="{ active: tab === 'overview' }"
       >
@@ -28,10 +18,7 @@
       </router-link>
       <router-link
         v-if="confa.ownerId === user.id"
-        :to="{
-          name: 'confaEdit',
-          params: { confa: confa.handle },
-        }"
+        :to="route.confa(handle, ConfaTab.Edit)"
         class="header-item"
         :class="{ active: tab === 'edit' }"
       >
@@ -55,6 +42,7 @@
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { confaClient, Confa, userStore, errorCode, Code } from "@/api"
+import { route, ConfaTab, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
@@ -67,7 +55,7 @@ enum Modal {
 }
 
 const props = defineProps<{
-  tab: string
+  tab: ConfaTab
   handle: string
 }>()
 
@@ -81,14 +69,20 @@ const modal = ref(Modal.None)
 watch(
   () => props.handle,
   async (value) => {
+    if (props.tab == ConfaTab.Edit && !user.allowedWrite) {
+      router.replace(route.login())
+      return
+    }
+
     if (confa.value && props.handle === confa.value.handle) {
       return
     }
+
     loading.value = true
     try {
-      if (value === "new") {
+      if (value === handleNew) {
         confa.value = await confaClient.create()
-        router.replace({ name: "confaOverview", params: { confa: confa.value.handle } })
+        router.replace(route.confa(props.handle, props.tab))
       } else {
         confa.value = await confaClient.fetchOne({
           handle: value,
@@ -111,6 +105,7 @@ watch(
 
 function update(value: Confa) {
   confa.value = value
+  router.replace(route.confa(props.handle, props.tab))
 }
 </script>
 

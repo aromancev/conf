@@ -3,6 +3,7 @@ package talk
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aromancev/confa/internal/confa"
 	"github.com/aromancev/confa/proto/rtc"
@@ -41,7 +42,7 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, confaLookup confa.L
 	request.Speaker = userID
 	confaLookup.Owner = userID
 	if request.Handle == "" {
-		request.Handle = request.ID.String()
+		request.Handle = strings.Split(request.ID.String(), "-")[4]
 	}
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)

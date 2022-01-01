@@ -107,6 +107,7 @@ async function login() {
 .title
   font-size: 2em
   margin-bottom: 2rem
+  text-align: center
 
 .email
   width: 100%

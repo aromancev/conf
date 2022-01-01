@@ -6,7 +6,7 @@
     "serve": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint --ext .ts,.js,.vue --fix src",
+    "lint": "eslint --ext .ts,.js,.vue --fix --max-warnings=0 src",
     "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts"
   },
   "dependencies": {
@@ -31,6 +31,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-config-prettier": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^5.8.1",
-    "@typescript-eslint/parser": "^5.8.1"
+    "@typescript-eslint/parser": "^5.8.1",
+    "apollo": "^2.33.9"
   }
 }

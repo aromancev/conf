@@ -1,5 +1,11 @@
 <template>
-  <RoomOnlineTalk v-if="talk" :room-id="talk.roomId" :join-confirmed="joinConfirmed" @join="join" />
+  <RoomOnlineTalk
+    v-if="talk"
+    :room-id="talk.roomId"
+    :join-confirmed="joinConfirmed"
+    :invite-link="inviteLink"
+    @join="join"
+  />
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
@@ -23,6 +29,7 @@ const modal = ref(Modal.None)
 defineProps<{
   talk: Talk
   joinConfirmed?: boolean
+  inviteLink?: string
 }>()
 
 function join(confirmed: boolean) {
