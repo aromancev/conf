@@ -1,11 +1,12 @@
 import { gql } from "@apollo/client/core"
-import { Client } from "./api"
+import { Client, APIError, Code } from "./api"
 import {
   createConfa,
   createConfaVariables,
   confas,
   confasVariables,
-  ConfaInput,
+  ConfaMask,
+  ConfaLookup,
   updateConfa,
   updateConfaVariables,
 } from "./schema"
@@ -13,19 +14,19 @@ import { Confa } from "./models"
 
 class ConfaIterator {
   private api: Client
-  private input: ConfaInput
+  private lookup: ConfaLookup
   private from: string | null
 
-  constructor(api: Client, input: ConfaInput) {
+  constructor(api: Client, lookup: ConfaLookup) {
     this.api = api
-    this.input = input
+    this.lookup = lookup
     this.from = null
   }
 
   async next(): Promise<Confa[]> {
     const resp = await this.api.query<confas, confasVariables>({
       query: gql`
-        query confas($where: ConfaInput!, $from: String) {
+        query confas($where: ConfaLookup!, $from: ID) {
           confas(where: $where, from: $from) {
             items {
               id
@@ -39,7 +40,7 @@ class ConfaIterator {
         }
       `,
       variables: {
-        where: this.input,
+        where: this.lookup,
         from: this.from,
       },
     })
@@ -56,10 +57,10 @@ export class ConfaClient {
     this.api = api
   }
 
-  async create(request: ConfaInput = {}): Promise<Confa> {
+  async create(request: ConfaMask = {}): Promise<Confa> {
     const resp = await this.api.mutate<createConfa, createConfaVariables>({
       mutation: gql`
-        mutation createConfa($request: ConfaInput!) {
+        mutation createConfa($request: ConfaMask!) {
           createConfa(request: $request) {
             id
             ownerId
@@ -79,11 +80,17 @@ export class ConfaClient {
     return resp.data.createConfa
   }
 
-  async update(where: ConfaInput, request: ConfaInput = {}): Promise<number> {
+  async update(where: ConfaLookup, request: ConfaMask = {}): Promise<Confa> {
     const resp = await this.api.mutate<updateConfa, updateConfaVariables>({
       mutation: gql`
-        mutation updateConfa($where: ConfaInput!, $request: ConfaInput!) {
-          updateConfa(where: $where, request: $request)
+        mutation updateConfa($where: ConfaLookup!, $request: ConfaMask!) {
+          updateConfa(where: $where, request: $request) {
+            id
+            ownerId
+            handle
+            title
+            description
+          }
         }
       `,
       variables: {
@@ -97,11 +104,11 @@ export class ConfaClient {
     return resp.data.updateConfa
   }
 
-  async fetchOne(input: ConfaInput): Promise<Confa | null> {
+  async fetchOne(input: ConfaLookup): Promise<Confa> {
     const iter = this.fetch(input)
     const confas = await iter.next()
     if (confas.length === 0) {
-      return null
+      throw new APIError(Code.NotFound, "Confa not found.")
     }
     if (confas.length > 1) {
       throw new Error("Unexpected response from API.")
@@ -109,7 +116,7 @@ export class ConfaClient {
     return confas[0]
   }
 
-  fetch(input: ConfaInput): ConfaIterator {
-    return new ConfaIterator(this.api, input)
+  fetch(lookup: ConfaLookup): ConfaIterator {
+    return new ConfaIterator(this.api, lookup)
   }
 }

@@ -1,7 +1,7 @@
 import { Record } from "./record"
 import { EventType, PayloadMessage } from "@/api/models"
 import { genName, genAvatar } from "@/platform/gen"
-import { readonly } from "vue"
+import { reactive, readonly } from "vue"
 import { Event } from "@/api"
 
 const maxMessages = 100
@@ -27,7 +27,7 @@ export class MessageProcessor {
   private emitter: Emitter
 
   constructor(emitter: Emitter) {
-    this.ordered = []
+    this.ordered = reactive<Message[]>([])
     this.byId = {}
     this.emitter = emitter
   }

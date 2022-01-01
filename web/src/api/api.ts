@@ -41,12 +41,27 @@ export enum Policy {
   Standby = "standby",
 }
 
+export class APIError extends Error {
+  code: Code
+
+  constructor(code: Code, message: string) {
+    super(message)
+
+    this.code = code
+  }
+}
+
 export enum Code {
   DuplicateEntry = "DUPLICATE_ENTRY",
+  NotFound = "NOT_FOUND",
   Unknown = "UNKNOWN_CODE",
 }
 
 export function errorCode(e: unknown): Code {
+  if (e instanceof APIError) {
+    return e.code
+  }
+
   const resp = e as ApolloError
   for (const err of resp.graphQLErrors || []) {
     switch (err.extensions?.code) {

@@ -84,7 +84,7 @@ async function loadTalks() {
   display: flex
   flex-direction: row
   justify-content: center
-  padding: 20px
+  padding: 30px
 
 .talks
   width: 300px
@@ -133,6 +133,7 @@ async function loadTalks() {
   display: inline-block
   width: 100%
   padding: 5px 0
+  text-align: left
   overflow: hidden
   text-overflow: ellipsis
   white-space: nowrap
@@ -143,9 +144,6 @@ async function loadTalks() {
   &:hover
     color: var(--color-font)
     text-decoration: underline
-
-.edit
-  margin: 20px
 
 .description
   flex-grow: 1

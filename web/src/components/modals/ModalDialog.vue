@@ -64,7 +64,7 @@ function click(id: string) {
 
 table
   border-top: 1px solid var(--color-outline)
-  min-width: 100%
+  width: 100%
   table-layout: fixed
 
 .cell

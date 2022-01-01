@@ -3,7 +3,7 @@
     <div class="content">
       <div class="title">Sign in to Confa</div>
       <div>
-        <Input
+        <InputField
           v-model="email"
           :spellcheck="false"
           class="email"
@@ -17,10 +17,10 @@
     </div>
   </div>
 
-  <Modal v-if="modal == Dialog.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
+  <ModalDialog v-if="modal == Dialog.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
-  </Modal>
+  </ModalDialog>
   <InternalError v-if="modal == Dialog.Error" @click="modal = Dialog.None" />
 </template>
 
@@ -30,8 +30,8 @@ import { useRouter } from "vue-router"
 import { client } from "@/api"
 import { userStore } from "@/api/models"
 import { isValid } from "@/platform/email"
-import Modal from "@/components/modals/Modal.vue"
-import Input from "@/components/fields/Input.vue"
+import ModalDialog from "@/components/modals/ModalDialog.vue"
+import InputField from "@/components/fields/InputField.vue"
 import InternalError from "@/components/modals/InternalError.vue"
 
 enum Dialog {

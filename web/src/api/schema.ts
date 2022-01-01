@@ -86,7 +86,7 @@ export interface confas {
 }
 
 export interface confasVariables {
-  where: ConfaInput;
+  where: ConfaLookup;
   from?: string | null;
 }
 
@@ -113,7 +113,7 @@ export interface createConfa {
 }
 
 export interface createConfaVariables {
-  request: ConfaInput;
+  request: ConfaMask;
 }
 
 /* tslint:disable */
@@ -125,13 +125,22 @@ export interface createConfaVariables {
 // GraphQL mutation operation: updateConfa
 // ====================================================
 
+export interface updateConfa_updateConfa {
+  __typename: "Confa";
+  id: string;
+  ownerId: string;
+  handle: string;
+  title: string;
+  description: string;
+}
+
 export interface updateConfa {
-  updateConfa: number;
+  updateConfa: updateConfa_updateConfa;
 }
 
 export interface updateConfaVariables {
-  where: ConfaInput;
-  request: ConfaInput;
+  where: ConfaLookup;
+  request: ConfaMask;
 }
 
 /* tslint:disable */
@@ -175,7 +184,7 @@ export interface events {
 }
 
 export interface eventsVariables {
-  where: EventInput;
+  where: EventLookup;
   from?: EventFromInput | null;
   limit: EventLimit;
   order?: EventOrder | null;
@@ -197,6 +206,8 @@ export interface talksHydrated_talks_items {
   confaId: string;
   roomId: string;
   handle: string;
+  title: string;
+  description: string;
 }
 
 export interface talksHydrated_talks {
@@ -210,7 +221,7 @@ export interface talksHydrated {
 }
 
 export interface talksHydratedVariables {
-  where: TalkInput;
+  where: TalkLookup;
   from?: string | null;
 }
 
@@ -243,7 +254,7 @@ export interface talks {
 }
 
 export interface talksVariables {
-  where: TalkInput;
+  where: TalkLookup;
   from?: string | null;
 }
 
@@ -263,6 +274,8 @@ export interface createTalk_createTalk {
   confaId: string;
   roomId: string;
   handle: string;
+  title: string;
+  description: string;
 }
 
 export interface createTalk {
@@ -270,7 +283,8 @@ export interface createTalk {
 }
 
 export interface createTalkVariables {
-  confaId: string;
+  where: ConfaLookup;
+  request: TalkMask;
 }
 
 /* tslint:disable */
@@ -279,15 +293,27 @@ export interface createTalkVariables {
 // This file was automatically generated and should not be edited.
 
 // ====================================================
-// GraphQL mutation operation: startTalk
+// GraphQL mutation operation: updateTalk
 // ====================================================
 
-export interface startTalk {
-  startTalk: string;
+export interface updateTalk_updateTalk {
+  __typename: "Talk";
+  id: string;
+  confaId: string;
+  roomId: string;
+  ownerId: string;
+  handle: string;
+  title: string;
+  description: string;
 }
 
-export interface startTalkVariables {
-  talkId: string;
+export interface updateTalk {
+  updateTalk: updateTalk_updateTalk;
+}
+
+export interface updateTalkVariables {
+  where: TalkLookup;
+  request: TalkMask;
 }
 
 /* tslint:disable */
@@ -304,9 +330,13 @@ export enum EventOrder {
   DESC = "DESC",
 }
 
-export interface ConfaInput {
+export interface ConfaLookup {
   id?: string | null;
   ownerId?: string | null;
+  handle?: string | null;
+}
+
+export interface ConfaMask {
   handle?: string | null;
   title?: string | null;
   description?: string | null;
@@ -317,21 +347,27 @@ export interface EventFromInput {
   createdAt: string;
 }
 
-export interface EventInput {
-  roomId: string;
-}
-
 export interface EventLimit {
   count: number;
   seconds: number;
 }
 
-export interface TalkInput {
+export interface EventLookup {
+  roomId: string;
+}
+
+export interface TalkLookup {
   id?: string | null;
   ownerId?: string | null;
   speakerId?: string | null;
   confaId?: string | null;
   handle?: string | null;
+}
+
+export interface TalkMask {
+  handle?: string | null;
+  title?: string | null;
+  description?: string | null;
 }
 
 //==============================================================

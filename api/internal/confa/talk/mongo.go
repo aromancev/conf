@@ -9,12 +9,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/google/uuid"
 )
 
 const (
 	batchLimit = 500
+	collection = "talks"
 )
 
 type Mongo struct {
@@ -43,7 +42,7 @@ func (m *Mongo) Create(ctx context.Context, requests ...Talk) ([]Talk, error) {
 		docs[i] = requests[i]
 	}
 
-	_, err := m.db.Collection("talks").InsertMany(ctx, docs)
+	_, err := m.db.Collection(collection).InsertMany(ctx, docs)
 	switch {
 	case mongo.IsDuplicateKeyError(err):
 		return nil, ErrDuplicateEntry
@@ -54,32 +53,39 @@ func (m *Mongo) Create(ctx context.Context, requests ...Talk) ([]Talk, error) {
 	return requests, nil
 }
 
-func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
-	filter := bson.M{}
+func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Talk, error) {
+	update := bson.M{
+		"$set": request,
+	}
+	ret := options.After
+	res := m.db.Collection(collection).FindOneAndUpdate(ctx, lookup.Filter(), update, &options.FindOneAndUpdateOptions{
+		ReturnDocument: &ret,
+	})
 	switch {
-	case lookup.ID != uuid.Nil:
-		filter["_id"] = lookup.ID
-	case lookup.From != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": lookup.From,
-		}
+	case errors.Is(res.Err(), mongo.ErrNoDocuments):
+		return Talk{}, ErrNotFound
+	case mongo.IsDuplicateKeyError(res.Err()):
+		return Talk{}, ErrDuplicateEntry
+	case res.Err() != nil:
+		return Talk{}, res.Err()
 	}
-	if lookup.Owner != uuid.Nil {
-		filter["ownerId"] = lookup.Owner
+
+	var t Talk
+	err := res.Decode(&t)
+	if err != nil {
+		return Talk{}, err
 	}
-	if lookup.Confa != uuid.Nil {
-		filter["confaId"] = lookup.Confa
-	}
-	if lookup.Handle != "" {
-		filter["handle"] = lookup.Handle
-	}
+	return t, nil
+}
+
+func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
 
-	cur, err := m.db.Collection("talks").Find(
+	cur, err := m.db.Collection(collection).Find(
 		ctx,
-		filter,
+		lookup.Filter(),
 		&options.FindOptions{
 			Sort:  bson.M{"_id": 1},
 			Limit: &lookup.Limit,

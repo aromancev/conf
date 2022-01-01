@@ -1,18 +1,20 @@
 import { gql, DocumentNode } from "@apollo/client/core"
-import { Client, FetchPolicy, Policy } from "./api"
+import { Client, FetchPolicy, Policy, APIError, Code } from "./api"
 import {
-  TalkInput,
+  TalkLookup,
+  TalkMask,
+  ConfaLookup,
   createTalk,
   createTalkVariables,
-  startTalk,
-  startTalkVariables,
   talks,
   talksVariables,
+  updateTalk,
+  updateTalkVariables,
 } from "./schema"
 import { Talk } from "./models"
 
 const queryHydrated = gql`
-  query talksHydrated($where: TalkInput!, $from: String) {
+  query talksHydrated($where: TalkLookup!, $from: ID) {
     talks(where: $where, from: $from) {
       items {
         id
@@ -20,6 +22,8 @@ const queryHydrated = gql`
         confaId
         roomId
         handle
+        title
+        description
       }
       nextFrom
     }
@@ -27,7 +31,7 @@ const queryHydrated = gql`
 `
 
 const query = gql`
-  query talks($where: TalkInput!, $from: String) {
+  query talks($where: TalkLookup!, $from: ID) {
     talks(where: $where, from: $from) {
       items {
         id
@@ -43,14 +47,14 @@ const query = gql`
 
 class TalkIterator {
   private api: Client
-  private input: TalkInput
+  private lookup: TalkLookup
   private from: string | null
   private query: DocumentNode
   private policy: FetchPolicy
 
-  constructor(api: Client, input: TalkInput, hydrated: boolean, policy: FetchPolicy) {
+  constructor(api: Client, lookup: TalkLookup, hydrated: boolean, policy: FetchPolicy) {
     this.api = api
-    this.input = input
+    this.lookup = lookup
     this.from = null
     this.query = hydrated ? queryHydrated : query
     this.policy = policy
@@ -60,7 +64,7 @@ class TalkIterator {
     const resp = await this.api.query<talks, talksVariables>({
       query: this.query,
       variables: {
-        where: this.input,
+        where: this.lookup,
         from: this.from,
       },
       fetchPolicy: this.policy,
@@ -78,21 +82,24 @@ export class TalkClient {
     this.api = api
   }
 
-  async create(confaId: string): Promise<Talk> {
+  async create(where: ConfaLookup, request: TalkMask): Promise<Talk> {
     const resp = await this.api.mutate<createTalk, createTalkVariables>({
       mutation: gql`
-        mutation createTalk($confaId: String!) {
-          createTalk(confaId: $confaId) {
+        mutation createTalk($where: ConfaLookup!, $request: TalkMask!) {
+          createTalk(where: $where, request: $request) {
             id
             ownerId
             confaId
             roomId
             handle
+            title
+            description
           }
         }
       `,
       variables: {
-        confaId: confaId,
+        where: where,
+        request: request,
       },
     })
     if (!resp.data) {
@@ -104,24 +111,37 @@ export class TalkClient {
     return resp.data.createTalk
   }
 
-  async start(talkId: string): Promise<void> {
-    await this.api.mutate<startTalk, startTalkVariables>({
+  async update(where: TalkLookup, request: TalkMask = {}): Promise<Talk> {
+    const resp = await this.api.mutate<updateTalk, updateTalkVariables>({
       mutation: gql`
-        mutation startTalk($talkId: String!) {
-          startTalk(talkId: $talkId)
+        mutation updateTalk($where: TalkLookup!, $request: TalkMask!) {
+          updateTalk(where: $where, request: $request) {
+            id
+            confaId
+            roomId
+            ownerId
+            handle
+            title
+            description
+          }
         }
       `,
       variables: {
-        talkId: talkId,
+        where: where,
+        request: request,
       },
     })
+    if (!resp.data) {
+      throw new Error("No data in response.")
+    }
+    return resp.data.updateTalk
   }
 
-  async fetchOne(input: TalkInput, hydrated = true): Promise<Talk | null> {
+  async fetchOne(input: TalkLookup, hydrated = true): Promise<Talk | null> {
     const iter = this.fetch(input, hydrated)
     const talks = await iter.next()
     if (talks.length === 0) {
-      return null
+      throw new APIError(Code.NotFound, "Talk not found.")
     }
     if (talks.length > 1) {
       throw new Error("Unexpected response from API.")
@@ -129,7 +149,7 @@ export class TalkClient {
     return talks[0]
   }
 
-  fetch(input: TalkInput, hydrated = false, policy: FetchPolicy = Policy.CacheFirst): TalkIterator {
-    return new TalkIterator(this.api, input, hydrated, policy)
+  fetch(lookup: TalkLookup, hydrated = false, policy: FetchPolicy = Policy.CacheFirst): TalkIterator {
+    return new TalkIterator(this.api, lookup, hydrated, policy)
   }
 }

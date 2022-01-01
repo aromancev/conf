@@ -16,6 +16,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
@@ -134,7 +135,7 @@ func (w *responseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Ev
 	return event.Str("method", r.Method).Int("code", w.code).Str("url", r.URL.String())
 }
 
-func confaLookup(input ConfaInput, limit int, from *string) (confa.Lookup, error) {
+func newConfaLookup(input ConfaLookup, limit int, from *string) (confa.Lookup, error) {
 	if limit <= 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -165,6 +166,73 @@ func confaLookup(input ConfaInput, limit int, from *string) (confa.Lookup, error
 		lookup.Handle = *input.Handle
 	}
 	return lookup, nil
+}
+
+func newConfa(c confa.Confa) *Confa {
+	return &Confa{
+		ID:          c.ID.String(),
+		OwnerID:     c.Owner.String(),
+		Handle:      c.Handle,
+		Title:       c.Title,
+		Description: c.Description,
+	}
+}
+
+func newTalkLookup(input TalkLookup, limit int, from *string) (talk.Lookup, error) {
+	if limit < 0 || limit > batchLimit {
+		limit = batchLimit
+	}
+	lookup := talk.Lookup{
+		Limit: int64(limit),
+	}
+	var err error
+	if from != nil {
+		lookup.From, err = uuid.Parse(*from)
+		if err != nil {
+			return talk.Lookup{}, err
+		}
+	}
+	if input.ID != nil {
+		lookup.ID, err = uuid.Parse(*input.ID)
+		if err != nil {
+			return talk.Lookup{}, err
+		}
+	}
+	if input.ConfaID != nil {
+		lookup.Confa, err = uuid.Parse(*input.ConfaID)
+		if err != nil {
+			return talk.Lookup{}, err
+		}
+	}
+	if input.OwnerID != nil {
+		lookup.Owner, err = uuid.Parse(*input.OwnerID)
+		if err != nil {
+			return talk.Lookup{}, err
+		}
+	}
+	if input.SpeakerID != nil {
+		lookup.Speaker, err = uuid.Parse(*input.SpeakerID)
+		if err != nil {
+			return talk.Lookup{}, err
+		}
+	}
+	if input.Handle != nil {
+		lookup.Handle = *input.Handle
+	}
+	return lookup, nil
+}
+
+func newTalk(t talk.Talk) *Talk {
+	return &Talk{
+		ID:          t.ID.String(),
+		ConfaID:     t.Confa.String(),
+		OwnerID:     t.Owner.String(),
+		SpeakerID:   t.Speaker.String(),
+		RoomID:      t.Room.String(),
+		Handle:      t.Handle,
+		Title:       t.Title,
+		Description: t.Description,
+	}
 }
 
 const (

@@ -139,6 +139,69 @@ func TestMongo(t *testing.T) {
 		})
 	})
 
+	t.Run("UpdateOne", func(t *testing.T) {
+		t.Run("Happy path", func(t *testing.T) {
+			ctx := context.Background()
+
+			confas := NewMongo(dockerMongo(t))
+
+			request := Confa{
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "1111",
+			}
+			created, err := confas.Create(ctx, request)
+			require.NoError(t, err)
+
+			request = created[0]
+			request.Handle = "2222"
+			request.Title = "title"
+			updated, err := confas.UpdateOne(ctx, Lookup{ID: request.ID}, Mask{Handle: &request.Handle, Title: &request.Title})
+			require.NoError(t, err)
+			require.EqualValues(t, request, updated)
+
+			fetched, err := confas.FetchOne(ctx, Lookup{
+				ID: request.ID,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, updated, fetched)
+		})
+
+		t.Run("Not found returns correct error", func(t *testing.T) {
+			ctx := context.Background()
+
+			confas := NewMongo(dockerMongo(t))
+
+			handle := "test"
+			_, err := confas.UpdateOne(ctx, Lookup{ID: uuid.New()}, Mask{Handle: &handle})
+			require.ErrorIs(t, err, ErrNotFound)
+		})
+
+		t.Run("Duplicated entry returns correct error", func(t *testing.T) {
+			ctx := context.Background()
+
+			confas := NewMongo(dockerMongo(t))
+
+			created, err := confas.Create(
+				ctx,
+				Confa{
+					ID:     uuid.New(),
+					Owner:  uuid.New(),
+					Handle: uuid.NewString(),
+				},
+				Confa{
+					ID:     uuid.New(),
+					Owner:  uuid.New(),
+					Handle: uuid.NewString(),
+				},
+			)
+			require.NoError(t, err)
+
+			_, err = confas.UpdateOne(ctx, Lookup{ID: created[0].ID}, Mask{Handle: &created[1].Handle})
+			require.ErrorIs(t, err, ErrDuplicateEntry)
+		})
+	})
+
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 

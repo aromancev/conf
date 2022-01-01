@@ -5,6 +5,7 @@
     <div class="canvas">
       <canvas ref="audience"></canvas>
       <canvas ref="shade" class="shade"></canvas>
+      <PageLoader v-if="loading"></PageLoader>
     </div>
   </div>
 </template>
@@ -14,6 +15,11 @@ import { onMounted, onUnmounted, ref } from "vue"
 import { EventType, PeerStatus, PayloadPeerState } from "@/api/models"
 import { Record } from "./record"
 import { genName, drawAvatar } from "@/platform/gen"
+import PageLoader from "@/components/PageLoader.vue"
+
+defineProps<{
+  loading?: boolean
+}>()
 
 const audience = ref<HTMLCanvasElement>()
 const shade = ref<HTMLCanvasElement>()
@@ -103,7 +109,7 @@ const compaction = 0.3
 const padding = 0.25
 const offsetY = 20
 const colorOutline = "#7f70f5"
-const maxSize = 300
+const maxSize = 200
 
 interface Peer {
   id: string
@@ -341,7 +347,7 @@ class Canvas {
     ctx.clearRect(0, 0, this.width, this.height)
 
     if (this.selected) {
-      this.renderPeer(ctx, this.selected, 20, 1.2, 0.05)
+      this.renderPeer(ctx, this.selected, 16, 1.2, 0.05)
     }
 
     ctx.restore()
@@ -438,9 +444,9 @@ class Canvas {
   overflow: hidden
 
 .selected
-  font-weight: bold
   margin: 10px
   height: 1em
+  text-align: center
 
 .divider
   height: 1px
@@ -449,6 +455,8 @@ class Canvas {
 .canvas
   position: relative
   flex: 1
+  display: flex
+  justify-content: center
 
 canvas
   position: absolute
@@ -456,4 +464,8 @@ canvas
   left: 0
   width: 100%
   height: 100%
+
+.loader
+  height: 100%
+  z-index: 100
 </style>

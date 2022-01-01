@@ -12,6 +12,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, requests ...Talk) ([]Talk, error)
+	UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Talk, error)
 	Fetch(ctx context.Context, lookup Lookup) ([]Talk, error)
 	FetchOne(ctx context.Context, lookup Lookup) (Talk, error)
 }
@@ -34,23 +35,22 @@ func NewCRUD(repo Repo, confas ConfaRepo, r rtc.RTC) *CRUD {
 	}
 }
 
-func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk, error) {
+func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, confaLookup confa.Lookup, request Talk) (Talk, error) {
 	request.ID = uuid.New()
 	request.Owner = userID
 	request.Speaker = userID
+	confaLookup.Owner = userID
 	if request.Handle == "" {
 		request.Handle = request.ID.String()
 	}
 	if err := request.Validate(); err != nil {
 		return Talk{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
-	conf, err := c.confas.FetchOne(ctx, confa.Lookup{ID: request.Confa})
+	conf, err := c.confas.FetchOne(ctx, confaLookup)
 	if err != nil {
 		return Talk{}, fmt.Errorf("failed to fetch confa: %w", err)
 	}
-	if conf.Owner != userID {
-		return Talk{}, ErrPermissionDenied
-	}
+	request.Confa = conf.ID
 
 	ownerID, _ := userID.MarshalBinary()
 	room, err := c.rtc.CreateRoom(ctx, &rtc.Room{
@@ -71,6 +71,11 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Talk) (Talk
 		return Talk{}, fmt.Errorf("failed to create talk: %w", err)
 	}
 	return created[0], nil
+}
+
+func (c *CRUD) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Mask) (Talk, error) {
+	lookup.Owner = userID
+	return c.repo.UpdateOne(ctx, lookup, request)
 }
 
 func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {

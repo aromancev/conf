@@ -16,8 +16,11 @@ export class RegexValidator {
     return this.error
   }
 
-  reactive(ref: Ref<string>): ComputedRef<string> {
+  reactive(ref: Ref<string | null>): ComputedRef<string> {
     return computed(() => {
+      if (ref.value === null) {
+        return ""
+      }
       return this.validate(ref.value)
     })
   }
