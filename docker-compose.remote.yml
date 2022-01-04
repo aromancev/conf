@@ -1,81 +1,51 @@
 version: '3.9'
 services:
   nginx:
-    image: nginx:1.19.6
-    networks:
-      - confa
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-
-  web:
     build:
       context: ./web
-      dockerfile: Dockerfile.dev
-    command: pnpm run serve
-    networks:
-      - confa
+      dockerfile: Dockerfile.remote
+    network_mode: "host"
     volumes:
-      - ./web/src:/app/src
-      - ./web/public:/app/public
+      - ./nginx.remote.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt:/etc/letsencrypt/
 
   sfu:
     build:
       context: ./api
       dockerfile: Dockerfile
     command: "go run ./cmd/sfu/."
-    networks:
-      - confa
+    network_mode: "host"
     environment:
       - ADDRESS=:8080
       - LOG_FORMAT=console
+      - ICE_PORT_MIN=5000
+      - ICE_PORT_MAX=5200
     volumes:
       - ./api:/app
-
-  media:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/media/."
-    networks:
-      - confa
-    environment:
-      - WEB_ADDRESS=:80
-      - RPC_ADDRESS=:8080
-      - SFU_ADDRESS=sfu:8080
-      - MEDIA_DIR=/var/lib/media
-      - LOG_FORMAT=console
-      - BEANSTALKD_POOL=beanstalkd:11300
-    volumes:
-      - ./api:/app
-      - ./.artifacts/media:/var/lib/media
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
     command: "go run ./cmd/api/."
-    networks:
-      - confa
+    network_mode: "host"
     depends_on:
       - beanstalkd
       - mongo
     environment:
-      - ADDRESS=:80
-      - RPC_ADDRESS=:8080
-      - RTC_ADDRESS=http://api:8080
-      - BASE_URL=http://localhost
+      - ADDRESS=:8081
+      - RPC_ADDRESS=:8082
+      - RTC_ADDRESS=http://localhost:8082
+      - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
       - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
       - MIGRATIONS_DIR=internal/migrations
-      - EMAIL_SERVER=stub
+      - EMAIL_SERVER=smtp.yandex.com
       - EMAIL_PORT=465
       - EMAIL_ADDRESS=noreply@confa.io
-      - EMAIL_PASSWORD=stub
-      - EMAIL_SECURE=false
-      - MONGO_HOSTS=mongo:27017
+      - EMAIL_PASSWORD=$EMAIL_PASSWORD
+      - MONGO_HOSTS=localhost:27017
       - MONGO_IAM_USER=iam
       - MONGO_IAM_PASSWORD=iam
       - MONGO_IAM_DATABASE=iam
@@ -85,9 +55,9 @@ services:
       - MONGO_CONFA_USER=confa
       - MONGO_CONFA_PASSWORD=confa
       - MONGO_CONFA_DATABASE=confa
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - RTC_SFU_ADDRESS=sfu:8080
-      - RTC_MEDIA_ADDRESS=media:8080
+      - BEANSTALKD_POOL=localhost:11300
+      - RTC_SFU_ADDRESS=localhost:8080
+      - RTC_MEDIA_ADDRESS=localhost:8090
     volumes:
       - ./api:/app
 
@@ -95,16 +65,14 @@ services:
     build:
       context: ./beanstalkd
       dockerfile: Dockerfile
-    networks:
-      - confa
+    network_mode: "host"
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
   mongo:
     image: mongo:4.4
     command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
-    networks:
-      - confa
+    network_mode: "host"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=mongo
       - MONGO_INITDB_ROOT_PASSWORD=mongo
@@ -119,14 +87,3 @@ services:
         chmod 400 /etc/mongo/mongo-repl.key
         chown 999:999 /etc/mongo/mongo-repl.key
         exec docker-entrypoint.sh $$@
-
-  email:
-    image: kbedel/fake-smtp-server
-    profiles: [ "email" ]
-    command: fake-smtp-server -s 1025 -h 80
-    networks:
-      - confa
-
-networks:
-  confa:
-    name: confa

@@ -66,17 +66,6 @@ export default defineComponent({
   },
 
   methods: {
-    async start() {
-      if (!this.talk) {
-        return
-      }
-      try {
-        await talkClient.start(this.talk.id)
-      } catch (e) {
-        this.modal = Dialog.Error
-      }
-    },
-
     async fetchTalk(): Promise<Talk | null> {
       const confaHanle = this.$route.params.confa as string
       const talkHandle = this.$route.params.talk as string
@@ -98,7 +87,7 @@ export default defineComponent({
         if (conf === null) {
           return null
         }
-        const tlk = await talkClient.create(conf.id)
+        const tlk = await talkClient.create({handle: confaHanle}, {})
         this.$router.replace("/" + confaHanle + "/" + tlk.handle)
         return tlk
       } catch (e) {

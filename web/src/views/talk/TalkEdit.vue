@@ -73,7 +73,7 @@ const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { talkClient, Talk, ConfaInput, errorCode, Code, userStore } from "@/api"
+import { talkClient, Talk, TalkMask, errorCode, Code, userStore } from "@/api"
 import { useRouter } from "vue-router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
@@ -103,7 +103,7 @@ const modal = ref(Modal.None)
 const handle = ref(props.talk.handle)
 const title = ref<string>(props.talk.title || "")
 const description = ref(props.talk.description || "")
-const update = ref<ConfaInput>({})
+const update = ref<TalkMask>({})
 const saving = ref(false)
 
 const handleError = handleValidator.reactive(handle)

@@ -31,3 +31,14 @@ lint:
 		-v `pwd`/src:/app/src \
 		-v `pwd`/.proto:/app/.proto \
 		${TOOLS_IMG} pnpm run lint
+
+.PHONY: build
+build:
+	docker build -f Dockerfile.dev -t ${TOOLS_IMG} .
+	docker run \
+		--rm \
+		-t \
+		-w /app \
+		-v `pwd`/src:/app/src \
+		-v `pwd`/dist:/app/dist \
+		${TOOLS_IMG} pnpm run build
