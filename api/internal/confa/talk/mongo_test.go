@@ -175,7 +175,6 @@ func TestMongo(t *testing.T) {
 	})
 
 	t.Run("Fetch", func(t *testing.T) {
-		t.Skip()
 		t.Parallel()
 
 		db := dockerMongo(t)
@@ -189,10 +188,12 @@ func TestMongo(t *testing.T) {
 		}
 
 		tlk := Talk{
-			ID:     uuid.New(),
-			Owner:  uuid.New(),
-			Confa:  conf.ID,
-			Handle: "test",
+			ID:      uuid.New(),
+			Owner:   uuid.New(),
+			Speaker: uuid.New(),
+			Room:    uuid.New(),
+			Confa:   conf.ID,
+			Handle:  "test",
 		}
 
 		_, err := confas.Create(ctx, conf)

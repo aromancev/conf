@@ -159,14 +159,6 @@ async function save() {
     const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
     update.value = {}
     emit("update", updated)
-    if (currentUpdate.handle) {
-      // Silently replace url without triggering re-render.
-      const route = router.resolve({
-        name: "confaEdit",
-        params: { confa: currentUpdate.handle },
-      })
-      window.history.replaceState({}, "", route.path)
-    }
   } catch (e) {
     switch (errorCode(e)) {
       case Code.DuplicateEntry:

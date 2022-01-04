@@ -3,6 +3,7 @@
   <div class="header">
     <div class="start">
       <div class="menu material-icons" @click="switchModal(Modal.Sidebar)">menu</div>
+      <router-link :to="{ name: 'home' }"><ConfaLogo></ConfaLogo></router-link>
     </div>
     <div class="end">
       <!-- eslint-disable-next-line vue/no-v-html -->
@@ -10,7 +11,7 @@
       <router-link v-if="!allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
-    <div class="sidebar" :class="{ opened: modal === Modal.Sidebar }">
+    <div v-if="modal === Modal.Sidebar" class="sidebar">
       <router-link v-if="allowedWrite" class="control-item" to="/">
         <span class="icon material-icons">hub</span>
         My content
@@ -50,6 +51,7 @@ import { ref, computed, watch, onMounted } from "vue"
 import { userStore } from "@/api"
 import { genAvatar, genName } from "@/platform/gen"
 import { Theme } from "@/platform/theme"
+import ConfaLogo from "@/components/ConfaLogo.vue"
 
 interface Profile {
   avatar?: string
@@ -142,6 +144,11 @@ $height: 100%
   width: 300px
   background: var(--color-background)
 
+.logo
+  font-size: 1.5rem
+  margin: 20px
+  cursor: pointer
+
 .end
   display: flex
   flex-direction: row
@@ -157,11 +164,11 @@ $height: 100%
 .sidebar
   @include theme.shadow-m
 
-  display: none
+  display: inline-block
   position: absolute
   top: $height
-  text-align: left
   left: 0
+  text-align: left
   height: 100vh
   width: 200px
   overflow: hidden
@@ -169,8 +176,6 @@ $height: 100%
 
   border-radius: 0 0 4px 4px
   z-index: 50
-  &.opened
-    display: inline-block
 
 .control
   @include theme.shadow-m

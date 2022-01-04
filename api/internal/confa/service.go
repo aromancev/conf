@@ -3,6 +3,7 @@ package confa
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -25,7 +26,7 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 	request.ID = uuid.New()
 	request.Owner = userID
 	if request.Handle == "" {
-		request.Handle = request.ID.String()
+		request.Handle = strings.Split(request.ID.String(), "-")[4]
 	}
 	created, err := c.repo.Create(ctx, request)
 	if err != nil {

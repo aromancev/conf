@@ -2,35 +2,20 @@
   <PageLoader v-if="loading" />
 
   <div v-if="!loading && talk" class="content">
-    <div class="title">{{ talk.title || talk.id }}</div>
+    <div class="title">{{ talk.title || talk.handle }}</div>
     <div class="path">
       /
-      <router-link
-        class="path-link"
-        :to="{
-          name: 'confaOverview',
-          params: { confa: confaHandle },
-        }"
-      >
+      <router-link class="path-link" :to="route.confa(confaHandle, ConfaTab.Overview)">
         {{ confaHandle }}
       </router-link>
       /
-      <router-link
-        class="path-link"
-        :to="{
-          name: 'talkOverview',
-          params: { talk: talk.handle },
-        }"
-      >
+      <router-link class="path-link" :to="route.talk(confaHandle, handle, TalkTab.Overview)">
         {{ talk.handle }}
       </router-link>
     </div>
     <div class="header">
       <router-link
-        :to="{
-          name: 'talkOverview',
-          params: { talk: talk.handle },
-        }"
+        :to="route.talk(confaHandle, handle, TalkTab.Overview)"
         class="header-item"
         :class="{ active: tab === 'overview' }"
       >
@@ -38,10 +23,7 @@
         Overview
       </router-link>
       <router-link
-        :to="{
-          name: 'talkOnline',
-          params: { talk: talk.handle },
-        }"
+        :to="route.talk(confaHandle, handle, TalkTab.Online)"
         class="header-item"
         :class="{ active: tab === 'online' }"
       >
@@ -50,10 +32,7 @@
       </router-link>
       <router-link
         v-if="talk.ownerId === user.id"
-        :to="{
-          name: 'talkEdit',
-          params: { talk: talk.handle },
-        }"
+        :to="route.talk(confaHandle, handle, TalkTab.Edit)"
         class="header-item"
         :class="{ active: tab === 'edit' }"
       >
@@ -64,7 +43,13 @@
     <div class="header-divider"></div>
     <div class="tab">
       <TalkOverview v-if="tab === 'overview'" :talk="talk" />
-      <TalkOnline v-if="tab === 'online'" :talk="talk" :join-confirmed="joinConfirmed" @join="join" />
+      <TalkOnline
+        v-if="tab === 'online'"
+        :talk="talk"
+        :join-confirmed="joinConfirmed"
+        :invite-link="inviteLink"
+        @join="join"
+      />
       <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />
     </div>
   </div>
@@ -75,9 +60,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { ref, watch, computed } from "vue"
 import { useRouter } from "vue-router"
-import { talkClient, Talk, userStore, errorCode, Code } from "@/api"
+import { talkClient, Talk, userStore, confaClient, errorCode, Code } from "@/api"
+import { route, ConfaTab, TalkTab, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
@@ -91,7 +77,7 @@ enum Modal {
 }
 
 const props = defineProps<{
-  tab: string
+  tab: TalkTab
   confaHandle: string
   handle: string
 }>()
@@ -104,21 +90,40 @@ const loading = ref(false)
 const modal = ref(Modal.None)
 const joinConfirmed = ref(false)
 
+const inviteLink = computed(() => {
+  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, TalkTab.Online)).fullPath
+})
+
 watch(
   () => props.handle,
   async (value) => {
+    if (props.tab == TalkTab.Edit && !user.allowedWrite) {
+      router.replace(route.login())
+      return
+    }
+
     if (talk.value && props.handle === talk.value.handle) {
       return
     }
+
     loading.value = true
+    let confaHandle = props.confaHandle
+    let talkHandle = value
     try {
-      if (value === "new") {
-        talk.value = await talkClient.create({ handle: props.confaHandle }, {})
-        router.replace({ name: "talkOverview", params: { confa: props.confaHandle, talk: talk.value.handle } })
+      if (props.confaHandle === handleNew) {
+        const confa = await confaClient.create()
+        confaHandle = confa.handle
+      }
+      if (talkHandle === handleNew) {
+        talk.value = await talkClient.create({ handle: confaHandle }, {})
+        talkHandle = talk.value.handle
       } else {
         talk.value = await talkClient.fetchOne({
-          handle: value,
+          handle: talkHandle,
         })
+      }
+      if (props.confaHandle != confaHandle || props.handle != talkHandle) {
+        router.replace(route.talk(confaHandle, talkHandle, props.tab))
       }
     } catch (e) {
       switch (errorCode(e)) {
@@ -137,6 +142,7 @@ watch(
 
 function update(value: Talk) {
   talk.value = value
+  router.replace(route.talk(props.confaHandle, value.handle, props.tab))
 }
 
 function join(confirmed: boolean) {

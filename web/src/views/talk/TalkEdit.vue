@@ -159,14 +159,6 @@ async function save() {
     const updated = await talkClient.update({ id: props.talk.id }, currentUpdate)
     update.value = {}
     emit("update", updated)
-    if (currentUpdate.handle) {
-      // Silently replace url without triggering re-render.
-      const route = router.resolve({
-        name: "talkEdit",
-        params: { talk: currentUpdate.handle },
-      })
-      window.history.replaceState({}, "", route.path)
-    }
   } catch (e) {
     switch (errorCode(e)) {
       case Code.DuplicateEntry:
