@@ -2,12 +2,13 @@ import { Client } from "./api"
 import { ConfaClient } from "./confa"
 import { TalkClient } from "./talk"
 import { EventClient } from "./event"
-import { ConfaInput as SchemaConfaInput } from "./schema"
+import { ConfaMask as SchemaConfaMask, TalkMask as SchemaTalkMask } from "./schema"
 
 export * from "./models"
 export * from "./rtc"
 export * from "./api"
-export type ConfaInput = SchemaConfaInput
+export type ConfaMask = SchemaConfaMask
+export type TalkMask = SchemaTalkMask
 
 export const client = new Client()
 export const confaClient = new ConfaClient(client)
