@@ -87,7 +87,7 @@ export default defineComponent({
         if (conf === null) {
           return null
         }
-        const tlk = await talkClient.create({handle: confaHanle}, {})
+        const tlk = await talkClient.create({ handle: confaHanle }, {})
         this.$router.replace("/" + confaHanle + "/" + tlk.handle)
         return tlk
       } catch (e) {

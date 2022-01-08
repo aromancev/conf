@@ -4,17 +4,23 @@
       <div class="video-content">
         <div class="videos">
           <div class="screen video-container">
-            <video v-if="remote.screen" class="screen-video" :srcObject="remote.screen" autoplay muted></video>
+            <video
+              v-if="local.screen || remote.screen"
+              class="screen-video"
+              :srcObject="local.screen || remote.screen"
+              autoplay
+              muted
+            ></video>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
           </div>
           <div class="camera video-container">
             <video
-              v-if="remote.camera"
+              v-if="local.camera || remote.camera"
               class="camera-video"
               :class="{ local: local.camera }"
-              :srcObject="remote.camera"
+              :srcObject="local.camera || remote.camera"
               autoplay
               muted
             ></video>
@@ -116,8 +122,8 @@ enum SidePanel {
 }
 
 interface Remote {
-  camera?: MediaStream
-  screen?: MediaStream
+  camera: MediaStream | null
+  screen: MediaStream | null
   audios: MediaStream[]
 }
 
@@ -151,6 +157,11 @@ const local = reactive<Local>({
   screen: null,
   mic: null,
 }) as Local
+const remote = reactive<Remote>({
+  camera: null,
+  screen: null,
+  audios: [],
+})
 const publishing = ref(false)
 const loading = ref(false)
 const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
@@ -169,37 +180,6 @@ const messages = computed((): Message[] => {
     return []
   }
   return messageProcessor.value.messages()
-})
-
-const remote = computed((): Remote => {
-  const view = {
-    audios: [],
-  } as Remote
-
-  for (const id in streamsByTrackId) {
-    const track = tracksById[id]
-    if (!track) {
-      continue
-    }
-    switch (track.hint) {
-      case Hint.Camera:
-        view.camera = streamsByTrackId[id]
-        break
-      case Hint.Screen:
-        view.screen = streamsByTrackId[id]
-        break
-      case Hint.UserAudio:
-        view.audios.push(streamsByTrackId[id])
-        break
-    }
-  }
-  if (local.camera) {
-    view.camera = local.camera
-  }
-  if (local.screen) {
-    view.screen = local.screen
-  }
-  return view
 })
 
 watch(
@@ -234,8 +214,10 @@ watch(
 
       const id = trackId(stream)
       streamsByTrackId[id] = stream
+      computeRemote()
       stream.onremovetrack = () => {
         delete streamsByTrackId[id]
+        computeRemote()
       }
     }
 
@@ -390,7 +372,7 @@ async function share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<Loc
     sfuClient.publish(stream)
     return stream
   } catch (e) {
-    console.warn("Failed to share media.")
+    console.warn("Failed to share media:", e)
     return null
   } finally {
     publishing.value = false
@@ -405,6 +387,7 @@ function unshare(stream: LocalStream | null | undefined) {
   stream.unpublish()
   for (const t of stream.getTracks()) {
     t.stop()
+    stream.removeTrack(t)
   }
 }
 
@@ -418,6 +401,37 @@ function processRecords(records: Record[]): void {
       continue
     }
     Object.assign(tracksById, payload.tracks)
+  }
+  computeRemote()
+}
+
+function computeRemote() {
+  remote.camera = null
+  remote.screen = null
+  remote.audios = []
+
+  for (const id in streamsByTrackId) {
+    const track = tracksById[id]
+    if (!track) {
+      continue
+    }
+    switch (track.hint) {
+      case Hint.Camera:
+        remote.camera = streamsByTrackId[id]
+        break
+      case Hint.Screen:
+        remote.screen = streamsByTrackId[id]
+        break
+      case Hint.UserAudio:
+        remote.audios.push(streamsByTrackId[id])
+        break
+    }
+  }
+  if (local.camera) {
+    remote.camera = local.camera
+  }
+  if (local.screen) {
+    remote.screen = local.screen
   }
 }
 </script>

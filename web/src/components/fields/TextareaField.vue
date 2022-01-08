@@ -75,7 +75,6 @@ function alignHeight() {
   @include theme.shadow-inset-xs
 
   position: relative
-  width: 150px
   border-radius: 4px
   min-height: 3em
 
