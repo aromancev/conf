@@ -111,10 +111,18 @@ watch(
     let talkHandle = value
     try {
       if (props.confaHandle === handleNew) {
+        if (!user.allowedWrite) {
+          router.replace(route.login())
+          return
+        }
         const confa = await confaClient.create()
         confaHandle = confa.handle
       }
       if (talkHandle === handleNew) {
+        if (!user.allowedWrite) {
+          router.replace(route.login())
+          return
+        }
         talk.value = await talkClient.create({ handle: confaHandle }, {})
         talkHandle = talk.value.handle
       } else {

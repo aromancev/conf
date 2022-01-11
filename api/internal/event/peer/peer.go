@@ -394,6 +394,9 @@ func (p *Peer) tracks(desc webrtc.SessionDescription) (map[string]event.Track, e
 		}
 		return parts[1]
 	}
+	isInactive := func(m sdp.Media) bool {
+		return len(m.Attributes.Values("inactive")) != 0
+	}
 
 	msg, err := sdp.Decode([]byte(desc.SDP))
 	if err != nil {
@@ -405,6 +408,9 @@ func (p *Peer) tracks(desc webrtc.SessionDescription) (map[string]event.Track, e
 		switch m.Description.Type {
 		case mediaVideo, mediaAudio:
 			trackID := getID(m)
+			if isInactive(m) {
+				continue
+			}
 			t, ok := p.state.Tracks[trackID]
 			if !ok {
 				return nil, fmt.Errorf("%w: track not in state", ErrValidation)

@@ -103,7 +103,7 @@ func main() {
 	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEmail, pqueue.TubeEvent}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
-		ReserveTimeout:   1 * time.Second,
+		ReserveTimeout:   100 * time.Millisecond,
 		ReconnectTimeout: 3 * time.Second,
 		InfoFunc: func(message string) {
 			log.Info().Msg(message)

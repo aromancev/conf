@@ -81,6 +81,10 @@ watch(
     loading.value = true
     try {
       if (value === handleNew) {
+        if (!user.allowedWrite) {
+          router.replace(route.login())
+          return
+        }
         confa.value = await confaClient.create()
         router.replace(route.confa(props.handle, props.tab))
       } else {
