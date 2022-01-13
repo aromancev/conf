@@ -14,7 +14,6 @@ import (
 	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/platform/email"
-	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
 	pqueue "github.com/aromancev/confa/proto/queue"
 	"github.com/aromancev/confa/proto/rtc"
@@ -116,14 +115,9 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
-	sfuPool, err := grpcpool.New(
-		grpcpool.Factory(func() (*grpc.ClientConn, error) {
-			return grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithInsecure())
-		}),
-		0, 3, 10*time.Minute,
-	)
+	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithInsecure())
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initiate sfu RPC pool.")
+		log.Fatal().Err(err).Msg("Failed to connect to sfu RPC.")
 	}
 
 	sign, err := auth.NewSecretKey(config.SecretKey)
@@ -181,7 +175,7 @@ func main() {
 				ReadBufferSize:  config.RTC.ReadBuffer,
 				WriteBufferSize: config.RTC.WriteBuffer,
 			},
-			sfuPool,
+			sfuConn,
 			eventWatcher,
 			eventMongo,
 		)),
@@ -240,12 +234,13 @@ func main() {
 
 	ctx, shutdown := context.WithTimeout(ctx, time.Second*60)
 	defer shutdown()
-
 	cancel()
+
 	_ = webServer.Shutdown(ctx)
 	_ = rpcServer.Shutdown(ctx)
 	producer.Stop()
 	consumerDone.Wait()
+	_ = sfuConn.Close()
 
 	log.Info().Msg("Shutdown complete")
 }

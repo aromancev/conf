@@ -55,7 +55,7 @@ func NewHandler(resolver *Resolver) *Handler {
 	r.HandleFunc(
 		"/rtc/ws/",
 		withWSockAuthFunc(
-			serveRTC(resolver.rooms, resolver.publicKey, resolver.upgrader, resolver.sfuPool, resolver.producer, resolver.eventWatcher),
+			serveRTC(resolver.rooms, resolver.publicKey, resolver.upgrader, resolver.sfuConn, resolver.producer, resolver.eventWatcher),
 		),
 	)
 	r.HandleFunc("/dev/", playground.Handler("API playground", "/api/query"))

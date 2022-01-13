@@ -144,7 +144,7 @@ function onScroll() {
   color: var(--color-font-disabled)
   font-size: 0.7em
 
-.message-input
+.field.message-input
   box-shadow: none
   max-height: 50%
   width: 100%

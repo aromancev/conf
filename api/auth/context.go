@@ -4,12 +4,17 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Context interface {
 	Token() string
-	Session() string
 	SetSession(value string)
+	Session() string
+	ResetSession()
+	SetGuestClaims(value string)
+	GuestClaims() string
+	ResetGuestClaims()
 }
 
 type HTTPContext struct {
@@ -32,12 +37,48 @@ func (c *HTTPContext) SetSession(value string) {
 	})
 }
 
+func (c *HTTPContext) ResetSession() {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     sessionKey,
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+}
+
 func (c *HTTPContext) Session() string {
 	session, err := c.request.Cookie(sessionKey)
 	if err != nil {
 		return ""
 	}
 	return session.Value
+}
+
+func (c *HTTPContext) SetGuestClaims(value string) {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     guestClaimsKey,
+		Value:    value,
+		HttpOnly: true,
+		Expires:  time.Now().Add(guestAPIExpire),
+		MaxAge:   int(guestAPIExpire.Seconds()),
+	})
+}
+
+func (c *HTTPContext) ResetGuestClaims() {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     guestClaimsKey,
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+}
+
+func (c *HTTPContext) GuestClaims() string {
+	claims, err := c.request.Cookie(guestClaimsKey)
+	if err != nil {
+		return ""
+	}
+	return claims.Value
 }
 
 func (c *HTTPContext) Token() string {
@@ -73,12 +114,48 @@ func (c *WSockContext) SetSession(value string) {
 	})
 }
 
+func (c *WSockContext) ResetSession() {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     sessionKey,
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+}
+
 func (c *WSockContext) Session() string {
 	session, err := c.request.Cookie(sessionKey)
 	if err != nil {
 		return ""
 	}
 	return session.Value
+}
+
+func (c *WSockContext) SetGuestClaims(value string) {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     guestClaimsKey,
+		Value:    value,
+		HttpOnly: true,
+		Expires:  time.Now().Add(guestAPIExpire),
+		MaxAge:   int(guestAPIExpire.Seconds()),
+	})
+}
+
+func (c *WSockContext) ResetGuestClaims() {
+	http.SetCookie(c.writer, &http.Cookie{
+		Name:     guestClaimsKey,
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+}
+
+func (c *WSockContext) GuestClaims() string {
+	claims, err := c.request.Cookie(guestClaimsKey)
+	if err != nil {
+		return ""
+	}
+	return claims.Value
 }
 
 func (c *WSockContext) Token() string {
@@ -105,7 +182,8 @@ func Ctx(ctx context.Context) Context {
 }
 
 const (
-	sessionKey = "session"
+	sessionKey     = "session"
+	guestClaimsKey = "guest-claims"
 )
 
 type ctxKey struct{}

@@ -10,14 +10,15 @@ import (
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/event"
 	"github.com/aromancev/confa/internal/event/peer"
-	"github.com/aromancev/confa/internal/platform/grpcpool"
+	"github.com/aromancev/confa/internal/event/peer/signal"
 	"github.com/aromancev/confa/internal/room"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
 )
 
-func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool, producer Producer, events event.Watcher) func(http.ResponseWriter, *http.Request) {
+func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, producer Producer, events event.Watcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
@@ -63,7 +64,8 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			return
 		}
 		log.Ctx(ctx).Debug().Msg("Event watching started.")
-		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, sfuPool, cursor, producer, 10)
+
+		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, signal.NewGRPCSignal(ctx, sfuConn), cursor, producer, 10)
 		defer peerConn.Close(ctx)
 		log.Ctx(ctx).Debug().Msg("Peer connected.")
 
@@ -88,7 +90,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 
 				err = wsConn.WriteJSON(msg)
 				if err != nil {
-					log.Ctx(ctx).Err(err).Msg("Failed send message to websocket. Closing.")
+					log.Ctx(ctx).Warn().Err(err).Msg("Failed send message to websocket. Closing.")
 					cancel()
 				}
 			}
@@ -106,7 +108,7 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 					log.Ctx(ctx).Info().Msg("Websocket disconnected.")
 					return
 				case err != nil:
-					log.Ctx(ctx).Err(err).Msg("Failed to receive message from websocket.")
+					log.Ctx(ctx).Warn().Err(err).Msg("Failed to receive message from websocket.")
 					return
 				}
 
@@ -114,6 +116,10 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 				switch {
 				case errors.Is(err, peer.ErrValidation):
 					log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
+				case errors.Is(err, context.Canceled):
+					cancel() // If peer closed for any reason, terminate the whole connection.
+					log.Ctx(ctx).Info().Msg("Peer disconnected.")
+					return
 				case err != nil:
 					log.Ctx(ctx).Err(err).Msg("Failed send peer message.")
 				}

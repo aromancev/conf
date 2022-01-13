@@ -1,4 +1,4 @@
-package peer
+package signal
 
 import (
 	"context"
@@ -8,57 +8,33 @@ import (
 	"io"
 	"sync"
 
-	"github.com/aromancev/confa/internal/platform/grpcpool"
+	"github.com/aromancev/confa/internal/event/peer"
 	pb "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
 	"github.com/pion/webrtc/v3"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type Join struct {
-	SessionID   string                    `json:"sessionId"`
-	UserID      string                    `json:"userId"`
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Answer struct {
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Offer struct {
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Trickle struct {
-	Candidate webrtc.ICECandidateInit `json:"candidate"`
-	Target    int                     `json:"target"`
-}
-
 type GRPCSignal struct {
 	m      sync.Mutex
-	conn   *grpcpool.ClientConn
-	client pb.SFUClient
 	stream pb.SFU_SignalClient
+	conn   *grpc.ClientConn
 }
 
-func NewGRPCSignal(ctx context.Context, sfuPool *grpcpool.Pool) (*GRPCSignal, error) {
-	conn, err := sfuPool.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	client := pb.NewSFUClient(conn)
-	stream, err := client.Signal(ctx)
-	if err != nil {
-		return nil, err
-	}
+func NewGRPCSignal(ctx context.Context, conn *grpc.ClientConn) *GRPCSignal {
 	return &GRPCSignal{
-		conn:   conn,
-		client: client,
-		stream: stream,
-	}, nil
+		conn: conn,
+	}
 }
 
-func (s *GRPCSignal) Join(_ context.Context, req Join) error {
+func (s *GRPCSignal) Connect(ctx context.Context) error {
+	var err error
+	s.stream, err = pb.NewSFUClient(s.conn).Signal(ctx)
+	return err
+}
+
+func (s *GRPCSignal) Join(_ context.Context, req peer.Join) error {
 	desc, err := json.Marshal(req.Description)
 	if err != nil {
 		return fmt.Errorf("failed to marshal join: %w", err)
@@ -66,6 +42,9 @@ func (s *GRPCSignal) Join(_ context.Context, req Join) error {
 
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.stream == nil {
+		return peer.ErrClosed
+	}
 	return s.stream.Send(
 		&pb.SignalRequest{
 			Payload: &pb.SignalRequest_Join{
@@ -79,7 +58,7 @@ func (s *GRPCSignal) Join(_ context.Context, req Join) error {
 	)
 }
 
-func (s *GRPCSignal) Trickle(_ context.Context, req Trickle) error {
+func (s *GRPCSignal) Trickle(_ context.Context, req peer.Trickle) error {
 	bytes, err := json.Marshal(req.Candidate)
 	if err != nil {
 		return fmt.Errorf("failed to marshal trickle: %w", err)
@@ -87,6 +66,9 @@ func (s *GRPCSignal) Trickle(_ context.Context, req Trickle) error {
 
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.stream == nil {
+		return peer.ErrClosed
+	}
 	return s.stream.Send(&pb.SignalRequest{
 		Payload: &pb.SignalRequest_Trickle{
 			Trickle: &pb.Trickle{
@@ -97,7 +79,7 @@ func (s *GRPCSignal) Trickle(_ context.Context, req Trickle) error {
 	})
 }
 
-func (s *GRPCSignal) Offer(_ context.Context, req Offer) error {
+func (s *GRPCSignal) Offer(_ context.Context, req peer.Offer) error {
 	desc, err := json.Marshal(req.Description)
 	if err != nil {
 		return fmt.Errorf("failed to marshal offer: %w", err)
@@ -105,6 +87,9 @@ func (s *GRPCSignal) Offer(_ context.Context, req Offer) error {
 
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.stream == nil {
+		return peer.ErrClosed
+	}
 	return s.stream.Send(
 		&pb.SignalRequest{
 			Payload: &pb.SignalRequest_Description{
@@ -114,7 +99,7 @@ func (s *GRPCSignal) Offer(_ context.Context, req Offer) error {
 	)
 }
 
-func (s *GRPCSignal) Answer(_ context.Context, req Answer) error {
+func (s *GRPCSignal) Answer(_ context.Context, req peer.Answer) error {
 	desc, err := json.Marshal(req.Description)
 	if err != nil {
 		return fmt.Errorf("failed to marshal answer: %w", err)
@@ -122,6 +107,9 @@ func (s *GRPCSignal) Answer(_ context.Context, req Answer) error {
 
 	s.m.Lock()
 	defer s.m.Unlock()
+	if s.stream == nil {
+		return peer.ErrClosed
+	}
 	return s.stream.Send(
 		&pb.SignalRequest{
 			Payload: &pb.SignalRequest_Description{
@@ -132,14 +120,18 @@ func (s *GRPCSignal) Answer(_ context.Context, req Answer) error {
 }
 
 // Receive fetches an incoming message from SFU. It is not safe to call concurrently.
-func (s *GRPCSignal) Receive(ctx context.Context) (Message, error) {
+func (s *GRPCSignal) Receive(ctx context.Context) (peer.Message, error) {
+	if s.stream == nil {
+		return peer.Message{}, peer.ErrClosed
+	}
+
 	res, err := s.stream.Recv()
 	errStatus, _ := status.FromError(err)
 	switch {
 	case errors.Is(err, io.EOF), errStatus.Code() == codes.Canceled:
-		return Message{}, ErrClosed
+		return peer.Message{}, peer.ErrClosed
 	case err != nil:
-		return Message{}, err
+		return peer.Message{}, err
 	}
 
 	switch payload := res.Payload.(type) {
@@ -147,47 +139,46 @@ func (s *GRPCSignal) Receive(ctx context.Context) (Message, error) {
 		var s webrtc.SessionDescription
 		err := json.Unmarshal(payload.Join.Description, &s)
 		if err != nil {
-			return Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
+			return peer.Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
 		}
-		return Message{
-			Type:    TypeAnswer,
-			Payload: Answer{Description: s},
+		return peer.Message{
+			Type:    peer.TypeAnswer,
+			Payload: peer.Answer{Description: s},
 		}, nil
 
 	case *pb.SignalReply_Description:
 		var s webrtc.SessionDescription
 		err := json.Unmarshal(payload.Description, &s)
 		if err != nil {
-			return Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
+			return peer.Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
 		}
 		switch s.Type {
 		case webrtc.SDPTypeOffer:
-			return Message{
-				Type:    TypeOffer,
-				Payload: Offer{Description: s},
+			return peer.Message{
+				Type:    peer.TypeOffer,
+				Payload: peer.Offer{Description: s},
 			}, nil
 		case webrtc.SDPTypeAnswer:
-			return Message{
-				Type:    TypeAnswer,
-				Payload: Answer{Description: s},
+			return peer.Message{
+				Type:    peer.TypeAnswer,
+				Payload: peer.Answer{Description: s},
 			}, nil
 		}
 
 	case *pb.SignalReply_Trickle:
 		var c webrtc.ICECandidateInit
 		_ = json.Unmarshal([]byte(payload.Trickle.Init), &c) // Init unmarshal errors are ont critical.
-		return Message{
-			Type:    TypeTrickle,
-			Payload: Trickle{Candidate: c, Target: int(payload.Trickle.Target)},
+		return peer.Message{
+			Type:    peer.TypeTrickle,
+			Payload: peer.Trickle{Candidate: c, Target: int(payload.Trickle.Target)},
 		}, nil
 	}
 
-	return Message{}, ErrUnknownMessage
+	return peer.Message{}, peer.ErrUnknownMessage
 }
 
 func (s *GRPCSignal) Close(_ context.Context) error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	_ = s.stream.CloseSend()
-	return s.conn.Close()
+	return s.stream.CloseSend()
 }

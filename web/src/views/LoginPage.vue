@@ -17,26 +17,30 @@
     </div>
   </div>
 
-  <ModalDialog v-if="modal == Dialog.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
+  <ModalDialog v-if="modal == Modal.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </ModalDialog>
-  <InternalError v-if="modal == Dialog.Error" @click="modal = Dialog.None" />
+  <ModalDialog v-if="modal == Modal.BadRequest" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+    <p>Incorrect email.</p>
+  </ModalDialog>
+  <InternalError v-if="modal == Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
-import { client } from "@/api"
+import { client, errorCode, Code } from "@/api"
 import { userStore } from "@/api/models"
 import { isValid } from "@/platform/email"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import InputField from "@/components/fields/InputField.vue"
 import InternalError from "@/components/modals/InternalError.vue"
 
-enum Dialog {
+enum Modal {
   None = "",
   EmailSent = "sent",
+  BadRequest = "bad_request",
   Error = "error",
 }
 
@@ -44,8 +48,8 @@ const emailError = "• Must be a valid email"
 
 const email = ref("")
 const submitted = ref(false)
-const valid = ref(true)
-const modal = ref(Dialog.None)
+const valid = ref(false)
+const modal = ref(Modal.None)
 
 const router = useRouter()
 const user = userStore.getState()
@@ -73,7 +77,7 @@ watch(
     try {
       await client.createSession(value)
     } catch (e) {
-      modal.value = Dialog.Error
+      modal.value = Modal.Error
     }
   },
   { immediate: true },
@@ -90,9 +94,13 @@ async function login() {
   submitted.value = true
   try {
     await client.login(email.value)
-    modal.value = Dialog.EmailSent
+    modal.value = Modal.EmailSent
   } catch (e) {
-    modal.value = Dialog.Error
+    if (errorCode(e) === Code.BadRequest) {
+      modal.value = Modal.BadRequest
+    } else {
+      modal.value = Modal.Error
+    }
     submitted.value = false
   }
 }

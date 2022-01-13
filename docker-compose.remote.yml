@@ -12,22 +12,18 @@ services:
   sfu:
     build:
       context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/sfu/."
+      dockerfile: ./cmd/sfu/Dockerfile
     network_mode: "host"
     environment:
       - ADDRESS=:8080
       - LOG_FORMAT=console
       - ICE_PORT_MIN=5000
       - ICE_PORT_MAX=5200
-    volumes:
-      - ./api:/app
 
   api:
     build:
       context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/api/."
+      dockerfile: ./cmd/api/Dockerfile
     network_mode: "host"
     depends_on:
       - beanstalkd
@@ -58,8 +54,6 @@ services:
       - BEANSTALKD_POOL=localhost:11300
       - RTC_SFU_ADDRESS=localhost:8080
       - RTC_MEDIA_ADDRESS=localhost:8090
-    volumes:
-      - ./api:/app
 
   beanstalkd:
     build:

@@ -270,24 +270,29 @@ func (r *mutationResolver) UpdateClap(ctx context.Context, talkID string, value 
 }
 
 func (r *queryResolver) Token(ctx context.Context) (*Token, error) {
-	var claims *auth.APIClaims
-	key := auth.Ctx(ctx).Session()
-	if key == "" {
-		claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
-	} else {
-		s, err := r.sessions.Fetch(ctx, key)
-		if err == nil {
-			claims = auth.NewAPIClaims(s.Owner, auth.AccountUser)
-		} else {
-			claims = auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+	claims := func() *auth.APIClaims {
+		if s, err := r.sessions.Fetch(ctx, auth.Ctx(ctx).Session()); err == nil {
+			return auth.NewAPIClaims(s.Owner, auth.AccountUser)
 		}
-	}
+		var c auth.APIClaims
+		if err := r.publicKey.Verify(auth.Ctx(ctx).GuestClaims(), &c); err == nil {
+			return &c
+		}
+		return auth.NewGuesAPIClaims(uuid.New())
+	}()
 
 	access, err := r.secretKey.Sign(claims)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
 		return nil, newInternalError()
 	}
+
+	if claims.Account == auth.AccountGuest {
+		auth.Ctx(ctx).SetGuestClaims(access)
+	} else {
+		auth.Ctx(ctx).ResetGuestClaims()
+	}
+
 	return &Token{
 		Token:     access,
 		ExpiresIn: int(claims.ExpiresIn().Seconds()),

@@ -54,6 +54,7 @@ export class APIError extends Error {
 export enum Code {
   DuplicateEntry = "DUPLICATE_ENTRY",
   NotFound = "NOT_FOUND",
+  BadRequest = "BAD_REQUEST",
   Unknown = "UNKNOWN_CODE",
 }
 
@@ -64,10 +65,7 @@ export function errorCode(e: unknown): Code {
 
   const resp = e as ApolloError
   for (const err of resp.graphQLErrors || []) {
-    switch (err.extensions?.code) {
-      case Code.DuplicateEntry:
-        return Code.DuplicateEntry
-    }
+    return err.extensions?.code || Code.Unknown
   }
 
   return Code.Unknown

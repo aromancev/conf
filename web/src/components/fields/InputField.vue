@@ -50,7 +50,6 @@ function input(event: Event) {
   @include theme.shadow-inset-xs
 
   position: relative
-  width: 150px
   border-radius: 4px
   padding: 0.5em 1em
 

@@ -8,11 +8,11 @@ import (
 	"github.com/aromancev/confa/internal/confa/talk"
 	"github.com/aromancev/confa/internal/confa/talk/clap"
 	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/room"
 	"github.com/aromancev/confa/internal/user"
 	"github.com/aromancev/confa/internal/user/session"
 	"github.com/gorilla/websocket"
+	"google.golang.org/grpc"
 )
 
 type EventRepo interface {
@@ -33,10 +33,10 @@ type Resolver struct {
 	eventWatcher event.Watcher
 	producer     Producer
 	upgrader     *websocket.Upgrader
-	sfuPool      *grpcpool.Pool
+	sfuConn      *grpc.ClientConn
 }
 
-func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, rooms *room.Mongo, upgrader *websocket.Upgrader, sfuPool *grpcpool.Pool, eventWatcher event.Watcher, events EventRepo) *Resolver {
+func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, producer Producer, users *user.CRUD, sessions *session.CRUD, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, rooms *room.Mongo, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, eventWatcher event.Watcher, events EventRepo) *Resolver {
 	return &Resolver{
 		baseURL:      baseURL,
 		secretKey:    sk,
@@ -49,7 +49,7 @@ func NewResolver(baseURL string, sk *auth.SecretKey, pk *auth.PublicKey, produce
 		claps:        claps,
 		rooms:        rooms,
 		upgrader:     upgrader,
-		sfuPool:      sfuPool,
+		sfuConn:      sfuConn,
 		eventWatcher: eventWatcher,
 		events:       events,
 	}
