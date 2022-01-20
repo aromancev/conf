@@ -14,6 +14,14 @@ type FakeCursor struct {
 	closeOnce sync.Once
 }
 
+func NewFakeCursor(events ...event.Event) *FakeCursor {
+	ch := make(chan event.Event, len(events))
+	return &FakeCursor{
+		events: ch,
+		closed: make(chan struct{}),
+	}
+}
+
 func (c *FakeCursor) Next(ctx context.Context) (event.Event, error) {
 	select {
 	case ev, ok := <-c.events:

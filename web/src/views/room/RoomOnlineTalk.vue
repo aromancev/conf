@@ -93,14 +93,19 @@
       <CopyField :value="inviteLink">Test</CopyField>
     </p>
   </ModalDialog>
+  <ModalDialog v-if="modal === Modal.ConfirmLeave" :buttons="{ leave: 'Leave', stay: 'Stay' }" @click="onModalClose">
+    <p>You are about to leave the talk while presenting.</p>
+    <p>If you leave, your presentation will end.</p>
+  </ModalDialog>
   <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, nextTick, onMounted } from "vue"
+import { reactive, computed, ref, watch, nextTick, onMounted, onUnmounted } from "vue"
+import { onBeforeRouteLeave } from "vue-router"
 import { Client, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { EventType, PayloadPeerState } from "@/api/models"
-import { userStore, RTC, Event, client, eventClient, State, Hint, Track } from "@/api"
+import { userStore, RTC, Event, client, eventClient, State, Hint, Track, Policy } from "@/api"
 import { RecordProcessor, BufferedProcessor } from "@/components/room"
 import { Record } from "@/components/room/record"
 import { MessageProcessor, Message } from "@/components/room/messages"
@@ -109,11 +114,13 @@ import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
+import { EventOrder } from "@/api/schema"
 
 enum Modal {
   None = "",
   Error = "error",
   ConfirmJoin = "confirm_join",
+  ConfirmLeave = "confirm_leave",
 }
 
 enum SidePanel {
@@ -174,6 +181,7 @@ const state = { tracks: {} } as State
 let messageProcessor = ref<MessageProcessor | null>(null)
 let rtcClient = null as RTC | null
 let sfuClient = null as Client | null
+let modalClosed: (button: string) => void = (button: string) => {}
 
 const messages = computed((): Message[] => {
   if (!messageProcessor.value) {
@@ -221,7 +229,7 @@ watch(
       }
     }
 
-    const iter = eventClient.fetch({ roomId: value })
+    const iter = eventClient.fetch({ roomId: value }, EventOrder.DESC, Policy.NetworkOnly)
     const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
     buffered.put(events, false)
     buffered.autoflush = true
@@ -237,6 +245,33 @@ onMounted(() => {
     modal.value = Modal.ConfirmJoin
   }
 })
+
+onUnmounted(() => {
+  unshareScreen()
+  unshareCamera()
+  unshareMic()
+  sfuClient?.close()
+  rtcClient?.close()
+})
+
+onBeforeRouteLeave(async (to, from, next) => {
+  if (!local.screen && !local.camera && !local.mic) {
+    next()
+    return
+  }
+  const btn = await new Promise<string>((resolve) => {
+    modalClosed = (button: string) => {
+      resolve(button)
+    } 
+    modal.value = Modal.ConfirmLeave
+  })
+  next(btn === "leave")
+})
+
+function onModalClose(button: string): void {
+  modalClosed(button)
+  modal.value = Modal.None
+}
 
 function confirmJoin(value: string) {
   emit("join", value === "join")

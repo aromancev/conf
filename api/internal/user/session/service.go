@@ -33,5 +33,8 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID) (Session, error) {
 }
 
 func (c *CRUD) Fetch(ctx context.Context, key string) (Session, error) {
+	if key == "" {
+		return Session{}, ErrNotFound
+	}
 	return c.repo.FetchOne(ctx, Lookup{Key: key})
 }

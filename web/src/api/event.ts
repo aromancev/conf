@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client/core"
-import { Client } from "./api"
+import { Client, FetchPolicy, Policy } from "./api"
 import { EventLookup, EventLimit, EventOrder, events, eventsVariables } from "./schema"
 import { Event, EventPayload, EventType } from "./models"
 
@@ -13,12 +13,14 @@ class EventIterator {
   private lookup: EventLookup
   private from: From | null
   private order: EventOrder | null
+  private policy: FetchPolicy
 
-  constructor(api: Client, lookup: EventLookup, order?: EventOrder) {
+  constructor(api: Client, lookup: EventLookup, order: EventOrder, policy: FetchPolicy) {
     this.api = api
     this.lookup = lookup
     this.from = null
-    this.order = order || null
+    this.order = order
+    this.policy = policy
   }
 
   async next(limit?: EventLimit): Promise<Event[]> {
@@ -49,6 +51,7 @@ class EventIterator {
         limit: limit || { count: 100, seconds: 0 },
         order: this.order,
       },
+      fetchPolicy: this.policy,
     })
 
     this.from = resp.data.events.nextFrom
@@ -100,7 +103,7 @@ export class EventClient {
     return events[0]
   }
 
-  fetch(lookup: EventLookup, order?: EventOrder): EventIterator {
-    return new EventIterator(this.api, lookup, order)
+  fetch(lookup: EventLookup, order: EventOrder = EventOrder.ASC, policy: FetchPolicy = Policy.CacheFirst): EventIterator {
+    return new EventIterator(this.api, lookup, order, policy)
   }
 }

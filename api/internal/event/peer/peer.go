@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/platform/grpcpool"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/proto/queue"
 	"github.com/google/uuid"
@@ -128,6 +127,7 @@ func (m *Message) UnmarshalJSON(b []byte) error {
 }
 
 type Signal interface {
+	Connect(ctx context.Context) error
 	Join(context.Context, Join) error
 	Trickle(context.Context, Trickle) error
 	Offer(context.Context, Offer) error
@@ -136,10 +136,28 @@ type Signal interface {
 	Close(context.Context) error
 }
 
+type Join struct {
+	SessionID   string                    `json:"sessionId"`
+	UserID      string                    `json:"userId"`
+	Description webrtc.SessionDescription `json:"description"`
+}
+
+type Answer struct {
+	Description webrtc.SessionDescription `json:"description"`
+}
+
+type Offer struct {
+	Description webrtc.SessionDescription `json:"description"`
+}
+
+type Trickle struct {
+	Candidate webrtc.ICECandidateInit `json:"candidate"`
+	Target    int                     `json:"target"`
+}
+
 type Peer struct {
 	ctx                    context.Context
 	cancel                 func()
-	sfuPool                *grpcpool.Pool
 	signal                 Signal
 	out                    chan Message
 	producer               Producer
@@ -149,12 +167,12 @@ type Peer struct {
 	eventsDone, signalDone chan struct{}
 }
 
-func NewPeer(ctx context.Context, userID, roomID uuid.UUID, sfuPool *grpcpool.Pool, events event.Cursor, producer Producer, maxMessages int) *Peer {
+func NewPeer(ctx context.Context, userID, roomID uuid.UUID, signal Signal, events event.Cursor, producer Producer, maxMessages int) *Peer {
 	ctx, cancel := context.WithCancel(ctx)
 	p := &Peer{
 		ctx:        ctx,
 		cancel:     cancel,
-		sfuPool:    sfuPool,
+		signal:     signal,
 		out:        make(chan Message, maxMessages),
 		eventsDone: make(chan struct{}),
 		signalDone: make(chan struct{}),
@@ -210,17 +228,12 @@ func (p *Peer) Send(ctx context.Context, msg Message) error {
 		}
 		return nil
 	case Join:
-		var err error
-		p.signal, err = NewGRPCSignal(ctx, p.sfuPool)
-		if err != nil {
+		if err := p.signal.Connect(ctx); err != nil {
 			return err
 		}
 		go p.pullSignal()
 		return p.signal.Join(ctx, pl)
 	case Offer:
-		if p.signal == nil {
-			return fmt.Errorf("%w: must join before offer", ErrValidation)
-		}
 		tracks, err := p.tracks(pl.Description)
 		if err != nil {
 			return fmt.Errorf("%w: %s", ErrValidation, err)
@@ -235,14 +248,8 @@ func (p *Peer) Send(ctx context.Context, msg Message) error {
 			},
 		})
 	case Answer:
-		if p.signal == nil {
-			return fmt.Errorf("%w: must join before answer", ErrValidation)
-		}
 		return p.signal.Answer(ctx, pl)
 	case Trickle:
-		if p.signal == nil {
-			return fmt.Errorf("%w: must join before trickle", ErrValidation)
-		}
 		return p.signal.Trickle(ctx, pl)
 	default:
 		return ErrUnknownMessage
@@ -271,6 +278,7 @@ func (p *Peer) Close(ctx context.Context) error {
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
+	p.cancel()
 	var eventsErr, signalErr error
 	<-p.eventsDone
 	eventsErr = p.events.Close(ctx)
@@ -382,6 +390,7 @@ func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payloa
 	return err
 }
 
+// TODO: consider https://github.com/pion/explainer
 // tracks parses tracks from offer and adds additional info from State to them (like hints).
 // Returns error if tracks are not allowed or not present in state. State should be
 // submitted by peer before sending the offer. This is because WebRTC does not support passing

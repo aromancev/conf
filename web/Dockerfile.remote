@@ -4,9 +4,12 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
+
 COPY . .
 
-RUN pnpm install && pnpm run build
+RUN pnpm run build
 
 FROM nginx:1.19.6-alpine
 
