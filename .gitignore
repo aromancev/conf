@@ -3,4 +3,5 @@
 .artifacts
 .env
 .proto
+.DS_Store
 /db/

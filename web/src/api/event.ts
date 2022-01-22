@@ -103,7 +103,11 @@ export class EventClient {
     return events[0]
   }
 
-  fetch(lookup: EventLookup, order: EventOrder = EventOrder.ASC, policy: FetchPolicy = Policy.CacheFirst): EventIterator {
+  fetch(
+    lookup: EventLookup,
+    order: EventOrder = EventOrder.ASC,
+    policy: FetchPolicy = Policy.CacheFirst,
+  ): EventIterator {
     return new EventIterator(this.api, lookup, order, policy)
   }
 }

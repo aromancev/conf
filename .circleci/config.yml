@@ -1,97 +1,29 @@
 version: 2.1
 jobs:
-  deploy_web:
-    machine: true
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - web-v1-{{ checksum "web/pnpm-lock.yaml" }}
-            - web-v1
-      - run: ./deploy/web.sh
-      - save_cache:
-          key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
-          paths:
-            - web/node_modules
-            - web/.pnpm-store
-  deploy_sfu:
-    machine: true
-    steps:
-        - checkout
-        - run: ./deploy/sfu.sh
-  deploy_api:
-    machine: true
-    steps:
-      - checkout
-      - run: ./deploy/api.sh
-  deploy_beanstalkd:
-    machine: true
-    steps:
-      - checkout
-      - run: ./deploy/beanstalkd.sh
-  deploy_postgres:
-    machine: true
-    steps:
-      - checkout
-      - run: ./deploy/postgres.sh
-
-  go_test:
+  test:
     machine: true
     steps:
       - checkout
       - run: |
           docker run --rm --network host \
-          -v `pwd`/api:/app \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          -w /app golang:1.16.3 \
-          go test ./...
+            -v `pwd`/api:/app \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -w /app golang:1.16.3 \
+            go test ./... -race -timeout 2m
 
-  migrate_user:
+  build:
     docker:
       - image: circleci/golang:1.16
     steps:
       - checkout
       - run: |
-          go get github.com/jackc/tern@v1.12.4
-          echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
-          tern migrate -m api/internal/user/migrations -c api/internal/user/migrations/tern.conf -d -+1
+          cd ./api
+          go build -o bin/ ./cmd/api/...
+          go build -o bin/ ./cmd/media/...
+          go build -o bin/ ./cmd/sfu/...
+          go build -o bin/ ./cmd/turn/...
 
-  migrate_confa:
-    docker:
-      - image: circleci/golang:1.16
-    steps:
-      - checkout
-      - run: |
-          go get github.com/jackc/tern@v1.12.4
-          echo '104.248.200.208 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLrTfZ3vhTWINNVt89U/2+b2JdtadRFOOPxiOrXOLGgbJbxIvmcPr3JTCemokSlD0ClDn+Qym6DS/0/+LeV6o7Q=' >> ~/.ssh/known_hosts
-          tern migrate -m api/internal/confa/migrations -c api/internal/confa/migrations/tern.conf -d -+1
-
-  api_build:
-    docker:
-      - image: circleci/golang:1.16
-    steps:
-      - checkout
-      - run: |
-          cd ./api/cmd/api
-          go build -o ./
-  sfu_build:
-    docker:
-      - image: circleci/golang:1.16
-    steps:
-      - checkout
-      - run: |
-          cd ./api/cmd/sfu
-          go build -o ./
-  media_build:
-    docker:
-      - image: circleci/golang:1.16
-    steps:
-      - checkout
-      - run: |
-          cd ./api/cmd/media
-          go build -o ./
-
-  lint_run:
+  lint:
     docker:
       - image: golangci/golangci-lint:v1.39-alpine
     steps:
@@ -99,92 +31,3 @@ jobs:
       - run: |
           cd ./api
           golangci-lint run
-
-workflows:
-  version: 2.1
-  web:
-    jobs:
-      - approve:
-          type: approval
-          filters:
-            branches:
-              only: "master"
-      - deploy_web:
-          requires:
-            - approve
-  sfu:
-    jobs:
-      - sfu_build
-      - approve:
-          type: approval
-          requires:
-            - sfu_build
-          filters:
-            branches:
-              only: "master"
-      - deploy_sfu:
-          requires:
-            - approve
-  api:
-    jobs:
-      - go_test
-      - lint_run:
-          requires:
-            - go_test
-      - api_build:
-          requires:
-            - lint_run
-      - approve:
-          type: approval
-          requires:
-            - api_build
-          filters:
-            branches:
-              only: "master"
-      - deploy_api:
-          requires:
-            - approve
-
-  beanstalkd:
-    jobs:
-      - approve:
-          type: approval
-          filters:
-            branches:
-              only: "master"
-      - deploy_beanstalkd:
-          requires:
-            - approve
-
-  postgres:
-    jobs:
-      - approve:
-          type: approval
-          filters:
-            branches:
-              only: "master"
-      - deploy_postgres:
-          requires:
-            - approve
-
-  migrate_user:
-    jobs:
-      - approve:
-          type: approval
-          filters:
-            branches:
-              only: "master"
-      - migrate_user:
-          requires:
-            - approve
-
-  migrate_confa:
-    jobs:
-      - approve:
-          type: approval
-          filters:
-            branches:
-              only: "master"
-      - migrate_confa:
-          requires:
-            - approve

@@ -38,7 +38,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.screen }"
-          :disabled="publishing ? true : null"
+          :disabled="joined && !publishing ? null : true"
           @click="switchScreen"
         >
           {{ local.screen ? "desktop_windows" : "desktop_access_disabled" }}
@@ -46,7 +46,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.camera }"
-          :disabled="publishing ? true : null"
+          :disabled="joined && !publishing ? null : true"
           @click="switchCamera"
         >
           {{ local.camera ? "videocam" : "videocam_off" }}
@@ -54,7 +54,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.mic }"
-          :disabled="publishing ? true : null"
+          :disabled="joined && !publishing ? null : true"
           @click="switchMic"
         >
           {{ local.mic ? "mic" : "mic_off" }}
@@ -173,6 +173,7 @@ const publishing = ref(false)
 const loading = ref(false)
 const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
 const audience = ref<RecordProcessor & Resizer>()
+const joined = ref(false)
 
 const streamsByTrackId = {} as { [key: string]: RemoteStream }
 const tracksById = {} as { [key: string]: Track }
@@ -181,7 +182,7 @@ const state = { tracks: {} } as State
 let messageProcessor = ref<MessageProcessor | null>(null)
 let rtcClient = null as RTC | null
 let sfuClient = null as Client | null
-let modalClosed: (button: string) => void = (button: string) => {}
+let modalClosed: (button: string) => void = () => {} // eslint-disable-line @typescript-eslint/no-empty-function
 
 const messages = computed((): Message[] => {
   if (!messageProcessor.value) {
@@ -197,7 +198,21 @@ watch(
     loading.value = true
 
     const rtc = await client.rtc(roomId)
-    const sfu = new Client(rtc)
+    const sfu = new Client(rtc, {
+      codec: "vp8",
+      iceServers: [
+        {
+          urls: ["stun:stun.stunprotocol.org:3478"],
+        },
+        {
+          urls: ["turn:turn.confa.io?transport=tcp"],
+          credentialType: "password",
+          username: "confa",
+          credential: "confa",
+        },
+      ],
+      iceTransportPolicy: "relay",
+    })
 
     messageProcessor.value = new MessageProcessor(rtc)
 
@@ -214,6 +229,7 @@ watch(
       await sfu.join(roomId, user.id)
       sfuClient = sfu
       rtcClient = rtc
+      joined.value = true
     }
     sfu.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
       if (track.kind !== "video" && track.kind !== "audio") {
@@ -262,7 +278,7 @@ onBeforeRouteLeave(async (to, from, next) => {
   const btn = await new Promise<string>((resolve) => {
     modalClosed = (button: string) => {
       resolve(button)
-    } 
+    }
     modal.value = Modal.ConfirmLeave
   })
   next(btn === "leave")
