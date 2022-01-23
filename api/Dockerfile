@@ -7,7 +7,3 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y ffmpeg \
     && apt-get clean
-
-COPY go.mod go.sum /app/
-
-RUN go mod download
