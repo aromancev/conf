@@ -1,4 +1,3 @@
-
 .PHONY: start
 start:
 	docker-compose --profile email up -V
@@ -9,13 +8,6 @@ migrate:
 	./mongo/migrate.sh -source file://migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
 	./mongo/migrate.sh -source file://migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
 	./mongo/migrate.sh -source file://migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
-	
-.PHONY: migrate-remote
-migrate-remote:
-	./mongo-remote/init.sh
-	./mongo-remote/migrate.sh -source file://migrations/iam/ -database "mongodb://iam:iam@localhost:27017/iam?replicaSet=rs" up
-	./mongo-remote/migrate.sh -source file://migrations/rtc/ -database "mongodb://rtc:rtc@localhost:27017/rtc?replicaSet=rs" up
-	./mongo-remote/migrate.sh -source file://migrations/confa/ -database "mongodb://confa:confa@localhost:27017/confa?replicaSet=rs" up
 
 .PHONY: mongosh
 mongosh:
@@ -59,7 +51,8 @@ build:
 	cd api \
 	    && go build -o bin/ ./cmd/api/... \
 	    && go build -o bin/ ./cmd/media/... \
-	    && go build -o bin/ ./cmd/sfu/...
+	    && go build -o bin/ ./cmd/sfu/... \
+		&& go build -o bin/ ./cmd/turn/...
 
 .PHONY: check
 check:
@@ -69,3 +62,15 @@ check:
 	make test
 	make build
 	echo DONE!
+
+.PHONY: server-api
+server-api:
+	docker-compose -f deploy/api.docker-compose.yml down
+	docker-compose -f deploy/api.docker-compose.yml build
+	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env up -d
+
+.PHONY: server-sfu
+server-sfu:
+	docker-compose -f deploy/sfu.docker-compose.yml down
+	docker-compose -f deploy/sfu.docker-compose.yml build
+	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env up -d

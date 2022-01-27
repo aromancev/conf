@@ -1,0 +1,25 @@
+version: '3.9'
+services:
+  sfu:
+    build:
+      context: ../api
+      dockerfile: ./cmd/sfu/Dockerfile
+    network_mode: "host"
+    environment:
+      - ADDRESS=:8080
+      - LOG_FORMAT=console
+      - ICE_PORT_MIN=50000
+      - ICE_PORT_MAX=60000
+
+  turn:
+    build:
+      context: ../api
+      dockerfile: ./cmd/turn/Dockerfile
+    network_mode: "host"
+    environment:
+      - ADDRESS=:3478
+      - LOG_FORMAT=console
+      - REALM=confa.io
+      - USERNAME=confa
+      - CREDENTIAL=confa
+      - PUBLIC_IP=64.225.95.150

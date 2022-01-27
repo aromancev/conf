@@ -2,36 +2,30 @@ version: '3.9'
 services:
   nginx:
     build:
-      context: ./web
-      dockerfile: Dockerfile.remote
-    network_mode: "host"
+      context: ../web
+      dockerfile: Dockerfile
+    networks:
+      - confa
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx.remote.conf:/etc/nginx/nginx.conf
+      - ./nginx.conf:/etc/nginx/nginx.conf
       - /etc/letsencrypt:/etc/letsencrypt/
-
-  sfu:
-    build:
-      context: ./api
-      dockerfile: ./cmd/sfu/Dockerfile
-    network_mode: "host"
-    environment:
-      - ADDRESS=:8080
-      - LOG_FORMAT=console
-      - ICE_PORT_MIN=5000
-      - ICE_PORT_MAX=5200
 
   api:
     build:
-      context: ./api
+      context: ../api
       dockerfile: ./cmd/api/Dockerfile
-    network_mode: "host"
     depends_on:
       - beanstalkd
       - mongo
+    networks:
+      - confa
     environment:
-      - ADDRESS=:8081
-      - RPC_ADDRESS=:8082
-      - RTC_ADDRESS=http://localhost:8082
+      - ADDRESS=:80
+      - RPC_ADDRESS=:8080
+      - RTC_ADDRESS=http://api:8080
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
@@ -41,7 +35,7 @@ services:
       - EMAIL_PORT=465
       - EMAIL_ADDRESS=noreply@confa.io
       - EMAIL_PASSWORD=$EMAIL_PASSWORD
-      - MONGO_HOSTS=localhost:27017
+      - MONGO_HOSTS=mongo:27017
       - MONGO_IAM_USER=iam
       - MONGO_IAM_PASSWORD=iam
       - MONGO_IAM_DATABASE=iam
@@ -51,22 +45,24 @@ services:
       - MONGO_CONFA_USER=confa
       - MONGO_CONFA_PASSWORD=confa
       - MONGO_CONFA_DATABASE=confa
-      - BEANSTALKD_POOL=localhost:11300
-      - RTC_SFU_ADDRESS=localhost:8080
-      - RTC_MEDIA_ADDRESS=localhost:8090
+      - BEANSTALKD_POOL=beanstalkd:11300
+      - RTC_SFU_ADDRESS=sfu.confa.io:8080
+      - RTC_MEDIA_ADDRESS=media:8080
 
   beanstalkd:
     build:
-      context: ./beanstalkd
+      context: ../beanstalkd
       dockerfile: Dockerfile
-    network_mode: "host"
+    networks:
+      - confa
     volumes:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
   mongo:
     image: mongo:4.4
     command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
-    network_mode: "host"
+    networks:
+      - confa
     environment:
       - MONGO_INITDB_ROOT_USERNAME=mongo
       - MONGO_INITDB_ROOT_PASSWORD=mongo
@@ -81,3 +77,7 @@ services:
         chmod 400 /etc/mongo/mongo-repl.key
         chown 999:999 /etc/mongo/mongo-repl.key
         exec docker-entrypoint.sh $$@
+
+networks:
+  confa:
+    name: confa

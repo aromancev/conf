@@ -3,7 +3,9 @@ package main
 import (
 	"net"
 	"os"
+	"strings"
 
+	"github.com/go-logr/logr"
 	psfu "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
 	"github.com/pion/ion-sfu/cmd/signal/grpc/server"
 	"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
@@ -24,11 +26,10 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	// TODO: Implement interface
-	// sfu.Logger = log.Logger
+	sfu.Logger = logr.New(NewLogger(log.Logger))
 
 	grpcServer := grpc.NewServer()
-	sfuService := sfu.NewSFU(sfu.Config{
+	sfuConfig := sfu.Config{
 		Router: sfu.RouterConfig{
 			MaxBandwidth:        1500,
 			MaxPacketTrack:      500,
@@ -49,7 +50,15 @@ func main() {
 				ICEKeepaliveInterval:   2,
 			},
 		},
-	})
+	}
+	if config.ICEUrls != "" {
+		sfuConfig.WebRTC.ICEServers = append(sfuConfig.WebRTC.ICEServers, sfu.ICEServerConfig{
+			URLs:       strings.Split(config.ICEUrls, ","),
+			Username:   config.ICEUsername,
+			Credential: config.ICECredential,
+		})
+	}
+	sfuService := sfu.NewSFU(sfuConfig)
 
 	dc := sfuService.NewDatachannel(sfu.APIChannelLabel)
 	dc.Use(datachannel.SubscriberAPI)

@@ -24,7 +24,7 @@ defineProps<{
 const audience = ref<HTMLCanvasElement>()
 const shade = ref<HTMLCanvasElement>()
 const cursor = ref("default")
-const selected = ref(null as Peer | null)
+const selected = ref(null as CanvasPeer | null)
 
 let canvas = null as Canvas | null
 let resizeInterval = 0
@@ -111,14 +111,13 @@ const offsetY = 20
 const colorOutline = "#7f70f5"
 const maxSize = 200
 
-interface Peer {
+interface CanvasPeer {
   id: string
   joinedAt: string
   row: number
   col: number
   x: number
   y: number
-  dirty: boolean
   name: string
 }
 
@@ -126,9 +125,9 @@ class Canvas {
   private audicence: CanvasRenderingContext2D
   private shade: CanvasRenderingContext2D
 
-  private byId: { [key: string]: Peer }
-  private ordered: Peer[]
-  private selected: Peer | null
+  private byId: { [key: string]: CanvasPeer }
+  private ordered: CanvasPeer[]
+  private selected: CanvasPeer | null
 
   private width: number
   private height: number
@@ -140,8 +139,6 @@ class Canvas {
   private renderSize: number
   private cellSize: number
   private shift: number
-
-  private allDirty: boolean
 
   constructor(audicence: CanvasRenderingContext2D, shade: CanvasRenderingContext2D, width: number, height: number) {
     this.audicence = audicence
@@ -161,8 +158,6 @@ class Canvas {
     this.cellSize = 0
     this.renderSize = 0
     this.shift = 0
-
-    this.allDirty = true
   }
 
   resize(width: number, height: number): void {
@@ -191,14 +186,13 @@ class Canvas {
         if (this.byId[userId]) {
           continue
         }
-        const p: Peer = {
+        const p: CanvasPeer = {
           id: userId,
           joinedAt: record.event.createdAt || "",
           row: 0,
           col: 0,
           x: 0,
           y: 0,
-          dirty: true,
           name: genName(userId),
         }
         this.byId[userId] = p
@@ -208,7 +202,6 @@ class Canvas {
         (record.forward && payload.status === PeerStatus.Left) ||
         (!record.forward && payload.status === PeerStatus.Joined)
       ) {
-        this.allDirty = true
         delete this.byId[userId]
         for (let i = 0; i < this.ordered.length; i++) {
           if (this.ordered[i].id === userId) {
@@ -224,7 +217,7 @@ class Canvas {
     this.renderShade()
   }
 
-  hover(x: number, y: number): Peer | null {
+  hover(x: number, y: number): CanvasPeer | null {
     // Three possible rows because of compaction.
     const bottom = Math.floor(y / this.cellSize / compaction)
     const center = bottom - 1
@@ -239,7 +232,7 @@ class Canvas {
     const candidates = [this.at(top, left), this.at(center, right), this.at(bottom, left)]
 
     let minDist = Infinity
-    let closestPeer = null as Peer | null
+    let closestPeer = null as CanvasPeer | null
     for (const p of candidates) {
       if (!p) {
         continue
@@ -277,9 +270,6 @@ class Canvas {
     const actualHeight = cellSize + (this.rows - 1) * cellSize * compaction // Calculating how much height was actually taken.
     cellSize = Math.min(cellSize, (cellSize * this.height) / actualHeight) // Compensating for the actual height.
 
-    if (cellSize !== this.cellSize) {
-      this.allDirty = true
-    }
     this.cellSize = cellSize
 
     this.padding = (this.width - cellSize * Math.min(this.columns, this.ordered.length)) / 2
@@ -324,16 +314,9 @@ class Canvas {
     const ctx = this.audicence
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    if (this.allDirty) {
-      ctx.clearRect(0, 0, this.width, this.height)
-    }
+    ctx.clearRect(0, 0, this.width, this.height)
 
     for (const peer of this.ordered) {
-      if (!this.allDirty && !peer.dirty) {
-        continue
-      }
-      peer.dirty = false
-
       ctx.save()
       this.renderPeer(ctx, peer)
       ctx.restore()
@@ -353,7 +336,7 @@ class Canvas {
     ctx.restore()
   }
 
-  private renderPeer(ctx: CanvasRenderingContext2D, peer: Peer, border = 8, scale = 1, shift = 0): void {
+  private renderPeer(ctx: CanvasRenderingContext2D, peer: CanvasPeer, border = 8, scale = 1, shift = 0): void {
     const renderSize = this.renderSize * scale
     const x = peer.x
     const y = peer.y - renderSize * shift
@@ -393,7 +376,7 @@ class Canvas {
     ctx.stroke()
   }
 
-  private at(row: number, col: number): Peer | null {
+  private at(row: number, col: number): CanvasPeer | null {
     if (row < 0 || row >= this.rows || col < 0 || col >= this.columns) {
       return null
     }
@@ -404,27 +387,27 @@ class Canvas {
     return this.ordered[i]
   }
 
-  private topLeft(row: number, col: number): Peer | null {
+  private topLeft(row: number, col: number): CanvasPeer | null {
     return this.at(row - 1, col - (row % 2))
   }
 
-  private topRight(row: number, col: number): Peer | null {
+  private topRight(row: number, col: number): CanvasPeer | null {
     return this.at(row - 1, col + 1 - (row % 2))
   }
 
-  private topMiddle(row: number, col: number): Peer | null {
+  private topMiddle(row: number, col: number): CanvasPeer | null {
     return this.at(row - 2, col)
   }
 
-  private bottomMiddle(row: number, col: number): Peer | null {
+  private bottomMiddle(row: number, col: number): CanvasPeer | null {
     return this.at(row + 2, col)
   }
 
-  private bottomLeft(row: number, col: number): Peer | null {
+  private bottomLeft(row: number, col: number): CanvasPeer | null {
     return this.at(row + 1, col - (row % 2))
   }
 
-  private bottomRight(row: number, col: number): Peer | null {
+  private bottomRight(row: number, col: number): CanvasPeer | null {
     return this.at(row + 1, col + 1 - (row % 2))
   }
 

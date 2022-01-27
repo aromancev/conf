@@ -25,13 +25,33 @@ services:
       context: ./api
       dockerfile: Dockerfile
     command: "go run ./cmd/sfu/."
-    networks:
-      - confa
     environment:
       - ADDRESS=:8080
+      - ICE_PORT_MIN=5000
+      - ICE_PORT_MAX=5200
+      - ICE_URLS=stun:stun.stunprotocol.org:3478
       - LOG_FORMAT=console
     volumes:
       - ./api:/app
+    networks:
+      - confa
+
+  turn:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: "go run ./cmd/turn/."
+    environment:
+      - ADDRESS=:3478
+      - LOG_FORMAT=console
+      - REALM=confa.io
+      - USERNAME=confa
+      - CREDENTIAL=confa
+      - PUBLIC_IP=192.168.1.191
+    volumes:
+      - ./api:/app
+    ports:
+      - "3478:3478"
 
   media:
     build:

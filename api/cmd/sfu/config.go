@@ -12,10 +12,13 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	ICEPortMin uint16 `envconfig:"ICE_PORT_MIN"`
-	ICEPortMax uint16 `envconfig:"ICE_PORT_MAX"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
+	Address       string `envconfig:"ADDRESS"`
+	ICEPortMin    uint16 `envconfig:"ICE_PORT_MIN"`
+	ICEPortMax    uint16 `envconfig:"ICE_PORT_MAX"`
+	ICEUrls       string `envconfig:"ICE_URLS"`
+	ICEUsername   string `envconfig:"ICE_USERNAME"`
+	ICECredential string `envconfig:"ICE_CREDENTIAL"`
+	LogFormat     string `envconfig:"LOG_FORMAT"`
 }
 
 func (c Config) WithEnv() Config {
