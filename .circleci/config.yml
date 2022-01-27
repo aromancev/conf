@@ -10,6 +10,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -w /app golang:1.16.3 \
             go test ./... -race -timeout 2m
+  
   build:
     docker:
       - image: circleci/golang:1.16
@@ -21,6 +22,7 @@ jobs:
           go build -o bin/ ./cmd/media/...
           go build -o bin/ ./cmd/sfu/...
           go build -o bin/ ./cmd/turn/...
+  
   lint:
     docker:
       - image: golangci/golangci-lint:v1.39-alpine
@@ -29,3 +31,11 @@ jobs:
       - run: |
           cd ./api
           golangci-lint run
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build
+      - test
+      - lint
