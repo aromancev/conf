@@ -1,7 +1,7 @@
 
 .PHONY: start
 start:
-	docker-compose up -V
+	docker-compose --profile email up -V
 
 .PHONY: migrate
 migrate:
