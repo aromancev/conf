@@ -4,65 +4,6 @@
 // This file was automatically generated and should not be edited.
 
 // ====================================================
-// GraphQL mutation operation: login
-// ====================================================
-
-export interface login {
-  login: string;
-}
-
-export interface loginVariables {
-  address: string;
-}
-
-/* tslint:disable */
-/* eslint-disable */
-// @generated
-// This file was automatically generated and should not be edited.
-
-// ====================================================
-// GraphQL mutation operation: createSession
-// ====================================================
-
-export interface createSession_createSession {
-  __typename: "Token";
-  token: string;
-  expiresIn: number;
-}
-
-export interface createSession {
-  createSession: createSession_createSession;
-}
-
-export interface createSessionVariables {
-  emailToken: string;
-}
-
-/* tslint:disable */
-/* eslint-disable */
-// @generated
-// This file was automatically generated and should not be edited.
-
-// ====================================================
-// GraphQL query operation: token
-// ====================================================
-
-export interface token_token {
-  __typename: "Token";
-  token: string;
-  expiresIn: number;
-}
-
-export interface token {
-  token: token_token;
-}
-
-/* tslint:disable */
-/* eslint-disable */
-// @generated
-// This file was automatically generated and should not be edited.
-
-// ====================================================
 // GraphQL query operation: confas
 // ====================================================
 
@@ -87,6 +28,7 @@ export interface confas {
 
 export interface confasVariables {
   where: ConfaLookup;
+  limit: number;
   from?: string | null;
 }
 
@@ -222,6 +164,7 @@ export interface talksHydrated {
 
 export interface talksHydratedVariables {
   where: TalkLookup;
+  limit: number;
   from?: string | null;
 }
 
@@ -255,6 +198,7 @@ export interface talks {
 
 export interface talksVariables {
   where: TalkLookup;
+  limit: number;
   from?: string | null;
 }
 

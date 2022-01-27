@@ -6,10 +6,10 @@ jobs:
       - checkout
       - run: |
           docker run --rm --network host \
-            -v `pwd`/api:/app \
+            -v `pwd`/service-go:/app \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -w /app golang:1.16.3 \
-            go test ./... -race -timeout 2m
+            go test ./... -race -timeout 5m
   
   build:
     docker:
@@ -17,11 +17,12 @@ jobs:
     steps:
       - checkout
       - run: |
-          cd ./api
-          go build -o bin/ ./cmd/api/...
-          go build -o bin/ ./cmd/media/...
+          cd ./service-go
+          go build -o bin/ ./cmd/iam/...
+          go build -o bin/ ./cmd/confa/...
+          go build -o bin/ ./cmd/rtc/...
+          go build -o bin/ ./cmd/gateway/...
           go build -o bin/ ./cmd/sfu/...
-          go build -o bin/ ./cmd/turn/...
   
   lint:
     docker:
@@ -29,7 +30,7 @@ jobs:
     steps:
       - checkout
       - run: |
-          cd ./api
+          cd ./service-go
           golangci-lint run
 
 workflows:

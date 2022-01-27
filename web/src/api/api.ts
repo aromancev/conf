@@ -15,12 +15,14 @@ import {
 import { onError, ErrorResponse } from "@apollo/client/link/error"
 import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
-import { gql, ApolloError } from "@apollo/client/core"
-import { login, loginVariables, createSession, createSessionVariables, token } from "./schema"
+import { ApolloError } from "@apollo/client/core"
 import { userStore } from "./models"
 import { RTC } from "./rtc"
 
 const minRefresh = 10 * Duration.second
+const requestReady = 4
+const httpOK = 200
+const httpCreated = 202
 
 export type FetchPolicy = ApolloFetchPolicy
 
@@ -142,42 +144,46 @@ export class Client {
   }
 
   async login(email: string): Promise<void> {
-    await this.graph.mutate<login, loginVariables>({
-      mutation: gql`
-        mutation login($address: String!) {
-          login(address: $address)
-        }
-      `,
-      variables: {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", "/api/iam/login", true)
+    xhr.setRequestHeader("Content-Type", "application/json")
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState != requestReady) return
+
+      if (xhr.status != httpOK) {
+        throw new APIError(Code.Unknown, "Login failed.")
+      }
+    }
+    xhr.send(
+      JSON.stringify({
         address: email,
-      },
-    })
+      }),
+    )
   }
 
   async createSession(emailToken: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await this.graph.mutate<createSession, createSessionVariables>({
-      mutation: gql`
-        mutation createSession($emailToken: String!) {
-          createSession(emailToken: $emailToken) {
-            token
-            expiresIn
-          }
-        }
-      `,
-      variables: {
-        emailToken: emailToken,
-      },
-    })
-    if (!resp.data?.createSession.token) {
-      console.error("No token present in session response. Trying to refresh.")
-      // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
-      this.refreshToken() // No point in waiting for it, so no `await`.
-      return
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", "/api/iam/session", true)
+    xhr.setRequestHeader("Content-Type", "application/json")
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState != requestReady) return
+
+      if (xhr.status == httpCreated) {
+        const data = JSON.parse(xhr.responseText)
+        this.setToken(data.token, data.expiresIn)
+      } else {
+        console.error("No token present in session response. Trying to refresh.")
+        // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
+        this.refreshToken() // No point in waiting for it, so no `await`.
+      }
     }
-    const token = resp.data.createSession
-    this.setToken(token.token, token.expiresIn)
+    xhr.send(
+      JSON.stringify({
+        emailToken: emailToken,
+      }),
+    )
   }
 
   async clearCache(): Promise<void> {
@@ -191,24 +197,20 @@ export class Client {
   private async refreshToken() {
     this.setRefreshInProgress()
 
-    try {
-      const resp = await this.graph.query<token>({
-        query: gql`
-          query token {
-            token {
-              token
-              expiresIn
-            }
-          }
-        `,
-      })
-      const t = resp.data.token
-      this.setToken(t.token, t.expiresIn)
-    } catch {
-      // Failed to refresh the token. Give up and set an empty token.
-      this.setToken("", 0)
-      return
+    const xhr = new XMLHttpRequest()
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState != requestReady) return
+
+      if (xhr.status == httpOK) {
+        const data = JSON.parse(xhr.responseText)
+        this.setToken(data.token, data.expiresIn)
+      } else {
+        // Failed to refresh the token. Give up and set an empty token.
+        this.setToken("", 0)
+      }
     }
+    xhr.open("GET", "/api/iam/token")
+    xhr.send()
   }
 
   // Be sure to ALWAYS call `setToken` after this.

@@ -26,8 +26,8 @@ class ConfaIterator {
   async next(): Promise<Confa[]> {
     const resp = await this.api.query<confas, confasVariables>({
       query: gql`
-        query confas($where: ConfaLookup!, $from: ID) {
-          confas(where: $where, from: $from) {
+        query confas($where: ConfaLookup!, $limit: Int!, $from: String) {
+          confas(where: $where, limit: $limit, from: $from) {
             items {
               id
               ownerId
@@ -41,6 +41,7 @@ class ConfaIterator {
       `,
       variables: {
         where: this.lookup,
+        limit: 100,
         from: this.from,
       },
     })

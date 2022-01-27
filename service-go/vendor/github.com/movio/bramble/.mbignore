@@ -1,0 +1,11 @@
+.dockerignore
+.github
+.gitignore
+*.graphql
+*.nojekyll
+*.json
+*.png
+*.svg
+go.sum
+CODEOWNERS
+LICENSE

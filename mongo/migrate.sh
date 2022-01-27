@@ -8,5 +8,5 @@ docker run \
   --rm \
   -w /app \
   --network="confa" \
-  -v ${DIR}/../api/internal:/app \
+  -v ${DIR}/../service-go/internal:/app \
   ${IMAGE} migrate $@

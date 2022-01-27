@@ -20,16 +20,16 @@ mongosh:
 
 .PHONY: test
 test:
-	cd api && $(MAKE) test
+	cd service-go && $(MAKE) test
 
 .PHONY: lint
 lint:
-	cd api && $(MAKE) lint
+	cd service-go && $(MAKE) lint
 	cd web && $(MAKE) lint
 
 .PHONY: gen
 gen:
-	cd api && $(MAKE) gen
+	cd service-go && $(MAKE) gen
 	cd web && $(MAKE) gen
 
 .PHONY: cert-create
@@ -48,29 +48,22 @@ cert-renew:
 
 .PHONY: build
 build:
-	cd api \
-	    && go build -o bin/ ./cmd/api/... \
-	    && go build -o bin/ ./cmd/media/... \
+	cd service-go \
+	    && go build -o bin/ ./cmd/iam/... \
+	    && go build -o bin/ ./cmd/confa/... \
+	    && go build -o bin/ ./cmd/rtc/... \
+	    && go build -o bin/ ./cmd/gateway/... \
 	    && go build -o bin/ ./cmd/sfu/... \
 		&& go build -o bin/ ./cmd/turn/...
 
-.PHONY: check
-check:
-	make test
-	cd api && go fmt ./...
-	make lint
-	make test
-	make build
-	echo DONE!
-
 .PHONY: server-api
 server-api:
-	docker-compose -f deploy/api.docker-compose.yml down
-	docker-compose -f deploy/api.docker-compose.yml build
+	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env down
+	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env build
 	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env up -d
 
 .PHONY: server-sfu
 server-sfu:
-	docker-compose -f deploy/sfu.docker-compose.yml down
-	docker-compose -f deploy/sfu.docker-compose.yml build
+	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env down
+	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env build
 	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env up -d

@@ -1,0 +1,54 @@
+type Service {
+  name: String!
+  version: String!
+  schema: String!
+}
+
+type Event {
+    id: String!
+    ownerId: String!
+    roomId: String!
+    createdAt: String!
+    payload: EventPayload!
+}
+
+type EventPayload {
+    type: String!
+    payload: String!
+}
+
+input EventLookup {
+    roomId: String!
+}
+
+type EventFrom {
+    id: String!
+    createdAt: String!
+}
+
+input EventFromInput {
+    id: String!
+    createdAt: String!
+}
+
+input EventLimit {
+    count: Int! = 100
+    seconds: Int!
+}
+
+enum EventOrder {
+    ASC
+    DESC
+}
+
+type Events {
+    items: [Event!]!
+    limit: Int!
+    nextFrom: EventFrom
+}
+
+type Query {
+    service: Service!
+
+    events(where: EventLookup! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
+}

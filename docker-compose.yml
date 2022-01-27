@@ -20,96 +20,103 @@ services:
       - ./web/src:/app/src
       - ./web/public:/app/public
 
-  sfu:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/sfu/."
-    environment:
-      - ADDRESS=:8080
-      - ICE_PORT_MIN=5000
-      - ICE_PORT_MAX=5200
-      - ICE_URLS=stun:stun.stunprotocol.org:3478
-      - LOG_FORMAT=console
-    volumes:
-      - ./api:/app
-    networks:
-      - confa
-
-  turn:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/turn/."
-    environment:
-      - ADDRESS=:3478
-      - LOG_FORMAT=console
-      - REALM=confa.io
-      - USERNAME=confa
-      - CREDENTIAL=confa
-      - PUBLIC_IP=192.168.1.191
-    volumes:
-      - ./api:/app
-    ports:
-      - "3478:3478"
-
-  media:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/media/."
-    networks:
-      - confa
-    environment:
-      - WEB_ADDRESS=:80
-      - RPC_ADDRESS=:8080
-      - SFU_ADDRESS=sfu:8080
-      - MEDIA_DIR=/var/lib/media
-      - LOG_FORMAT=console
-      - BEANSTALKD_POOL=beanstalkd:11300
-    volumes:
-      - ./api:/app
-      - ./.artifacts/media:/var/lib/media
-
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: "go run ./cmd/api/."
-    networks:
-      - confa
+  gateway:
+    restart: on-failure
     depends_on:
-      - beanstalkd
-      - mongo
+      - confa
+      - rtc
+      
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/gateway/. -conf /config.json"
+    networks:
+      - confa
+    volumes:
+      - ./service-go:/app
+      - ./service-go/cmd/gateway/config.json:/config.json
+
+  iam:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/iam/."
+    networks:
+      - confa
     environment:
       - ADDRESS=:80
-      - RPC_ADDRESS=:8080
-      - RTC_ADDRESS=http://api:8080
       - BASE_URL=http://localhost
       - LOG_FORMAT=console
-      - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
-      - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
-      - MIGRATIONS_DIR=internal/migrations
+      - SECRET_KEY=$SECRET_KEY
+      - PUBLIC_KEY=$PUBLIC_KEY
       - EMAIL_SERVER=email
       - EMAIL_PORT=1025
       - EMAIL_ADDRESS=noreply@confa.io
       - EMAIL_PASSWORD=stub
       - EMAIL_SECURE=false
       - MONGO_HOSTS=mongo:27017
-      - MONGO_IAM_USER=iam
-      - MONGO_IAM_PASSWORD=iam
-      - MONGO_IAM_DATABASE=iam
-      - MONGO_RTC_USER=rtc
-      - MONGO_RTC_PASSWORD=rtc
-      - MONGO_RTC_DATABASE=rtc
-      - MONGO_CONFA_USER=confa
-      - MONGO_CONFA_PASSWORD=confa
-      - MONGO_CONFA_DATABASE=confa
+      - MONGO_USER=iam
+      - MONGO_PASSWORD=iam
+      - MONGO_DATABASE=iam
+      - BEANSTALKD_POOL=beanstalkd:11300
+    volumes:
+      - ./service-go:/app
+
+  confa:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/confa/."
+    networks:
+      - confa
+    environment:
+      - ADDRESS=:80
+      - RTC_ADDRESS=http://rtc:8080
+      - LOG_FORMAT=console
+      - PUBLIC_KEY=$PUBLIC_KEY
+      - MONGO_HOSTS=mongo:27017
+      - MONGO_USER=confa
+      - MONGO_PASSWORD=confa
+      - MONGO_DATABASE=confa
+    volumes:
+      - ./service-go:/app
+
+  rtc:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/rtc/."
+    networks:
+      - confa
+    environment:
+      - ADDRESS=:80
+      - RPC_ADDRESS=:8080
+      - LOG_FORMAT=console
+      - PUBLIC_KEY=$PUBLIC_KEY
+      - MONGO_HOSTS=mongo:27017
+      - MONGO_USER=rtc
+      - MONGO_PASSWORD=rtc
+      - MONGO_DATABASE=rtc
       - BEANSTALKD_POOL=beanstalkd:11300
       - RTC_SFU_ADDRESS=sfu:8080
-      - RTC_MEDIA_ADDRESS=media:8080
     volumes:
-      - ./api:/app
+      - ./service-go:/app
+
+  sfu:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/sfu/."
+    environment:
+      - ADDRESS=:8080
+      - ICE_PORT_MIN=5000
+      - ICE_PORT_MAX=5010
+      - ICE_URLS=stun:stun.stunprotocol.org:3478
+      - LOG_FORMAT=console
+    volumes:
+      - ./service-go:/app
+    networks:
+      - confa
 
   beanstalkd:
     build:
@@ -140,9 +147,9 @@ services:
         chown 999:999 /etc/mongo/mongo-repl.key
         exec docker-entrypoint.sh $$@
 
-  email:
+  email-client:
     image: kbedel/fake-smtp-server
-    profiles: [ "email" ]
+    profiles: [ "email-client" ]
     command: fake-smtp-server -s 1025 -h 80
     networks:
       - confa

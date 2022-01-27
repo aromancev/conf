@@ -46,6 +46,8 @@ export class RTC {
   ontrickle?: (trickle: Trickle) => void
   onevent?: (event: Event) => void
 
+  token: string
+
   private _onopen?: () => void
   private socket: WebSocket
   private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
@@ -58,8 +60,9 @@ export class RTC {
       protocol = "ws"
     }
     this.onSignalAnswer = null
+    this.token = token
 
-    this.socket = new WebSocket(`${protocol}://${window.location.hostname}/api/rtc/ws/${roomId}?t=${token}`)
+    this.socket = new WebSocket(`${protocol}://${window.location.hostname}/api/rtc/room/${roomId}?t=${token}`)
     this.socket.onopen = () => {
       if (this._onopen) {
         this._onopen()

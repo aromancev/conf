@@ -1,6 +1,7 @@
 version: '3.9'
 services:
   nginx:
+    restart: on-failure
     build:
       context: ../web
       dockerfile: Dockerfile
@@ -12,44 +13,79 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - /etc/letsencrypt:/etc/letsencrypt/
-
-  api:
+  
+  gateway:
+    restart: on-failure
     build:
-      context: ../api
-      dockerfile: ./cmd/api/Dockerfile
+      context: ../service-go
+      dockerfile: ./cmd/gateway/Dockerfile
     depends_on:
-      - beanstalkd
-      - mongo
+      - confa
+      - rtc
+    networks:
+      - confa
+
+  iam:
+    restart: on-failure
+    build:
+      context: ../service-go
+      dockerfile: ./cmd/iam/Dockerfile
     networks:
       - confa
     environment:
       - ADDRESS=:80
-      - RPC_ADDRESS=:8080
-      - RTC_ADDRESS=http://api:8080
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - SECRET_KEY=LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
       - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
-      - MIGRATIONS_DIR=internal/migrations
       - EMAIL_SERVER=smtp.yandex.com
       - EMAIL_PORT=465
       - EMAIL_ADDRESS=noreply@confa.io
       - EMAIL_PASSWORD=$EMAIL_PASSWORD
       - MONGO_HOSTS=mongo:27017
-      - MONGO_IAM_USER=iam
-      - MONGO_IAM_PASSWORD=iam
-      - MONGO_IAM_DATABASE=iam
-      - MONGO_RTC_USER=rtc
-      - MONGO_RTC_PASSWORD=rtc
-      - MONGO_RTC_DATABASE=rtc
-      - MONGO_CONFA_USER=confa
-      - MONGO_CONFA_PASSWORD=confa
-      - MONGO_CONFA_DATABASE=confa
+      - MONGO_USER=iam
+      - MONGO_PASSWORD=iam
+      - MONGO_DATABASE=iam
+      - BEANSTALKD_POOL=beanstalkd:11300
+
+  confa:
+    restart: on-failure
+    build:
+      context: ../service-go
+      dockerfile: ./cmd/confa/Dockerfile
+    networks:
+      - confa
+    environment:
+      - ADDRESS=:80
+      - RTC_ADDRESS=http://rtc:8080
+      - LOG_FORMAT=console
+      - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+      - MONGO_HOSTS=mongo:27017
+      - MONGO_USER=confa
+      - MONGO_PASSWORD=confa
+      - MONGO_DATABASE=confa
+
+  rtc:
+    restart: on-failure
+    build:
+      context: ../service-go
+      dockerfile: ./cmd/rtc/Dockerfile
+    networks:
+      - confa
+    environment:
+      - ADDRESS=:80
+      - RPC_ADDRESS=:8080
+      - LOG_FORMAT=console
+      - PUBLIC_KEY=LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
+      - MONGO_HOSTS=mongo:27017
+      - MONGO_USER=rtc
+      - MONGO_PASSWORD=rtc
+      - MONGO_DATABASE=rtc
       - BEANSTALKD_POOL=beanstalkd:11300
       - RTC_SFU_ADDRESS=sfu.confa.io:8080
-      - RTC_MEDIA_ADDRESS=media:8080
 
   beanstalkd:
+    restart: on-failure
     build:
       context: ../beanstalkd
       dockerfile: Dockerfile
@@ -59,6 +95,7 @@ services:
       - ./.artifacts/beanstalkd:/var/lib/beanstalkd
 
   mongo:
+    restart: on-failure
     image: mongo:4.4
     command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
     networks:

@@ -207,11 +207,10 @@ watch(
         {
           urls: ["turn:turn.confa.io?transport=tcp"],
           credentialType: "password",
-          username: "confa",
-          credential: "confa",
+          username: rtc.token,
+          credential: "confa.io",
         },
       ],
-      iceTransportPolicy: "relay",
     })
 
     messageProcessor.value = new MessageProcessor(rtc)

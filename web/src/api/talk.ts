@@ -14,8 +14,8 @@ import {
 import { Talk } from "./models"
 
 const queryHydrated = gql`
-  query talksHydrated($where: TalkLookup!, $from: ID) {
-    talks(where: $where, from: $from) {
+  query talksHydrated($where: TalkLookup!, $limit: Int!, $from: String) {
+    talks(where: $where, limit: $limit, from: $from) {
       items {
         id
         ownerId
@@ -31,8 +31,8 @@ const queryHydrated = gql`
 `
 
 const query = gql`
-  query talks($where: TalkLookup!, $from: ID) {
-    talks(where: $where, from: $from) {
+  query talks($where: TalkLookup!, $limit: Int!, $from: String) {
+    talks(where: $where, limit: $limit, from: $from) {
       items {
         id
         ownerId
@@ -66,6 +66,7 @@ class TalkIterator {
       variables: {
         where: this.lookup,
         from: this.from,
+        limit: 100,
       },
       fetchPolicy: this.policy,
     })
