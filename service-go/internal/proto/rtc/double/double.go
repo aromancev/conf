@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/aromancev/confa/proto/rtc"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/google/uuid"
 )
 

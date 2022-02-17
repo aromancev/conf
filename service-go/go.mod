@@ -33,7 +33,7 @@ require (
 	github.com/rs/zerolog v1.26.0
 	github.com/stretchr/testify v1.7.0
 	github.com/twitchtv/twirp v8.1.0+incompatible
-	github.com/vektah/gqlparser/v2 v2.3.1
+	github.com/vektah/gqlparser/v2 v2.3.1 // indirect
 	go.mongodb.org/mongo-driver v1.5.4
 	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
 	google.golang.org/grpc v1.41.0

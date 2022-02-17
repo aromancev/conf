@@ -21,7 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/internal/proto/queue"
 )
 
 type Producer interface {

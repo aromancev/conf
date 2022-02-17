@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aromancev/confa/internal/event"
+	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/prep/beanstalk"

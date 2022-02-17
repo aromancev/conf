@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/room"
-	pqueue "github.com/aromancev/confa/proto/queue"
-	"github.com/aromancev/confa/proto/rtc"
+	"github.com/aromancev/confa/event"
+	pqueue "github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/confa/room"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -105,9 +105,12 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: web.NewHandler(web.NewResolver(
+		Handler: web.NewHandler(
+			web.NewResolver(
+				publicKey,
+				eventMongo,
+			),
 			publicKey,
-			producer,
 			roomMongo,
 			&websocket.Upgrader{
 				CheckOrigin: func(r *http.Request) bool {
@@ -116,10 +119,10 @@ func main() {
 				ReadBufferSize:  config.RTC.ReadBuffer,
 				WriteBufferSize: config.RTC.WriteBuffer,
 			},
+			producer,
 			sfuConn,
 			eventWatcher,
-			eventMongo,
-		)),
+		),
 	}
 	rpcServer := &http.Server{
 		Addr:         config.RPCAddress,

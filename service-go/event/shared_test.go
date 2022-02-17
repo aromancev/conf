@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/event/double"
+	"github.com/aromancev/confa/event"
+	"github.com/aromancev/confa/event/double"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

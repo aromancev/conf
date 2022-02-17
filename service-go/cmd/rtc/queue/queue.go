@@ -8,10 +8,10 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/internal/event"
+	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/internal/proto/queue"
 )
 
 const (

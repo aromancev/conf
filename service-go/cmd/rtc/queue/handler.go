@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/event"
+	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/google/uuid"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"

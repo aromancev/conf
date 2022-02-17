@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/proto/rtc"
+	"github.com/aromancev/confa/confa"
+	"github.com/aromancev/confa/internal/proto/rtc"
 
 	"github.com/google/uuid"
 )

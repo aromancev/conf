@@ -6,12 +6,49 @@ import (
 	"errors"
 
 	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/confa/talk/clap"
+	"github.com/aromancev/confa/confa"
+	"github.com/aromancev/confa/confa/talk"
+	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
+
+type Code string
+
+const (
+	CodeBadRequest       = "BAD_REQUEST"
+	CodeUnauthorized     = "UNAUTHORIZED"
+	CodeDuplicateEntry   = "DUPLICATE_ENTRY"
+	CodeNotFound         = "NOT_FOUND"
+	CodePermissionDenied = "PERMISSION_DENIED"
+	CodeUnknown          = "UNKNOWN_CODE"
+)
+
+type ResolverError struct {
+	message    string
+	extensions map[string]interface{}
+}
+
+func (e ResolverError) Error() string {
+	return e.message
+}
+
+func (e ResolverError) Extensions() map[string]interface{} {
+	return e.extensions
+}
+
+func NewResolverError(code Code, message string) ResolverError {
+	return ResolverError{
+		message: message,
+		extensions: map[string]interface{}{
+			"code": code,
+		},
+	}
+}
+
+func NewInternalError() ResolverError {
+	return NewResolverError("internal system error", CodeUnknown)
+}
 
 type Service struct {
 	Name    string
@@ -118,7 +155,7 @@ func (r *Resolver) Confas(ctx context.Context, args struct {
 }) (Confas, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Confas{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Confas{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
 	lookup, err := newConfaLookup(args.Where, args.Limit, args.From)
@@ -129,7 +166,7 @@ func (r *Resolver) Confas(ctx context.Context, args struct {
 	confas, err := r.confas.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch confa.")
-		return Confas{Limit: args.Limit}, newInternalError()
+		return Confas{Limit: args.Limit}, NewInternalError()
 	}
 
 	if len(confas) == 0 {
@@ -156,7 +193,7 @@ func (r *Resolver) Talks(ctx context.Context, args struct {
 }) (Talks, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Talks{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Talks{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
 	lookup, err := newTalkLookup(args.Where, args.Limit, args.From)
@@ -166,7 +203,7 @@ func (r *Resolver) Talks(ctx context.Context, args struct {
 	talks, err := r.talks.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to fetch talk.")
-		return Talks{Limit: args.Limit}, newInternalError()
+		return Talks{Limit: args.Limit}, NewInternalError()
 	}
 
 	if len(talks) == 0 {
@@ -191,7 +228,7 @@ func (r *Resolver) AggregateClaps(ctx context.Context, args struct {
 }) (Claps, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Claps{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Claps{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
 	var lookup clap.Lookup
@@ -217,7 +254,7 @@ func (r *Resolver) AggregateClaps(ctx context.Context, args struct {
 	res, err := r.claps.Aggregate(ctx, lookup, claims.UserID)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to aggregate claps.")
-		return Claps{}, newInternalError()
+		return Claps{}, NewInternalError()
 	}
 	claps := Claps{
 		Value:     int32(res.Value),
@@ -231,10 +268,10 @@ func (r *Resolver) CreateConfa(ctx context.Context, args struct {
 }) (Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Confa{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Confa{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return Confa{}, newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return Confa{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	var req confa.Confa
@@ -250,12 +287,12 @@ func (r *Resolver) CreateConfa(ctx context.Context, args struct {
 	created, err := r.confas.Create(ctx, claims.UserID, req)
 	switch {
 	case errors.Is(err, confa.ErrValidation):
-		return Confa{}, newError(CodeBadRequest, err.Error())
+		return Confa{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrDuplicateEntry):
-		return Confa{}, newError(CodeDuplicateEntry, err.Error())
+		return Confa{}, NewResolverError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa.")
-		return Confa{}, newInternalError()
+		return Confa{}, NewInternalError()
 	}
 
 	return newConfa(created), nil
@@ -267,10 +304,10 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 }) (Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Confa{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Confa{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return Confa{}, newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return Confa{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	lookup, err := newConfaLookup(args.Where, 0, nil)
@@ -286,14 +323,14 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 	updated, err := r.confas.Update(ctx, claims.UserID, lookup, mask)
 	switch {
 	case errors.Is(err, confa.ErrValidation):
-		return Confa{}, newError(CodeBadRequest, err.Error())
+		return Confa{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrNotFound):
-		return Confa{}, newError(CodeNotFound, err.Error())
+		return Confa{}, NewResolverError(CodeNotFound, err.Error())
 	case errors.Is(err, confa.ErrDuplicateEntry):
-		return Confa{}, newError(CodeDuplicateEntry, err.Error())
+		return Confa{}, NewResolverError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update confa.")
-		return Confa{}, newInternalError()
+		return Confa{}, NewInternalError()
 	}
 	return newConfa(updated), nil
 }
@@ -304,10 +341,10 @@ func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 }) (Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Talk{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Talk{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return Talk{}, newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return Talk{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	var req talk.Talk
@@ -322,22 +359,22 @@ func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 	}
 	confaLookup, err := newConfaLookup(args.Where, 1, nil)
 	if err != nil {
-		return Talk{}, newError(CodeNotFound, "Confa not found.")
+		return Talk{}, NewResolverError(CodeNotFound, "Confa not found.")
 	}
 
 	created, err := r.talks.Create(ctx, claims.UserID, confaLookup, req)
 	switch {
 	case errors.Is(err, confa.ErrNotFound):
-		return Talk{}, newError(CodeNotFound, err.Error())
+		return Talk{}, NewResolverError(CodeNotFound, err.Error())
 	case errors.Is(err, confa.ErrUnexpectedResult):
-		return Talk{}, newError(CodeBadRequest, err.Error())
+		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, talk.ErrValidation):
-		return Talk{}, newError(CodeBadRequest, err.Error())
+		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, talk.ErrDuplicateEntry):
-		return Talk{}, newError(CodeDuplicateEntry, err.Error())
+		return Talk{}, NewResolverError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create talk.")
-		return Talk{}, newInternalError()
+		return Talk{}, NewInternalError()
 	}
 
 	return newTalk(created), nil
@@ -349,10 +386,10 @@ func (r *Resolver) UpdateTalk(ctx context.Context, args struct {
 }) (Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Talk{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Talk{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return Talk{}, newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return Talk{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	lookup, err := newTalkLookup(args.Where, 0, nil)
@@ -367,14 +404,14 @@ func (r *Resolver) UpdateTalk(ctx context.Context, args struct {
 	updated, err := r.talks.Update(ctx, claims.UserID, lookup, mask)
 	switch {
 	case errors.Is(err, confa.ErrValidation):
-		return Talk{}, newError(CodeBadRequest, err.Error())
+		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrNotFound):
-		return Talk{}, newError(CodeNotFound, err.Error())
+		return Talk{}, NewResolverError(CodeNotFound, err.Error())
 	case errors.Is(err, talk.ErrDuplicateEntry):
-		return Talk{}, newError(CodeDuplicateEntry, err.Error())
+		return Talk{}, NewResolverError(CodeDuplicateEntry, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
-		return Talk{}, newInternalError()
+		return Talk{}, NewInternalError()
 	}
 	return newTalk(updated), nil
 }
@@ -385,30 +422,27 @@ func (r *Resolver) UpdateClap(ctx context.Context, args struct {
 }) (string, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return "", newError(CodeUnauthorized, "Invalid access token.")
+		return "", NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 	if !claims.AllowedWrite() {
-		return "", newError(CodeUnauthorized, "Writes not allowed for guest.")
+		return "", NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
 	}
 
 	tID, err := uuid.Parse(args.TalkID)
 	if err != nil {
-		return "", newError(CodeNotFound, "Talk not found.")
+		return "", NewResolverError(CodeNotFound, "Talk not found.")
 	}
 	id, err := r.claps.CreateOrUpdate(ctx, claims.UserID, tID, uint(args.Value))
 	switch {
 	case errors.Is(err, clap.ErrValidation):
-		return "", newError(CodeBadRequest, err.Error())
+		return "", NewResolverError(CodeBadRequest, err.Error())
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update clap.")
-		return "", newInternalError()
+		return "", NewInternalError()
 	}
 
 	return id.String(), nil
 }
-
-//go:embed schema.graphql
-var schema string
 
 func newConfaLookup(input ConfaLookup, limit int32, from *string) (confa.Lookup, error) {
 	if limit <= 0 || limit > batchLimit {
@@ -509,3 +543,10 @@ func newTalk(t talk.Talk) Talk {
 		Description: t.Description,
 	}
 }
+
+//go:embed schema.graphql
+var schema string
+
+const (
+	batchLimit = 100
+)

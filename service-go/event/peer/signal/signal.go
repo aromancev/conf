@@ -8,7 +8,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/aromancev/confa/internal/event/peer"
+	"github.com/aromancev/confa/event/peer"
 	pb "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"

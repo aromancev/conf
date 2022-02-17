@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aromancev/confa/internal/room"
-	"github.com/aromancev/confa/proto/rtc"
+	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/confa/room"
 	"github.com/google/uuid"
 )
 

@@ -5,9 +5,9 @@ start:
 .PHONY: migrate
 migrate:
 	./mongo/init.sh
-	./mongo/migrate.sh -source file://migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
-	./mongo/migrate.sh -source file://migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
-	./mongo/migrate.sh -source file://migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
+	./mongo/migrate.sh -source file://service-go/migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
+	./mongo/migrate.sh -source file://service-go/migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
+	./mongo/migrate.sh -source file://service-go/migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
 
 .PHONY: mongosh
 mongosh:
@@ -29,7 +29,7 @@ lint:
 
 .PHONY: gen
 gen:
-	cd service-go && $(MAKE) gen
+	cd proto && $(MAKE) gen
 	cd web && $(MAKE) gen
 
 .PHONY: cert-create

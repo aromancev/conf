@@ -3,7 +3,7 @@ package talk
 import (
 	"context"
 
-	"github.com/aromancev/confa/internal/confa"
+	"github.com/aromancev/confa/confa"
 
 	"testing"
 

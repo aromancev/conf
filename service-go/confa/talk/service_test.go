@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aromancev/confa/internal/confa"
-	"github.com/aromancev/confa/proto/rtc/double"
+	"github.com/aromancev/confa/confa"
+	"github.com/aromancev/confa/internal/proto/rtc/double"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
