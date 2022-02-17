@@ -12,7 +12,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/proto/queue"
+	"github.com/aromancev/confa/internal/proto/queue"
 )
 
 const (

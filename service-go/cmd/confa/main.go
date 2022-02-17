@@ -9,18 +9,17 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/aromancev/confa/internal/confa/talk"
-	"github.com/aromancev/confa/internal/confa/talk/clap"
-	"github.com/aromancev/confa/proto/rtc"
+	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/cmd/confa/web"
+	"github.com/aromancev/confa/confa"
+	"github.com/aromancev/confa/confa/talk"
+	"github.com/aromancev/confa/confa/talk/clap"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/cmd/confa/web"
-	"github.com/aromancev/confa/internal/confa"
 )
 
 func main() {

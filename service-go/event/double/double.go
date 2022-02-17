@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/aromancev/confa/internal/event"
+	"github.com/aromancev/confa/event"
 	"github.com/google/uuid"
 )
 

@@ -10,21 +10,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/cmd/iam/queue"
+	"github.com/aromancev/confa/cmd/iam/web"
 	"github.com/aromancev/confa/internal/platform/email"
-	pqueue "github.com/aromancev/confa/proto/queue"
+	pqueue "github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/user"
+	"github.com/aromancev/confa/user/session"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/aromancev/confa/internal/user"
-	"github.com/aromancev/confa/internal/user/session"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/cmd/iam/queue"
-	"github.com/aromancev/confa/cmd/iam/web"
 )
 
 func main() {

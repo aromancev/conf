@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/confa/talk"
 	"github.com/google/uuid"
 )
 

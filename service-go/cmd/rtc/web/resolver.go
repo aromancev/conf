@@ -7,18 +7,52 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/room"
+	"github.com/aromancev/confa/event"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
+)
+
+type Code string
+
+const (
+	CodeBadRequest       = "BAD_REQUEST"
+	CodeUnauthorized     = "UNAUTHORIZED"
+	CodeDuplicateEntry   = "DUPLICATE_ENTRY"
+	CodeNotFound         = "NOT_FOUND"
+	CodePermissionDenied = "PERMISSION_DENIED"
+	CodeUnknown          = "UNKNOWN_CODE"
 )
 
 const (
 	OrderAsc  string = "ASC"
 	OrderDesc string = "DESC"
 )
+
+type ResolverError struct {
+	message    string
+	extensions map[string]interface{}
+}
+
+func (e ResolverError) Error() string {
+	return e.message
+}
+
+func (e ResolverError) Extensions() map[string]interface{} {
+	return e.extensions
+}
+
+func NewResolverError(code Code, message string) ResolverError {
+	return ResolverError{
+		message: message,
+		extensions: map[string]interface{}{
+			"code": code,
+		},
+	}
+}
+
+func NewInternalError() ResolverError {
+	return NewResolverError("internal system error", CodeUnknown)
+}
 
 type Service struct {
 	Name    string
@@ -64,24 +98,14 @@ type EventRepo interface {
 }
 
 type Resolver struct {
-	publicKey    *auth.PublicKey
-	rooms        *room.Mongo
-	events       EventRepo
-	eventWatcher event.Watcher
-	producer     Producer
-	upgrader     *websocket.Upgrader
-	sfuConn      *grpc.ClientConn
+	publicKey *auth.PublicKey
+	events    EventRepo
 }
 
-func NewResolver(pk *auth.PublicKey, producer Producer, rooms *room.Mongo, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, eventWatcher event.Watcher, events EventRepo) *Resolver {
+func NewResolver(pk *auth.PublicKey, events EventRepo) *Resolver {
 	return &Resolver{
-		publicKey:    pk,
-		producer:     producer,
-		rooms:        rooms,
-		upgrader:     upgrader,
-		sfuConn:      sfuConn,
-		eventWatcher: eventWatcher,
-		events:       events,
+		publicKey: pk,
+		events:    events,
 	}
 }
 
@@ -101,7 +125,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 }) (Events, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Events{}, newError(CodeUnauthorized, "Invalid access token.")
+		return Events{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
 	if args.Limit.Count < 0 || args.Limit.Count > batchLimit {
@@ -128,11 +152,11 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 	if args.From != nil {
 		id, err := uuid.Parse(args.From.ID)
 		if err != nil {
-			return Events{}, newError(CodeBadRequest, "Invalid from ID")
+			return Events{}, NewResolverError(CodeBadRequest, "Invalid from ID")
 		}
 		created, err := time.Parse(time.RFC3339, args.From.CreatedAt)
 		if err != nil {
-			return Events{}, newError(CodeBadRequest, "Invalid from CreatedAt")
+			return Events{}, NewResolverError(CodeBadRequest, "Invalid from CreatedAt")
 		}
 		lookup.From = event.From{
 			ID:        id,
@@ -143,7 +167,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 	events, err := r.events.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch events.")
-		return Events{}, newInternalError()
+		return Events{}, NewInternalError()
 	}
 	res := Events{
 		Items: make([]Event, len(events)),
@@ -160,7 +184,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		payload, err := json.Marshal(e.Payload.Payload)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to marshal event.")
-			return Events{}, newInternalError()
+			return Events{}, NewInternalError()
 		}
 		res.Items[i] = Event{
 			ID:        e.ID.String(),
@@ -178,3 +202,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 
 //go:embed schema.graphql
 var schema string
+
+const (
+	batchLimit = 100
+)

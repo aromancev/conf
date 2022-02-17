@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestResolver(t *testing.T) {
+func TestResolverImplementsSchema(t *testing.T) {
 	_, err := graphql.ParseSchema(schema, &Resolver{}, graphql.UseFieldResolvers())
 	assert.NoError(t, err)
 }

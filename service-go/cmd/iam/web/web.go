@@ -11,8 +11,8 @@ import (
 
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/user"
-	"github.com/aromancev/confa/internal/user/session"
+	"github.com/aromancev/confa/user"
+	"github.com/aromancev/confa/user/session"
 )
 
 type Producer interface {

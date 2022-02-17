@@ -3,23 +3,77 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 
 	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/internal/event"
-	"github.com/aromancev/confa/internal/event/peer"
-	"github.com/aromancev/confa/internal/event/peer/signal"
-	"github.com/aromancev/confa/internal/room"
+	"github.com/aromancev/confa/event"
+	"github.com/aromancev/confa/event/peer"
+	"github.com/aromancev/confa/event/peer/signal"
+	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/room"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/graph-gophers/graphql-go"
+	"github.com/graph-gophers/graphql-go/relay"
+	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
 
-func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, producer Producer, events event.Watcher) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+type Producer interface {
+	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
+}
+
+type Handler struct {
+	router http.Handler
+}
+
+func NewHandler(resolver *Resolver, pk *auth.PublicKey, rooms *room.Mongo, upgrader *websocket.Upgrader, producer Producer, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
+	r := http.NewServeMux()
+
+	r.HandleFunc("/health", ok)
+	r.Handle(
+		"/query",
+		withHTTPAuth(
+			&relay.Handler{
+				Schema: graphql.MustParseSchema(schema, resolver, graphql.UseFieldResolvers()),
+			},
+		),
+	)
+	r.Handle(
+		"/room/",
+		withWSockAuth(
+			serveRTC(rooms, pk, upgrader, sfuConn, producer, eventWatcher),
+		),
+	)
+
+	return &Handler{
+		router: r,
+	}
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx, traceID := trace.Ctx(r.Context())
+	w.Header().Set("Trace-Id", traceID)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+	h.router.ServeHTTP(w, r.WithContext(ctx))
+}
+
+func ok(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte("OK"))
+}
+
+func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, producer Producer, events event.Watcher) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
@@ -128,5 +182,5 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
 		wg.Wait()
-	}
+	})
 }

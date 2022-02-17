@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aromancev/confa/internal/confa/talk"
+	"github.com/aromancev/confa/confa/talk"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
