@@ -3,29 +3,52 @@ package main
 import (
 	"net/http"
 
+	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/movio/bramble"
 )
 
 func init() {
 	bramble.RegisterPlugin(&PassHeaders{})
+	bramble.RegisterPlugin(&TraceHeader{})
 }
 
 type PassHeaders struct {
 	bramble.BasePlugin
 }
 
-func (p *PassHeaders) ID() string {
+func (*PassHeaders) ID() string {
 	return "pass-headers"
 }
 
-func (p *PassHeaders) ApplyMiddlewarePublicMux(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+func (*PassHeaders) ApplyMiddlewarePublicMux(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		for key, values := range r.Header {
 			for _, value := range values {
 				ctx = bramble.AddOutgoingRequestsHeaderToContext(ctx, key, value)
 			}
 		}
-		h.ServeHTTP(rw, r.WithContext(ctx))
+		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+type TraceHeader struct {
+	bramble.BasePlugin
+}
+
+func (*TraceHeader) ID() string {
+	return "trace-header"
+}
+
+func (*TraceHeader) ApplyMiddlewarePublicMux(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, traceID := trace.Ctx(r.Context())
+		ctx = bramble.AddOutgoingRequestsHeaderToContext(ctx, traceHeader, traceID)
+		w.Header().Set(traceHeader, traceID)
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+const (
+	traceHeader = "Trace-Id"
+)

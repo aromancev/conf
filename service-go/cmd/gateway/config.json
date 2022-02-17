@@ -7,6 +7,9 @@
     "plugins": [
         {
           "name": "pass-headers"
+        },
+        {
+          "name": "trace-header"
         }
       ]
 }
