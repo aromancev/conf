@@ -1,0 +1,12 @@
+{
+    "services": [
+      "http://rtc:80/query",
+      "http://confa:80/query"
+    ],
+    "gateway-port": 80,
+    "plugins": [
+        {
+          "name": "pass-headers"
+        }
+      ]
+}
