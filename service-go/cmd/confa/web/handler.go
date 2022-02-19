@@ -34,8 +34,7 @@ func NewHandler(resolver *Resolver) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, traceID := trace.Ctx(r.Context())
-	w.Header().Set("Trace-Id", traceID)
+	ctx := trace.New(r.Context(), r.Header.Get("Trace-Id"))
 
 	defer func() {
 		if err := recover(); err != nil {

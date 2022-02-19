@@ -45,8 +45,10 @@ func NewHandler(resolver *Resolver, pk *auth.PublicKey, rooms *room.Mongo, upgra
 	)
 	r.Handle(
 		"/room/",
-		withWSockAuth(
-			serveRTC(rooms, pk, upgrader, sfuConn, producer, eventWatcher),
+		withNewTrace(
+			withWSockAuth(
+				serveRTC(rooms, pk, upgrader, sfuConn, producer, eventWatcher),
+			),
 		),
 	)
 
@@ -56,8 +58,12 @@ func NewHandler(resolver *Resolver, pk *auth.PublicKey, rooms *room.Mongo, upgra
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, traceID := trace.Ctx(r.Context())
-	w.Header().Set("Trace-Id", traceID)
+	ctx := r.Context()
+
+	traceID := r.Header.Get("Trace-Id")
+	if traceID != "" {
+		ctx = trace.New(ctx, traceID)
+	}
 
 	defer func() {
 		if err := recover(); err != nil {

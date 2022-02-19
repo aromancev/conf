@@ -202,7 +202,7 @@ func (r *Resolver) Talks(ctx context.Context, args struct {
 	}
 	talks, err := r.talks.Fetch(ctx, lookup)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("failed to fetch talk.")
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch talks.")
 		return Talks{Limit: args.Limit}, NewInternalError()
 	}
 
