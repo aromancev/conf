@@ -4,21 +4,21 @@
     <div class="divider"></div>
     <div class="canvas">
       <canvas ref="audience"></canvas>
-      <canvas ref="shade" class="shade"></canvas>
+      <canvas ref="shade"></canvas>
       <PageLoader v-if="loading"></PageLoader>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue"
-import { EventType, PeerStatus, PayloadPeerState } from "@/api/models"
-import { Record } from "./record"
-import { genName, drawAvatar } from "@/platform/gen"
+import { onMounted, onUnmounted, ref, watch } from "vue"
+import { Peer } from "@/api/room"
+import { drawAvatar, genName } from "@/platform/gen"
 import PageLoader from "@/components/PageLoader.vue"
 
-defineProps<{
+const props = defineProps<{
   loading?: boolean
+  peers?: Peer[]
 }>()
 
 const audience = ref<HTMLCanvasElement>()
@@ -29,8 +29,15 @@ const selected = ref(null as CanvasPeer | null)
 let canvas = null as Canvas | null
 let resizeInterval = 0
 
+watch(
+  () => props.peers,
+  (value: Peer[] | undefined) => {
+    canvas?.updatePeers(value)
+  },
+  { deep: true, immediate: true },
+)
+
 defineExpose({
-  processRecords,
   resize,
 })
 
@@ -85,7 +92,7 @@ function select(ev: MouseEvent) {
   if (peer) {
     cursor.value = "pointer"
     selected.value = peer
-    canvas.select(peer.id)
+    canvas.select(peer.peer.id)
   } else {
     cursor.value = "default"
     selected.value = null
@@ -99,9 +106,6 @@ function deselect() {
   cursor.value = "default"
   canvas.select("")
 }
-function processRecords(records: Record[]) {
-  canvas?.processRecords(records)
-}
 </script>
 
 <script lang="ts">
@@ -112,13 +116,12 @@ const colorOutline = "#7f70f5"
 const maxSize = 200
 
 interface CanvasPeer {
-  id: string
-  joinedAt: string
+  peer: Peer
+  name: string
   row: number
   col: number
   x: number
   y: number
-  name: string
 }
 
 class Canvas {
@@ -168,48 +171,24 @@ class Canvas {
     this.renderShade()
   }
 
-  processRecords(records: Record[]): void {
-    for (const record of records) {
-      if (record.event.payload.type !== EventType.PeerState) {
-        continue
-      }
+  updatePeers(peers: Peer[] | undefined): void {
+    if (!peers) {
+      return
+    }
+    this.byId = {}
+    this.ordered = []
 
-      const payload = record.event.payload.payload as PayloadPeerState
-      const userId = record.event.ownerId || ""
-      if (!payload.status) {
-        continue
+    for (const peer of peers) {
+      const cp: CanvasPeer = {
+        peer: peer,
+        name: genName(peer.id),
+        row: 0,
+        col: 0,
+        x: 0,
+        y: 0,
       }
-      if (
-        (record.forward && payload.status === PeerStatus.Joined) ||
-        (!record.forward && payload.status === PeerStatus.Left)
-      ) {
-        if (this.byId[userId]) {
-          continue
-        }
-        const p: CanvasPeer = {
-          id: userId,
-          joinedAt: record.event.createdAt || "",
-          row: 0,
-          col: 0,
-          x: 0,
-          y: 0,
-          name: genName(userId),
-        }
-        this.byId[userId] = p
-        this.ordered.push(p)
-      }
-      if (
-        (record.forward && payload.status === PeerStatus.Left) ||
-        (!record.forward && payload.status === PeerStatus.Joined)
-      ) {
-        delete this.byId[userId]
-        for (let i = 0; i < this.ordered.length; i++) {
-          if (this.ordered[i].id === userId) {
-            this.ordered.splice(i, 1)
-            break
-          }
-        }
-      }
+      this.byId[peer.id] = cp
+      this.ordered.push(cp)
     }
 
     this.calcPositions()
@@ -365,7 +344,7 @@ class Canvas {
 
     // Icon.
     ctx.setTransform(1, 0, 0, 1, x - renderSize / 2, y - renderSize / 2)
-    drawAvatar(ctx, peer.id, renderSize + 1)
+    drawAvatar(ctx, peer.peer.id, renderSize + 1)
 
     // Outline.
     ctx.setTransform(1, 0, 0, 1, x, y)

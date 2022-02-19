@@ -31,31 +31,31 @@
         </div>
       </div>
 
-      <RoomAudience ref="audience" :loading="loading" />
+      <RoomAudience ref="audience" :loading="!roomJoined" :peers="room.peers" />
     </div>
     <div class="controls">
       <div class="controls-top">
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.screen }"
-          :disabled="joined && !publishing ? null : true"
-          @click="switchScreen"
+          :disabled="roomJoined && !roomPublishing ? null : true"
+          @click="room.switchScreen"
         >
           {{ local.screen ? "desktop_windows" : "desktop_access_disabled" }}
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.camera }"
-          :disabled="joined && !publishing ? null : true"
-          @click="switchCamera"
+          :disabled="roomJoined && !roomPublishing ? null : true"
+          @click="room.switchCamera"
         >
           {{ local.camera ? "videocam" : "videocam_off" }}
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: local.mic }"
-          :disabled="joined && !publishing ? null : true"
-          @click="switchMic"
+          :disabled="roomJoined && !roomPublishing ? null : true"
+          @click="room.switchMic"
         >
           {{ local.mic ? "mic" : "mic_off" }}
         </div>
@@ -78,7 +78,7 @@
       </div>
     </div>
     <div v-if="sidePanel !== SidePanel.None" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="messages" :loading="loading" @message="sendMessage" />
+      <RoomMessages :user-id="user.id" :messages="room.messages" :loading="!roomJoined" @message="sendMessage" />
     </div>
   </div>
 
@@ -90,7 +90,7 @@
     <p>You are about to join the talk online</p>
     <p v-if="inviteLink">
       Share this link to invite people<br />
-      <CopyField :value="inviteLink">Test</CopyField>
+      <CopyField :value="inviteLink"></CopyField>
     </p>
   </ModalDialog>
   <ModalDialog v-if="modal === Modal.ConfirmLeave" :buttons="{ leave: 'Leave', stay: 'Stay' }" @click="onModalClose">
@@ -101,20 +101,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, nextTick, onMounted, onUnmounted } from "vue"
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue"
 import { onBeforeRouteLeave } from "vue-router"
-import { Client, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
-import { EventType, PayloadPeerState } from "@/api/models"
-import { userStore, RTC, Event, client, eventClient, State, Hint, Track, Policy } from "@/api"
-import { RecordProcessor, BufferedProcessor } from "@/components/room"
-import { Record } from "@/components/room/record"
-import { MessageProcessor, Message } from "@/components/room/messages"
+import { userStore } from "@/api/models"
+import { LiveRoom } from "@/components/room"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
-import { EventOrder } from "@/api/schema"
 
 enum Modal {
   None = "",
@@ -126,18 +121,6 @@ enum Modal {
 enum SidePanel {
   None = "",
   Chat = "chat",
-}
-
-interface Remote {
-  camera: MediaStream | null
-  screen: MediaStream | null
-  audios: MediaStream[]
-}
-
-interface Local {
-  camera: LocalStream | null
-  screen: LocalStream | null
-  mic: LocalStream | null
 }
 
 interface Resizer {
@@ -159,98 +142,21 @@ const props = defineProps<{
 }>()
 
 const modal = ref(Modal.None)
-const local = reactive<Local>({
-  camera: null,
-  screen: null,
-  mic: null,
-}) as Local
-const remote = reactive<Remote>({
-  camera: null,
-  screen: null,
-  audios: [],
-})
-const publishing = ref(false)
-const loading = ref(false)
 const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
-const audience = ref<RecordProcessor & Resizer>()
-const joined = ref(false)
+const audience = ref<Resizer>()
+const room = new LiveRoom()
+const roomJoined = room.isJoined()
+const roomPublishing = room.isPublishing()
+const local = room.localStreams()
+const remote = room.remoteStreams()
 
-const streamsByTrackId = {} as { [key: string]: RemoteStream }
-const tracksById = {} as { [key: string]: Track }
-const state = { tracks: {} } as State
-
-let messageProcessor = ref<MessageProcessor | null>(null)
-let rtcClient = null as RTC | null
-let sfuClient = null as Client | null
+// TODO: move to a separate component.
 let modalClosed: (button: string) => void = () => {} // eslint-disable-line @typescript-eslint/no-empty-function
-
-const messages = computed((): Message[] => {
-  if (!messageProcessor.value) {
-    return []
-  }
-  return messageProcessor.value.messages()
-})
 
 watch(
   () => props.roomId,
-  async (value: string) => {
-    const roomId = value
-    loading.value = true
-
-    const rtc = await client.rtc(roomId)
-    const sfu = new Client(rtc, {
-      codec: "vp8",
-      iceServers: [
-        {
-          urls: ["stun:stun.stunprotocol.org:3478"],
-        },
-        {
-          urls: ["turn:turn.confa.io?transport=tcp"],
-          credentialType: "password",
-          username: rtc.token,
-          credential: "confa.io",
-        },
-      ],
-    })
-
-    messageProcessor.value = new MessageProcessor(rtc)
-
-    const processors: RecordProcessor[] = [messageProcessor.value, { processRecords }]
-    if (audience.value) {
-      processors.push(audience.value)
-    }
-    const buffered = new BufferedProcessor(processors, 500)
-
-    rtc.onevent = (event: Event) => {
-      buffered.put([event], true)
-    }
-    rtc.onopen = async () => {
-      await sfu.join(roomId, user.id)
-      sfuClient = sfu
-      rtcClient = rtc
-      joined.value = true
-    }
-    sfu.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
-      if (track.kind !== "video" && track.kind !== "audio") {
-        return
-      }
-
-      const id = trackId(stream)
-      streamsByTrackId[id] = stream
-      computeRemote()
-      stream.onremovetrack = () => {
-        delete streamsByTrackId[id]
-        computeRemote()
-      }
-    }
-
-    const iter = eventClient.fetch({ roomId: value }, EventOrder.DESC, Policy.NetworkOnly)
-    const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
-    buffered.put(events, false)
-    buffered.autoflush = true
-    buffered.flush()
-
-    loading.value = false
+  async (roomId: string) => {
+    await room.join(user.id, roomId)
   },
   { immediate: true },
 )
@@ -262,11 +168,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  unshareScreen()
-  unshareCamera()
-  unshareMic()
-  sfuClient?.close()
-  rtcClient?.close()
+  room.close()
 })
 
 onBeforeRouteLeave(async (to, from, next) => {
@@ -293,19 +195,8 @@ function confirmJoin(value: string) {
   modal.value = Modal.None
 }
 
-function trackId(s: MediaStream): string {
-  const tracks = s.getTracks()
-  if (tracks.length < 1) {
-    return ""
-  }
-  return tracks[0].id
-}
-
-function sendMessage(message: string): void {
-  if (!messageProcessor.value) {
-    return
-  }
-  messageProcessor.value.send(user.id, message)
+function sendMessage(message: string) {
+  room.send(user.id, message)
 }
 
 function switchSidePanel(panel: SidePanel) {
@@ -322,167 +213,6 @@ function switchSidePanel(panel: SidePanel) {
     }
     audience.value.resize()
   })
-}
-
-function switchCamera() {
-  if (local.camera) {
-    unshareCamera()
-  } else {
-    shareCamera()
-  }
-}
-
-function switchScreen() {
-  if (local.screen) {
-    unshareScreen()
-  } else {
-    shareScreen()
-  }
-}
-
-function switchMic() {
-  if (local.mic) {
-    unshareMic()
-  } else {
-    shareMic()
-  }
-}
-
-async function shareCamera() {
-  local.camera = await share(async () => {
-    return await LocalStream.getUserMedia({
-      codec: "vp8",
-      resolution: "vga",
-      simulcast: true,
-      video: true,
-      audio: false,
-    })
-  }, Hint.Camera)
-}
-
-function unshareCamera() {
-  unshare(local.camera)
-  local.camera = null
-}
-
-async function shareScreen() {
-  local.screen = await share(async () => {
-    const stream = await LocalStream.getDisplayMedia({
-      codec: "vp8",
-      resolution: "hd",
-      simulcast: true,
-      video: {
-        width: { ideal: 2560 },
-        height: { ideal: 1440 },
-        frameRate: {
-          ideal: 15,
-          max: 30,
-        },
-      },
-      audio: false,
-    })
-    for (const t of stream.getTracks()) {
-      t.onended = () => {
-        unshareScreen()
-      }
-    }
-    return stream
-  }, Hint.Screen)
-}
-
-function unshareScreen() {
-  unshare(local.screen)
-  local.screen = null
-}
-
-async function shareMic() {
-  local.mic = await share(() => {
-    return LocalStream.getUserMedia({
-      video: false,
-      audio: true,
-    } as Constraints)
-  }, Hint.UserAudio)
-}
-
-function unshareMic() {
-  unshare(local.mic)
-  local.mic = null
-}
-
-async function share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | null> {
-  if (!rtcClient || !sfuClient || publishing.value) {
-    return null
-  }
-
-  try {
-    publishing.value = true
-    const stream = await fetch()
-    state.tracks[trackId(stream)] = { hint: hint }
-    await rtcClient.state(state)
-    sfuClient.publish(stream)
-    return stream
-  } catch (e) {
-    console.warn("Failed to share media:", e)
-    return null
-  } finally {
-    publishing.value = false
-  }
-}
-
-function unshare(stream: LocalStream | null | undefined) {
-  if (!stream) {
-    return
-  }
-  delete state.tracks[trackId(stream)]
-  stream.unpublish()
-  for (const t of stream.getTracks()) {
-    t.stop()
-    stream.removeTrack(t)
-  }
-}
-
-function processRecords(records: Record[]): void {
-  for (const record of records) {
-    if (record.event.payload.type !== EventType.PeerState) {
-      continue
-    }
-    const payload = record.event.payload.payload as PayloadPeerState
-    if (!payload.tracks) {
-      continue
-    }
-    Object.assign(tracksById, payload.tracks)
-  }
-  computeRemote()
-}
-
-function computeRemote() {
-  remote.camera = null
-  remote.screen = null
-  remote.audios = []
-
-  for (const id in streamsByTrackId) {
-    const track = tracksById[id]
-    if (!track) {
-      continue
-    }
-    switch (track.hint) {
-      case Hint.Camera:
-        remote.camera = streamsByTrackId[id]
-        break
-      case Hint.Screen:
-        remote.screen = streamsByTrackId[id]
-        break
-      case Hint.UserAudio:
-        remote.audios.push(streamsByTrackId[id])
-        break
-    }
-  }
-  if (local.camera) {
-    remote.camera = local.camera
-  }
-  if (local.screen) {
-    remote.screen = local.screen
-  }
 }
 </script>
 

@@ -16,6 +16,8 @@ services:
     command: pnpm run serve
     networks:
       - confa
+    environment:
+      - VITE_RTC_ROOM_URL=ws://localhost/api/rtc/room
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public

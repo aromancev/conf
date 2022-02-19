@@ -1,5 +1,6 @@
 import { Trickle } from "ion-sdk-js"
 import { Event, Track } from "./models/event"
+import { config } from "@/config"
 
 const requestTimeout = 10 * 1000
 
@@ -55,14 +56,9 @@ export class RTC {
   private pendingRequests = {} as { [key: string]: (msg: Message) => void }
 
   constructor(roomId: string, token: string) {
-    let protocol = "wss"
-    if (process.env.NODE_ENV == "development") {
-      protocol = "ws"
-    }
     this.onSignalAnswer = null
     this.token = token
-
-    this.socket = new WebSocket(`${protocol}://${window.location.hostname}/api/rtc/room/${roomId}?t=${token}`)
+    this.socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
     this.socket.onopen = () => {
       if (this._onopen) {
         this._onopen()

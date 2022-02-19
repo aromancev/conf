@@ -3,15 +3,24 @@
     <PageLoader v-if="loading"></PageLoader>
     <div ref="browser" class="browser" @scroll="onScroll">
       <div v-if="!loading" class="message-list">
-        <div v-for="msg in messages" :key="msg.id" class="message" :class="{ me: msg.from === userId }">
-          <div class="message-body" :class="{ me: msg.from === userId }">
-            <div v-if="msg.from !== userId && msg.isLatestFrom" class="avatar">
+        <div
+          v-for="msg in renderMessages"
+          :key="msg.message.id"
+          class="message"
+          :class="{ me: msg.message.from === userId }"
+        >
+          <div class="message-body" :class="{ me: msg.message.from === userId }">
+            <div v-if="msg.message.from !== userId && msg.isLatestFrom" class="avatar">
               <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="icon" v-html="msg.avatar"></div>
+              <div class="icon" v-html="genAvatar(msg.message.from, 32 + 1)"></div>
             </div>
-            <div v-if="msg.from !== userId && msg.isFirstFrom" class="from">{{ msg.fromName }}</div>
-            {{ msg.text }}
-            <div v-if="msg.from === userId" class="status material-icons">{{ msg.isSent ? "done" : "schedule" }}</div>
+            <div v-if="msg.message.from !== userId && msg.isFirstFrom" class="from">
+              {{ genName(msg.message.from) }}
+            </div>
+            {{ msg.message.text }}
+            <div v-if="msg.message.from === userId" class="status material-icons">
+              {{ msg.message.accepted ? "done" : "schedule" }}
+            </div>
           </div>
         </div>
       </div>
@@ -29,10 +38,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue"
-import { Message } from "./messages"
+import { genName, genAvatar } from "@/platform/gen"
+import { ref, watch, nextTick, computed } from "vue"
+import { Message } from "@/api/room"
 import Textarea from "@/components/fields/TextareaField.vue"
 import PageLoader from "@/components/PageLoader.vue"
+
+interface RenderMessage {
+  message: Message
+  fromName: string
+  avatar: string
+  isLatestFrom: boolean
+  isFirstFrom: boolean
+}
 
 const emit = defineEmits<{
   (e: "message", value: string): void
@@ -40,7 +58,7 @@ const emit = defineEmits<{
 
 const props = defineProps<{
   userId: string
-  messages: Message[]
+  messages?: Message[]
   loading?: boolean
 }>()
 
@@ -48,6 +66,21 @@ const browser = ref<HTMLElement>()
 const message = ref("")
 
 let autoScroll = true
+
+const renderMessages = computed<RenderMessage[]>(() => {
+  const messages: RenderMessage[] = []
+  for (const msg of props.messages || []) {
+    messages.push({
+      message: msg,
+      fromName: genName(msg.from),
+      avatar: genAvatar(msg.from, 32 + 1),
+      isLatestFrom: false,
+      isFirstFrom: false,
+    })
+  }
+
+  return messages
+})
 
 watch(
   () => props.messages,
