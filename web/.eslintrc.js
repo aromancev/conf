@@ -23,7 +23,8 @@ module.exports = {
     },
     globals: {
         "RTCSessionDescriptionInit": "readonly",
-        "RTCIceServer": "readonly"
+        "RTCIceServer": "readonly",
+        "RTCRtpEncodingParameters": "readonly"
     },
     "ignorePatterns": ["dist"],
 }

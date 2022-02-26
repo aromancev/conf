@@ -17,7 +17,6 @@ import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
 import { ApolloError } from "@apollo/client/core"
 import { userStore } from "./models"
-import { RTC } from "./rtc"
 
 const minRefresh = 10 * Duration.second
 const requestReady = 4
@@ -76,7 +75,7 @@ export function errorCode(e: unknown): Code {
 export class Client {
   private graph: ApolloClient<NormalizedCacheObject>
   private refreshTimer = 0
-  private token: Promise<string>
+  private _token: Promise<string>
   private tokenResolve: ((token: string) => void) | null = null
 
   constructor() {
@@ -109,7 +108,7 @@ export class Client {
       }
       return {
         headers: {
-          authorization: `Bearer ${await this.token}`,
+          authorization: `Bearer ${await this._token}`,
         },
       }
     })
@@ -119,17 +118,21 @@ export class Client {
       cache: new InMemoryCache(),
     })
 
-    this.token = new Promise<string>((resolve) => {
+    this._token = new Promise<string>((resolve) => {
       resolve("")
     })
     this.refreshToken()
+  }
+
+  async token(): Promise<string> {
+    return await this._token
   }
 
   async mutate<T = object, TVariables = OperationVariables>(
     options: MutationOptions<T, TVariables>,
   ): Promise<FetchResult<T>> {
     options.context = {
-      token: await this.token,
+      token: await this._token,
     }
     return this.graph.mutate(options)
   }
@@ -138,7 +141,7 @@ export class Client {
     options: QueryOptions<TVariables, T>,
   ): Promise<ApolloQueryResult<T>> {
     options.context = {
-      token: await this.token,
+      token: await this._token,
     }
     return this.graph.query(options)
   }
@@ -190,10 +193,6 @@ export class Client {
     await this.graph.clearStore()
   }
 
-  async rtc(roomId: string): Promise<RTC> {
-    return new RTC(roomId, await this.token)
-  }
-
   private async refreshToken() {
     this.setRefreshInProgress()
 
@@ -218,7 +217,7 @@ export class Client {
     // Cancel refresh because this should not run in parallel.
     clearTimeout(this.refreshTimer)
     // Set a promise so all calls are waiting for refreshToken to finish to avoid race conditions.
-    this.token = new Promise<string>((resolve) => {
+    this._token = new Promise<string>((resolve) => {
       // Need to combine with oldResolve because some calls might be already waiting.
       // If we just set a new tokenResolve, they will hang forever.
       const oldResolve = this.tokenResolve
@@ -233,7 +232,7 @@ export class Client {
 
   private setToken(token: string, expiresIn: number): void {
     // Set an instant promise for future calls.
-    this.token = new Promise<string>((resolve) => {
+    this._token = new Promise<string>((resolve) => {
       resolve(token)
     })
     // Release the previous promise with the token.

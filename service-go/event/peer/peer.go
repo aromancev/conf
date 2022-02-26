@@ -228,6 +228,12 @@ func (p *Peer) Send(ctx context.Context, msg Message) error {
 		}
 		return nil
 	case Join:
+		if pl.UserID != p.userID.String() {
+			return fmt.Errorf("%w: %s", ErrValidation, "invalid user")
+		}
+		if pl.SessionID != p.roomID.String() {
+			return fmt.Errorf("%w: %s", ErrValidation, "invalid room")
+		}
 		if err := p.signal.Connect(ctx); err != nil {
 			return err
 		}

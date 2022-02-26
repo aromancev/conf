@@ -1,7 +1,6 @@
-import { Client as SFU, LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
+import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
-import { config } from "@/config"
-import { RTC, Event, client, eventClient, State, Hint, Track, Policy } from "@/api"
+import { RTCPeer, Event, eventClient, State, Hint, Track, Policy } from "@/api"
 import { EventType, PayloadPeerState } from "@/api/models"
 import { BufferedAggregator, MessageAggregator, PeerAggregator, Message, Peer } from "@/api/room"
 import { EventOrder } from "@/api/schema"
@@ -26,8 +25,7 @@ export class LiveRoom {
   private remote: Remote
   private joined: Ref<boolean>
   private publishing: Ref<boolean>
-  private rtc: RTC | null
-  private sfu: SFU | null
+  private rtc: RTCPeer
   private state: State
   private streamsByTrackId: { [key: string]: RemoteStream }
   private tracksById: { [key: string]: Track }
@@ -50,8 +48,7 @@ export class LiveRoom {
     this.messages = reactive<Message[]>([])
     this.peers = reactive<Peer[]>([])
 
-    this.rtc = null
-    this.sfu = null
+    this.rtc = new RTCPeer()
     this.state = { tracks: {} }
     this.streamsByTrackId = {}
     this.tracksById = {}
@@ -61,8 +58,7 @@ export class LiveRoom {
     this.unshareScreen()
     this.unshareCamera()
     this.unshareMic()
-    this.sfu?.close()
-    this.rtc?.close()
+    this.rtc.close()
   }
 
   remoteStreams(): Remote {
@@ -81,42 +77,25 @@ export class LiveRoom {
     return computed(() => this.publishing.value)
   }
 
-  async join(userId: string, roomId: string) {
+  async join(roomId: string) {
     this.joined.value = false
 
-    this.rtc = await client.rtc(roomId)
-    const iceServers: RTCIceServer[] = []
-    if (config.sfu.stunURLs.length) {
-      iceServers.push({
-        urls: config.sfu.stunURLs,
-      })
+    // A workaround to avoid creating a new class to hide `put` method from the public API.
+    const thisAggregator = {
+      put: (event: Event) => {
+        this.put(event)
+      },
     }
-    if (config.sfu.turnURLs.length) {
-      iceServers.push({
-        urls: config.sfu.turnURLs,
-        credentialType: "password",
-        username: this.rtc.token,
-        credential: "confa.io",
-      })
-    }
-    this.sfu = new SFU(this.rtc, {
-      codec: "vp8",
-      iceServers: iceServers,
-    })
 
     const aggregators = new BufferedAggregator(
-      [new MessageAggregator(this.messages), new PeerAggregator(this.peers), this],
+      [new MessageAggregator(this.messages), new PeerAggregator(this.peers), thisAggregator],
       500,
     )
 
-    this.rtc.onevent = (event: Event) => {
-      aggregators.put(event, true)
+    this.rtc.onevent = (event: Event): void => {
+      aggregators.put(event)
     }
-    this.rtc.onopen = async () => {
-      await this.sfu?.join(roomId, userId)
-      this.joined.value = true
-    }
-    this.sfu.ontrack = (track: MediaStreamTrack, stream: RemoteStream) => {
+    this.rtc.ontrack = (track: MediaStreamTrack, stream: RemoteStream): void => {
       if (track.kind !== "video" && track.kind !== "audio") {
         return
       }
@@ -129,14 +108,14 @@ export class LiveRoom {
         this.computeRemote()
       }
     }
+    await this.rtc.join(roomId, true)
 
     const iter = eventClient.fetch({ roomId: roomId }, EventOrder.DESC, Policy.NetworkOnly)
     const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
-    for (const ev of events) {
-      aggregators.put(ev, true)
-    }
-    aggregators.autoflush = true
+    aggregators.prepend(...events)
     aggregators.flush()
+
+    this.joined.value = true
   }
 
   async send(userId: string, message: string): Promise<void> {
@@ -159,7 +138,7 @@ export class LiveRoom {
       },
     }
     this.messages.push(msg)
-    msg.id = await this.rtc.event(ev)
+    msg.id = await this.rtc.sendEvent(ev)
   }
 
   switchCamera() {
@@ -248,7 +227,7 @@ export class LiveRoom {
   }
 
   private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | null> {
-    if (!this.rtc || !this.sfu || this.publishing.value) {
+    if (!this.rtc || !this.joined.value || this.publishing.value) {
       return null
     }
 
@@ -256,8 +235,8 @@ export class LiveRoom {
       this.publishing.value = true
       const stream = await fetch()
       this.state.tracks[trackId(stream)] = { hint: hint }
-      await this.rtc.state(this.state)
-      this.sfu.publish(stream)
+      await this.rtc.sendState(this.state)
+      this.rtc.publish(stream)
       return stream
     } catch (e) {
       console.warn("Failed to share media:", e)
@@ -279,8 +258,7 @@ export class LiveRoom {
     }
   }
 
-  // TODO: remove from public api.
-  put(event: Event): void {
+  private put(event: Event): void {
     if (event.payload.type !== EventType.PeerState) {
       return
     }
@@ -313,12 +291,6 @@ export class LiveRoom {
           this.remote.audios.push(this.streamsByTrackId[id])
           break
       }
-    }
-    if (this.local.camera) {
-      this.remote.camera = this.local.camera
-    }
-    if (this.local.screen) {
-      this.remote.screen = this.local.screen
     }
   }
 }

@@ -150,13 +150,12 @@ const roomPublishing = room.isPublishing()
 const local = room.localStreams()
 const remote = room.remoteStreams()
 
-// TODO: move to a separate component.
 let modalClosed: (button: string) => void = () => {} // eslint-disable-line @typescript-eslint/no-empty-function
 
 watch(
   () => props.roomId,
   async (roomId: string) => {
-    await room.join(user.id, roomId)
+    await room.join(roomId)
   },
   { immediate: true },
 )

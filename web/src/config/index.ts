@@ -1,7 +1,7 @@
 export const config = {
   rtc: {
     room: {
-      baseURL: import.meta.env.VITE_RTC_ROOM_URL,
+      baseURL: import.meta.env.VITE_RTC_ROOM_URL as string,
     },
   },
   sfu: {

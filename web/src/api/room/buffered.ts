@@ -1,22 +1,16 @@
-import { Event } from "@/api/models" // TODO: Resolve events dependency so this module can be shared with BE.
+import { Event } from "@/api/models"
 
 export interface Aggregator {
   put(event: Event, forwards: boolean): void
 }
 
-interface BufferedEvent {
-  event: Event
-  forwards: boolean
-}
-
 export class BufferedAggregator {
-  autoflush: boolean
-
+  private autoflush: boolean
   private aggregators: Aggregator[]
   private cap: number
   private byId: { [key: string]: Event }
   private ordered: Event[]
-  private buffered: BufferedEvent[]
+  private buffered: Event[]
 
   constructor(aggregators: Aggregator[], cap: number) {
     this.aggregators = aggregators
@@ -28,15 +22,16 @@ export class BufferedAggregator {
   }
 
   flush(): void {
-    for (const buff of this.buffered) {
+    for (const event of this.buffered) {
       for (const aggregator of this.aggregators) {
-        aggregator.put(buff.event, buff.forwards)
+        aggregator.put(event, true)
       }
     }
     this.buffered = []
+    this.autoflush = true
   }
 
-  put(event: Event, forwards: boolean): void {
+  put(event: Event): void {
     if (this.byId[event.id || ""]) {
       return
     }
@@ -48,7 +43,7 @@ export class BufferedAggregator {
       this.ordered.shift()
     }
 
-    this.buffered.push({ event: event, forwards: forwards })
+    this.buffered.push(event)
     if (this.buffered.length > this.cap) {
       this.buffered.shift()
     }
@@ -56,5 +51,9 @@ export class BufferedAggregator {
     if (this.autoflush) {
       this.flush()
     }
+  }
+
+  prepend(...events: Event[]): void {
+    this.buffered = this.buffered.concat(events)
   }
 }

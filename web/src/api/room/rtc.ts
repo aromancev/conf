@@ -1,6 +1,83 @@
-import { Trickle } from "ion-sdk-js"
-import { Event, Track } from "./models/event"
+import {
+  Client as IonClient,
+  Trickle,
+  RemoteStream as IonRemoteStream,
+  LocalStream as IonLocalStream,
+} from "ion-sdk-js"
+import { Event, Track, userStore } from "../models/"
+import { client } from "@/api"
 import { config } from "@/config"
+
+export type RemoteStream = IonRemoteStream
+export type LocalStream = IonLocalStream
+
+export interface State {
+  tracks: { [key: string]: Track }
+}
+
+export class RTCPeer {
+  ontrack?: (track: MediaStreamTrack, stream: RemoteStream) => void
+
+  private signal: SignalRTC
+  private sfu?: IonClient
+
+  constructor() {
+    this.signal = new SignalRTC()
+  }
+
+  set onevent(val: (event: Event) => void) {
+    this.signal.onevent = val
+  }
+
+  async sendEvent(event: Event): Promise<string> {
+    return this.signal.sendEvent(event)
+  }
+
+  async sendState(state: State): Promise<State> {
+    return this.signal.sendState(state)
+  }
+
+  async join(roomId: string, media: boolean): Promise<void> {
+    const token = await client.token()
+    await this.signal.connect(roomId, token)
+
+    if (!media) {
+      return
+    }
+    const iceServers: RTCIceServer[] = []
+    if (config.sfu.stunURLs) {
+      iceServers.push({
+        urls: config.sfu.stunURLs,
+      })
+    }
+    if (config.sfu.turnURLs) {
+      iceServers.push({
+        urls: config.sfu.turnURLs,
+        credentialType: "password",
+        username: token,
+        credential: "confa.io",
+      })
+    }
+    this.sfu = new IonClient(this.signal, {
+      codec: "vp8",
+      iceServers: iceServers,
+    })
+    this.sfu.ontrack = this.ontrack
+    await this.sfu.join(roomId, userStore.getState().id)
+  }
+
+  publish(stream: LocalStream, encodingParams?: RTCRtpEncodingParameters[]): void {
+    if (!this.sfu) {
+      throw new Error("Peer not joined to media.")
+    }
+    this.sfu.publish(stream, encodingParams)
+  }
+
+  close(): void {
+    this.sfu?.close()
+    this.signal.close()
+  }
+}
 
 const requestTimeout = 10 * 1000
 
@@ -38,33 +115,19 @@ interface EventAck {
   eventId: string
 }
 
-export interface State {
-  tracks: { [key: string]: Track }
-}
-
-export class RTC {
+class SignalRTC {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
   onevent?: (event: Event) => void
 
-  token: string
-
-  private _onopen?: () => void
-  private socket: WebSocket
-  private onSignalAnswer: ((desc: RTCSessionDescriptionInit) => void) | null
+  private socket?: WebSocket
+  private onSignalAnswer?: (desc: RTCSessionDescriptionInit) => void
   private requestId = 0
   private pendingRequests = {} as { [key: string]: (msg: Message) => void }
 
-  constructor(roomId: string, token: string) {
-    this.onSignalAnswer = null
-    this.token = token
-    this.socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
-    this.socket.onopen = () => {
-      if (this._onopen) {
-        this._onopen()
-      }
-    }
-    this.socket.onmessage = (msg) => {
+  async connect(roomId: string, token: string): Promise<void> {
+    const socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
+    socket.onmessage = (msg) => {
       const resp = JSON.parse(msg.data) as Message
       switch (resp.type) {
         case Type.Answer:
@@ -93,13 +156,14 @@ export class RTC {
           break
       }
     }
-  }
 
-  set onopen(onopen: () => void) {
-    if (this.socket.readyState === WebSocket.OPEN) {
-      onopen()
-    }
-    this._onopen = onopen
+    await new Promise<void>((resolve) => {
+      socket.onopen = () => {
+        resolve()
+      }
+    })
+
+    this.socket = socket
   }
 
   join(sid: string, uid: string, offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
@@ -113,7 +177,7 @@ export class RTC {
     })
     return new Promise((resolve) => {
       this.onSignalAnswer = (desc) => {
-        this.onSignalAnswer = null
+        this.onSignalAnswer = undefined
         resolve(desc)
       }
     })
@@ -126,7 +190,7 @@ export class RTC {
     })
     return new Promise((resolve) => {
       this.onSignalAnswer = (desc) => {
-        this.onSignalAnswer = null
+        this.onSignalAnswer = undefined
         resolve(desc)
       }
     })
@@ -146,7 +210,7 @@ export class RTC {
     })
   }
 
-  event(event: Event): Promise<string> {
+  sendEvent(event: Event): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const id = this.openPending((msg: Message) => {
         resolve((msg.payload as EventAck).eventId)
@@ -160,7 +224,7 @@ export class RTC {
     })
   }
 
-  state(state: State): Promise<State> {
+  sendState(state: State): Promise<State> {
     return new Promise<State>((resolve, reject) => {
       const id = this.openPending((msg: Message) => {
         resolve(msg.payload as State)
@@ -175,10 +239,13 @@ export class RTC {
   }
 
   close(): void {
-    this.socket.close()
+    this.socket?.close()
   }
 
   private send(req: Message): void {
+    if (!this.socket) {
+      throw new Error("RTC not connected.")
+    }
     this.socket.send(JSON.stringify(req))
   }
 
