@@ -27,8 +27,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  uuid.New(),
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -53,8 +52,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  uuid.New(),
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -79,8 +77,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  roomID,
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -90,8 +87,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  roomID,
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -101,8 +97,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  roomID,
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -160,8 +155,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  uuid.New(),
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},
@@ -186,8 +180,7 @@ func TestEventMongo(t *testing.T) {
 				Owner: uuid.New(),
 				Room:  uuid.New(),
 				Payload: Payload{
-					Type: TypePeerState,
-					Payload: PayloadPeerState{
+					PeerState: &PayloadPeerState{
 						Status: PeerJoined,
 					},
 				},

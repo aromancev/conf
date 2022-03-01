@@ -1,14 +1,14 @@
 TOOLS_IMG=confa/web-dev
 
-.PHONY: gen
-gen:
+.PHONY: gen-local
+gen-local:
 	docker build -f Dockerfile.dev -t ${TOOLS_IMG} .
 	docker run \
 		--rm \
 		-w /app \
 		--network=confa \
 		-v `pwd`/src:/app/src \
-		${TOOLS_IMG} pnpm run gen
+		${TOOLS_IMG} pnpm run gen:local
 
 .PHONY: modules
 modules:

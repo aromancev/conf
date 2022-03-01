@@ -1,8 +1,8 @@
 import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
-import { RTCPeer, Event, eventClient, State, Hint, Track, Policy } from "@/api"
-import { EventType, PayloadPeerState } from "@/api/models"
+import { RTCPeer, eventClient, Policy } from "@/api"
 import { BufferedAggregator, MessageAggregator, PeerAggregator, Message, Peer } from "@/api/room"
+import { RoomEvent, Hint, Track } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
 
 interface Remote {
@@ -15,6 +15,10 @@ interface Local {
   camera: LocalStream | null
   screen: LocalStream | null
   mic: LocalStream | null
+}
+
+interface State {
+  tracks: { [key: string]: Track }
 }
 
 export class LiveRoom {
@@ -82,7 +86,7 @@ export class LiveRoom {
 
     // A workaround to avoid creating a new class to hide `put` method from the public API.
     const thisAggregator = {
-      put: (event: Event) => {
+      put: (event: RoomEvent) => {
         this.put(event)
       },
     }
@@ -92,7 +96,7 @@ export class LiveRoom {
       500,
     )
 
-    this.rtc.onevent = (event: Event): void => {
+    this.rtc.onevent = (event: RoomEvent): void => {
       aggregators.put(event)
     }
     this.rtc.ontrack = (track: MediaStreamTrack, stream: RemoteStream): void => {
@@ -112,6 +116,10 @@ export class LiveRoom {
 
     const iter = eventClient.fetch({ roomId: roomId }, EventOrder.DESC, Policy.NetworkOnly)
     const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
+    // Sorting events to always be in chronological order.
+    events.sort((l: RoomEvent, r: RoomEvent): number => {
+      return l.createdAt - r.createdAt
+    })
     aggregators.prepend(...events)
     aggregators.flush()
 
@@ -129,16 +137,9 @@ export class LiveRoom {
       text: message,
       accepted: false,
     }
-    const ev = {
-      payload: {
-        type: EventType.Message,
-        payload: {
-          text: message,
-        },
-      },
-    }
     this.messages.push(msg)
-    msg.id = await this.rtc.sendEvent(ev)
+    const event = await this.rtc.message({ text: message })
+    msg.id = event.id
   }
 
   switchCamera() {
@@ -234,8 +235,9 @@ export class LiveRoom {
     try {
       this.publishing.value = true
       const stream = await fetch()
-      this.state.tracks[trackId(stream)] = { hint: hint }
-      await this.rtc.sendState(this.state)
+      const tId = trackId(stream)
+      this.state.tracks[tId] = { id: tId, hint: hint }
+      await this.rtc.state({ tracks: Object.values(this.state.tracks) })
       this.rtc.publish(stream)
       return stream
     } catch (e) {
@@ -258,15 +260,14 @@ export class LiveRoom {
     }
   }
 
-  private put(event: Event): void {
-    if (event.payload.type !== EventType.PeerState) {
+  private put(event: RoomEvent): void {
+    const payload = event.payload.peerState
+    if (!payload?.tracks) {
       return
     }
-    const payload = event.payload.payload as PayloadPeerState
-    if (!payload.tracks) {
-      return
+    for (const t of payload.tracks) {
+      this.tracksById[t.id] = t
     }
-    Object.assign(this.tracksById, payload.tracks)
     this.computeRemote()
   }
 

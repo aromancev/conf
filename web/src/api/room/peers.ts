@@ -1,8 +1,8 @@
-import { Event, EventType, PayloadPeerState, PeerStatus } from "@/api/models"
+import { RoomEvent, Status } from "./schema"
 
 export interface Peer {
   id: string
-  joinedAt: string
+  joinedAt: number
 }
 
 export class PeerAggregator {
@@ -12,36 +12,32 @@ export class PeerAggregator {
     this.peers = peers
   }
 
-  put(event: Event, forwards: boolean): void {
-    if (event.payload.type !== EventType.PeerState) {
+  put(event: RoomEvent): void {
+    const state = event.payload.peerState
+    if (!state?.status) {
       return
     }
 
-    const payload = event.payload.payload as PayloadPeerState
     const userId = event.ownerId || ""
-    if (!payload.status) {
-      return
-    }
-
-    if ((forwards && payload.status === PeerStatus.Joined) || (!forwards && payload.status === PeerStatus.Left)) {
-      if (this.find(userId)) {
-        return
-      }
-
-      this.peers.push({
-        id: userId,
-        joinedAt: event.createdAt || "",
-      })
-      return
-    }
-
-    if ((forwards && payload.status === PeerStatus.Left) || (!forwards && payload.status === PeerStatus.Joined)) {
-      for (let i = 0; i < this.peers.length; i++) {
-        if (this.peers[i].id === userId) {
-          this.peers.splice(i, 1)
-          break
+    switch (state.status) {
+      case Status.Joined:
+        if (this.find(userId)) {
+          return
         }
-      }
+
+        this.peers.push({
+          id: userId,
+          joinedAt: event.createdAt || 0,
+        })
+        break
+      case Status.Left:
+        for (let i = 0; i < this.peers.length; i++) {
+          if (this.peers[i].id === userId) {
+            this.peers.splice(i, 1)
+            break
+          }
+        }
+        break
     }
     return
   }

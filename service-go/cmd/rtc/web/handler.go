@@ -2,20 +2,19 @@ package web
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strings"
-	"sync"
 
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/event/peer"
-	"github.com/aromancev/confa/event/peer/signal"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/prep/beanstalk"
@@ -31,7 +30,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(resolver *Resolver, pk *auth.PublicKey, rooms *room.Mongo, upgrader *websocket.Upgrader, producer Producer, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
+func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter peer.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -39,15 +38,23 @@ func NewHandler(resolver *Resolver, pk *auth.PublicKey, rooms *room.Mongo, upgra
 		"/query",
 		withHTTPAuth(
 			&relay.Handler{
-				Schema: graphql.MustParseSchema(schema, resolver, graphql.UseFieldResolvers()),
+				Schema: graphql.MustParseSchema(
+					gqlSchema,
+					NewResolver(pk, events),
+					graphql.UseFieldResolvers(),
+				),
 			},
 		),
 	)
+	r.HandleFunc(
+		"/room/schema",
+		serveRoomSchema,
+	)
 	r.Handle(
-		"/room/",
+		"/room/socket/",
 		withNewTrace(
-			withWSockAuth(
-				serveRTC(rooms, pk, upgrader, sfuConn, producer, eventWatcher),
+			withWebSocketAuth(
+				roomWebSocket(rooms, pk, sfuConn, emitter, eventWatcher),
 			),
 		),
 	)
@@ -67,21 +74,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeHTTP panic")
+			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Bytes("stack", debug.Stack()).Msg("ServeHTTP panic")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
 	h.router.ServeHTTP(w, r.WithContext(ctx))
 }
 
-func ok(w http.ResponseWriter, _ *http.Request) {
-	_, _ = w.Write([]byte("OK"))
-}
-
-func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrader, sfuConn *grpc.ClientConn, producer Producer, events event.Watcher) http.Handler {
+func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientConn, emitter peer.EventEmitter, events event.Watcher) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
+		ctx := r.Context()
+
+		defer func() {
+			if err := recover(); err != nil {
+				log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Bytes("stack", debug.Stack()).Msg("WebSocket handler panic")
+			}
+		}()
 
 		var claims auth.APIClaims
 		if err := pk.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -90,12 +98,14 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 		}
 
 		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) != 3 {
+		if len(parts) != 4 {
+			log.Ctx(ctx).Debug().Str("url", r.URL.Path).Msg("Unexpected URL pattern")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		roomID, err := uuid.Parse(parts[2])
+		roomID, err := uuid.Parse(parts[3])
 		if err != nil {
+			log.Ctx(ctx).Debug().Str("url", r.URL.Path).Msg("Unexpected URL pattern")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -110,83 +120,27 @@ func serveRTC(rooms *room.Mongo, pk *auth.PublicKey, upgrader *websocket.Upgrade
 			return
 		}
 
-		wsConn, err := upgrader.Upgrade(w, r, nil)
+		wsock, err := NewPeer(ctx, w, r, claims.UserID, rm.ID, events, emitter, sfuConn)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to upgrade websocket connection.")
+			log.Ctx(ctx).Err(err).Msg("Failed to connect to websocket.")
 			return
 		}
-		defer wsConn.Close()
-		log.Ctx(ctx).Debug().Msg("Websocket connected.")
-
-		cursor, err := events.Watch(ctx, rm.ID)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to connect watch room events.")
-			return
-		}
-		log.Ctx(ctx).Debug().Msg("Event watching started.")
-
-		peerConn := peer.NewPeer(ctx, claims.UserID, rm.ID, signal.NewGRPCSignal(ctx, sfuConn), cursor, producer, 10)
-		defer peerConn.Close(ctx)
-		log.Ctx(ctx).Debug().Msg("Peer connected.")
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-
-			for {
-				msg, err := peerConn.Receive(ctx)
-				switch {
-				case errors.Is(err, peer.ErrClosed), errors.Is(err, context.Canceled):
-					cancel() // If peer closed for any reason, terminate the whole connection.
-					log.Ctx(ctx).Info().Msg("Peer disconnected.")
-					return
-				case errors.Is(err, peer.ErrUnknownMessage):
-					log.Ctx(ctx).Debug().Msg("Skipping unknown message from peer.")
-				case err != nil:
-					log.Ctx(ctx).Err(err).Msg("Failed to receive message from peer.")
-					return
-				}
-
-				err = wsConn.WriteJSON(msg)
-				if err != nil {
-					log.Ctx(ctx).Warn().Err(err).Msg("Failed send message to websocket. Closing.")
-					cancel()
-				}
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
-
-			for {
-				var msg peer.Message
-				err := wsConn.ReadJSON(&msg)
-				switch {
-				case websocket.IsCloseError(err, websocket.CloseGoingAway), errors.Is(err, context.Canceled):
-					cancel() // If ws closed for any reason, terminate the whole connection.
-					log.Ctx(ctx).Info().Msg("Websocket disconnected.")
-					return
-				case err != nil:
-					log.Ctx(ctx).Warn().Err(err).Msg("Failed to receive message from websocket.")
-					return
-				}
-
-				err = peerConn.Send(ctx, msg)
-				switch {
-				case errors.Is(err, peer.ErrValidation):
-					log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
-				case errors.Is(err, context.Canceled):
-					cancel() // If peer closed for any reason, terminate the whole connection.
-					log.Ctx(ctx).Info().Msg("Peer disconnected.")
-					return
-				case err != nil:
-					log.Ctx(ctx).Err(err).Msg("Failed send peer message.")
-				}
-			}
-		}()
+		defer wsock.Close(ctx)
 
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
-		wg.Wait()
+		wsock.Serve(ctx, r.URL.Query().Get("media") == "true")
+		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer disconnected.")
 	})
 }
+
+func ok(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte("OK"))
+}
+
+func serveRoomSchema(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(roomSchema))
+}
+
+//go:embed room.schema.json
+var roomSchema string

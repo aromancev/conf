@@ -2,18 +2,14 @@ package peer
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/internal/platform/signal"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
-	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
 	"gortc.io/sdp"
 )
@@ -24,45 +20,24 @@ var (
 	ErrUnknownMessage = errors.New("unknown message")
 )
 
-type Producer interface {
-	Put(ctx context.Context, tube string, body []byte, params beanstalk.PutParams) (uint64, error)
+type Signal interface {
+	Send(context.Context, signal.Message) error
+	Receive(context.Context) (signal.Message, error)
 }
 
-type MessageType string
-
-const (
-	TypeJoin     MessageType = "join"
-	TypeAnswer   MessageType = "answer"
-	TypeOffer    MessageType = "offer"
-	TypeTrickle  MessageType = "trickle"
-	TypeEvent    MessageType = "event"
-	TypeEventAck MessageType = "event_ack"
-	TypeState    MessageType = "state"
-	TypeError    MessageType = "error"
-)
-
-type Message struct {
-	RequestID string      `json:"requestId,omitempty"`
-	Type      MessageType `json:"type"`
-	Payload   interface{} `json:"payload"`
-}
-
-type EventAck struct {
-	EventID string `json:"eventId"`
+type EventEmitter interface {
+	Emit(context.Context, event.Event) error
 }
 
 type State struct {
-	Tracks map[string]event.Track `json:"tracks"`
+	Tracks []event.Track `json:"tracks"`
 }
 
 func (s State) Validate() error {
 	if len(s.Tracks) > 3 {
 		return errors.New("no more than 3 tracks allowed")
 	}
-	for id, t := range s.Tracks {
-		if id == "" {
-			return fmt.Errorf("invalid track: id cannot be zero")
-		}
+	for _, t := range s.Tracks {
 		if err := t.Validate(); err != nil {
 			return fmt.Errorf("invalid track: %w", err)
 		}
@@ -70,330 +45,137 @@ func (s State) Validate() error {
 	return nil
 }
 
-func (m *Message) UnmarshalJSON(b []byte) error {
-	var raw struct {
-		RequestID string          `json:"requestId,omitempty"`
-		T         MessageType     `json:"type"`
-		P         json.RawMessage `json:"payload"`
+func (s State) Track(id string) (event.Track, bool) {
+	for _, t := range s.Tracks {
+		return t, true
 	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-
-	switch raw.T {
-	case TypeEvent:
-		var p event.Event
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	case TypeJoin:
-		var p Join
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	case TypeOffer:
-		var p Offer
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	case TypeAnswer:
-		var p Answer
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	case TypeTrickle:
-		var p Trickle
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	case TypeState:
-		var p State
-		if err := json.Unmarshal(raw.P, &p); err != nil {
-			return err
-		}
-		m.Payload = p
-	default:
-		return ErrUnknownMessage
-	}
-
-	m.Type = raw.T
-	m.RequestID = raw.RequestID
-	return nil
-}
-
-type Signal interface {
-	Connect(ctx context.Context) error
-	Join(context.Context, Join) error
-	Trickle(context.Context, Trickle) error
-	Offer(context.Context, Offer) error
-	Answer(context.Context, Answer) error
-	Receive(context.Context) (Message, error)
-	Close(context.Context) error
-}
-
-type Join struct {
-	SessionID   string                    `json:"sessionId"`
-	UserID      string                    `json:"userId"`
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Answer struct {
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Offer struct {
-	Description webrtc.SessionDescription `json:"description"`
-}
-
-type Trickle struct {
-	Candidate webrtc.ICECandidateInit `json:"candidate"`
-	Target    int                     `json:"target"`
+	return event.Track{}, false
 }
 
 type Peer struct {
-	ctx                    context.Context
-	cancel                 func()
-	signal                 Signal
-	out                    chan Message
-	producer               Producer
-	events                 event.Cursor
-	userID, roomID         uuid.UUID
-	state                  State
-	eventsDone, signalDone chan struct{}
+	emitter        EventEmitter
+	userID, roomID uuid.UUID
+	state          State
+	events         event.Cursor
 }
 
-func NewPeer(ctx context.Context, userID, roomID uuid.UUID, signal Signal, events event.Cursor, producer Producer, maxMessages int) *Peer {
-	ctx, cancel := context.WithCancel(ctx)
+func NewPeer(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor, emitter EventEmitter) *Peer {
 	p := &Peer{
-		ctx:        ctx,
-		cancel:     cancel,
-		signal:     signal,
-		out:        make(chan Message, maxMessages),
-		eventsDone: make(chan struct{}),
-		signalDone: make(chan struct{}),
-		producer:   producer,
-		events:     events,
-		userID:     userID,
-		roomID:     roomID,
+		emitter: emitter,
+		events:  events,
+		userID:  userID,
+		roomID:  roomID,
 	}
-	err := p.emitEvent(ctx, uuid.New(), event.Payload{
-		Type: event.TypePeerState,
-		Payload: event.PayloadPeerState{
+	_, err := p.emit(ctx, event.Payload{
+		PeerState: &event.PayloadPeerState{
 			Status: event.PeerJoined,
 		},
 	})
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
-	go p.pullEvents()
 	return p
 }
 
-func (p *Peer) Send(ctx context.Context, msg Message) error {
-	switch pl := msg.Payload.(type) {
-	case event.Event:
-		id := uuid.New()
-		select {
-		case p.out <- Message{
-			RequestID: msg.RequestID,
-			Type:      TypeEventAck,
-			Payload:   EventAck{EventID: id.String()},
-		}:
-		default:
-			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-			p.cancel()
-			return fmt.Errorf("%w: %s", ErrValidation, "peer too slow")
-		}
-		return p.emitUserEvent(ctx, id, pl.Payload)
-	case State:
-		if err := pl.Validate(); err != nil {
-			return fmt.Errorf("%w: %s", ErrValidation, err)
-		}
-		p.state = pl
-		select {
-		case p.out <- Message{
-			RequestID: msg.RequestID,
-			Type:      TypeState,
-			Payload:   pl,
-		}:
-		default:
-			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-			p.cancel()
-			return fmt.Errorf("%w: %s", ErrValidation, "peer too slow")
-		}
-		return nil
-	case Join:
+func (p *Peer) SendSignal(ctx context.Context, client Signal, msg signal.Message) error {
+	switch {
+	case msg.Join != nil:
+		pl := msg.Join
 		if pl.UserID != p.userID.String() {
 			return fmt.Errorf("%w: %s", ErrValidation, "invalid user")
 		}
 		if pl.SessionID != p.roomID.String() {
 			return fmt.Errorf("%w: %s", ErrValidation, "invalid room")
 		}
-		if err := p.signal.Connect(ctx); err != nil {
-			return err
-		}
-		go p.pullSignal()
-		return p.signal.Join(ctx, pl)
-	case Offer:
+		return client.Send(ctx, msg)
+	case msg.Offer != nil:
+		pl := msg.Offer
 		tracks, err := p.tracks(pl.Description)
 		if err != nil {
 			return fmt.Errorf("%w: %s", ErrValidation, err)
 		}
-		if err := p.signal.Offer(ctx, pl); err != nil {
+		if err := client.Send(ctx, msg); err != nil {
 			return err
 		}
-		return p.emitEvent(ctx, uuid.New(), event.Payload{
-			Type: event.TypePeerState,
-			Payload: event.PayloadPeerState{
+		_, err = p.emit(ctx, event.Payload{
+			PeerState: &event.PayloadPeerState{
 				Tracks: tracks,
 			},
 		})
-	case Answer:
-		return p.signal.Answer(ctx, pl)
-	case Trickle:
-		return p.signal.Trickle(ctx, pl)
-	default:
-		return ErrUnknownMessage
+		return err
 	}
+
+	return client.Send(ctx, msg)
 }
 
-func (p *Peer) Receive(ctx context.Context) (Message, error) {
-	select {
-	case msg, ok := <-p.out:
-		if !ok {
-			return Message{}, ErrClosed
-		}
-		return msg, nil
-	case <-ctx.Done():
-		return Message{}, ctx.Err()
-	}
+func (p *Peer) SendMessage(ctx context.Context, text string) (event.Event, error) {
+	return p.emit(ctx, event.Payload{
+		Message: &event.PayloadMessage{
+			Text: text,
+		},
+	})
 }
 
-func (p *Peer) Close(ctx context.Context) error {
-	err := p.emitEvent(ctx, uuid.New(), event.Payload{
-		Type: event.TypePeerState,
-		Payload: event.PayloadPeerState{
+func (p *Peer) SendState(ctx context.Context, state State) (State, error) {
+	if err := state.Validate(); err != nil {
+		return State{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	p.state = state
+	return state, nil
+}
+
+func (p *Peer) RecieveEvent(ctx context.Context) (event.Event, error) {
+	ev, err := p.events.Next(ctx)
+	switch {
+	case errors.Is(err, event.ErrUnknownEvent):
+		return event.Event{}, ErrUnknownMessage
+	case errors.Is(err, event.ErrCursorClosed):
+		return event.Event{}, ErrClosed
+	}
+	return ev, err
+}
+
+func (p *Peer) ReceiveSignal(ctx context.Context, client Signal) (signal.Message, error) {
+	msg, err := client.Receive(ctx)
+	switch {
+	case errors.Is(err, signal.ErrUnknownMessage):
+		return signal.Message{}, ErrUnknownMessage
+	case errors.Is(err, signal.ErrClosed):
+		return signal.Message{}, ErrClosed
+	}
+	return msg, err
+}
+
+func (p *Peer) Close(ctx context.Context) {
+	if err := p.events.Close(ctx); err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to close events.")
+	}
+
+	_, err := p.emit(ctx, event.Payload{
+		PeerState: &event.PayloadPeerState{
 			Status: event.PeerLeft,
 		},
 	})
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
-	p.cancel()
-	var eventsErr, signalErr error
-	<-p.eventsDone
-	eventsErr = p.events.Close(ctx)
-	if p.signal != nil {
-		<-p.signalDone
-		signalErr = p.signal.Close(ctx)
-	}
-	if eventsErr != nil {
-		return eventsErr
-	}
-	return signalErr
 }
 
-func (p *Peer) pullEvents() {
-	defer close(p.eventsDone)
-	defer p.cancel() // If pulling exits, something went wrong.
-
-	ctx := p.ctx
-
-	for {
-		ev, err := p.events.Next(ctx)
-		switch {
-		case errors.Is(err, event.ErrUnknownEvent):
-			log.Ctx(ctx).Debug().Msg("Skipping unknown room event.")
-			continue
-		case errors.Is(err, event.ErrCursorClosed), errors.Is(err, context.Canceled):
-			log.Ctx(ctx).Debug().Msg("Event cursor was closed.")
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to pull an event from cursor.")
-			return
-		}
-
-		select {
-		case p.out <- Message{
-			Type:    TypeEvent,
-			Payload: ev,
-		}:
-		default:
-			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-			return
-		}
-		log.Ctx(ctx).Debug().Str("messageType", string(TypeEvent)).Str("eventType", string(ev.Payload.Type)).Msg("RTC message pulled.")
+func (p *Peer) emit(ctx context.Context, payload event.Payload) (event.Event, error) {
+	ev := event.Event{
+		ID:      uuid.New(),
+		Owner:   p.userID,
+		Room:    p.roomID,
+		Payload: payload,
 	}
-}
-
-func (p *Peer) pullSignal() {
-	defer close(p.signalDone)
-	defer p.cancel() // If pulling exits, something went wrong.
-
-	ctx := p.ctx
-
-	for {
-		msg, err := p.signal.Receive(ctx)
-		switch {
-		case errors.Is(err, ErrUnknownMessage):
-			log.Ctx(p.ctx).Debug().Msg("Skipping unknown signal message.")
-			continue
-		case errors.Is(err, ErrClosed), errors.Is(err, context.Canceled):
-			log.Ctx(p.ctx).Debug().Msg("Signal was closed.")
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to pull a message from signal.")
-			return
-		}
-
-		select {
-		case p.out <- msg:
-		default:
-			log.Ctx(ctx).Info().Msg("Peer too slow. Evicting.")
-			return
-		}
-		log.Ctx(ctx).Debug().Str("messageType", string(msg.Type)).Msg("RTC message pulled.")
+	err := p.emitter.Emit(ctx, ev)
+	switch {
+	case errors.Is(err, event.ErrValidation):
+		return event.Event{}, ErrValidation
+	case err != nil:
+		return event.Event{}, err
 	}
-}
-
-func (p *Peer) emitUserEvent(ctx context.Context, id uuid.UUID, payload event.Payload) error {
-	switch payload.Type {
-	case event.TypeMessage:
-	default:
-		return fmt.Errorf("%w: invalid user-initiated event type (%s)", ErrValidation, payload.Type)
-	}
-	return p.emitEvent(ctx, id, payload)
-}
-
-func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payload) error {
-	if err := payload.Validate(); err != nil {
-		return fmt.Errorf("%w: %s", ErrValidation, err)
-	}
-	eventID, _ := id.MarshalBinary()
-	roomID, _ := p.roomID.MarshalBinary()
-	ownerID, _ := p.userID.MarshalBinary()
-	buf, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal event: %w", err)
-	}
-
-	job := queue.EventJob{
-		Id:      eventID,
-		RoomId:  roomID,
-		OwnerId: ownerID,
-		Payload: buf,
-	}
-	body, err := queue.Marshal(&job, trace.ID(ctx))
-	if err != nil {
-		return err
-	}
-	_, err = p.producer.Put(ctx, queue.TubeEvent, body, beanstalk.PutParams{TTR: 10 * time.Second})
-	return err
+	return ev, nil
 }
 
 // TODO: consider https://github.com/pion/explainer
@@ -401,7 +183,7 @@ func (p *Peer) emitEvent(ctx context.Context, id uuid.UUID, payload event.Payloa
 // Returns error if tracks are not allowed or not present in state. State should be
 // submitted by peer before sending the offer. This is because WebRTC does not support passing
 // additional info with offers.
-func (p *Peer) tracks(desc webrtc.SessionDescription) (map[string]event.Track, error) {
+func (p *Peer) tracks(desc webrtc.SessionDescription) ([]event.Track, error) {
 	getID := func(m sdp.Media) string {
 		parts := strings.Split(m.Attribute("msid"), " ")
 		if len(parts) != 2 {
@@ -418,19 +200,18 @@ func (p *Peer) tracks(desc webrtc.SessionDescription) (map[string]event.Track, e
 		return nil, fmt.Errorf("%w %s", ErrValidation, err)
 	}
 
-	tracks := make(map[string]event.Track)
+	var tracks []event.Track
 	for _, m := range msg.Medias {
 		switch m.Description.Type {
 		case mediaVideo, mediaAudio:
-			trackID := getID(m)
 			if isInactive(m) {
 				continue
 			}
-			t, ok := p.state.Tracks[trackID]
+			t, ok := p.state.Track(getID(m))
 			if !ok {
 				return nil, fmt.Errorf("%w: track not in state", ErrValidation)
 			}
-			tracks[trackID] = t
+			tracks = append(tracks, t)
 		case mediaApplication:
 		default:
 			return nil, fmt.Errorf("%w: %s (%s)", ErrValidation, "media type not allowed", m.Description.Type)

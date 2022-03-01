@@ -12,13 +12,13 @@ const (
 )
 
 type Config struct {
-	Address       string `envconfig:"ADDRESS"`
-	ICEPortMin    uint16 `envconfig:"ICE_PORT_MIN"`
-	ICEPortMax    uint16 `envconfig:"ICE_PORT_MAX"`
-	ICEUrls       string `envconfig:"ICE_URLS"`
-	ICEUsername   string `envconfig:"ICE_USERNAME"`
-	ICECredential string `envconfig:"ICE_CREDENTIAL"`
-	LogFormat     string `envconfig:"LOG_FORMAT"`
+	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	ICEPortMin       uint16 `envconfig:"ICE_PORT_MIN"`
+	ICEPortMax       uint16 `envconfig:"ICE_PORT_MAX"`
+	ICEUrls          string `envconfig:"ICE_URLS"`
+	ICEUsername      string `envconfig:"ICE_USERNAME"`
+	ICECredential    string `envconfig:"ICE_CREDENTIAL"`
+	LogFormat        string `envconfig:"LOG_FORMAT"`
 }
 
 func (c Config) WithEnv() Config {
@@ -30,14 +30,14 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) WithDefault() Config {
-	c.Address = ":8080"
+	c.ListenWebAddress = ":8080"
 	c.ICEPortMin = 5000
 	c.ICEPortMax = 5200
 	return c
 }
 
 func (c Config) Validate() error {
-	if c.Address == "" {
+	if c.ListenWebAddress == "" {
 		return errors.New("address not set")
 	}
 	if c.ICEPortMin == 0 {

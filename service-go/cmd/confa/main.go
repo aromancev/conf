@@ -25,7 +25,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	config := Config{}.WithDefault().WithEnv()
+	config := Config{}.WithEnv()
 	if err := config.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid config")
 	}
@@ -63,7 +63,7 @@ func main() {
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
 
 	webServer := &http.Server{
-		Addr:         config.Address,
+		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info().Msg("Web listening on " + config.Address)
+		log.Info().Msg("Web listening on " + config.ListenWebAddress)
 		if err := webServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return

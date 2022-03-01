@@ -12,6 +12,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/proto/queue"
 )
 
@@ -19,17 +20,21 @@ const (
 	jobRetries = 10
 )
 
+type Tubes struct {
+	SendEmail string
+}
+
 type JobHandle func(ctx context.Context, job *beanstalk.Job) error
 
 type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(sender *email.Sender) *Handler {
+func NewHandler(sender *email.Sender, tubes Tubes) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
-			case queue.TubeEmail:
+			case tubes.SendEmail:
 				return sendEmail(sender)
 			default:
 				return nil
@@ -42,7 +47,8 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	l := log.Ctx(ctx).With().Uint64("jobId", job.ID).Str("tube", job.Stats.Tube).Logger()
 	ctx = l.WithContext(ctx)
 
-	j, err := queue.Unmarshal(job.Body)
+	var j queue.Job
+	err := proto.Unmarshal(job.Body, &j)
 	if err != nil {
 		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
 		return
@@ -94,7 +100,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 func sendEmail(sender *email.Sender) JobHandle {
 	return func(ctx context.Context, j *beanstalk.Job) error {
-		var job queue.EmailJob
+		var job iam.SendEmail
 		err := proto.Unmarshal(j.Body, &job)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal email job.")

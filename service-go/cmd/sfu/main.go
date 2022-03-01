@@ -65,11 +65,11 @@ func main() {
 
 	psfu.RegisterSFUServer(grpcServer, server.NewServer(sfuService))
 
-	lis, err := net.Listen("tcp", config.Address)
+	lis, err := net.Listen("tcp", config.ListenWebAddress)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to listen TCP.")
 	}
-	log.Info().Msg("Listening on " + config.Address)
+	log.Info().Msg("Listening on " + config.ListenWebAddress)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal().Err(err).Msg("Failed to serve GRPC.")
 	}

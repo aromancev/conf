@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"time"
 
 	"github.com/aromancev/confa/auth"
@@ -60,21 +59,8 @@ type Service struct {
 	Schema  string
 }
 
-type Event struct {
-	ID        string
-	OwnerID   string
-	RoomID    string
-	CreatedAt string
-	Payload   EventPayload
-}
-
-type EventPayload struct {
-	Type    string
-	Payload string
-}
-
 type Events struct {
-	Items    []Event
+	Items    []RoomEvent
 	Limit    int32
 	NextFrom *EventFrom
 }
@@ -85,7 +71,7 @@ type EventLookup struct {
 
 type EventFrom struct {
 	ID        string
-	CreatedAt string
+	CreatedAt float64
 }
 
 type EventLimit struct {
@@ -113,12 +99,12 @@ func (r *Resolver) Service(_ context.Context) Service {
 	return Service{
 		Name:    "rtc",
 		Version: "0.1.0",
-		Schema:  schema,
+		Schema:  gqlSchema,
 	}
 }
 
 func (r *Resolver) Events(ctx context.Context, args struct {
-	Where Event
+	Where EventLookup
 	Limit EventLimit
 	From  *EventFrom
 	Order *string
@@ -154,13 +140,9 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		if err != nil {
 			return Events{}, NewResolverError(CodeBadRequest, "Invalid from ID")
 		}
-		created, err := time.Parse(time.RFC3339, args.From.CreatedAt)
-		if err != nil {
-			return Events{}, NewResolverError(CodeBadRequest, "Invalid from CreatedAt")
-		}
 		lookup.From = event.From{
 			ID:        id,
-			CreatedAt: created,
+			CreatedAt: time.UnixMilli(int64(args.From.CreatedAt)),
 		}
 	}
 
@@ -170,38 +152,24 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		return Events{}, NewInternalError()
 	}
 	res := Events{
-		Items: make([]Event, len(events)),
+		Items: make([]RoomEvent, len(events)),
 		Limit: int32(lookup.Limit),
 	}
 	if len(events) != 0 {
 		lastEvent := events[len(events)-1]
 		res.NextFrom = &EventFrom{
 			ID:        lastEvent.ID.String(),
-			CreatedAt: lastEvent.CreatedAt.Format(time.RFC3339),
+			CreatedAt: float64(lastEvent.CreatedAt.UnixMilli()),
 		}
 	}
 	for i, e := range events {
-		payload, err := json.Marshal(e.Payload.Payload)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to marshal event.")
-			return Events{}, NewInternalError()
-		}
-		res.Items[i] = Event{
-			ID:        e.ID.String(),
-			OwnerID:   e.Owner.String(),
-			RoomID:    e.Room.String(),
-			CreatedAt: e.CreatedAt.String(),
-			Payload: EventPayload{
-				Type:    string(e.Payload.Type),
-				Payload: string(payload),
-			},
-		}
+		res.Items[i] = *NewRoomEvent(e)
 	}
 	return res, nil
 }
 
 //go:embed schema.graphql
-var schema string
+var gqlSchema string
 
 const (
 	batchLimit = 100

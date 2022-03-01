@@ -8,13 +8,39 @@ type Event {
     id: String!
     ownerId: String!
     roomId: String!
-    createdAt: String!
     payload: EventPayload!
+    createdAt: Float!
 }
 
 type EventPayload {
-    type: String!
-    payload: String!
+    message: EventMessage
+    peerState: EventPeerState
+}
+
+type EventMessage {
+    text: String!
+}
+
+type EventPeerState {
+    status: Status
+    tracks: [Track!]!
+}
+
+enum Status {
+    joined
+    left
+}
+
+type Track {
+    id: String!
+    hint: Hint!
+}
+
+enum Hint {
+    camera
+    screen
+    user_audio
+    device_audio
 }
 
 input EventLookup {
@@ -23,12 +49,12 @@ input EventLookup {
 
 type EventFrom {
     id: String!
-    createdAt: String!
+    createdAt: Float!
 }
 
 input EventFromInput {
     id: String!
-    createdAt: String!
+    createdAt: Float!
 }
 
 input EventLimit {

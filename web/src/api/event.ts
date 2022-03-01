@@ -1,17 +1,49 @@
 import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy, Policy } from "./api"
-import { EventLookup, EventLimit, EventOrder, events, eventsVariables } from "./schema"
-import { Event, EventPayload, EventType } from "./models"
+import {
+  EventLookup,
+  EventLimit,
+  EventOrder,
+  events,
+  eventsVariables,
+  Status as GStatus,
+  Hint as GHint,
+  EventFromInput,
+} from "./schema"
+import { RoomEvent, EventPeerState, Status, Hint } from "./room/schema"
 
-interface From {
-  id: string
-  createdAt: string
+export class EventClient {
+  private api: Client
+
+  constructor(api: Client) {
+    this.api = api
+  }
+
+  async fetchOne(lookup: EventLookup, order?: EventOrder): Promise<RoomEvent | null> {
+    const iter = this.fetch(lookup, order)
+    const events = await iter.next()
+    if (events.length === 0) {
+      return null
+    }
+    if (events.length > 1) {
+      throw new Error("Unexpected response from API.")
+    }
+    return events[0]
+  }
+
+  fetch(
+    lookup: EventLookup,
+    order: EventOrder = EventOrder.ASC,
+    policy: FetchPolicy = Policy.CacheFirst,
+  ): EventIterator {
+    return new EventIterator(this.api, lookup, order, policy)
+  }
 }
 
 class EventIterator {
   private api: Client
   private lookup: EventLookup
-  private from: From | null
+  private from: EventFromInput | null
   private order: EventOrder | null
   private policy: FetchPolicy
 
@@ -23,7 +55,7 @@ class EventIterator {
     this.policy = policy
   }
 
-  async next(limit?: EventLimit): Promise<Event[]> {
+  async next(limit?: EventLimit): Promise<RoomEvent[]> {
     const resp = await this.api.query<events, eventsVariables>({
       query: gql`
         query events($where: EventLookup!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {
@@ -34,8 +66,16 @@ class EventIterator {
               roomId
               createdAt
               payload {
-                type
-                payload
+                peerState {
+                  status
+                  tracks {
+                    id
+                    hint
+                  }
+                }
+                message {
+                  text
+                }
               }
             }
             nextFrom {
@@ -55,59 +95,57 @@ class EventIterator {
     })
 
     this.from = resp.data.events.nextFrom
-    const events: Event[] = []
+    const events: RoomEvent[] = []
     for (const item of resp.data.events.items) {
-      events.push({
+      const event: RoomEvent = {
         id: item.id,
         ownerId: item.ownerId,
         roomId: item.roomId,
         createdAt: item.createdAt,
-        payload: {
-          type: item.payload.type as EventType,
-          payload: JSON.parse(item.payload.payload) as EventPayload,
-        },
-      })
+        payload: {},
+      }
+      if (item.payload.message) {
+        event.payload.message = item.payload.message
+      }
+      if (item.payload.peerState) {
+        const state: EventPeerState = {
+          status: item.payload.peerState.status ? fromGState(item.payload.peerState.status) : undefined,
+        }
+        if (item.payload.peerState.tracks) {
+          state.tracks = []
+          for (const t of item.payload.peerState.tracks) {
+            state.tracks.push({
+              id: t.id,
+              hint: fromGHint(t.hint) || Hint.Camera,
+            })
+          }
+        }
+        event.payload.peerState = state
+      }
+      events.push(event)
     }
-    events.sort((a: Event, b: Event): number => {
-      const ac = a.createdAt || ""
-      const bc = b.createdAt || ""
-
-      if (ac < bc) {
-        return -1
-      }
-      if (ac > bc) {
-        return 1
-      }
-      return 0
-    })
     return events
   }
 }
 
-export class EventClient {
-  private api: Client
-
-  constructor(api: Client) {
-    this.api = api
+function fromGState(s: GStatus): Status {
+  switch (s) {
+    case GStatus.joined:
+      return Status.Joined
+    case GStatus.left:
+      return Status.Left
   }
+}
 
-  async fetchOne(lookup: EventLookup, order?: EventOrder): Promise<Event | null> {
-    const iter = this.fetch(lookup, order)
-    const events = await iter.next()
-    if (events.length === 0) {
-      return null
-    }
-    if (events.length > 1) {
-      throw new Error("Unexpected response from API.")
-    }
-    return events[0]
-  }
-
-  fetch(
-    lookup: EventLookup,
-    order: EventOrder = EventOrder.ASC,
-    policy: FetchPolicy = Policy.CacheFirst,
-  ): EventIterator {
-    return new EventIterator(this.api, lookup, order, policy)
+function fromGHint(h: GHint): Hint {
+  switch (h) {
+    case GHint.camera:
+      return Hint.Camera
+    case GHint.device_audio:
+      return Hint.DeviceAudio
+    case GHint.screen:
+      return Hint.Screen
+    case GHint.user_audio:
+      return Hint.UserAudio
   }
 }

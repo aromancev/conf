@@ -14,11 +14,11 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	RTCAddress string `envconfig:"RTC_ADDRESS"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
-	PublicKey  string `envconfig:"PUBLIC_KEY"`
-	Mongo      MongoConfig
+	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	RTCAddress       string `envconfig:"RTC_ADDRESS"`
+	LogFormat        string `envconfig:"LOG_FORMAT"`
+	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	Mongo            MongoConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -35,13 +35,8 @@ func (c Config) WithEnv() Config {
 	return c
 }
 
-func (c Config) WithDefault() Config {
-	c.Address = ":80"
-	return c
-}
-
 func (c Config) Validate() error {
-	if c.Address == "" {
+	if c.ListenWebAddress == "" {
 		return errors.New("address not set")
 	}
 	if c.PublicKey == "" {

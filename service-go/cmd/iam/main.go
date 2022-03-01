@@ -14,7 +14,6 @@ import (
 	"github.com/aromancev/confa/cmd/iam/queue"
 	"github.com/aromancev/confa/cmd/iam/web"
 	"github.com/aromancev/confa/internal/platform/email"
-	pqueue "github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
 
@@ -29,7 +28,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	config := Config{}.WithDefault().WithEnv()
+	config := Config{}.WithEnv()
 	if err := config.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid config")
 	}
@@ -52,7 +51,7 @@ func main() {
 	}
 	mongoDB := mongoClient.Database(config.Mongo.Database)
 
-	producer, err := beanstalk.NewProducer(config.Beanstalkd.Pool, beanstalk.Config{
+	producer, err := beanstalk.NewProducer(config.Beanstalkd.ParsePool(), beanstalk.Config{
 		Multiply:         1,
 		ReconnectTimeout: 3 * time.Second,
 		InfoFunc: func(message string) {
@@ -65,7 +64,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEmail}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.ParsePool(), []string{config.Beanstalkd.TubeSendEmail}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   time.Second,
@@ -97,18 +96,21 @@ func main() {
 
 	jobHandler := queue.NewHandler(
 		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
+		queue.Tubes{
+			SendEmail: config.Beanstalkd.TubeSendEmail,
+		},
 	)
 
 	webServer := &http.Server{
-		Addr:         config.Address,
+		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      web.NewHandler(config.BaseURL, secretKey, publicKey, sessionCRUD, userCRUD, producer),
+		Handler:      web.NewHandler(config.BaseURL, secretKey, publicKey, sessionCRUD, userCRUD, producer, config.Beanstalkd.TubeSendEmail),
 	}
 
 	go func() {
-		log.Info().Msg("Web listening on " + config.Address)
+		log.Info().Msg("Web listening on " + config.ListenWebAddress)
 		if err := webServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
@@ -123,7 +125,7 @@ func main() {
 		consumer.Receive(ctx, jobHandler.ServeJob)
 		consumerDone.Done()
 	}()
-	log.Info().Msg("Listening on " + config.Address)
+	log.Info().Msg("Listening on " + config.ListenWebAddress)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

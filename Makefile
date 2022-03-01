@@ -30,7 +30,10 @@ lint:
 .PHONY: gen
 gen:
 	cd proto && $(MAKE) gen
-	cd web && $(MAKE) gen
+
+.PHONY: gen-web
+gen-web:
+	cd web && $(MAKE) gen-local
 
 .PHONY: cert-create
 cert-create:

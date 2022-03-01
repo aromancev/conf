@@ -1,0 +1,5 @@
+FROM node:14.16
+
+WORKDIR /app
+
+RUN npm install -g quicktype@15.0.260
