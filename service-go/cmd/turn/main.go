@@ -24,7 +24,7 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 
-	tcpListener, err := net.Listen("tcp4", config.Address)
+	tcpListener, err := net.Listen("tcp4", config.ListenWebAddress)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to listen on socket.")
 	}
@@ -61,7 +61,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create TURN server.")
 	}
 
-	log.Info().Msg("TURN listening on " + config.Address)
+	log.Info().Msg("TURN listening on " + config.ListenWebAddress)
 
 	// Block until user sends SIGINT or SIGTERM
 	sigs := make(chan os.Signal, 1)

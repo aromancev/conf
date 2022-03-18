@@ -13,13 +13,13 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	Realm      string `envconfig:"REALM"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
-	Username   string `envconfig:"USERNAME"`
-	Credential string `envconfig:"CREDENTIAL"`
-	PublicIP   string `envconfig:"PUBLIC_IP"`
-	PublicKey  string `envconfig:"PUBLIC_KEY"`
+	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	Realm            string `envconfig:"REALM"`
+	LogFormat        string `envconfig:"LOG_FORMAT"`
+	Username         string `envconfig:"USERNAME"`
+	Credential       string `envconfig:"CREDENTIAL"`
+	PublicIP         string `envconfig:"PUBLIC_IP"`
+	PublicKey        string `envconfig:"PUBLIC_KEY"`
 }
 
 func (c Config) WithEnv() Config {
@@ -40,7 +40,7 @@ func (c Config) WithDefault() Config {
 }
 
 func (c Config) Validate() error {
-	if c.Address == "" {
+	if c.ListenWebAddress == "" {
 		return errors.New("address not set")
 	}
 	if c.Realm == "" {

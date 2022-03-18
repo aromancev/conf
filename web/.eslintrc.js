@@ -26,5 +26,5 @@ module.exports = {
         "RTCIceServer": "readonly",
         "RTCRtpEncodingParameters": "readonly"
     },
-    "ignorePatterns": ["dist"],
+    ignorePatterns: ["dist", "**/schema.ts"]
 }

@@ -15,13 +15,13 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	RPCAddress string `envconfig:"RPC_ADDRESS"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
-	PublicKey  string `envconfig:"PUBLIC_KEY"`
-	Mongo      MongoConfig
-	Beanstalkd BeanstalkdConfig
-	RTC        RTCConfig
+	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
+	LogFormat        string `envconfig:"LOG_FORMAT"`
+	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	Mongo            MongoConfig
+	Beanstalkd       BeanstalkdConfig
+	RTC              RTCConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -35,21 +35,16 @@ func (c Config) WithEnv() Config {
 		log.Fatal().Err(err).Msg("Failed to decode PUBLIC_KEY (expected base64)")
 	}
 	c.PublicKey = string(pk)
-	c.Beanstalkd, err = c.Beanstalkd.Parsed()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse beanstalkd config")
-	}
 	return c
 }
 
 func (c Config) WithDefault() Config {
-	c.Address = ":80"
-	c.RTC = c.RTC.WithDefault()
+	c.ListenWebAddress = ":80"
 	return c
 }
 
 func (c Config) Validate() error {
-	if c.Address == "" {
+	if c.ListenWebAddress == "" {
 		return errors.New("ADDRESS not set")
 	}
 	if c.PublicKey == "" {
@@ -60,6 +55,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Beanstalkd.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalkd config: %w", err)
+	}
+	if err := c.RTC.Validate(); err != nil {
+		return fmt.Errorf("invalid rtc config: %w", err)
 	}
 
 	return nil
@@ -116,38 +114,32 @@ func (c MongoConfig) Validate() error {
 }
 
 type BeanstalkdConfig struct {
-	RawPool string `envconfig:"BEANSTALKD_POOL"`
-	Pool    []string
+	Pool           string `envconfig:"BEANSTALKD_POOL"`
+	TubeStoreEvent string `envconfig:"BEANSTALKD_TUBE_STORE_EVENT"`
 }
 
 func (c BeanstalkdConfig) Validate() error {
-	if c.RawPool == "" {
+	if c.Pool == "" {
 		return errors.New("pool not set")
+	}
+	if c.TubeStoreEvent == "" {
+		return errors.New("tube `store event` not set")
 	}
 
 	return nil
 }
 
-func (c BeanstalkdConfig) Parsed() (BeanstalkdConfig, error) {
-	c.Pool = strings.Split(c.RawPool, ",")
-	return c, nil
+func (c BeanstalkdConfig) ParsePool() []string {
+	return strings.Split(c.Pool, ",")
 }
 
 type RTCConfig struct {
-	SFUAddress  string `envconfig:"RTC_SFU_ADDRESS"`
-	ReadBuffer  int    `envconfig:"RTC_READ_BUFFER"`
-	WriteBuffer int    `envconfig:"RTC_WRITE_BUFFER"`
-}
-
-func (c RTCConfig) WithDefault() RTCConfig {
-	c.ReadBuffer = 1024
-	c.WriteBuffer = 1024
-	return c
+	SFUAddress string `envconfig:"RTC_SFU_ADDRESS"`
 }
 
 func (c RTCConfig) Validate() error {
 	if c.SFUAddress == "" {
-		return errors.New("SFUAddress not set")
+		return errors.New("sfu address not set")
 	}
 	return nil
 }

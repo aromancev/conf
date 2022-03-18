@@ -7,7 +7,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint --ext .ts,.js,.vue --fix --max-warnings=0 src",
-    "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts"
+    "gen:local": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts && curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
   },
   "dependencies": {
     "vue": "^3.2.25",
@@ -32,6 +32,7 @@
     "eslint-config-prettier": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^5.8.1",
     "@typescript-eslint/parser": "^5.8.1",
-    "apollo": "^2.33.9"
+    "apollo": "^2.33.9",
+    "quicktype": "15.0.260"
   }
 }

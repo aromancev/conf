@@ -1,4 +1,4 @@
-import { Event, EventType, PayloadMessage } from "@/api/models"
+import { RoomEvent } from "./schema"
 
 const maxMessages = 100
 
@@ -16,16 +16,15 @@ export class MessageAggregator {
     this.messages = messages
   }
 
-  put(event: Event): void {
-    if (event.payload.type !== EventType.Message) {
+  put(event: RoomEvent): void {
+    if (!event.payload.message) {
       return
     }
 
-    const payload = event.payload.payload as PayloadMessage
     const msg: Message = {
       id: event.id || "",
       from: event.ownerId || "",
-      text: payload.text,
+      text: event.payload.message.text,
       accepted: true,
     }
 

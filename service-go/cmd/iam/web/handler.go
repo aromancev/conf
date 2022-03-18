@@ -11,6 +11,7 @@ import (
 	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
@@ -18,6 +19,7 @@ import (
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 type Token struct {
@@ -41,7 +43,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer) *Handler {
+func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubeEmail string) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -55,7 +57,7 @@ func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.Publi
 	)
 	r.Handle(
 		"/login",
-		login(baseURL, secretKey, producer),
+		login(baseURL, secretKey, producer, tubeEmail),
 	)
 
 	return &Handler{
@@ -209,7 +211,7 @@ func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *
 	}
 }
 
-func login(baseURL string, secretKey *auth.SecretKey, producer Producer) http.HandlerFunc {
+func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubeEmail string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -244,21 +246,32 @@ func login(baseURL string, secretKey *auth.SecretKey, producer Producer) http.Ha
 			return
 		}
 
-		body, err := queue.Marshal(&queue.EmailJob{
-			Emails: []*queue.Email{{
+		payload, err := proto.Marshal(&iam.SendEmail{
+			Emails: []*iam.Email{{
 				FromName:  msg.FromName,
 				ToAddress: msg.ToAddress,
 				Subject:   msg.Subject,
 				Html:      msg.HTML,
 			}},
-		}, trace.ID(ctx))
+		})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		body, err := proto.Marshal(
+			&queue.Job{
+				Payload: payload,
+				TraceId: trace.ID(ctx),
+			},
+		)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		id, err := producer.Put(ctx, queue.TubeEmail, body, beanstalk.PutParams{TTR: 10 * time.Second})
+		id, err := producer.Put(ctx, tubeEmail, body, beanstalk.PutParams{TTR: 10 * time.Second})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
 			w.WriteHeader(http.StatusInternalServerError)

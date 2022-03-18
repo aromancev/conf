@@ -1,0 +1,223 @@
+{
+  "$ref": "#/definitions/Message",
+  "definitions": {
+    "Message": {
+      "type": "object",
+      "title": "Message",
+      "additionalProperties": false,
+      "required": ["payload"],
+      "properties": {
+        "requestId": {
+          "type": "string"
+        },
+        "responseId": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object",
+          "title": "MessagePayload",
+          "additionalProperties": false,
+          "properties": {
+            "signal": {
+              "$ref": "#/definitions/Signal"
+            },
+            "state": {
+              "type": "object",
+              "title": "PeerState",
+              "additionalProperties": false,
+              "properties": {
+                "tracks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Track"
+                  }
+                }
+              }
+            },
+            "event": {
+              "$ref": "#/definitions/RoomEvent"
+            },
+            "peerMessage": {
+              "type": "object",
+              "title": "PeerMessage",
+              "additionalProperties": false,
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "SessionDescription": {
+      "$id": "#/definitions/SessionDescription",
+      "type": "object",
+      "title": "SessionDescription",
+      "additionalProperties": false,
+      "required": ["type", "sdp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "SDPType",
+          "enum": ["answer", "offer", "pranswer", "rollback"]
+        },
+        "sdp": {
+          "type": "string"
+        }
+      }
+    },
+    "Track": {
+      "$id": "#/definitions/Track",
+      "type": "object",
+      "title": "Track",
+      "additionalProperties": false,
+      "required": ["id", "hint"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "hint": {
+          "type": "string",
+          "enum": ["camera", "screen", "user_audio", "device_audio"]
+        }
+      }
+    },
+    "Signal": {
+      "$id": "#/definitions/Signal",
+      "type": "object",
+      "title": "Signal",
+      "additionalProperties": false,
+      "properties": {
+        "join": {
+          "type": "object",
+          "title": "SignalJoin",
+          "additionalProperties": false,
+          "required": ["sessionId", "userId", "description"],
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "userId": {
+              "type": "string"
+            },
+            "description": {
+              "$ref": "#/definitions/SessionDescription"
+            }
+          }
+        },
+        "answer": {
+          "type": "object",
+          "title": "SignalAnswer",
+          "additionalProperties": false,
+          "required": ["description"],
+          "properties": {
+            "description": {
+              "$ref": "#/definitions/SessionDescription"
+            }
+          }
+        },
+        "offer": {
+          "type": "object",
+          "title": "SignalOffer",
+          "additionalProperties": false,
+          "required": ["description"],
+          "properties": {
+            "description": {
+              "$ref": "#/definitions/SessionDescription"
+            }
+          }
+        },
+        "trickle": {
+          "type": "object",
+          "title": "SignalTrickle",
+          "additionalProperties": false,
+          "required": ["target", "candidate"],
+          "properties": {
+            "target": {
+              "type": "integer"
+            },
+            "candidate": {
+              "type": "object",
+              "title": "ICECandidateInit",
+              "additionalProperties": false,
+              "required": ["candidate"],
+              "properties": {
+                "candidate": {
+                  "type": "string"
+                },
+                "sdpMid": {
+                  "type": "string"
+                },
+                "sdpMLineIndex": {
+                  "type": "integer"
+                },
+                "usernameFragment": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "RoomEvent": {
+      "$id": "#/definitions/RoomEvent",
+      "type": "object",
+      "title": "RoomEvent",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "roomId", "payload", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "payload": {
+          "type": "object",
+          "title": "EventPayload",
+          "additionalProperties": false,
+          "properties": {
+            "peerState": {
+              "type": "object",
+              "title": "EventPeerState",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["joined", "left"]
+                },
+                "tracks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Track"
+                  }
+                }
+              }
+            },
+            "message": {
+              "type": "object",
+              "title": "EventMessage",
+              "additionalProperties": false,
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

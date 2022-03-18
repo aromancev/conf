@@ -11,10 +11,8 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/event"
-	pqueue "github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/room"
-	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -55,7 +53,7 @@ func main() {
 	}
 	mongoDB := mongoClient.Database(config.Mongo.Database)
 
-	producer, err := beanstalk.NewProducer(config.Beanstalkd.Pool, beanstalk.Config{
+	producer, err := beanstalk.NewProducer(config.Beanstalkd.ParsePool(), beanstalk.Config{
 		Multiply:         1,
 		ReconnectTimeout: 3 * time.Second,
 		InfoFunc: func(message string) {
@@ -68,7 +66,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.Pool, []string{pqueue.TubeEvent}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.ParsePool(), []string{config.Beanstalkd.TubeStoreEvent}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   100 * time.Millisecond,
@@ -98,34 +96,26 @@ func main() {
 	eventMongo := event.NewMongo(mongoDB)
 	eventWatcher := event.NewSharedWatcher(eventMongo, 30)
 
-	jobHandler := queue.NewHandler(eventMongo)
+	jobHandler := queue.NewHandler(eventMongo, queue.Tubes{
+		StoreEvent: config.Beanstalkd.TubeStoreEvent,
+	})
 
 	webServer := &http.Server{
-		Addr:         config.Address,
+		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler: web.NewHandler(
-			web.NewResolver(
-				publicKey,
-				eventMongo,
-			),
 			publicKey,
 			roomMongo,
-			&websocket.Upgrader{
-				CheckOrigin: func(r *http.Request) bool {
-					return true
-				},
-				ReadBufferSize:  config.RTC.ReadBuffer,
-				WriteBufferSize: config.RTC.WriteBuffer,
-			},
-			producer,
+			eventMongo,
+			event.NewBeanstalkEmitter(producer, config.Beanstalkd.TubeStoreEvent),
 			sfuConn,
 			eventWatcher,
 		),
 	}
 	rpcServer := &http.Server{
-		Addr:         config.RPCAddress,
+		Addr:         config.ListenRPCAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
@@ -133,7 +123,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info().Msg("Web listening on " + config.Address)
+		log.Info().Msg("Web listening on " + config.ListenWebAddress)
 		if err := webServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
@@ -143,7 +133,7 @@ func main() {
 	}()
 
 	go func() {
-		log.Info().Msg("RPC listening on " + config.RPCAddress)
+		log.Info().Msg("RPC listening on " + config.ListenRPCAddress)
 		if err := rpcServer.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
@@ -168,7 +158,7 @@ func main() {
 		consumer.Receive(ctx, jobHandler.ServeJob)
 		consumerDone.Done()
 	}()
-	log.Info().Msg("Listening on " + config.Address)
+	log.Info().Msg("Listening on " + config.ListenWebAddress)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

@@ -1,16 +1,16 @@
-import { Event } from "@/api/models"
+import { RoomEvent } from "./schema"
 
-export interface Aggregator {
-  put(event: Event, forwards: boolean): void
+interface Aggregator {
+  put(event: RoomEvent): void
 }
 
 export class BufferedAggregator {
   private autoflush: boolean
   private aggregators: Aggregator[]
   private cap: number
-  private byId: { [key: string]: Event }
-  private ordered: Event[]
-  private buffered: Event[]
+  private byId: { [key: string]: RoomEvent }
+  private ordered: RoomEvent[]
+  private buffered: RoomEvent[]
 
   constructor(aggregators: Aggregator[], cap: number) {
     this.aggregators = aggregators
@@ -24,14 +24,14 @@ export class BufferedAggregator {
   flush(): void {
     for (const event of this.buffered) {
       for (const aggregator of this.aggregators) {
-        aggregator.put(event, true)
+        aggregator.put(event)
       }
     }
     this.buffered = []
     this.autoflush = true
   }
 
-  put(event: Event): void {
+  put(event: RoomEvent): void {
     if (this.byId[event.id || ""]) {
       return
     }
@@ -53,7 +53,7 @@ export class BufferedAggregator {
     }
   }
 
-  prepend(...events: Event[]): void {
+  prepend(...events: RoomEvent[]): void {
     this.buffered = this.buffered.concat(events)
   }
 }

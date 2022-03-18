@@ -9,4 +9,4 @@ lint:
 		-t \
 		-w /app \
 		-v `pwd`:/app \
-		golangci/golangci-lint:v1.41-alpine golangci-lint run
+		golangci/golangci-lint:v1.45-alpine golangci-lint run

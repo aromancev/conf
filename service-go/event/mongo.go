@@ -63,7 +63,7 @@ func (m *Mongo) Create(ctx context.Context, requests ...Event) ([]Event, error) 
 	now := mongoNow()
 	docs := make([]interface{}, len(requests))
 	for i, r := range requests {
-		if err := r.ValidateAtRest(); err != nil {
+		if err := r.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err)
 		}
 		requests[i].CreatedAt = now

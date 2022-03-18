@@ -19,9 +19,6 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/oggwriter"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
-
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/queue"
 )
 
 type Producer interface {
@@ -90,18 +87,6 @@ func (s *TrackSaver) saveTrack(ctx context.Context, track *webrtc.TrackRemote) {
 		log.Ctx(ctx).Err(err).Msg("Failed to save track.")
 		return
 	}
-
-	body, err := queue.Marshal(&queue.VideoJob{MediaId: mediaID}, trace.ID(ctx))
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to marshal video job.")
-		return
-	}
-	_, err = s.producer.Put(context.Background(), queue.TubeVideo, body, beanstalk.PutParams{TTR: 10 * time.Minute})
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to put video job.")
-		return
-	}
-
 	log.Ctx(ctx).Info().Msg("Track saved.")
 }
 
@@ -127,7 +112,7 @@ func (s *TrackSaver) writePLI(ctx context.Context, track *webrtc.TrackRemote) {
 }
 
 func (s *TrackSaver) saveVideo(ctx context.Context, track *webrtc.TrackRemote, id string) error {
-	err := os.MkdirAll(path.Join(s.mediaDir, id), 0777)
+	err := os.MkdirAll(path.Join(s.mediaDir, id), 0o777)
 	if err != nil {
 		return fmt.Errorf("failed to create dir: %w", err)
 	}
@@ -175,7 +160,7 @@ func (s *TrackSaver) saveVideo(ctx context.Context, track *webrtc.TrackRemote, i
 }
 
 func (s *TrackSaver) saveAudio(ctx context.Context, track *webrtc.TrackRemote, id string) error {
-	err := os.MkdirAll(path.Join(s.mediaDir, id), 0777)
+	err := os.MkdirAll(path.Join(s.mediaDir, id), 0o777)
 	if err != nil {
 		return fmt.Errorf("failed to create dir: %w", err)
 	}

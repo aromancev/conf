@@ -8,3 +8,33 @@ message Room {
     bytes id = 1;
     bytes ownerId = 2;
 }
+
+message StoreEvent {
+    Event event = 1;
+}
+
+message Event {
+    message Track {
+        string id = 1;
+        string hint = 2;
+    }
+
+    message Payload {
+        message PayloadPeerState {
+            string status = 1;  
+            repeated Track tracks = 2;        
+        }
+        message PayloadMessage {
+            string text = 1;
+        }
+
+        PayloadPeerState peer_state = 1;
+        PayloadMessage message = 2;
+    }
+
+    Payload payload = 1;
+    bytes id = 2;
+    bytes owner_id = 3;
+    bytes room_id = 4;
+    int64 created_at = 5;
+}

@@ -94,10 +94,27 @@ export interface updateConfaVariables {
 // GraphQL query operation: events
 // ====================================================
 
+export interface events_events_items_payload_peerState_tracks {
+  __typename: "Track";
+  id: string;
+  hint: Hint;
+}
+
+export interface events_events_items_payload_peerState {
+  __typename: "EventPeerState";
+  status: Status | null;
+  tracks: events_events_items_payload_peerState_tracks[];
+}
+
+export interface events_events_items_payload_message {
+  __typename: "EventMessage";
+  text: string;
+}
+
 export interface events_events_items_payload {
   __typename: "EventPayload";
-  type: string;
-  payload: string;
+  peerState: events_events_items_payload_peerState | null;
+  message: events_events_items_payload_message | null;
 }
 
 export interface events_events_items {
@@ -105,14 +122,14 @@ export interface events_events_items {
   id: string;
   ownerId: string;
   roomId: string;
-  createdAt: string;
+  createdAt: number;
   payload: events_events_items_payload;
 }
 
 export interface events_events_nextFrom {
   __typename: "EventFrom";
   id: string;
-  createdAt: string;
+  createdAt: number;
 }
 
 export interface events_events {
@@ -274,6 +291,18 @@ export enum EventOrder {
   DESC = "DESC",
 }
 
+export enum Hint {
+  camera = "camera",
+  device_audio = "device_audio",
+  screen = "screen",
+  user_audio = "user_audio",
+}
+
+export enum Status {
+  joined = "joined",
+  left = "left",
+}
+
 export interface ConfaLookup {
   id?: string | null;
   ownerId?: string | null;
@@ -288,7 +317,7 @@ export interface ConfaMask {
 
 export interface EventFromInput {
   id: string;
-  createdAt: string;
+  createdAt: number;
 }
 
 export interface EventLimit {

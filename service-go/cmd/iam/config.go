@@ -15,14 +15,14 @@ const (
 )
 
 type Config struct {
-	Address    string `envconfig:"ADDRESS"`
-	LogFormat  string `envconfig:"LOG_FORMAT"`
-	BaseURL    string `envconfig:"BASE_URL"`
-	SecretKey  string `envconfig:"SECRET_KEY"`
-	PublicKey  string `envconfig:"PUBLIC_KEY"`
-	Email      EmailConfig
-	Mongo      MongoConfig
-	Beanstalkd BeanstalkdConfig
+	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	LogFormat        string `envconfig:"LOG_FORMAT"`
+	BaseURL          string `envconfig:"BASE_URL"`
+	SecretKey        string `envconfig:"SECRET_KEY"`
+	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	Email            EmailConfig
+	Mongo            MongoConfig
+	Beanstalkd       BeanstalkdConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -42,24 +42,12 @@ func (c Config) WithEnv() Config {
 	}
 	c.PublicKey = string(pk)
 
-	c.Email, err = c.Email.Parsed()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse email config")
-	}
-	c.Beanstalkd, err = c.Beanstalkd.Parsed()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse beanstalkd config")
-	}
-	return c
-}
-
-func (c Config) WithDefault() Config {
-	c.Address = ":80"
+	c.Email = c.Email.WithEnv()
 	return c
 }
 
 func (c Config) Validate() error {
-	if c.Address == "" {
+	if c.ListenWebAddress == "" {
 		return errors.New("ADDRESS not set")
 	}
 	if c.BaseURL == "" {
@@ -131,29 +119,31 @@ func (c EmailConfig) Validate() error {
 	return nil
 }
 
-func (c EmailConfig) Parsed() (EmailConfig, error) {
+func (c EmailConfig) WithEnv() EmailConfig {
 	pass, err := base64.StdEncoding.DecodeString(c.Password)
 	if err != nil {
-		return EmailConfig{}, errors.New("failed to password (expected base64)")
+		log.Fatal().Err(err).Msg("Failed to decode email password")
 	}
 	c.Password = string(pass)
-	return c, nil
+	return c
 }
 
 type BeanstalkdConfig struct {
-	RawPool string `envconfig:"BEANSTALKD_POOL"`
-	Pool    []string
+	Pool          string `envconfig:"BEANSTALKD_POOL"`
+	TubeSendEmail string `envconfig:"BEANSTALKD_TUBE_SEND_EMAIL"`
 }
 
 func (c BeanstalkdConfig) Validate() error {
-	if c.RawPool == "" {
+	if c.Pool == "" {
 		return errors.New("pool not set")
+	}
+	if c.TubeSendEmail == "" {
+		return errors.New("tube 'send email' not set")
 	}
 
 	return nil
 }
 
-func (c BeanstalkdConfig) Parsed() (BeanstalkdConfig, error) {
-	c.Pool = strings.Split(c.RawPool, ",")
-	return c, nil
+func (c BeanstalkdConfig) ParsePool() []string {
+	return strings.Split(c.Pool, ",")
 }

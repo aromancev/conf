@@ -75,16 +75,385 @@ func (x *Room) GetOwnerId() []byte {
 	return nil
 }
 
+type StoreEvent struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Event *Event `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
+}
+
+func (x *StoreEvent) Reset() {
+	*x = StoreEvent{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StoreEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreEvent) ProtoMessage() {}
+
+func (x *StoreEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreEvent.ProtoReflect.Descriptor instead.
+func (*StoreEvent) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StoreEvent) GetEvent() *Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+type Event struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Payload   *Event_Payload `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
+	Id        []byte         `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	OwnerId   []byte         `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	RoomId    []byte         `protobuf:"bytes,4,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	CreatedAt int64          `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+}
+
+func (x *Event) Reset() {
+	*x = Event{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Event) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event) ProtoMessage() {}
+
+func (x *Event) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event.ProtoReflect.Descriptor instead.
+func (*Event) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Event) GetPayload() *Event_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *Event) GetId() []byte {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *Event) GetOwnerId() []byte {
+	if x != nil {
+		return x.OwnerId
+	}
+	return nil
+}
+
+func (x *Event) GetRoomId() []byte {
+	if x != nil {
+		return x.RoomId
+	}
+	return nil
+}
+
+func (x *Event) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+type Event_Track struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Hint string `protobuf:"bytes,2,opt,name=hint,proto3" json:"hint,omitempty"`
+}
+
+func (x *Event_Track) Reset() {
+	*x = Event_Track{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Event_Track) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event_Track) ProtoMessage() {}
+
+func (x *Event_Track) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event_Track.ProtoReflect.Descriptor instead.
+func (*Event_Track) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{2, 0}
+}
+
+func (x *Event_Track) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Event_Track) GetHint() string {
+	if x != nil {
+		return x.Hint
+	}
+	return ""
+}
+
+type Event_Payload struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	PeerState *Event_Payload_PayloadPeerState `protobuf:"bytes,1,opt,name=peer_state,json=peerState,proto3" json:"peer_state,omitempty"`
+	Message   *Event_Payload_PayloadMessage   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *Event_Payload) Reset() {
+	*x = Event_Payload{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Event_Payload) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event_Payload) ProtoMessage() {}
+
+func (x *Event_Payload) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event_Payload.ProtoReflect.Descriptor instead.
+func (*Event_Payload) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{2, 1}
+}
+
+func (x *Event_Payload) GetPeerState() *Event_Payload_PayloadPeerState {
+	if x != nil {
+		return x.PeerState
+	}
+	return nil
+}
+
+func (x *Event_Payload) GetMessage() *Event_Payload_PayloadMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+type Event_Payload_PayloadPeerState struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Status string         `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Tracks []*Event_Track `protobuf:"bytes,2,rep,name=tracks,proto3" json:"tracks,omitempty"`
+}
+
+func (x *Event_Payload_PayloadPeerState) Reset() {
+	*x = Event_Payload_PayloadPeerState{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Event_Payload_PayloadPeerState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event_Payload_PayloadPeerState) ProtoMessage() {}
+
+func (x *Event_Payload_PayloadPeerState) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event_Payload_PayloadPeerState.ProtoReflect.Descriptor instead.
+func (*Event_Payload_PayloadPeerState) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{2, 1, 0}
+}
+
+func (x *Event_Payload_PayloadPeerState) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Event_Payload_PayloadPeerState) GetTracks() []*Event_Track {
+	if x != nil {
+		return x.Tracks
+	}
+	return nil
+}
+
+type Event_Payload_PayloadMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+}
+
+func (x *Event_Payload_PayloadMessage) Reset() {
+	*x = Event_Payload_PayloadMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Event_Payload_PayloadMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event_Payload_PayloadMessage) ProtoMessage() {}
+
+func (x *Event_Payload_PayloadMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event_Payload_PayloadMessage.ProtoReflect.Descriptor instead.
+func (*Event_Payload_PayloadMessage) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{2, 1, 1}
+}
+
+func (x *Event_Payload_PayloadMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
 var File_rtc_proto protoreflect.FileDescriptor
 
 var file_rtc_proto_rawDesc = []byte{
 	0x0a, 0x09, 0x72, 0x74, 0x63, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x30, 0x0a, 0x04, 0x52,
 	0x6f, 0x6f, 0x6d, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
 	0x02, 0x69, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x32, 0x23, 0x0a,
-	0x03, 0x52, 0x54, 0x43, 0x12, 0x1c, 0x0a, 0x0a, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f,
-	0x6f, 0x6d, 0x12, 0x05, 0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x1a, 0x05, 0x2e, 0x52, 0x6f, 0x6f, 0x6d,
-	0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x2a, 0x0a,
+	0x0a, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x1c, 0x0a, 0x05, 0x65,
+	0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x06, 0x2e, 0x45, 0x76, 0x65,
+	0x6e, 0x74, 0x52, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x22, 0xbe, 0x03, 0x0a, 0x05, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x12, 0x28, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x2e, 0x50, 0x61, 0x79,
+	0x6c, 0x6f, 0x61, 0x64, 0x52, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x12, 0x0e, 0x0a,
+	0x02, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x02, 0x69, 0x64, 0x12, 0x19, 0x0a,
+	0x08, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52,
+	0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d,
+	0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49,
+	0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18,
+	0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74,
+	0x1a, 0x2b, 0x0a, 0x05, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x68, 0x69, 0x6e,
+	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x1a, 0xfa, 0x01,
+	0x0a, 0x07, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x12, 0x3e, 0x0a, 0x0a, 0x70, 0x65, 0x65,
+	0x72, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1f, 0x2e,
+	0x45, 0x76, 0x65, 0x6e, 0x74, 0x2e, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x2e, 0x50, 0x61,
+	0x79, 0x6c, 0x6f, 0x61, 0x64, 0x50, 0x65, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x09,
+	0x70, 0x65, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x12, 0x37, 0x0a, 0x07, 0x6d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x45, 0x76, 0x65,
+	0x6e, 0x74, 0x2e, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x2e, 0x50, 0x61, 0x79, 0x6c, 0x6f,
+	0x61, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x1a, 0x50, 0x0a, 0x10, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x50, 0x65, 0x65,
+	0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x24,
+	0x0a, 0x06, 0x74, 0x72, 0x61, 0x63, 0x6b, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0c,
+	0x2e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x52, 0x06, 0x74, 0x72,
+	0x61, 0x63, 0x6b, 0x73, 0x1a, 0x24, 0x0a, 0x0e, 0x50, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x4d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65, 0x78, 0x74, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x78, 0x74, 0x32, 0x23, 0x0a, 0x03, 0x52, 0x54,
+	0x43, 0x12, 0x1c, 0x0a, 0x0a, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6f, 0x6d, 0x12,
+	0x05, 0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x1a, 0x05, 0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x22, 0x00, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -99,18 +468,29 @@ func file_rtc_proto_rawDescGZIP() []byte {
 	return file_rtc_proto_rawDescData
 }
 
-var file_rtc_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_rtc_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_rtc_proto_goTypes = []interface{}{
-	(*Room)(nil), // 0: Room
+	(*Room)(nil),                           // 0: Room
+	(*StoreEvent)(nil),                     // 1: StoreEvent
+	(*Event)(nil),                          // 2: Event
+	(*Event_Track)(nil),                    // 3: Event.Track
+	(*Event_Payload)(nil),                  // 4: Event.Payload
+	(*Event_Payload_PayloadPeerState)(nil), // 5: Event.Payload.PayloadPeerState
+	(*Event_Payload_PayloadMessage)(nil),   // 6: Event.Payload.PayloadMessage
 }
 var file_rtc_proto_depIdxs = []int32{
-	0, // 0: RTC.CreateRoom:input_type -> Room
-	0, // 1: RTC.CreateRoom:output_type -> Room
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: StoreEvent.event:type_name -> Event
+	4, // 1: Event.payload:type_name -> Event.Payload
+	5, // 2: Event.Payload.peer_state:type_name -> Event.Payload.PayloadPeerState
+	6, // 3: Event.Payload.message:type_name -> Event.Payload.PayloadMessage
+	3, // 4: Event.Payload.PayloadPeerState.tracks:type_name -> Event.Track
+	0, // 5: RTC.CreateRoom:input_type -> Room
+	0, // 6: RTC.CreateRoom:output_type -> Room
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_rtc_proto_init() }
@@ -131,6 +511,78 @@ func file_rtc_proto_init() {
 				return nil
 			}
 		}
+		file_rtc_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StoreEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Track); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload_PayloadPeerState); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload_PayloadMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -138,7 +590,7 @@ func file_rtc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_rtc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
