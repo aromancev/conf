@@ -1,4 +1,4 @@
-FROM node:14.16 as builder
+FROM node:17.7.2 as builder
 
 RUN npm install -g pnpm
 

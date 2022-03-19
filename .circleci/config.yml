@@ -1,6 +1,6 @@
 version: 2.1
 jobs:
-  test:
+  go-test:
     machine: true
     steps:
       - checkout
@@ -11,9 +11,9 @@ jobs:
             -w /app golang:1.17.5 \
             go test ./... -race -timeout 5m
   
-  build:
+  go-build:
     docker:
-      - image: circleci/golang:1.17
+      - image: cimg/go:1.17.5
     steps:
       - checkout
       - run: |
@@ -24,7 +24,47 @@ jobs:
           go build -o bin/ ./cmd/gateway/...
           go build -o bin/ ./cmd/sfu/...
   
-  lint:
+  web-build:
+    docker:
+      - image: cimg/node:17.7.2
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+            - web-v1
+      - run: |
+          cd ./web
+          sudo npm install --unsafe-perm -g pnpm
+          pnpm install
+          pnpm run build
+      - save_cache:
+          key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+          paths:
+            - web/node_modules
+            - web/.pnpm-store
+
+  web-lint:
+    docker:
+      - image: cimg/node:17.7.2
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+            - web-v1
+      - run: |
+          cd ./web
+          sudo npm install --unsafe-perm -g pnpm
+          pnpm install
+          pnpm run lint
+      - save_cache:
+          key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
+          paths:
+            - web/node_modules
+            - web/.pnpm-store
+
+  go-lint:
     docker:
       - image: golangci/golangci-lint:v1.45-alpine
     steps:
@@ -37,6 +77,8 @@ workflows:
   version: 2
   build:
     jobs:
-      - build
-      - test
-      - lint
+      - go-build
+      - go-test
+      - go-lint
+      - web-build
+      - web-lint
