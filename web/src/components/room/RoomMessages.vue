@@ -7,18 +7,18 @@
           v-for="msg in renderMessages"
           :key="msg.message.id"
           class="message"
-          :class="{ me: msg.message.from === userId }"
+          :class="{ me: msg.message.fromId === userId }"
         >
-          <div class="message-body" :class="{ me: msg.message.from === userId }">
-            <div v-if="msg.message.from !== userId && msg.isLatestFrom" class="avatar">
+          <div class="message-body" :class="{ me: msg.message.fromId === userId, last: msg.isLastFrom }">
+            <div v-if="msg.avatar" class="avatar">
               <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="icon" v-html="genAvatar(msg.message.from, 32 + 1)"></div>
+              <div class="icon" v-html="msg.avatar"></div>
             </div>
-            <div v-if="msg.message.from !== userId && msg.isFirstFrom" class="from">
-              {{ genName(msg.message.from) }}
+            <div v-if="msg.fromName" class="from">
+              {{ msg.fromName }}
             </div>
             {{ msg.message.text }}
-            <div v-if="msg.message.from === userId" class="status material-icons">
+            <div v-if="msg.message.fromId === userId" class="status material-icons">
               {{ msg.message.accepted ? "done" : "schedule" }}
             </div>
           </div>
@@ -46,10 +46,9 @@ import PageLoader from "@/components/PageLoader.vue"
 
 interface RenderMessage {
   message: Message
-  fromName: string
-  avatar: string
-  isLatestFrom: boolean
-  isFirstFrom: boolean
+  fromName?: string
+  avatar?: string
+  isLastFrom: boolean
 }
 
 const emit = defineEmits<{
@@ -69,14 +68,30 @@ let autoScroll = true
 
 const renderMessages = computed<RenderMessage[]>(() => {
   const messages: RenderMessage[] = []
+  let lastMsg: RenderMessage | null = null
   for (const msg of props.messages || []) {
-    messages.push({
+    const rMsg: RenderMessage = {
       message: msg,
-      fromName: genName(msg.from),
-      avatar: genAvatar(msg.from, 32 + 1),
-      isLatestFrom: false,
-      isFirstFrom: false,
-    })
+      isLastFrom: false,
+    }
+
+    if (props.userId != msg.fromId && msg.fromId !== lastMsg?.message.fromId) {
+      rMsg.fromName = genName(msg.fromId)
+    }
+    if (lastMsg && msg.fromId !== lastMsg?.message.fromId) {
+      lastMsg.isLastFrom = true
+    }
+    if (lastMsg && lastMsg.message.fromId !== props.userId && msg.fromId !== lastMsg?.message.fromId) {
+      lastMsg.avatar = genAvatar(msg.fromId, 32 + 1)
+    }
+    lastMsg = rMsg
+    messages.push(lastMsg)
+  }
+  if (lastMsg && lastMsg.message.fromId !== props.userId) {
+    lastMsg.avatar = genAvatar(lastMsg.message.fromId, 32 + 1)
+  }
+  if (lastMsg) {
+    lastMsg.isLastFrom = true
   }
 
   return messages
@@ -165,13 +180,17 @@ function onScroll() {
   max-width: 70%
   word-wrap: break-word
   padding: 0.3em 1.1em 0.3em 0.3em
-  border-radius: 5px
+  border-radius: 10px
   white-space: pre-line
   margin-left: 32px
+  &.last:not(.me)
+      border-bottom-left-radius: 0
   &.me
     text-align: right
     background-color: var(--color-highlight-background)
     color: var(--color-highlight-font)
+    &.last
+      border-bottom-right-radius: 0
 
 .from
   color: var(--color-font-disabled)

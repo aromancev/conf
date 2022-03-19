@@ -4,7 +4,7 @@ const maxMessages = 100
 
 export interface Message {
   id: string
-  from: string
+  fromId: string
   text: string
   accepted: boolean
 }
@@ -23,14 +23,14 @@ export class MessageAggregator {
 
     const msg: Message = {
       id: event.id || "",
-      from: event.ownerId || "",
+      fromId: event.ownerId || "",
       text: event.payload.message.text,
       accepted: true,
     }
 
     const existing = this.find(msg.id)
     if (existing) {
-      existing.from = msg.from
+      existing.fromId = msg.fromId
       existing.text = msg.text
       existing.accepted = msg.accepted
     } else {

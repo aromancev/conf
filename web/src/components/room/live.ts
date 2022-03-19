@@ -133,7 +133,7 @@ export class LiveRoom {
 
     const msg: Message = {
       id: "",
-      from: userId,
+      fromId: userId,
       text: message,
       accepted: false,
     }
