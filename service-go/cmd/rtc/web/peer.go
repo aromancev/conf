@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -10,10 +11,11 @@ import (
 	"github.com/aromancev/confa/event/peer"
 	"github.com/aromancev/confa/internal/platform/signal"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
 
 var (
@@ -22,22 +24,14 @@ var (
 
 type Peer struct {
 	peer    *peer.Peer
-	conn    *safeConn
+	conn    *websocket.Conn
 	sfuConn *grpc.ClientConn
 }
 
 func NewPeer(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, roomID uuid.UUID, watcher event.Watcher, emitter peer.EventEmitter, sfuConn *grpc.ClientConn) (*Peer, error) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to accept websocket connection: %w", err)
 	}
 
 	cursor, err := watcher.Watch(ctx, roomID)
@@ -46,7 +40,7 @@ func NewPeer(ctx context.Context, w http.ResponseWriter, r *http.Request, userID
 	}
 
 	return &Peer{
-		conn:    &safeConn{conn: conn},
+		conn:    conn,
 		sfuConn: sfuConn,
 		peer:    peer.NewPeer(ctx, userID, roomID, cursor, emitter),
 	}, nil
@@ -90,7 +84,7 @@ func (p *Peer) Serve(ctx context.Context, connectMedia bool) {
 
 func (p *Peer) Close(ctx context.Context) {
 	p.peer.Close(ctx)
-	p.conn.Close()
+	_ = p.conn.Close(websocket.StatusNormalClosure, "Peer closed.")
 }
 
 func (p *Peer) serveWebsocket(ctx context.Context, sig peer.Signal) {
@@ -127,7 +121,7 @@ func (p *Peer) serveSignal(ctx context.Context, sig peer.Signal) {
 			log.Ctx(ctx).Err(err).Msg("Failed to receive signal.")
 			return
 		}
-		err = p.conn.WriteJSON(Message{
+		err = wsjson.Write(ctx, p.conn, Message{
 			Payload: MessagePayload{
 				Signal: newSignal(msg),
 			},
@@ -153,7 +147,7 @@ func (p *Peer) serveEvents(ctx context.Context) {
 			log.Ctx(ctx).Err(err).Msg("Failed to receive event.")
 			return
 		}
-		err = p.conn.WriteJSON(Message{
+		err = wsjson.Write(ctx, p.conn, Message{
 			Payload: MessagePayload{
 				Event: NewRoomEvent(ev),
 			},
@@ -167,9 +161,9 @@ func (p *Peer) serveEvents(ctx context.Context) {
 
 func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
 	var msg Message
-	err := p.conn.ReadJSON(&msg)
+	err := wsjson.Read(ctx, p.conn, &msg)
 	switch {
-	case websocket.IsCloseError(err, websocket.CloseGoingAway), errors.Is(err, context.Canceled):
+	case errors.Is(err, context.Canceled), errors.As(err, &websocket.CloseError{}):
 		return ErrClosed
 	case err != nil:
 		return err
@@ -194,7 +188,7 @@ func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
 				Hint: Hint(t.Hint),
 			}
 		}
-		return p.conn.WriteJSON(Message{
+		return wsjson.Write(ctx, p.conn, Message{
 			ResponseID: msg.RequestID,
 			Payload: MessagePayload{
 				State: &schemaState,
@@ -206,7 +200,7 @@ func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
 		if err != nil {
 			return err
 		}
-		return p.conn.WriteJSON(Message{
+		return wsjson.Write(ctx, p.conn, Message{
 			ResponseID: msg.RequestID,
 			Payload: MessagePayload{
 				Event: NewRoomEvent(ev),
@@ -328,24 +322,4 @@ func peerState(state PeerState) peer.State {
 	return peer.State{
 		Tracks: tracks,
 	}
-}
-
-// TODO: Use https://github.com/nhooyr/websocket
-type safeConn struct {
-	l    sync.Mutex
-	conn *websocket.Conn
-}
-
-func (c *safeConn) ReadJSON(v interface{}) error {
-	return c.conn.ReadJSON(v)
-}
-
-func (c *safeConn) WriteJSON(v interface{}) error {
-	c.l.Lock()
-	defer c.l.Unlock()
-	return c.conn.WriteJSON(v)
-}
-
-func (c *safeConn) Close() {
-	c.conn.Close()
 }
