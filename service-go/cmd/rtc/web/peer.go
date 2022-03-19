@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/event/peer"
@@ -52,7 +53,7 @@ func (p *Peer) Serve(ctx context.Context, connectMedia bool) {
 
 	var signalClient *signal.GRPCSignal
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	if connectMedia {
 		var err error
 		signalClient, err = signal.NewGRPCSignal(ctx, p.sfuConn)
@@ -71,6 +72,11 @@ func (p *Peer) Serve(ctx context.Context, connectMedia bool) {
 	}
 	go func() {
 		p.serveWebsocket(ctx, signalClient)
+		cancel()
+		wg.Done()
+	}()
+	go func() {
+		p.pingWebsocket(ctx)
 		cancel()
 		wg.Done()
 	}()
@@ -100,6 +106,25 @@ func (p *Peer) serveWebsocket(ctx context.Context, sig peer.Signal) {
 		case err != nil:
 			log.Ctx(ctx).Err(err).Msg("Failed to process message.")
 			return
+		}
+	}
+}
+
+func (p *Peer) pingWebsocket(ctx context.Context) {
+	for {
+		pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		err := p.conn.Ping(pingCtx)
+		if err != nil {
+			cancel()
+			log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")
+			return
+		}
+		cancel()
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Minute):
+			continue
 		}
 	}
 }
