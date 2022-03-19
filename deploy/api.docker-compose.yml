@@ -5,6 +5,9 @@ services:
     build:
       context: ../web
       dockerfile: Dockerfile
+      args:
+        - VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
+        - VITE_RTC_TURN_URLS=turn:turn.confa.io?transport=tcp
     networks:
       - confa
     ports:

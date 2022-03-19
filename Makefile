@@ -52,21 +52,23 @@ cert-renew:
 .PHONY: build
 build:
 	cd service-go \
-	    && go build -o bin/ ./cmd/iam/... \
-	    && go build -o bin/ ./cmd/confa/... \
-	    && go build -o bin/ ./cmd/rtc/... \
-	    && go build -o bin/ ./cmd/gateway/... \
-	    && go build -o bin/ ./cmd/sfu/... \
+		&& go build -o bin/ ./cmd/iam/... \
+		&& go build -o bin/ ./cmd/confa/... \
+		&& go build -o bin/ ./cmd/rtc/... \
+		&& go build -o bin/ ./cmd/gateway/... \
+		&& go build -o bin/ ./cmd/sfu/... \
 		&& go build -o bin/ ./cmd/turn/...
 
 .PHONY: server-api
 server-api:
-	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env down
-	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env build
-	docker-compose -f deploy/api.docker-compose.yml --env-file deploy/.env up -d
+	cd deploy \
+		&& docker-compose -f api.docker-compose.yml down \
+		&& docker-compose -f api.docker-compose.yml build \
+		&& docker-compose -f api.docker-compose.yml up -d
 
 .PHONY: server-sfu
 server-sfu:
-	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env down
-	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env build
-	docker-compose -f deploy/sfu.docker-compose.yml --env-file deploy/.env up -d
+	cd deploy \
+		&& docker-compose -f sfu.docker-compose.yml down \
+		&& docker-compose -f sfu.docker-compose.yml build \
+		&& docker-compose -f sfu.docker-compose.yml up -d
