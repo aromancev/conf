@@ -168,11 +168,6 @@ const routes: Array<RouteRecordRaw> = [
     },
     component: () => import("@/views/talk/Talk.vue"),
   },
-  {
-    path: "/t/:confa/:talk",
-    name: "rtc",
-    component: () => import("@/views/RTCExample.vue"),
-  },
 ]
 
 const router = createRouter({
