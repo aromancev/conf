@@ -18,6 +18,7 @@ services:
       - confa
     environment:
       - VITE_RTC_ROOM_URL=ws://localhost/api/rtc/room/socket
+      - VITE_RTC_TURN_URLS=turn:localhost?transport=tcp
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
@@ -111,16 +112,36 @@ services:
       context: ./service-go
       dockerfile: Dockerfile
     command: "go run ./cmd/sfu/."
+    volumes:
+      - ./service-go:/app
+    networks:
+      - confa
     environment:
       - LISTEN_WEB_ADDRESS=:8080
       - ICE_PORT_MIN=5000
       - ICE_PORT_MAX=5010
       - ICE_URLS=stun:stun.stunprotocol.org:3478
       - LOG_FORMAT=console
+
+  turn:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/turn/."
+    ports:
+      - "3478:3478"
     volumes:
       - ./service-go:/app
     networks:
       - confa
+    environment:
+      - LISTEN_WEB_ADDRESS=:3478
+      - LOG_FORMAT=console
+      - REALM=confa.io
+      - USERNAME=confa
+      - CREDENTIAL=confa
+      - PUBLIC_IP=127.0.0.1
+      - PUBLIC_KEY=$PUBLIC_KEY
 
   beanstalkd:
     build:

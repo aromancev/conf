@@ -5,8 +5,8 @@ export const config = {
     },
   },
   sfu: {
-    stunURLs: split(import.meta.env.VITE_SFU_STUN_URLS === "string"),
-    turnURLs: split(import.meta.env.VITE_RTC_TURN_URLS === "string"),
+    stunURLs: split(import.meta.env.VITE_SFU_STUN_URLS),
+    turnURLs: split(import.meta.env.VITE_RTC_TURN_URLS),
   },
 }
 
