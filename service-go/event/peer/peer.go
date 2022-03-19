@@ -178,7 +178,6 @@ func (p *Peer) emit(ctx context.Context, payload event.Payload) (event.Event, er
 	return ev, nil
 }
 
-// TODO: consider https://github.com/pion/explainer
 // tracks parses tracks from offer and adds additional info from State to them (like hints).
 // Returns error if tracks are not allowed or not present in state. State should be
 // submitted by peer before sending the offer. This is because WebRTC does not support passing
