@@ -1,0 +1,26 @@
+[
+  {
+    "createIndexes": "profiles",
+    "indexes": [
+      {
+        "key": {
+          "ownerId": 1
+        },
+        "name": "unique_owner",
+        "unique": true
+      }
+    ]
+  },
+  {
+    "createIndexes": "profiles",
+    "indexes": [
+      {
+        "key": {
+          "handle": 1
+        },
+        "name": "unique_handle",
+        "unique": true
+      }
+    ]
+  }
+]

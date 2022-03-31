@@ -4,7 +4,7 @@ import {
   RemoteStream as IonRemoteStream,
   LocalStream as IonLocalStream,
 } from "ion-sdk-js"
-import { userStore } from "../models"
+import { currentUser } from "../models"
 import { client } from "@/api"
 import { config } from "@/config"
 import { PeerMessage, PeerState, Message, MessagePayload, RoomEvent, SDPType } from "./schema"
@@ -42,12 +42,12 @@ export class RTCPeer {
       return
     }
     const iceServers: RTCIceServer[] = []
-    if (config.sfu.stunURLs) {
+    if (config.sfu.stunURLs.length !== 0) {
       iceServers.push({
         urls: config.sfu.stunURLs,
       })
     }
-    if (config.sfu.turnURLs) {
+    if (config.sfu.turnURLs.length !== 0) {
       iceServers.push({
         urls: config.sfu.turnURLs,
         credentialType: "password",
@@ -60,7 +60,7 @@ export class RTCPeer {
       iceServers: iceServers,
     })
     this.sfu.ontrack = this.ontrack
-    await this.sfu.join(roomId, userStore.getState().id)
+    await this.sfu.join(roomId, currentUser.id)
   }
 
   publish(stream: LocalStream, encodingParams?: RTCRtpEncodingParameters[]): void {

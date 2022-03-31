@@ -155,6 +155,64 @@ export interface eventsVariables {
 // This file was automatically generated and should not be edited.
 
 // ====================================================
+// GraphQL query operation: profiles
+// ====================================================
+
+export interface profiles_profiles_items {
+  __typename: "Profile";
+  id: string;
+  ownerId: string;
+  handle: string;
+  displayName: string;
+}
+
+export interface profiles_profiles {
+  __typename: "Profiles";
+  items: profiles_profiles_items[];
+  nextFrom: string;
+}
+
+export interface profiles {
+  profiles: profiles_profiles;
+}
+
+export interface profilesVariables {
+  where: ProfileLookup;
+  limit: number;
+  from?: string | null;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: updateProfile
+// ====================================================
+
+export interface updateProfile_updateProfile {
+  __typename: "Profile";
+  id: string;
+  ownerId: string;
+  handle: string;
+  displayName: string;
+}
+
+export interface updateProfile {
+  updateProfile: updateProfile_updateProfile;
+}
+
+export interface updateProfileVariables {
+  request: ProfileMask;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
 // GraphQL query operation: talksHydrated
 // ====================================================
 
@@ -327,6 +385,16 @@ export interface EventLimit {
 
 export interface EventLookup {
   roomId: string;
+}
+
+export interface ProfileLookup {
+  ownerIds?: string[] | null;
+  handle?: string | null;
+}
+
+export interface ProfileMask {
+  handle?: string | null;
+  displayName?: string | null;
 }
 
 export interface TalkLookup {

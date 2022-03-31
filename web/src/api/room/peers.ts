@@ -1,8 +1,11 @@
 import { RoomEvent, Status } from "./schema"
 
 export interface Peer {
-  id: string
+  userId: string
   joinedAt: number
+  handle: string
+  name: string
+  avatar: string
 }
 
 export class PeerAggregator {
@@ -26,13 +29,16 @@ export class PeerAggregator {
         }
 
         this.peers.push({
-          id: userId,
+          userId: userId,
+          handle: "",
+          name: "",
+          avatar: "",
           joinedAt: event.createdAt || 0,
         })
         break
       case Status.Left:
         for (let i = 0; i < this.peers.length; i++) {
-          if (this.peers[i].id === userId) {
+          if (this.peers[i].userId === userId) {
             this.peers.splice(i, 1)
             break
           }
@@ -45,7 +51,7 @@ export class PeerAggregator {
   // Since the number of messages is not too large, we don't use a separate map for simplicity.
   private find(id: string): Peer | null {
     for (const p of this.peers) {
-      if (p.id == id) {
+      if (p.userId == id) {
         return p
       }
     }

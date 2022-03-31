@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -75,25 +74,6 @@ type Lookup struct {
 	Handle string
 	Limit  int64
 	From   uuid.UUID
-}
-
-func (l Lookup) Filter() bson.M {
-	filter := make(bson.M)
-	switch {
-	case l.ID != uuid.Nil:
-		filter["_id"] = l.ID
-	case l.From != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": l.From,
-		}
-	}
-	if l.Owner != uuid.Nil {
-		filter["ownerId"] = l.Owner
-	}
-	if l.Handle != "" {
-		filter["handle"] = l.Handle
-	}
-	return filter
 }
 
 type UpdateResult struct {

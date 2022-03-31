@@ -2,94 +2,48 @@ import { createRouter, createWebHistory, RouteRecordRaw, RouteLocationNormalized
 
 export const handleNew = "new"
 
-export enum Name {
-  Home = "home",
-  Login = "login",
-  ConfaOverview = "confaOverview",
-  ConfaEdit = "confaEdit",
-  TalkOverview = "talkOverview",
-  TalkOnline = "talkOnline",
-  TalkEdit = "talkEdit",
-}
-
-export enum ConfaTab {
-  Overview = "overview",
-  Edit = "edit",
-}
-
-export enum TalkTab {
-  Overview = "overview",
-  Edit = "edit",
-  Online = "online",
-}
+export type ProfileTab = "overview" | "edit"
+export type ConfaTab = "overview" | "edit"
+export type TalkTab = "overview" | "edit" | "online"
 
 export const route = {
+  home(): RouteLocationRaw {
+    return {
+      name: "home",
+    }
+  },
+
   login(): RouteLocationRaw {
     return {
-      name: Name.Login,
+      name: "login",
+    }
+  },
+
+  profile(profile: string, tab: ProfileTab): RouteLocationRaw {
+    return {
+      name: "profile." + tab,
+      params: {
+        profile: profile,
+      },
     }
   },
 
   confa(confa: string, tab: ConfaTab): RouteLocationRaw {
-    switch (tab) {
-      case ConfaTab.Overview:
-        return {
-          name: Name.ConfaOverview,
-          params: {
-            confa: confa,
-          },
-        }
-      case ConfaTab.Edit:
-        return {
-          name: Name.ConfaEdit,
-          params: {
-            confa: confa,
-          },
-        }
-      default:
-        return {
-          name: Name.ConfaOverview,
-          params: {
-            confa: confa,
-          },
-        }
+    return {
+      name: "confa." + tab,
+      params: {
+        confa: confa,
+      },
     }
   },
 
   talk(confa: string, talk: string, tab: TalkTab): RouteLocationRaw {
-    switch (tab) {
-      case TalkTab.Overview:
-        return {
-          name: Name.TalkOverview,
-          params: {
-            confa: confa,
-            talk: talk,
-          },
-        }
-      case TalkTab.Edit:
-        return {
-          name: Name.TalkEdit,
-          params: {
-            confa: confa,
-            talk: talk,
-          },
-        }
-      case TalkTab.Online:
-        return {
-          name: Name.TalkOnline,
-          params: {
-            confa: confa,
-            talk: talk,
-          },
-        }
-      default:
-        return {
-          name: Name.TalkOverview,
-          params: {
-            confa: confa,
-            talk: talk,
-          },
-        }
+    return {
+      name: "talk." + tab,
+      params: {
+        confa: confa,
+        talk: talk,
+      },
     }
   },
 }
@@ -97,12 +51,12 @@ export const route = {
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    name: Name.Home,
+    name: "home",
     component: () => import("@/views/HomePage.vue"),
   },
   {
     path: "/login",
-    name: Name.Login,
+    name: "login",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         token: to.query.token as string,
@@ -111,59 +65,81 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/LoginPage.vue"),
   },
   {
+    path: "/pro/:profile",
+    name: "profile.overview",
+    props(to: RouteLocationNormalized): Record<string, string> {
+      return {
+        handle: to.params.profile as string,
+        tab: "overview",
+      }
+    },
+    component: () => import("@/views/profile/Profile.vue"),
+  },
+  {
+    path: "/pro/:profile/ed",
+    name: "profile.edit",
+    props(to: RouteLocationNormalized): Record<string, string> {
+      return {
+        handle: to.params.profile as string,
+        tab: "edit",
+      }
+    },
+    component: () => import("@/views/profile/Profile.vue"),
+  },
+  {
     path: "/:confa",
-    name: Name.ConfaOverview,
+    name: "confa.overview",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.confa as string,
-        tab: ConfaTab.Overview,
+        tab: "overview",
       }
     },
     component: () => import("@/views/confa/Confa.vue"),
   },
   {
     path: "/:confa/ed",
-    name: Name.ConfaEdit,
+    name: "confa.edit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.confa as string,
-        tab: ConfaTab.Edit,
+        tab: "edit",
       }
     },
     component: () => import("@/views/confa/Confa.vue"),
   },
   {
     path: "/:confa/:talk",
-    name: Name.TalkOverview,
+    name: "talk.overview",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.talk as string,
         confaHandle: to.params.confa as string,
-        tab: TalkTab.Overview,
+        tab: "overview",
       }
     },
     component: () => import("@/views/talk/Talk.vue"),
   },
   {
     path: "/:confa/:talk/on",
-    name: Name.TalkOnline,
+    name: "talk.online",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.talk as string,
         confaHandle: to.params.confa as string,
-        tab: TalkTab.Online,
+        tab: "online",
       }
     },
     component: () => import("@/views/talk/Talk.vue"),
   },
   {
     path: "/:confa/:talk/ed",
-    name: Name.TalkEdit,
+    name: "talk.edit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.talk as string,
         confaHandle: to.params.confa as string,
-        tab: TalkTab.Edit,
+        tab: "edit",
       }
     },
     component: () => import("@/views/talk/Talk.vue"),

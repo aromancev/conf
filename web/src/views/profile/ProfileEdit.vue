@@ -14,22 +14,16 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-cell label">Title</div>
+      <div class="form-cell label">Display Name</div>
       <div class="form-cell">
         <Input
-          v-model="title"
+          v-model="displayName"
           :spellcheck="false"
           class="form-input"
           type="text"
-          placeholder="title"
-          :error="titleError"
+          placeholder="display name"
+          :error="displayNameError"
         />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell label align-top">Description</div>
-      <div class="form-cell">
-        <Textarea v-model="description" class="form-input description" placeholder="description"></Textarea>
       </div>
     </div>
     <div class="form-row">
@@ -48,12 +42,8 @@
   </div>
 
   <ModalDialog v-if="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
-    <p>Confa with this handle already exits.</p>
+    <p>Profile with this handle already exits.</p>
     <p>Try a different handle.</p>
-  </ModalDialog>
-  <ModalDialog v-if="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
-    <p>Confa no longer exits.</p>
-    <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
   <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
 </template>
@@ -65,45 +55,42 @@ const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
   "Must be from 4 to 64 characters long",
   "Can only contain lower case letters, numbers, and '-'",
 ])
-const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
+const displayNameValidator = new RegexValidator("^[a-zA-Z ]{0,64}$", [
   "Must be from 0 to 64 characters long",
-  "Can only contain letters, numbers, spaces, and '-'",
+  "Can only contain letters and spaces",
 ])
 </script>
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { confaClient, Confa, ConfaMask, errorCode, Code, userStore } from "@/api"
+import { profileClient, Profile, ProfileMask, errorCode, Code, currentUser } from "@/api"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
-import Textarea from "@/components/fields/TextareaField.vue"
 
-type Modal = "none" | "error" | "duplicate_entry" | "not_found"
+type Modal = "none" | "error" | "duplicate_entry"
 
 const emit = defineEmits<{
-  (e: "update", input: Confa): void
+  (e: "update", input: Profile): void
 }>()
 
 const props = defineProps<{
-  confa: Confa
+  profile: Profile
 }>()
 
 const router = useRouter()
-const user = userStore.state()
 
 const modal = ref<Modal>("none")
-const handle = ref(props.confa.handle)
-const title = ref(props.confa.title)
-const description = ref(props.confa.description)
-const update = ref<ConfaMask>({})
+const handle = ref(props.profile.handle)
+const displayName = ref(props.profile.displayName)
+const update = ref<ProfileMask>({})
 const saving = ref(false)
 
 const handleError = handleValidator.reactive(handle)
-const titleError = titleValidator.reactive(title)
+const displayNameError = displayNameValidator.reactive(displayName)
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
@@ -111,35 +98,28 @@ const hasUpdate = computed(() => {
   return Object.keys(update.value).length !== 0
 })
 const formValid = computed(() => {
-  return !titleError.value && !handleError.value
+  return !displayNameError.value && !handleError.value
 })
 
 watch(handle, (value) => {
-  if (value === props.confa.handle) {
+  if (value === props.profile.handle) {
     delete update.value.handle
   } else {
     update.value.handle = value
   }
 })
-watch(title, (value) => {
-  if (value === props.confa.title) {
-    delete update.value.title
+watch(displayName, (value) => {
+  if (value === props.profile.displayName) {
+    delete update.value.displayName
   } else {
-    update.value.title = value
-  }
-})
-watch(description, (value) => {
-  if (value === props.confa.description) {
-    delete update.value.description
-  } else {
-    update.value.description = value
+    update.value.displayName = value
   }
 })
 watch(
-  () => props.confa,
-  (confa) => {
-    if (confa.ownerId !== user.id) {
-      router.replace(route.confa(confa.handle, "overview"))
+  () => props.profile,
+  (profile) => {
+    if (profile.ownerId !== currentUser.id) {
+      router.replace(route.profile(profile.handle, "overview"))
     }
   },
   { immediate: true },
@@ -152,16 +132,13 @@ async function save() {
   saving.value = true
   try {
     const currentUpdate = Object.assign({}, update.value)
-    const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
+    const updated = await profileClient.update(currentUpdate)
     update.value = {}
     emit("update", updated)
   } catch (e) {
     switch (errorCode(e)) {
       case Code.DuplicateEntry:
         modal.value = "duplicate_entry"
-        break
-      case Code.NotFound:
-        modal.value = "not_found"
         break
       default:
         modal.value = "error"

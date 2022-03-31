@@ -73,7 +73,7 @@ const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { talkClient, Talk, TalkMask, errorCode, Code, userStore } from "@/api"
+import { talkClient, Talk, TalkMask, errorCode, Code, currentUser } from "@/api"
 import { useRouter } from "vue-router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
@@ -97,7 +97,6 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const user = userStore.getState()
 
 const modal = ref(Modal.None)
 const handle = ref(props.talk.handle)
@@ -142,8 +141,8 @@ watch(description, (value) => {
 watch(
   () => props.talk,
   (value) => {
-    if (value.ownerId !== user.id) {
-      router.replace({ name: "talkOverview", params: { talk: props.talk.handle } })
+    if (value.ownerId !== currentUser.id) {
+      router.replace({ name: "talk.overview", params: { talk: props.talk.handle } })
     }
   },
   { immediate: true },

@@ -15,6 +15,7 @@ import (
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/confa/profile"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -61,6 +62,7 @@ func main() {
 	talkCRUD := talk.NewCRUD(talkMongo, confaMongo, rtcClient)
 	clapMongo := clap.NewMongo(mongoDB)
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
+	profileMongo := profile.NewMongo(mongoDB)
 
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,
@@ -72,6 +74,7 @@ func main() {
 			confaCRUD,
 			talkCRUD,
 			clapCRUD,
+			profileMongo,
 		)),
 	}
 

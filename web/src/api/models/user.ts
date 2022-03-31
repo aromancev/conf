@@ -6,7 +6,7 @@ export enum Account {
   Admin = 2,
 }
 
-export interface User extends Record<string, unknown> {
+export interface User extends Object {
   id: string
   account: Account
   allowedWrite: boolean
@@ -22,8 +22,8 @@ export class UserStore extends Store<User> {
   }
 
   login(id: string, acc: Account): void {
-    this.state.id = id
-    this.state.account = acc
-    this.state.allowedWrite = acc === Account.User || acc === Account.Admin
+    this._state.id = id
+    this._state.account = acc
+    this._state.allowedWrite = acc === Account.User || acc === Account.Admin
   }
 }

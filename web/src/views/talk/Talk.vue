@@ -5,17 +5,17 @@
     <div class="title">{{ talk.title || talk.handle }}</div>
     <div class="path">
       /
-      <router-link class="path-link" :to="route.confa(confaHandle, ConfaTab.Overview)">
+      <router-link class="path-link" :to="route.confa(confaHandle, 'overview')">
         {{ confaHandle }}
       </router-link>
       /
-      <router-link class="path-link" :to="route.talk(confaHandle, handle, TalkTab.Overview)">
+      <router-link class="path-link" :to="route.talk(confaHandle, handle, 'overview')">
         {{ talk.handle }}
       </router-link>
     </div>
     <div class="header">
       <router-link
-        :to="route.talk(confaHandle, handle, TalkTab.Overview)"
+        :to="route.talk(confaHandle, handle, 'overview')"
         class="header-item"
         :class="{ active: tab === 'overview' }"
       >
@@ -23,7 +23,7 @@
         Overview
       </router-link>
       <router-link
-        :to="route.talk(confaHandle, handle, TalkTab.Online)"
+        :to="route.talk(confaHandle, handle, 'online')"
         class="header-item"
         :class="{ active: tab === 'online' }"
       >
@@ -32,7 +32,7 @@
       </router-link>
       <router-link
         v-if="talk.ownerId === user.id"
-        :to="route.talk(confaHandle, handle, TalkTab.Edit)"
+        :to="route.talk(confaHandle, handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
       >
@@ -56,14 +56,14 @@
 
   <NotFound v-if="!loading && !talk" />
 
-  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
+  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue"
 import { useRouter } from "vue-router"
 import { talkClient, Talk, userStore, confaClient, errorCode, Code } from "@/api"
-import { route, ConfaTab, TalkTab, handleNew } from "@/router"
+import { route, TalkTab, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
@@ -71,10 +71,7 @@ import TalkEdit from "./TalkEdit.vue"
 import TalkOverview from "./TalkOverview.vue"
 import TalkOnline from "./TalkOnline.vue"
 
-enum Modal {
-  None = "",
-  Error = "error",
-}
+type Modal = "none" | "error"
 
 const props = defineProps<{
   tab: TalkTab
@@ -83,21 +80,21 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const user = userStore.getState()
+const user = userStore.state()
 
 const talk = ref<Talk | null>()
 const loading = ref(false)
-const modal = ref(Modal.None)
+const modal = ref<Modal>("none")
 const joinConfirmed = ref(false)
 
 const inviteLink = computed(() => {
-  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, TalkTab.Online)).fullPath
+  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "online")).fullPath
 })
 
 watch(
   () => props.handle,
   async (value) => {
-    if (props.tab == TalkTab.Edit && !user.allowedWrite) {
+    if (!user.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -111,10 +108,6 @@ watch(
     let talkHandle = value
     try {
       if (props.confaHandle === handleNew) {
-        if (!user.allowedWrite) {
-          router.replace(route.login())
-          return
-        }
         const confa = await confaClient.create()
         confaHandle = confa.handle
       }
@@ -138,7 +131,7 @@ watch(
         case Code.NotFound:
           break
         default:
-          modal.value = Modal.Error
+          modal.value = "error"
           break
       }
     } finally {
@@ -156,7 +149,7 @@ function update(value: Talk) {
 function join(confirmed: boolean) {
   joinConfirmed.value = confirmed
   if (!confirmed) {
-    router.push({ name: "talkOverview", params: { confa: props.confaHandle, talk: props.handle } })
+    router.push(route.talk(props.confaHandle, props.handle, "overview"))
   }
 }
 </script>

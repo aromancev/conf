@@ -72,12 +72,36 @@ input ClapLookup {
     talkId: String
 }
 
+type Profile {
+    id: String!
+    ownerId: String!
+    handle: String!
+    displayName: String!
+}
+
+input ProfileMask {
+    handle: String
+    displayName: String
+}
+
+input ProfileLookup {
+    ownerIds: [String!]
+    handle: String
+}
+
+type Profiles {
+    items: [Profile!]!
+    limit: Int!
+    nextFrom: String!
+}
+
 type Mutation {
     createConfa(request: ConfaMask!): Confa!
     updateConfa(where: ConfaLookup! = {}, request: ConfaMask!): Confa!
     createTalk(where: ConfaLookup!, request: TalkMask!): Talk!
     updateTalk(where: TalkLookup! = {}, request: TalkMask!): Talk!
     updateClap(talkId: String!, value: Int!): String!
+    updateProfile(request: ProfileMask!): Profile!
 }
 
 type Query {
@@ -85,5 +109,6 @@ type Query {
 
     confas(where: ConfaLookup! = {}, limit: Int!, from: String): Confas!
     talks(where: TalkLookup! = {}, limit: Int!, from: String): Talks!
+    profiles(where: ProfileLookup! = {}, limit: Int!, from: String): Profiles!
     aggregateClaps(where: ClapLookup! = {}): Claps!
 }
