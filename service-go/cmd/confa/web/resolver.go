@@ -9,6 +9,7 @@ import (
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
+	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -124,19 +125,44 @@ type ClapLookup struct {
 	TalkID    *string
 }
 
+type Profiles struct {
+	Items    []Profile
+	Limit    int32
+	NextFrom string
+}
+
+type Profile struct {
+	ID          string
+	OwnerID     string
+	Handle      string
+	DisplayName string
+}
+
+type ProfileMask struct {
+	Handle      *string
+	DisplayName *string
+}
+
+type ProfileLookup struct {
+	OwnerIDs *[]string
+	Handle   *string
+}
+
 type Resolver struct {
 	publicKey *auth.PublicKey
 	confas    *confa.CRUD
 	talks     *talk.CRUD
 	claps     *clap.CRUD
+	profiles  *profile.Mongo
 }
 
-func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD) *Resolver {
+func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, profiles *profile.Mongo) *Resolver {
 	return &Resolver{
 		publicKey: pk,
 		confas:    confas,
 		talks:     talks,
 		claps:     claps,
+		profiles:  profiles,
 	}
 }
 
@@ -444,6 +470,83 @@ func (r *Resolver) UpdateClap(ctx context.Context, args struct {
 	return id.String(), nil
 }
 
+func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
+	Request ProfileMask
+}) (Profile, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Profile{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return Profile{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
+	}
+
+	request := profile.Profile{
+		ID:    uuid.New(),
+		Owner: claims.UserID,
+	}
+	if args.Request.Handle != nil {
+		request.Handle = *args.Request.Handle
+	}
+	if args.Request.DisplayName != nil {
+		request.DisplayName = *args.Request.DisplayName
+	}
+
+	upserted, err := r.profiles.CreateOrUpdate(ctx, request)
+	switch {
+	case errors.Is(err, profile.ErrValidation):
+		return Profile{}, NewResolverError(CodeBadRequest, err.Error())
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to update profile.")
+		return Profile{}, NewInternalError()
+	}
+
+	return newProfile(upserted), nil
+}
+
+func (r *Resolver) Profiles(ctx context.Context, args struct {
+	Where ProfileLookup
+	Limit int32
+	From  *string
+}) (Profiles, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Profiles{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	var lookup profile.Lookup
+	if args.Where.OwnerIDs != nil {
+		lookup.Owners = make([]uuid.UUID, 0, len(*args.Where.OwnerIDs))
+		for _, id := range *args.Where.OwnerIDs {
+			parsed, err := uuid.Parse(id)
+			if err != nil {
+				continue
+			}
+			lookup.Owners = append(lookup.Owners, parsed)
+		}
+	}
+	if args.Where.Handle != nil {
+		lookup.Handle = *args.Where.Handle
+	}
+
+	fetched, err := r.profiles.Fetch(ctx, lookup)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch profiles.")
+		return Profiles{Limit: args.Limit}, NewInternalError()
+	}
+	res := Profiles{
+		Items: make([]Profile, len(fetched)),
+		Limit: int32(lookup.Limit),
+	}
+	if len(fetched) > 0 {
+		res.NextFrom = fetched[len(fetched)-1].ID.String()
+	}
+	for i, p := range fetched {
+		res.Items[i] = newProfile(p)
+	}
+	return res, nil
+}
+
 func newConfaLookup(input ConfaLookup, limit int32, from *string) (confa.Lookup, error) {
 	if limit <= 0 || limit > batchLimit {
 		limit = batchLimit
@@ -541,6 +644,15 @@ func newTalk(t talk.Talk) Talk {
 		Handle:      t.Handle,
 		Title:       t.Title,
 		Description: t.Description,
+	}
+}
+
+func newProfile(p profile.Profile) Profile {
+	return Profile{
+		ID:          p.ID.String(),
+		OwnerID:     p.Owner.String(),
+		Handle:      p.Handle,
+		DisplayName: p.DisplayName,
 	}
 }
 

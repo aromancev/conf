@@ -121,7 +121,6 @@ export class Client {
     this._token = new Promise<string>((resolve) => {
       resolve("")
     })
-    this.refreshToken()
   }
 
   async token(): Promise<string> {
@@ -189,11 +188,7 @@ export class Client {
     )
   }
 
-  async clearCache(): Promise<void> {
-    await this.graph.clearStore()
-  }
-
-  private async refreshToken() {
+  async refreshToken() {
     this.setRefreshInProgress()
 
     const xhr = new XMLHttpRequest()
@@ -210,6 +205,10 @@ export class Client {
     }
     xhr.open("GET", "/api/iam/token")
     xhr.send()
+  }
+
+  async clearCache(): Promise<void> {
+    await this.graph.clearStore()
   }
 
   // Be sure to ALWAYS call `setToken` after this.

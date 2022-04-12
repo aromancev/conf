@@ -2,13 +2,13 @@
   <div class="content">
     <div class="title">Video conference platform</div>
     <div class="sub-title">One click broadcast and recording</div>
-    <router-link class="cta btn" :to="{ name: 'talkOnline', params: { confa: 'new', talk: 'new' } }">
-      Start a conference
-    </router-link>
+    <router-link class="cta btn" :to="route.talk(handleNew, handleNew, 'online')"> Start a conference </router-link>
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { route, handleNew } from "@/router"
+</script>
 
 <style scoped lang="sass">
 @use '@/css/theme'

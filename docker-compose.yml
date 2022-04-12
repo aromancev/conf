@@ -18,7 +18,7 @@ services:
       - confa
     environment:
       - VITE_RTC_ROOM_URL=ws://localhost/api/rtc/room/socket
-      - VITE_RTC_TURN_URLS=turn:localhost?transport=tcp
+      - VITE_SFU_TURN_URLS=turn:localhost?transport=tcp
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public

@@ -1,9 +1,10 @@
 import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
-import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
+import { computed, reactive, readonly, ref, Ref, ComputedRef, watch } from "vue"
 import { RTCPeer, eventClient, Policy } from "@/api"
 import { BufferedAggregator, MessageAggregator, PeerAggregator, Message, Peer } from "@/api/room"
 import { RoomEvent, Hint, Track } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
+import { ProfileHydrator } from "./profiles"
 
 interface Remote {
   camera: MediaStream | null
@@ -56,6 +57,15 @@ export class LiveRoom {
     this.state = { tracks: {} }
     this.streamsByTrackId = {}
     this.tracksById = {}
+
+    const profileHydrator = new ProfileHydrator(this.peers, 1000)
+    watch(
+      this.peers,
+      () => {
+        profileHydrator.hydrate()
+      },
+      { immediate: false, deep: false },
+    )
   }
 
   close(): void {

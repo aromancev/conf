@@ -4,12 +4,9 @@
       <div class="talks-header">
         <div>Talks</div>
         <router-link
-          v-if="user.id === confa.ownerId"
+          v-if="currentUser.id === confa.ownerId"
           class="btn create-talk"
-          :to="{
-            name: 'talkOverview',
-            params: { confa: confa.handle, talk: 'new' },
-          }"
+          :to="route.talk(confa.handle, handleNew, 'overview')"
         >
           <span class="material-icons">add</span> New
         </router-link>
@@ -21,14 +18,9 @@
         <div v-if="!talksLoading" class="talks-items">
           <div v-for="talk in talks" :key="talk.id" class="talks-item">
             /
-            <router-link
-              class="talks-link"
-              :to="{
-                name: 'talkOverview',
-                params: { confa: confa.handle, talk: talk.handle },
-              }"
-              >{{ talk.handle }}</router-link
-            >
+            <router-link class="talks-link" :to="route.talk(confa.handle, talk.handle, 'overview')">{{
+              talk.handle
+            }}</router-link>
           </div>
         </div>
       </div>
@@ -41,8 +33,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue"
-import { userStore, Confa, Talk } from "@/api/models"
+import { currentUser, Confa, Talk } from "@/api/models"
 import { talkClient } from "@/api"
+import { route, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 
@@ -50,8 +43,6 @@ enum Modal {
   None = "",
   Error = "error",
 }
-
-const user = userStore.getState()
 
 const props = defineProps<{
   confa: Confa

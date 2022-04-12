@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -66,7 +67,7 @@ func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (Update
 	update := bson.M{
 		"$set": request,
 	}
-	res, err := m.db.Collection(collection).UpdateMany(ctx, lookup.Filter(), update)
+	res, err := m.db.Collection(collection).UpdateMany(ctx, mongoFilter(lookup), update)
 	switch {
 	case mongo.IsDuplicateKeyError(err):
 		return UpdateResult{}, ErrDuplicateEntry
@@ -81,7 +82,7 @@ func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Con
 		"$set": request,
 	}
 	ret := options.After
-	res := m.db.Collection(collection).FindOneAndUpdate(ctx, lookup.Filter(), update, &options.FindOneAndUpdateOptions{
+	res := m.db.Collection(collection).FindOneAndUpdate(ctx, mongoFilter(lookup), update, &options.FindOneAndUpdateOptions{
 		ReturnDocument: &ret,
 	})
 	switch {
@@ -108,7 +109,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 
 	cur, err := m.db.Collection(collection).Find(
 		ctx,
-		lookup.Filter(),
+		mongoFilter(lookup),
 		&options.FindOptions{
 			Sort:  bson.M{"_id": 1},
 			Limit: &lookup.Limit,
@@ -149,4 +150,23 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Confa, error) {
 func mongoNow() time.Time {
 	// Mongodb only stores milliseconds.
 	return time.Now().UTC().Round(time.Millisecond)
+}
+
+func mongoFilter(l Lookup) bson.M {
+	filter := make(bson.M)
+	switch {
+	case l.ID != uuid.Nil:
+		filter["_id"] = l.ID
+	case l.From != uuid.Nil:
+		filter["_id"] = bson.M{
+			"$gt": l.From,
+		}
+	}
+	if l.Owner != uuid.Nil {
+		filter["ownerId"] = l.Owner
+	}
+	if l.Handle != "" {
+		filter["handle"] = l.Handle
+	}
+	return filter
 }

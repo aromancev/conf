@@ -1,20 +1,19 @@
 <template>
   <PageLoader v-if="loading" />
 
-  <div v-if="!loading && confa" class="content">
-    <div class="title">{{ confa.title || confa.handle }}</div>
+  <div v-if="!loading && profile" class="content">
+    <div class="title">{{ profile.displayName || genName(profile.ownerId) }}</div>
     <div class="path">
-      /
-      <router-link class="path-link" :to="route.confa(handle, 'overview')">{{ confa.handle }}</router-link>
+      <router-link class="path-link" :to="route.profile(handle, tab)">{{ profile.handle }}</router-link>
     </div>
     <div class="header">
-      <router-link :to="route.confa(handle, 'overview')" class="header-item" :class="{ active: tab === 'overview' }">
+      <router-link :to="route.profile(handle, 'overview')" class="header-item" :class="{ active: tab === 'overview' }">
         <span class="material-icons icon">remove_red_eye</span>
         Overview
       </router-link>
       <router-link
-        v-if="confa.ownerId === user.id"
-        :to="route.confa(handle, 'edit')"
+        v-if="profile.ownerId === currentUser.id"
+        :to="route.profile(handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
       >
@@ -24,12 +23,12 @@
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <ConfaOverview v-if="tab === 'overview'" :confa="confa" />
-      <ConfaEdit v-if="tab === 'edit'" :confa="confa" @update="update" />
+      <ProfileOverview v-if="tab === 'overview'" :profile="profile" />
+      <ProfileEdit v-if="tab === 'edit'" :profile="profile" @update="update" />
     </div>
   </div>
 
-  <NotFound v-if="!loading && !confa" />
+  <NotFound v-if="!loading && !profile" />
 
   <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
 </template>
@@ -37,47 +36,47 @@
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
-import { confaClient, Confa, userStore, errorCode, Code } from "@/api"
-import { route, ConfaTab, handleNew } from "@/router"
+import { profileClient, Profile, currentUser, errorCode, Code } from "@/api"
+import { route, ProfileTab, handleNew } from "@/router"
+import { genName } from "@/platform/gen"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
-import ConfaEdit from "./ConfaEdit.vue"
-import ConfaOverview from "./ConfaOverview.vue"
+import ProfileEdit from "./ProfileEdit.vue"
+import ProfileOverview from "./ProfileOverview.vue"
 
 type Modal = "none" | "error"
 
 const props = defineProps<{
-  tab: ConfaTab
+  tab: ProfileTab
   handle: string
 }>()
 
 const router = useRouter()
-const user = userStore.state()
 
-const confa = ref<Confa | null>()
+const profile = ref<Profile | null>()
 const loading = ref(false)
 const modal = ref<Modal>("none")
 
 watch(
   () => props.handle,
   async (handle) => {
-    if (!user.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+    if (!currentUser.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
       router.replace(route.login())
       return
     }
 
-    if (confa.value && props.handle === confa.value.handle) {
+    if (profile.value && props.handle === profile.value.handle) {
       return
     }
 
     loading.value = true
     try {
       if (handle === handleNew) {
-        confa.value = await confaClient.create()
-        router.replace(route.confa(confa.value.handle, props.tab))
+        profile.value = await profileClient.update()
+        router.replace(route.profile(profile.value.handle, props.tab))
       } else {
-        confa.value = await confaClient.fetchOne({
+        profile.value = await profileClient.fetchOne({
           handle: handle,
         })
       }
@@ -96,9 +95,9 @@ watch(
   { immediate: true },
 )
 
-function update(value: Confa) {
-  confa.value = value
-  router.replace(route.confa(props.handle, props.tab))
+function update(value: Profile) {
+  profile.value = value
+  router.replace(route.profile(value.handle, props.tab))
 }
 </script>
 

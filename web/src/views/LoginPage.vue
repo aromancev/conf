@@ -52,7 +52,7 @@ const valid = ref(false)
 const modal = ref(Modal.None)
 
 const router = useRouter()
-const user = userStore.getState()
+const user = userStore.state()
 
 const props = defineProps<{
   token?: string

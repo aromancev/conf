@@ -1,10 +1,16 @@
 <template>
-  <div class="audience" :style="{ cursor: cursor }" @mousemove="select" @mouseleave="deselect">
+  <div class="audience" @mousemove="select" @mouseleave="deselect">
     <div class="selected">{{ selected?.name || "" }}</div>
     <div class="divider"></div>
     <div class="canvas">
       <canvas ref="audience"></canvas>
       <canvas ref="shade"></canvas>
+      <router-link
+        v-if="selected?.peer.handle"
+        class="profile-link"
+        :to="route.profile(selected.peer.handle, 'overview')"
+        target="_blank"
+      ></router-link>
       <PageLoader v-if="loading"></PageLoader>
     </div>
   </div>
@@ -14,6 +20,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue"
 import { Peer } from "@/api/room"
 import { drawAvatar, genName } from "@/platform/gen"
+import { route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
 
 const props = defineProps<{
@@ -23,7 +30,6 @@ const props = defineProps<{
 
 const audience = ref<HTMLCanvasElement>()
 const shade = ref<HTMLCanvasElement>()
-const cursor = ref("default")
 const selected = ref(null as CanvasPeer | null)
 
 let canvas = null as Canvas | null
@@ -90,11 +96,9 @@ function select(ev: MouseEvent) {
   const rect = (ev.target as HTMLElement).getBoundingClientRect()
   const peer = canvas.hover((ev.clientX - rect.left) * dpr, (ev.clientY - rect.top) * dpr)
   if (peer) {
-    cursor.value = "pointer"
     selected.value = peer
-    canvas.select(peer.peer.id)
+    canvas.select(peer.peer.userId)
   } else {
-    cursor.value = "default"
     selected.value = null
     canvas.select("")
   }
@@ -103,7 +107,6 @@ function deselect() {
   if (!canvas) {
     return
   }
-  cursor.value = "default"
   canvas.select("")
 }
 </script>
@@ -111,9 +114,10 @@ function deselect() {
 <script lang="ts">
 const compaction = 0.3
 const padding = 0.25
-const offsetY = 20
 const colorOutline = "#7f70f5"
-const maxSize = 200
+const maxSize = 128
+const selectedBorder = 8
+const selectedScale = 1.1
 
 interface CanvasPeer {
   peer: Peer
@@ -142,6 +146,7 @@ class Canvas {
   private renderSize: number
   private cellSize: number
   private shift: number
+  private offsetY: number
 
   constructor(audicence: CanvasRenderingContext2D, shade: CanvasRenderingContext2D, width: number, height: number) {
     this.audicence = audicence
@@ -161,6 +166,7 @@ class Canvas {
     this.cellSize = 0
     this.renderSize = 0
     this.shift = 0
+    this.offsetY = 0
   }
 
   resize(width: number, height: number): void {
@@ -181,13 +187,13 @@ class Canvas {
     for (const peer of peers) {
       const cp: CanvasPeer = {
         peer: peer,
-        name: genName(peer.id),
+        name: peer.name || genName(peer.userId),
         row: 0,
         col: 0,
         x: 0,
         y: 0,
       }
-      this.byId[peer.id] = cp
+      this.byId[peer.userId] = cp
       this.ordered.push(cp)
     }
 
@@ -198,7 +204,7 @@ class Canvas {
 
   hover(x: number, y: number): CanvasPeer | null {
     // Three possible rows because of compaction.
-    const bottom = Math.floor(y / this.cellSize / compaction)
+    const bottom = Math.floor((y - this.offsetY) / this.cellSize / compaction)
     const center = bottom - 1
     const top = center - 1
 
@@ -234,8 +240,9 @@ class Canvas {
     if (this.ordered.length <= 0) {
       return
     }
-    const height = this.height / compaction - offsetY
+    const height = this.height / compaction
     const width = this.width
+
     // First size calculation round (approximating).
     let cellSize = Math.sqrt((height * width) / this.ordered.length)
     cellSize = Math.min(cellSize, maxSize) // Limiting the size of a cell.
@@ -248,9 +255,11 @@ class Canvas {
     cellSize = Math.min(cellSize, (width - cellSize / 2) / this.columns) // Compensating for chess-like shift.
     const actualHeight = cellSize + (this.rows - 1) * cellSize * compaction // Calculating how much height was actually taken.
     cellSize = Math.min(cellSize, (cellSize * this.height) / actualHeight) // Compensating for the actual height.
-
     this.cellSize = cellSize
-
+    this.offsetY = Math.min(
+      (this.cellSize / 2) * (selectedScale - 1) + (this.cellSize * padding) / 2 + selectedBorder,
+      (this.height - actualHeight) / 2,
+    )
     this.padding = (this.width - cellSize * Math.min(this.columns, this.ordered.length)) / 2
 
     if (this.chess) {
@@ -283,7 +292,7 @@ class Canvas {
         peer.y = row * this.cellSize // Base shift
         peer.y *= compaction // Compensate for compaction.
         peer.y += this.cellSize / 2 // Shift to the center of the cell.
-        peer.y += offsetY
+        peer.y += this.offsetY
         index++
       }
     }
@@ -309,7 +318,7 @@ class Canvas {
     ctx.clearRect(0, 0, this.width, this.height)
 
     if (this.selected) {
-      this.renderPeer(ctx, this.selected, 16, 1.2, 0.05)
+      this.renderPeer(ctx, this.selected, selectedBorder, selectedScale, 0.05)
     }
 
     ctx.restore()
@@ -344,7 +353,7 @@ class Canvas {
 
     // Icon.
     ctx.setTransform(1, 0, 0, 1, x - renderSize / 2, y - renderSize / 2)
-    drawAvatar(ctx, peer.peer.id, renderSize + 1)
+    drawAvatar(ctx, peer.peer.userId, renderSize + 1)
 
     // Outline.
     ctx.setTransform(1, 0, 0, 1, x, y)
@@ -426,8 +435,16 @@ canvas
   left: 0
   width: 100%
   height: 100%
+  cursor: default
 
 .loader
   height: 100%
   z-index: 100
+
+.profile-link
+  position: absolute
+  top: 0
+  left: 0
+  width: 100%
+  height: 100%
 </style>

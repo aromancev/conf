@@ -1,27 +1,28 @@
 <template>
-  <div class="shade" :class="{ active: modal !== Modal.None }" @click="switchModal(Modal.None)"></div>
+  <div class="shade" :class="{ active: modal !== 'none' }" @click="switchModal('none')"></div>
   <div class="header">
     <div class="start">
-      <div class="menu material-icons" @click="switchModal(Modal.Sidebar)">menu</div>
-      <router-link :to="{ name: 'home' }"><ConfaLogo></ConfaLogo></router-link>
+      <div class="menu material-icons" @click="switchModal('sidebar')">menu</div>
+      <router-link :to="route.home()"><ConfaLogo></ConfaLogo></router-link>
     </div>
     <div class="end">
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-if="allowedWrite" class="avatar" @click="switchModal(Modal.Profile)" v-html="profile.avatar"></div>
-      <router-link v-if="!allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
+      <!-- eslint-disable vue/no-v-html -->
+      <div v-if="currentUser.allowedWrite" class="avatar" @click="switchModal('profile')" v-html="profile.avatar"></div>
+      <!-- eslint-enable vue/no-v-html -->
+      <router-link v-if="!currentUser.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
-    <div v-if="modal === Modal.Sidebar" class="sidebar">
-      <router-link v-if="allowedWrite" class="control-item" to="/">
+    <div v-if="modal === 'sidebar'" class="sidebar" @click="modal = 'none'">
+      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/">
         <span class="icon material-icons">hub</span>
         My content
       </router-link>
-      <router-link class="control-item" to="/">
+      <router-link class="control-item" :to="route.home()">
         <span class="icon material-icons">explore</span>
         Explore
       </router-link>
-      <div v-if="allowedWrite" class="control-divider"></div>
-      <router-link v-if="allowedWrite" class="control-item" to="/new">
+      <div v-if="currentUser.allowedWrite" class="control-divider"></div>
+      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/new">
         <span class="icon material-icons">add</span>
         Create confa
       </router-link>
@@ -32,8 +33,13 @@
       </div>
     </div>
 
-    <div v-if="allowedWrite" class="control" :class="{ opened: modal === Modal.Profile }">
-      <router-link class="control-item" to="/">
+    <div
+      v-if="currentUser.allowedWrite"
+      class="control"
+      :class="{ opened: modal === 'profile' }"
+      @click="modal = 'none'"
+    >
+      <router-link class="control-item" :to="route.profile(profile.handle || handleNew, 'overview')">
         <span class="icon material-icons">person</span>
         My profile
       </router-link>
@@ -48,37 +54,33 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue"
-import { userStore } from "@/api"
+import { currentUser, currentProfile } from "@/api"
 import { genAvatar, genName } from "@/platform/gen"
+import { route, handleNew } from "@/router"
 import { Theme } from "@/platform/theme"
 import ConfaLogo from "@/components/ConfaLogo.vue"
 
 interface Profile {
-  avatar?: string
-  name?: string
+  avatar: string
+  handle: string
+  displayName: string
 }
 
-enum Modal {
-  None = "",
-  Sidebar = "sidebar",
-  Profile = "profile",
-}
+type Modal = "none" | "sidebar" | "profile"
 
 const emit = defineEmits<{
   (e: "theme", value: Theme): void
 }>()
 
 const theme = ref(Theme.Light)
-const modal = ref(Modal.None)
+const modal = ref<Modal>("none")
 
-const allowedWrite = computed<boolean>(() => {
-  return userStore.getState().allowedWrite
-})
 const profile = computed<Profile>(() => {
   return {
-    avatar: genAvatar(userStore.getState().id, 35),
-    name: genName(userStore.getState().id),
-  }
+    avatar: genAvatar(currentUser.id, 35),
+    handle: currentProfile.handle,
+    displayName: genName(currentUser.id),
+  } as Profile
 })
 
 watch(theme, (val: Theme) => {
@@ -92,7 +94,7 @@ onMounted(() => {
 
 function switchModal(val: Modal) {
   if (modal.value === val) {
-    modal.value = Modal.None
+    modal.value = "none"
     return
   }
   modal.value = val

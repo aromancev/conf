@@ -133,7 +133,7 @@ const emit = defineEmits<{
 
 const sidePanelKey = "roomSidePanel"
 
-const user = userStore.getState()
+const user = userStore.state()
 
 const props = defineProps<{
   roomId: string

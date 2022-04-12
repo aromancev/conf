@@ -1,6 +1,6 @@
 ## Migrations
-Create new migration: `./mongo/migrate.sh create -ext json -seq -dir path/to/migrations/ migration_name`. Path to migrations is considered relative to the `internal` directory.
-For example: `./mongo/migrate.sh create -ext json -seq -dir ./confa/migrations confa_init`
+Create new migration: `./mongo/migrate.sh create -ext json -seq -dir path/to/migrations/ migration_name`.
+For example: `./mongo/migrate.sh create -ext json -seq -dir ./service-go/migrations/confa confa_init`
 
 Run migrations: `make migrate`
 
