@@ -1,14 +1,14 @@
 <template>
   <div class="audience" @mousemove="select" @mouseleave="deselect">
-    <div class="selected">{{ selected?.name || "" }}</div>
+    <div class="selected">{{ selected?.model.profile.name || "" }}</div>
     <div class="divider"></div>
     <div class="canvas">
       <canvas ref="audience"></canvas>
       <canvas ref="shade"></canvas>
       <router-link
-        v-if="selected?.peer.handle"
+        v-if="selected?.model.profile.handle"
         class="profile-link"
-        :to="route.profile(selected.peer.handle, 'overview')"
+        :to="route.profile(selected.model.profile.handle, 'overview')"
         target="_blank"
       ></router-link>
       <PageLoader v-if="loading"></PageLoader>
@@ -18,14 +18,13 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue"
-import { Peer } from "@/api/room"
-import { drawAvatar, genName } from "@/platform/gen"
+import { Peer } from "./peers"
 import { route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
 
 const props = defineProps<{
   loading?: boolean
-  peers?: Peer[]
+  peers: { [k: string]: Peer }
 }>()
 
 const audience = ref<HTMLCanvasElement>()
@@ -37,7 +36,7 @@ let resizeInterval = 0
 
 watch(
   () => props.peers,
-  (value: Peer[] | undefined) => {
+  (value: { [k: string]: Peer } | undefined) => {
     canvas?.updatePeers(value)
   },
   { deep: true, immediate: true },
@@ -97,7 +96,7 @@ function select(ev: MouseEvent) {
   const peer = canvas.hover((ev.clientX - rect.left) * dpr, (ev.clientY - rect.top) * dpr)
   if (peer) {
     selected.value = peer
-    canvas.select(peer.peer.userId)
+    canvas.select(peer.model.userId)
   } else {
     selected.value = null
     canvas.select("")
@@ -116,12 +115,12 @@ const compaction = 0.3
 const padding = 0.25
 const colorOutline = "#7f70f5"
 const maxSize = 128
-const selectedBorder = 8
+const basicBorder = 2
+const selectedBorder = 4
 const selectedScale = 1.1
 
 interface CanvasPeer {
-  peer: Peer
-  name: string
+  model: Peer
   row: number
   col: number
   x: number
@@ -147,6 +146,7 @@ class Canvas {
   private cellSize: number
   private shift: number
   private offsetY: number
+  private peerImage: HTMLImageElement // Keeping this as a single instalnce in the class to avoid creating a lot of temp images to render peers.
 
   constructor(audicence: CanvasRenderingContext2D, shade: CanvasRenderingContext2D, width: number, height: number) {
     this.audicence = audicence
@@ -167,6 +167,7 @@ class Canvas {
     this.renderSize = 0
     this.shift = 0
     this.offsetY = 0
+    this.peerImage = new Image()
   }
 
   resize(width: number, height: number): void {
@@ -177,17 +178,20 @@ class Canvas {
     this.renderShade()
   }
 
-  updatePeers(peers: Peer[] | undefined): void {
+  updatePeers(peers: { [k: string]: Peer } | undefined): void {
     if (!peers) {
       return
     }
     this.byId = {}
     this.ordered = []
 
-    for (const peer of peers) {
+    // Peers are always rendered by join time to avoid reshuffling when new ones join.
+    const sorted = Object.values(peers).sort((a: Peer, b: Peer): number => {
+      return a.joinedAt - b.joinedAt
+    })
+    for (const peer of sorted) {
       const cp: CanvasPeer = {
-        peer: peer,
-        name: peer.name || genName(peer.userId),
+        model: peer,
         row: 0,
         col: 0,
         x: 0,
@@ -324,7 +328,7 @@ class Canvas {
     ctx.restore()
   }
 
-  private renderPeer(ctx: CanvasRenderingContext2D, peer: CanvasPeer, border = 8, scale = 1, shift = 0): void {
+  private renderPeer(ctx: CanvasRenderingContext2D, peer: CanvasPeer, border = basicBorder, scale = 1, shift = 0): void {
     const renderSize = this.renderSize * scale
     const x = peer.x
     const y = peer.y - renderSize * shift
@@ -346,6 +350,7 @@ class Canvas {
     }
 
     // Clip outer circle boundary.
+    ctx.save() // Saving to cancel clipping for the outline.
     ctx.beginPath()
     ctx.arc(x, y, renderSize / 2, 0, Math.PI * 2, true)
     ctx.closePath()
@@ -353,7 +358,9 @@ class Canvas {
 
     // Icon.
     ctx.setTransform(1, 0, 0, 1, x - renderSize / 2, y - renderSize / 2)
-    drawAvatar(ctx, peer.peer.userId, renderSize + 1)
+    this.peerImage.src = peer.model.profile.avatar
+    ctx.drawImage(this.peerImage, 0, 0, renderSize + 1, renderSize + 1)
+    ctx.restore() // This will cancel clip and result in a smooth outline.
 
     // Outline.
     ctx.setTransform(1, 0, 0, 1, x, y)

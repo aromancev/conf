@@ -1,10 +1,12 @@
 import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
-import { computed, reactive, readonly, ref, Ref, ComputedRef, watch } from "vue"
+import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
 import { RTCPeer, eventClient, Policy } from "@/api"
-import { BufferedAggregator, MessageAggregator, PeerAggregator, Message, Peer } from "@/api/room"
+import { BufferedAggregator } from "./buffered"
+import { ProfileRepository } from "./profiles"
+import { MessageAggregator, Message } from "./messages"
+import { Peer, PeerAggregator } from "./peers"
 import { RoomEvent, Hint, Track } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
-import { ProfileHydrator } from "./profiles"
 
 interface Remote {
   camera: MediaStream | null
@@ -24,7 +26,7 @@ interface State {
 
 export class LiveRoom {
   messages: Message[]
-  peers: Peer[]
+  peers: { [k: string]: Peer }
 
   private local: Local
   private remote: Remote
@@ -34,6 +36,7 @@ export class LiveRoom {
   private state: State
   private streamsByTrackId: { [key: string]: RemoteStream }
   private tracksById: { [key: string]: Track }
+  private profileRepo: ProfileRepository
 
   constructor() {
     this.local = reactive<Local>({
@@ -51,21 +54,13 @@ export class LiveRoom {
     this.joined = ref<boolean>(false)
     this.publishing = ref<boolean>(false)
     this.messages = reactive<Message[]>([])
-    this.peers = reactive<Peer[]>([])
+    this.peers = reactive<{ [k: string]: Peer }>({})
 
+    this.profileRepo = new ProfileRepository(500, 3000)
     this.rtc = new RTCPeer()
     this.state = { tracks: {} }
     this.streamsByTrackId = {}
     this.tracksById = {}
-
-    const profileHydrator = new ProfileHydrator(this.peers, 1000)
-    watch(
-      this.peers,
-      () => {
-        profileHydrator.hydrate()
-      },
-      { immediate: false, deep: false },
-    )
   }
 
   close(): void {
@@ -102,8 +97,12 @@ export class LiveRoom {
     }
 
     const aggregators = new BufferedAggregator(
-      [new MessageAggregator(this.messages), new PeerAggregator(this.peers), thisAggregator],
-      500,
+      [
+        new MessageAggregator(this.profileRepo, this.messages),
+        new PeerAggregator(this.profileRepo, this.peers),
+        thisAggregator,
+      ],
+      50,
     )
 
     this.rtc.onevent = (event: RoomEvent): void => {
@@ -146,6 +145,7 @@ export class LiveRoom {
       fromId: userId,
       text: message,
       accepted: false,
+      profile: this.profileRepo.profile(userId),
     }
     this.messages.push(msg)
     const event = await this.rtc.message({ text: message })

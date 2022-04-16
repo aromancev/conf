@@ -14,7 +14,6 @@ specifiers:
   graphql: ^15.5.1
   graphql-tag: ^2.12.4
   ion-sdk-js: ^1.8.1
-  jdenticon: ^3.1.1
   prettier: ^2.5.1
   quicktype: 15.0.260
   sass: ^1.45.1
@@ -30,7 +29,6 @@ dependencies:
   graphql: 15.5.1
   graphql-tag: 2.12.4_graphql@15.5.1
   ion-sdk-js: 1.8.1
-  jdenticon: 3.1.1
   vue: 3.2.26
   vue-router: 4.0.12_vue@3.2.26
 
@@ -1479,12 +1477,6 @@ packages:
     resolution: {integrity: sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==}
     engines: {node: '>=6'}
     dev: true
-
-  /canvas-renderer/2.2.0:
-    resolution: {integrity: sha512-Itdq9pwXcs4IbbkRCXc7reeGBk6i6tlDtZTjE1yc+KvYkx1Mt3WLf6tidZ/Ixbm7Vmi+jpWKG0dRBor67x9yGw==}
-    dependencies:
-      '@types/node': 14.14.25
-    dev: false
 
   /capital-case/1.0.4:
     resolution: {integrity: sha512-ds37W8CytHgwnhGGTi88pcPyR15qoNkOpYwmMMfnWqqWgESapLqvDx6huFjQ5vqWSn2Z06173XNA7LtMOeUh1A==}
@@ -3426,14 +3418,6 @@ packages:
     resolution: {integrity: sha512-qjdpeo2yKlYTH7nFdK0vbZWuTCesk4o63v5iVOlhMQPfuIZQfW/HI35SjfhA+4qpg36rnFSvUK5b1m+ckIblQQ==}
     engines: {node: '>= 0.6.0'}
     dev: true
-
-  /jdenticon/3.1.1:
-    resolution: {integrity: sha512-/m0Kk5ou7tPHjW6YovCysRETqPlFcTabWG96r8NbbSsEK+eQ3jHiGULaGOtp4XBqkRxWS1XMopLRGwdhet5ezw==}
-    engines: {node: '>=6.4.0'}
-    hasBin: true
-    dependencies:
-      canvas-renderer: 2.2.0
-    dev: false
 
   /js-base64/2.6.4:
     resolution: {integrity: sha512-pZe//GGmwJndub7ZghVHz7vjb2LgC1m8B07Au3eYqeqv9emhESByMXxaEgkUkEqJe87oBbSniGYoQNIBklc7IQ==}
