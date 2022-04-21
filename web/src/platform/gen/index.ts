@@ -1,4 +1,23 @@
-import { toSvg, drawIcon, JdenticonCompatibleCanvasRenderingContext2D } from "jdenticon"
+import { hashprint } from "./hashprint"
+
+export function genName(uuid: string): string {
+  const bytes = uuidToBytes(uuid)
+  const iFirst = bytes[bytes.length - 1] % first.length
+  const iSecond = bytes[bytes.length - 2] % second.length
+  return first[iFirst] + " " + second[iSecond]
+}
+
+export async function genAvatar(id: string, size: number): Promise<string> {
+  return await hashprint({
+    data: id,
+    size: size,
+    bg: "white",
+    scale: 0.65,
+    lightness: 0.5,
+    saturation: 0.7,
+    likeness: [0.5, 0.25],
+  })
+}
 
 const first: string[] = [
   "Affectionate",
@@ -166,31 +185,6 @@ const second: string[] = [
   "Zebra",
 ]
 
-const identiconConfig = {
-  lightness: {
-    grayscale: [0.3, 0.3],
-  },
-  saturation: {
-    grayscale: 0.5,
-  },
-  backColor: "#fff",
-}
-
 function uuidToBytes(uuid: string): number[] {
   return (uuid.replace(/-/g, "").match(/.{2}/g) || []).map((b) => parseInt(b, 16))
-}
-
-export function genName(uuid: string): string {
-  const bytes = uuidToBytes(uuid)
-  const iFirst = bytes[bytes.length - 1] % first.length
-  const iSecond = bytes[bytes.length - 2] % second.length
-  return first[iFirst] + " " + second[iSecond]
-}
-
-export function genAvatar(id: string, size: number): string {
-  return toSvg(id, size, identiconConfig)
-}
-
-export function drawAvatar(ctx: JdenticonCompatibleCanvasRenderingContext2D, id: string, size: number): void {
-  drawIcon(ctx, id, size, identiconConfig)
 }

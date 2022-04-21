@@ -5,21 +5,23 @@
       <div v-if="!loading" class="message-list">
         <div
           v-for="msg in renderMessages"
-          :key="msg.message.id"
+          :key="msg.model.id"
           class="message"
-          :class="{ me: msg.message.fromId === userId }"
+          :class="{ me: msg.model.fromId === userId }"
         >
-          <div class="message-body" :class="{ me: msg.message.fromId === userId, last: msg.isLastFrom }">
-            <div v-if="msg.avatar" class="avatar">
-              <!-- eslint-disable-next-line vue/no-v-html -->
-              <div class="icon" v-html="msg.avatar"></div>
+          <div class="message-body" :class="{ me: msg.model.fromId === userId, last: msg.isLastFrom }">
+            <div v-if="msg.showAvatar" class="avatar">
+              <router-link v-if="msg.model.profile.handle" :to="route.profile(msg.model.profile.handle, 'overview')" target="_blank">
+                <img :src="msg.model.profile.avatar" width="32" height="32" />
+              </router-link>
+              <img v-if="!msg.model.profile.handle" :src="msg.model.profile.avatar" width="32" height="32" />
             </div>
-            <div v-if="msg.fromName" class="from">
-              {{ msg.fromName }}
+            <div v-if="msg.showName" class="from">
+              {{ msg.model.profile.name }}
             </div>
-            {{ msg.message.text }}
-            <div v-if="msg.message.fromId === userId" class="status material-icons">
-              {{ msg.message.accepted ? "done" : "schedule" }}
+            {{ msg.model.text }}
+            <div v-if="msg.model.fromId === userId" class="status material-icons">
+              {{ msg.model.accepted ? "done" : "schedule" }}
             </div>
           </div>
         </div>
@@ -38,16 +40,16 @@
 </template>
 
 <script setup lang="ts">
-import { genName, genAvatar } from "@/platform/gen"
 import { ref, watch, nextTick, computed } from "vue"
-import { Message } from "@/api/room"
+import { Message } from "./messages"
+import { route } from "@/router"
 import Textarea from "@/components/fields/TextareaField.vue"
 import PageLoader from "@/components/PageLoader.vue"
 
 interface RenderMessage {
-  message: Message
-  fromName?: string
-  avatar?: string
+  model: Message
+  showName: boolean
+  showAvatar: boolean
   isLastFrom: boolean
 }
 
@@ -57,7 +59,7 @@ const emit = defineEmits<{
 
 const props = defineProps<{
   userId: string
-  messages?: Message[]
+  messages: Message[]
   loading?: boolean
 }>()
 
@@ -69,31 +71,32 @@ let autoScroll = true
 const renderMessages = computed<RenderMessage[]>(() => {
   const messages: RenderMessage[] = []
   let lastMsg: RenderMessage | null = null
-  for (const msg of props.messages || []) {
+  for (const model of props.messages || []) {
     const rMsg: RenderMessage = {
-      message: msg,
+      model: model,
+      showName: false,
+      showAvatar: false,
       isLastFrom: false,
     }
 
-    if (props.userId != msg.fromId && msg.fromId !== lastMsg?.message.fromId) {
-      rMsg.fromName = genName(msg.fromId)
+    if (props.userId != model.fromId && model.fromId !== lastMsg?.model.fromId) {
+      rMsg.showName = true
     }
-    if (lastMsg && msg.fromId !== lastMsg?.message.fromId) {
+    if (lastMsg && model.fromId !== lastMsg?.model.fromId) {
       lastMsg.isLastFrom = true
     }
-    if (lastMsg && lastMsg.message.fromId !== props.userId && msg.fromId !== lastMsg?.message.fromId) {
-      lastMsg.avatar = genAvatar(msg.fromId, 32 + 1)
+    if (lastMsg && lastMsg.model.fromId !== props.userId && model.fromId !== lastMsg?.model.fromId) {
+      lastMsg.showAvatar = true
     }
     lastMsg = rMsg
     messages.push(lastMsg)
   }
-  if (lastMsg && lastMsg.message.fromId !== props.userId) {
-    lastMsg.avatar = genAvatar(lastMsg.message.fromId, 32 + 1)
+  if (lastMsg && lastMsg.model.fromId !== props.userId) {
+    lastMsg.showAvatar = true
   }
   if (lastMsg) {
     lastMsg.isLastFrom = true
   }
-
   return messages
 })
 

@@ -6,9 +6,7 @@
       <router-link :to="route.home()"><ConfaLogo></ConfaLogo></router-link>
     </div>
     <div class="end">
-      <!-- eslint-disable vue/no-v-html -->
-      <div v-if="currentUser.allowedWrite" class="avatar" @click="switchModal('profile')" v-html="profile.avatar"></div>
-      <!-- eslint-enable vue/no-v-html -->
+      <img v-if="currentUser.allowedWrite" class="avatar" :src="profile.avatar" @click="switchModal('profile')" />
       <router-link v-if="!currentUser.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
@@ -39,7 +37,7 @@
       :class="{ opened: modal === 'profile' }"
       @click="modal = 'none'"
     >
-      <router-link class="control-item" :to="route.profile(profile.handle || handleNew, 'overview')">
+      <router-link class="control-item" :to="route.profile(profile.handle, 'overview')" target="_blank">
         <span class="icon material-icons">person</span>
         My profile
       </router-link>
@@ -53,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue"
+import { ref, reactive, watch, onMounted } from "vue"
 import { currentUser, currentProfile } from "@/api"
 import { genAvatar, genName } from "@/platform/gen"
 import { route, handleNew } from "@/router"
@@ -75,13 +73,21 @@ const emit = defineEmits<{
 const theme = ref(Theme.Light)
 const modal = ref<Modal>("none")
 
-const profile = computed<Profile>(() => {
-  return {
-    avatar: genAvatar(currentUser.id, 35),
-    handle: currentProfile.handle,
-    displayName: genName(currentUser.id),
-  } as Profile
+const profile = reactive<Profile>({
+  avatar: "",
+  handle: "",
+  displayName: "",
 })
+
+watch(
+  currentProfile,
+  async () => {
+    profile.handle = currentProfile.handle || handleNew
+    profile.displayName = currentProfile.displayName || genName(currentUser.id)
+    profile.avatar = await genAvatar(currentUser.id, 64)
+  },
+  { immediate: true },
+)
 
 watch(theme, (val: Theme) => {
   emit("theme", val)

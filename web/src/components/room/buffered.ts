@@ -1,4 +1,4 @@
-import { RoomEvent } from "./schema"
+import { RoomEvent } from "@/api/room/schema"
 
 interface Aggregator {
   put(event: RoomEvent): void

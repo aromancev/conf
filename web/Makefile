@@ -12,12 +12,11 @@ gen-local:
 
 .PHONY: modules
 modules:
-	docker build -f Dockerfile.dev -t ${TOOLS_IMG} .
 	docker run \
 		--rm \
 		-w /app \
 		-v `pwd`:/app \
-		${TOOLS_IMG} pnpm install
+		node:17.7.2 bash -c "npm install -g pnpm && pnpm install"
 
 .PHONY: lint
 lint:

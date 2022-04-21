@@ -1,18 +1,31 @@
-import { RoomEvent } from "./schema"
+import { RoomEvent } from "@/api/room/schema"
 
 const maxMessages = 100
+
+interface Profile {
+  handle: string
+  name: string
+  avatar: string
+}
+
+interface Repo {
+  profile(id: string): Profile
+}
 
 export interface Message {
   id: string
   fromId: string
   text: string
   accepted: boolean
+  profile: Profile
 }
 
 export class MessageAggregator {
   private messages: Message[]
+  private repo: Repo
 
-  constructor(messages: Message[]) {
+  constructor(repo: Repo, messages: Message[]) {
+    this.repo = repo
     this.messages = messages
   }
 
@@ -26,6 +39,7 @@ export class MessageAggregator {
       fromId: event.ownerId || "",
       text: event.payload.message.text,
       accepted: true,
+      profile: this.repo.profile(event.ownerId),
     }
 
     const existing = this.find(msg.id)
@@ -37,7 +51,7 @@ export class MessageAggregator {
       this.messages.push(msg)
     }
 
-    // Remove outstanding message.
+    // Drop outstanding message.
     if (this.messages.length > maxMessages) {
       this.messages.shift()
     }
