@@ -1,14 +1,14 @@
 <template>
   <div class="audience" @mousemove="select" @mouseleave="deselect">
-    <div class="selected">{{ selected?.model.profile.name || "" }}</div>
+    <div class="selected">{{ selected?.profile.name || "" }}</div>
     <div class="divider"></div>
     <div class="canvas">
       <canvas ref="audience"></canvas>
-      <canvas ref="shade"></canvas>
+      <canvas ref="selection"></canvas>
       <router-link
-        v-if="selected?.model.profile.handle"
+        v-if="selected?.profile.handle"
         class="profile-link"
-        :to="route.profile(selected.model.profile.handle, 'overview')"
+        :to="route.profile(selected.profile.handle, 'overview')"
         target="_blank"
       ></router-link>
       <PageLoader v-if="loading"></PageLoader>
@@ -24,20 +24,20 @@ import PageLoader from "@/components/PageLoader.vue"
 
 const props = defineProps<{
   loading?: boolean
-  peers: { [k: string]: Peer }
+  peers: Map<string, Peer>
 }>()
 
 const audience = ref<HTMLCanvasElement>()
-const shade = ref<HTMLCanvasElement>()
-const selected = ref(null as CanvasPeer | null)
+const selection = ref<HTMLCanvasElement>()
+const selected = ref(null as Peer | null)
 
 let canvas = null as Canvas | null
 let resizeInterval = 0
 
 watch(
   () => props.peers,
-  (value: { [k: string]: Peer } | undefined) => {
-    canvas?.updatePeers(value)
+  () => {
+    canvas?.updatePeers()
   },
   { deep: true, immediate: true },
 )
@@ -47,17 +47,22 @@ defineExpose({
 })
 
 onMounted(() => {
-  if (!audience.value || !shade.value) {
+  if (!audience.value || !selection.value) {
     console.error("not created")
     return
   }
 
   const audCtx = audience.value.getContext("2d")
-  const shadeCtx = shade.value.getContext("2d")
-  if (!audCtx || !shadeCtx) {
+  const selectionCtx = selection.value.getContext("2d")
+  if (!audCtx || !selectionCtx) {
     throw new Error("Failed to get canvas context.")
   }
-  canvas = new Canvas(audCtx, shadeCtx, audience.value.width, audience.value.height)
+  canvas = new Canvas(
+    props.peers,
+    { audience: audCtx, selection: selectionCtx },
+    audience.value.width,
+    audience.value.height,
+  )
 
   clearInterval(resizeInterval)
   resizeInterval = window.setInterval(resize, 1000)
@@ -69,7 +74,7 @@ onUnmounted(() => {
 })
 
 function resize() {
-  if (!audience.value || !shade.value) {
+  if (!audience.value || !selection.value) {
     return
   }
 
@@ -82,8 +87,8 @@ function resize() {
 
   audience.value.width = width
   audience.value.height = height
-  shade.value.width = width
-  shade.value.height = height
+  selection.value.width = width
+  selection.value.height = height
   canvas?.resize(width, height)
 }
 
@@ -93,15 +98,19 @@ function select(ev: MouseEvent) {
   }
   const dpr = window.devicePixelRatio || 1
   const rect = (ev.target as HTMLElement).getBoundingClientRect()
-  const peer = canvas.hover((ev.clientX - rect.left) * dpr, (ev.clientY - rect.top) * dpr)
-  if (peer) {
-    selected.value = peer
-    canvas.select(peer.model.userId)
+  const userId = canvas.hover((ev.clientX - rect.left) * dpr, (ev.clientY - rect.top) * dpr)
+  if (userId === (selected.value?.userId || null)) {
+    return
+  }
+  if (userId) {
+    selected.value = props.peers.get(userId) || null
+    canvas.select(userId)
   } else {
     selected.value = null
     canvas.select("")
   }
 }
+
 function deselect() {
   if (!canvas) {
     return
@@ -111,6 +120,8 @@ function deselect() {
 </script>
 
 <script lang="ts">
+import { WaitGroup } from "@/platform/sync"
+
 const compaction = 0.3
 const padding = 0.25
 const colorOutline = "#7f70f5"
@@ -120,20 +131,25 @@ const selectedBorder = 4
 const selectedScale = 1.1
 
 interface CanvasPeer {
-  model: Peer
+  userId: string
   row: number
   col: number
   x: number
   y: number
+  image: HTMLImageElement
+}
+
+interface Context {
+  audience: CanvasRenderingContext2D
+  selection: CanvasRenderingContext2D
 }
 
 class Canvas {
-  private audicence: CanvasRenderingContext2D
-  private shade: CanvasRenderingContext2D
+  private context: Context
 
-  private byId: { [key: string]: CanvasPeer }
+  private peers: Map<string, Peer>
+  private cache: WeakMap<Peer, CanvasPeer>
   private ordered: CanvasPeer[]
-  private selected: CanvasPeer | null
 
   private width: number
   private height: number
@@ -146,15 +162,13 @@ class Canvas {
   private cellSize: number
   private shift: number
   private offsetY: number
-  private peerImage: HTMLImageElement // Keeping this as a single instalnce in the class to avoid creating a lot of temp images to render peers.
 
-  constructor(audicence: CanvasRenderingContext2D, shade: CanvasRenderingContext2D, width: number, height: number) {
-    this.audicence = audicence
-    this.shade = shade
+  constructor(peers: Map<string, Peer>, context: Context, width: number, height: number) {
+    this.context = context
 
-    this.byId = {}
     this.ordered = []
-    this.selected = null
+    this.cache = new WeakMap<Peer, CanvasPeer>()
+    this.peers = peers
 
     this.height = height
     this.width = width
@@ -167,7 +181,6 @@ class Canvas {
     this.renderSize = 0
     this.shift = 0
     this.offsetY = 0
-    this.peerImage = new Image()
   }
 
   resize(width: number, height: number): void {
@@ -175,38 +188,47 @@ class Canvas {
     this.height = height
     this.calcPositions()
     this.renderAudience()
-    this.renderShade()
+    this.renderSelection()
   }
 
-  updatePeers(peers: { [k: string]: Peer } | undefined): void {
-    if (!peers) {
-      return
-    }
-    this.byId = {}
+  async updatePeers(): Promise<void> {
     this.ordered = []
 
-    // Peers are always rendered by join time to avoid reshuffling when new ones join.
-    const sorted = Object.values(peers).sort((a: Peer, b: Peer): number => {
-      return a.joinedAt - b.joinedAt
-    })
-    for (const peer of sorted) {
-      const cp: CanvasPeer = {
-        model: peer,
-        row: 0,
-        col: 0,
-        x: 0,
-        y: 0,
+    const wg = new WaitGroup()
+    this.peers.forEach((peer: Peer) => {
+      // Create a new one if doesn't exist.
+      let canvasPeer = this.cache.get(peer)
+      if (!canvasPeer) {
+        canvasPeer = {
+          userId: peer.userId,
+          row: 0,
+          col: 0,
+          x: 0,
+          y: 0,
+          image: new Image(),
+        }
+        this.cache.set(peer, canvasPeer)
       }
-      this.byId[peer.userId] = cp
-      this.ordered.push(cp)
-    }
 
+      // Update the avatar if changed.
+      if (canvasPeer.image.src !== peer.profile.avatar) {
+        wg.add(1)
+        canvasPeer.image.onload = () => {
+          wg.done()
+        }
+        canvasPeer.image.src = peer.profile.avatar
+      }
+
+      this.ordered.push(canvasPeer)
+    })
+
+    await wg.join()
     this.calcPositions()
     this.renderAudience()
-    this.renderShade()
+    this.renderSelection()
   }
 
-  hover(x: number, y: number): CanvasPeer | null {
+  hover(x: number, y: number): string | null {
     // Three possible rows because of compaction.
     const bottom = Math.floor((y - this.offsetY) / this.cellSize / compaction)
     const center = bottom - 1
@@ -232,12 +254,16 @@ class Canvas {
         minDist = dist
       }
     }
-    return closestPeer
+    return closestPeer?.userId || null
   }
 
   select(id: string) {
-    this.selected = this.byId[id]
-    this.renderShade()
+    const peer = this.peers.get(id) || null
+    if (peer) {
+      this.renderSelection(this.cache.get(peer))
+    } else {
+      this.renderSelection()
+    }
   }
 
   private calcPositions() {
@@ -303,7 +329,7 @@ class Canvas {
   }
 
   private renderAudience() {
-    const ctx = this.audicence
+    const ctx = this.context.audience
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.width, this.height)
@@ -315,20 +341,26 @@ class Canvas {
     }
   }
 
-  private renderShade() {
-    const ctx = this.shade
+  private renderSelection(selected?: CanvasPeer) {
+    const ctx = this.context.selection
 
     ctx.save()
     ctx.clearRect(0, 0, this.width, this.height)
 
-    if (this.selected) {
-      this.renderPeer(ctx, this.selected, selectedBorder, selectedScale, 0.05)
+    if (selected) {
+      this.renderPeer(ctx, selected, selectedBorder, selectedScale, 0.05)
     }
 
     ctx.restore()
   }
 
-  private renderPeer(ctx: CanvasRenderingContext2D, peer: CanvasPeer, border = basicBorder, scale = 1, shift = 0): void {
+  private renderPeer(
+    ctx: CanvasRenderingContext2D,
+    peer: CanvasPeer,
+    border = basicBorder,
+    scale = 1,
+    shift = 0,
+  ): void {
     const renderSize = this.renderSize * scale
     const x = peer.x
     const y = peer.y - renderSize * shift
@@ -358,8 +390,7 @@ class Canvas {
 
     // Icon.
     ctx.setTransform(1, 0, 0, 1, x - renderSize / 2, y - renderSize / 2)
-    this.peerImage.src = peer.model.profile.avatar
-    ctx.drawImage(this.peerImage, 0, 0, renderSize + 1, renderSize + 1)
+    ctx.drawImage(peer.image, 0, 0, renderSize + 1, renderSize + 1)
     ctx.restore() // This will cancel clip and result in a smooth outline.
 
     // Outline.

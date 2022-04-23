@@ -86,7 +86,7 @@ class RoomWebSocket {
   private socket?: WebSocket
   private onSignalAnswer?: (desc: RTCSessionDescriptionInit) => void
   private requestId = 0
-  private pendingRequests = {} as { [key: string]: (msg: Message) => void }
+  private pendingRequests: Map<string, (msg: Message) => void> = new Map()
 
   async connect(roomId: string, token: string, media: boolean): Promise<void> {
     const socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}&media=${media ? "true" : "false"}`)
@@ -265,11 +265,11 @@ class RoomWebSocket {
     this.requestId++
     const pendingId = this.requestId
 
-    this.pendingRequests[pendingId] = resolve
+    this.pendingRequests.set(pendingId.toString(), resolve)
 
     setTimeout(() => {
       if (pendingId in this.pendingRequests) {
-        delete this.pendingRequests[pendingId]
+        this.pendingRequests.delete(pendingId.toString())
         reject("Message to RTC timed out.")
       }
     }, requestTimeout)
@@ -277,12 +277,14 @@ class RoomWebSocket {
   }
 
   private closePending(msg: Message): void {
-    if (!msg.responseId) {
+    const pendingId = msg.responseId
+    if (!pendingId) {
       return
     }
-    if (msg.responseId in this.pendingRequests) {
-      this.pendingRequests[msg.responseId](msg)
-      delete this.pendingRequests[msg.responseId]
+    const pending = this.pendingRequests.get(pendingId)
+    if (pending) {
+      pending(msg)
+      this.pendingRequests.delete(pendingId)
     }
   }
 }

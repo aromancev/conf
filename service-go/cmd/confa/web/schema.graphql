@@ -76,7 +76,13 @@ type Profile {
     id: String!
     ownerId: String!
     handle: String!
-    displayName: String!
+    displayName: String
+    avatarThumbnail: Image
+}
+
+type Image {
+    format: String!
+    data: String!
 }
 
 input ProfileMask {
@@ -95,6 +101,15 @@ type Profiles {
     nextFrom: String!
 }
 
+enum UploadType {
+    avatar
+}
+
+type UploadToken {
+    url: String!
+    formData: String!
+}
+
 type Mutation {
     createConfa(request: ConfaMask!): Confa!
     updateConfa(where: ConfaLookup! = {}, request: ConfaMask!): Confa!
@@ -102,6 +117,7 @@ type Mutation {
     updateTalk(where: TalkLookup! = {}, request: TalkMask!): Talk!
     updateClap(talkId: String!, value: Int!): String!
     updateProfile(request: ProfileMask!): Profile!
+    requestAvatarUpload: UploadToken!
 }
 
 type Query {

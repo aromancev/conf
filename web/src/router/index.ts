@@ -73,7 +73,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "overview",
       }
     },
-    component: () => import("@/views/profile/Profile.vue"),
+    component: () => import("@/views/profile/ProfileRoot.vue"),
   },
   {
     path: "/pro/:profile/ed",
@@ -84,7 +84,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "edit",
       }
     },
-    component: () => import("@/views/profile/Profile.vue"),
+    component: () => import("@/views/profile/ProfileRoot.vue"),
   },
   {
     path: "/:confa",
@@ -95,7 +95,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "overview",
       }
     },
-    component: () => import("@/views/confa/Confa.vue"),
+    component: () => import("@/views/confa/ConfaRoot.vue"),
   },
   {
     path: "/:confa/ed",
@@ -106,7 +106,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "edit",
       }
     },
-    component: () => import("@/views/confa/Confa.vue"),
+    component: () => import("@/views/confa/ConfaRoot.vue"),
   },
   {
     path: "/:confa/:talk",
@@ -118,7 +118,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "overview",
       }
     },
-    component: () => import("@/views/talk/Talk.vue"),
+    component: () => import("@/views/talk/TalkRoot.vue"),
   },
   {
     path: "/:confa/:talk/on",
@@ -130,7 +130,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "online",
       }
     },
-    component: () => import("@/views/talk/Talk.vue"),
+    component: () => import("@/views/talk/TalkRoot.vue"),
   },
   {
     path: "/:confa/:talk/ed",
@@ -142,7 +142,7 @@ const routes: Array<RouteRecordRaw> = [
         tab: "edit",
       }
     },
-    component: () => import("@/views/talk/Talk.vue"),
+    component: () => import("@/views/talk/TalkRoot.vue"),
   },
 ]
 

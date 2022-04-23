@@ -19,6 +19,7 @@ services:
     environment:
       - VITE_RTC_ROOM_URL=ws://localhost/api/rtc/room/socket
       - VITE_SFU_TURN_URLS=turn:localhost?transport=tcp
+      - VITE_STORAGE_URL=/api/storage
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
@@ -82,6 +83,14 @@ services:
       - MONGO_USER=confa
       - MONGO_PASSWORD=confa
       - MONGO_DATABASE=confa
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_PUBLIC_URL=/api/storage
+      - STORAGE_BUCKET_USER_UPLOADS=user-uploads
+      - STORAGE_BUCKET_USER_PUBLIC=user-public
+      - BEANSTALKD_POOL=beanstalkd:11300
+      - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
     volumes:
       - ./service-go:/app
 
@@ -150,7 +159,7 @@ services:
     networks:
       - confa
     volumes:
-      - ./.artifacts/beanstalkd:/var/lib/beanstalkd
+      - .artifacts/beanstalkd:/var/lib/beanstalkd
 
   mongo:
     image: mongo:4.4
@@ -172,12 +181,26 @@ services:
         chown 999:999 /etc/mongo/mongo-repl.key
         exec docker-entrypoint.sh $$@
 
+  minio:
+    image: minio/minio:RELEASE.2022-04-16T04-26-02Z
+    command: server /data --address=":80"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=miniominio
+      - MINIO_BROWSER=off
+    networks:
+      - confa
+    volumes:
+      - .artifacts/minio:/data
+
   email-client:
     image: kbedel/fake-smtp-server
     profiles: [ "email-client" ]
     command: fake-smtp-server -s 1025 -h 80
     networks:
       - confa
+    ports:
+      - "8001:80"
 
 networks:
   confa:

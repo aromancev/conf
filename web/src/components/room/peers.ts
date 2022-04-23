@@ -17,10 +17,10 @@ export interface Peer {
 }
 
 export class PeerAggregator {
-  private peers: { [k: string]: Peer }
+  private peers: Map<string, Peer>
   private repo: Repo
 
-  constructor(repo: Repo, peers: { [k: string]: Peer }) {
+  constructor(repo: Repo, peers: Map<string, Peer>) {
     this.repo = repo
     this.peers = peers
   }
@@ -34,18 +34,18 @@ export class PeerAggregator {
     const userId = event.ownerId || ""
     switch (state.status) {
       case Status.Joined:
-        if (this.peers[userId]) {
+        if (this.peers.has(userId)) {
           return
         }
 
-        this.peers[userId] = {
+        this.peers.set(userId, {
           userId: userId,
           joinedAt: event.createdAt || 0,
           profile: this.repo.profile(userId),
-        }
+        })
         break
       case Status.Left:
-        delete this.peers[userId]
+        this.peers.delete(userId)
         break
     }
     return

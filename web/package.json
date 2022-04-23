@@ -21,7 +21,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^2.0.0",
     "typescript": "^4.4.4",
-    "vite": "^2.7.2",
+    "vite": "^2.9.9",
     "vue-tsc": "^0.29.8",
     "sass": "^1.45.1",
     "prettier": "^2.5.1",
@@ -33,5 +33,10 @@
     "@typescript-eslint/parser": "^5.8.1",
     "apollo": "^2.33.9",
     "quicktype": "15.0.260"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": ["webpack", "graphql"]
+    }
   }
 }

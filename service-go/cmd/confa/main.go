@@ -7,15 +7,20 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/cmd/confa/queue"
 	"github.com/aromancev/confa/cmd/confa/web"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/profile"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/prep/beanstalk"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -28,7 +33,7 @@ func main() {
 
 	config := Config{}.WithEnv()
 	if err := config.Validate(); err != nil {
-		log.Fatal().Err(err).Msg("Invalid config")
+		log.Fatal().Err(err).Msg("Invalid config.")
 	}
 
 	if config.LogFormat == LogConsole {
@@ -36,6 +41,35 @@ func main() {
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 	ctx = log.Logger.WithContext(ctx)
+
+	producer, err := beanstalk.NewProducer(config.Beanstalk.ParsePool(), beanstalk.Config{
+		Multiply:         1,
+		ReconnectTimeout: 3 * time.Second,
+		InfoFunc: func(message string) {
+			log.Info().Msg(message)
+		},
+		ErrorFunc: func(err error, message string) {
+			log.Err(err).Msg(message)
+		},
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+	}
+	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeUpdateAvatar}, beanstalk.Config{
+		Multiply:         1,
+		NumGoroutines:    3,
+		ReserveTimeout:   1 * time.Second,
+		ReconnectTimeout: 3 * time.Second,
+		InfoFunc: func(message string) {
+			log.Info().Msg(message)
+		},
+		ErrorFunc: func(err error, message string) {
+			log.Err(err).Msg(message)
+		},
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+	}
 
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(
 		"mongodb://%s:%s@%s/%s",
@@ -45,13 +79,21 @@ func main() {
 		config.Mongo.Database,
 	)))
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to mongo")
+		log.Fatal().Err(err).Msg("Failed to connect to mongo.")
 	}
 	mongoDB := mongoClient.Database(config.Mongo.Database)
 
 	publicKey, err := auth.NewPublicKey(config.PublicKey)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create public key")
+		log.Fatal().Err(err).Msg("Failed to create public key.")
+	}
+
+	minioClient, err := minio.New(config.Storage.Host, &minio.Options{
+		Creds:  credentials.NewStaticV4(config.Storage.AccessKey, config.Storage.SecretKey, ""),
+		Secure: false,
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
 	rtcClient := rtc.NewRTCProtobufClient(config.RTCAddress, &http.Client{})
@@ -62,20 +104,41 @@ func main() {
 	talkCRUD := talk.NewCRUD(talkMongo, confaMongo, rtcClient)
 	clapMongo := clap.NewMongo(mongoDB)
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
+	profileEmitter := profile.NewBeanstalkEmitter(producer, profile.BeanstalkTubes{
+		UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
+	})
 	profileMongo := profile.NewMongo(mongoDB)
+	avatarUploader := profile.NewUpdater(
+		config.Storage.PublicURL,
+		profile.Buckets{
+			UserUploads: config.Storage.BucketUserUploads,
+			UserPublic:  config.Storage.BucketUserPublic,
+		},
+		minioClient,
+		profileEmitter,
+		profileMongo,
+	)
+
+	jobHandler := queue.NewHandler(avatarUploader, queue.Tubes{
+		UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
+	})
 
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: web.NewHandler(web.NewResolver(
+		Handler: web.NewHandler(
+			web.NewResolver(
+				publicKey,
+				confaCRUD,
+				talkCRUD,
+				clapCRUD,
+				profileMongo,
+				avatarUploader,
+			),
 			publicKey,
-			confaCRUD,
-			talkCRUD,
-			clapCRUD,
-			profileMongo,
-		)),
+		),
 	}
 
 	go func() {
@@ -84,20 +147,29 @@ func main() {
 			if errors.Is(err, http.ErrServerClosed) {
 				return
 			}
-			log.Fatal().Err(err).Msg("Web server failed")
+			log.Fatal().Err(err).Msg("Web server failed.")
 		}
+	}()
+
+	var consumerDone sync.WaitGroup
+	consumerDone.Add(1)
+	go func() {
+		consumer.Receive(ctx, jobHandler.ServeJob)
+		consumerDone.Done()
 	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	log.Info().Msg("Shutting down")
+	log.Info().Msg("Shutting down.")
 
 	ctx, shutdown := context.WithTimeout(ctx, time.Second*60)
 	defer shutdown()
 	cancel()
 
 	_ = webServer.Shutdown(ctx)
-	log.Info().Msg("Shutdown complete")
+	producer.Stop()
+	consumerDone.Wait()
+	log.Info().Msg("Shutdown complete.")
 }

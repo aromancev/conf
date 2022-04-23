@@ -1,4 +1,5 @@
 import { RoomEvent } from "@/api/room/schema"
+import { FIFO } from "@/platform/cache"
 
 interface Aggregator {
   put(event: RoomEvent): void
@@ -7,16 +8,14 @@ interface Aggregator {
 export class BufferedAggregator {
   private autoflush: boolean
   private aggregators: Aggregator[]
+  private cache: FIFO<RoomEvent>
   private cap: number
-  private byId: { [key: string]: RoomEvent }
-  private ordered: RoomEvent[]
   private buffered: RoomEvent[]
 
   constructor(aggregators: Aggregator[], cap: number) {
     this.aggregators = aggregators
+    this.cache = new FIFO<RoomEvent>(cap)
     this.cap = cap
-    this.byId = {}
-    this.ordered = []
     this.buffered = []
     this.autoflush = false
   }
@@ -32,19 +31,14 @@ export class BufferedAggregator {
   }
 
   put(event: RoomEvent): void {
-    if (this.byId[event.id || ""]) {
+    if (this.cache.has(event.id)) {
       return
     }
 
-    this.byId[event.id || ""] = event
-    this.ordered.push(event)
-    if (this.ordered.length > this.cap) {
-      delete this.byId[this.ordered[0].id || ""]
-      this.ordered.shift()
-    }
+    this.cache.set(event.id, event)
 
     this.buffered.push(event)
-    if (this.buffered.length > this.cap) {
+    if (this.buffered.length > this.cap - this.cache.size) {
       this.buffered.shift()
     }
 

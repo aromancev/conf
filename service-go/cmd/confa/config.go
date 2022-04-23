@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
@@ -19,6 +20,8 @@ type Config struct {
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
 	Mongo            MongoConfig
+	Storage          StorageConfig
+	Beanstalk        BeanstalkConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -47,6 +50,12 @@ func (c Config) Validate() error {
 	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)
+	}
+	if err := c.Storage.Validate(); err != nil {
+		return fmt.Errorf("invalid storage config: %w", err)
+	}
+	if err := c.Beanstalk.Validate(); err != nil {
+		return fmt.Errorf("invalid beanstalk config: %w", err)
 	}
 	return nil
 }
@@ -99,4 +108,54 @@ func (c MongoConfig) Validate() error {
 		return errors.New("iam database not set")
 	}
 	return nil
+}
+
+type StorageConfig struct {
+	Host              string `envconfig:"STORAGE_HOST"`
+	AccessKey         string `envconfig:"STORAGE_ACCESS_KEY"`
+	SecretKey         string `envconfig:"STORAGE_SECRET_KEY"`
+	PublicURL         string `envconfig:"STORAGE_PUBLIC_URL"`
+	BucketUserUploads string `envconfig:"STORAGE_BUCKET_USER_UPLOADS"`
+	BucketUserPublic  string `envconfig:"STORAGE_BUCKET_USER_PUBLIC"`
+}
+
+func (c StorageConfig) Validate() error {
+	if c.Host == "" {
+		return errors.New("host not set")
+	}
+	if c.AccessKey == "" {
+		return errors.New("access key not set")
+	}
+	if c.SecretKey == "" {
+		return errors.New("secret key not set")
+	}
+	if c.PublicURL == "" {
+		return errors.New("public url not set")
+	}
+	if c.BucketUserUploads == "" {
+		return errors.New("bucket user uploads not set")
+	}
+	if c.BucketUserPublic == "" {
+		return errors.New("bucket user public not set")
+	}
+	return nil
+}
+
+type BeanstalkConfig struct {
+	Pool             string `envconfig:"BEANSTALKD_POOL"`
+	TubeUpdateAvatar string `envconfig:"BEANSTALKD_TUBE_UPDATE_AVATAR"`
+}
+
+func (c BeanstalkConfig) Validate() error {
+	if c.Pool == "" {
+		return errors.New("pool not set")
+	}
+	if c.TubeUpdateAvatar == "" {
+		return errors.New("tube `update avatar` not set")
+	}
+	return nil
+}
+
+func (c BeanstalkConfig) ParsePool() []string {
+	return strings.Split(c.Pool, ",")
 }

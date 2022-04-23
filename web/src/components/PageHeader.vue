@@ -37,7 +37,7 @@
       :class="{ opened: modal === 'profile' }"
       @click="modal = 'none'"
     >
-      <router-link class="control-item" :to="route.profile(profile.handle, 'overview')" target="_blank">
+      <router-link class="control-item" :to="route.profile(profile.handle, 'overview')">
         <span class="icon material-icons">person</span>
         My profile
       </router-link>
@@ -84,7 +84,7 @@ watch(
   async () => {
     profile.handle = currentProfile.handle || handleNew
     profile.displayName = currentProfile.displayName || genName(currentUser.id)
-    profile.avatar = await genAvatar(currentUser.id, 64)
+    profile.avatar = currentProfile.avatarThumbnail || (await genAvatar(currentUser.id, 64))
   },
   { immediate: true },
 )

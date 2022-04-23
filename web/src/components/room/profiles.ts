@@ -2,11 +2,11 @@ import { reactive } from "vue"
 import { debounce } from "@/platform/debounce"
 import { profileClient } from "@/api"
 import { genName, genAvatar } from "@/platform/gen"
-import { LRU } from "@/platform/containers"
+import { LRU } from "@/platform/cache"
 
-const avatarSise = 64
+const avatarSise = 128
 
-export interface Profile {
+interface Profile {
   userId: string
   handle: string
   name: string
@@ -79,6 +79,7 @@ export class ProfileRepository {
       }
       entry.profile.handle = prof.handle || entry.profile.handle
       entry.profile.name = prof.displayName || entry.profile.name
+      entry.profile.avatar = prof.avatarThumbnail || entry.profile.avatar
     }
 
     // Mark all entries as fetched (even if they didn't have a profile).

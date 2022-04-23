@@ -7,8 +7,10 @@ import {
   profilesVariables,
   updateProfile,
   updateProfileVariables,
+  requestAvatarUpload,
 } from "./schema"
 import { Profile, currentUser, profileStore } from "./models"
+import { config } from "@/config"
 
 class ProfileIterator {
   private api: Client
@@ -31,6 +33,10 @@ class ProfileIterator {
               ownerId
               handle
               displayName
+              avatarThumbnail {
+                format
+                data
+              }
             }
             nextFrom
           }
@@ -44,7 +50,19 @@ class ProfileIterator {
     })
 
     this.from = resp.data.profiles.nextFrom
-    return resp.data.profiles.items
+    const profs: Profile[] = []
+    for (const p of resp.data.profiles.items) {
+      profs.push({
+        id: p.id,
+        ownerId: p.ownerId,
+        handle: p.handle,
+        displayName: p.displayName || "",
+        avatarThumbnail: p.avatarThumbnail
+          ? `data:image/${p.avatarThumbnail.format};base64,${p.avatarThumbnail.data}`
+          : "",
+      })
+    }
+    return profs
   }
 }
 
@@ -74,7 +92,62 @@ export class ProfileClient {
     if (!resp.data) {
       throw new Error("No data in response.")
     }
-    return resp.data.updateProfile
+    const p = resp.data.updateProfile
+    return {
+      id: p.id,
+      ownerId: p.ownerId,
+      handle: p.handle,
+      displayName: p.displayName || "",
+      avatarThumbnail: "",
+    }
+  }
+
+  async uploadAvatar(avatarURL: string): Promise<void> {
+    const resp = await this.api.mutate<requestAvatarUpload>({
+      mutation: gql`
+        mutation requestAvatarUpload {
+          requestAvatarUpload {
+            url
+            formData
+          }
+        }
+      `,
+    })
+
+    const data = resp.data?.requestAvatarUpload
+    if (!data) {
+      throw new Error("No data in response.")
+    }
+
+    const form = new FormData()
+    for (const [k, v] of Object.entries(JSON.parse(data.formData))) {
+      form.append(k, v as string)
+    }
+    const res = await fetch(avatarURL)
+    form.append("file", await res.blob())
+    const minioResp = await fetch(data.url, {
+      method: "POST",
+      body: form,
+    })
+    if (minioResp.status >= 400) {
+      throw new Error("Failed to upload file.")
+    }
+  }
+
+  async fetchAvatar(ownerId: string, profileId: string): Promise<string> {
+    const resp = await fetch(`${config.storage.baseURL}/user-public/${ownerId}/${profileId}`, {
+      method: "GET",
+      cache: "default",
+    })
+    if (!resp.ok) {
+      return ""
+    }
+    const blob = await resp.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
   }
 
   async fetchOne(input: ProfileLookup): Promise<Profile> {
@@ -101,6 +174,7 @@ export class ProfileClient {
             ownerId: currentUser.id,
             handle: "",
             displayName: "",
+            avatarThumbnail: "",
           })
           break
       }

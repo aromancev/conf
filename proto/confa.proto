@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+message UpdateProfile {
+    message Source {
+        message Storage {
+            string bucket = 1;
+            string path = 2;
+        }
+
+        message PublicURL {
+            string url = 1;
+        }    
+        
+        Storage storage = 1; 
+        PublicURL public_url = 2; 
+    }
+
+    bytes user_id = 1;
+    Source avatar = 2;
+}
