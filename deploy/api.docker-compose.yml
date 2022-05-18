@@ -9,6 +9,7 @@ services:
         - VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
         - VITE_SFU_TURN_URLS=turn:turn.confa.io?transport=tcp
         - VITE_SFU_STUN_URLS=stun:stun.stunprotocol.org:3478
+        - VITE_STORAGE_URL=/api/storage
     networks:
       - confa
     ports:
@@ -69,6 +70,14 @@ services:
       - MONGO_USER=confa
       - MONGO_PASSWORD=confa
       - MONGO_DATABASE=confa
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_PUBLIC_URL=/api/storage
+      - STORAGE_BUCKET_USER_UPLOADS=user-uploads
+      - STORAGE_BUCKET_USER_PUBLIC=user-public
+      - BEANSTALKD_POOL=beanstalkd:11300
+      - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
 
   rtc:
     restart: on-failure
@@ -120,6 +129,18 @@ services:
         chmod 400 /etc/mongo/mongo-repl.key
         chown 999:999 /etc/mongo/mongo-repl.key
         exec docker-entrypoint.sh $$@
+
+  minio:
+    image: minio/minio:RELEASE.2022-04-16T04-26-02Z
+    command: server /data --address=":80"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=miniominio
+      - MINIO_BROWSER=off
+    networks:
+      - confa
+    volumes:
+      - .artifacts/minio:/data
 
 networks:
   confa:

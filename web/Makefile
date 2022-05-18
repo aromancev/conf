@@ -16,7 +16,7 @@ modules:
 		--rm \
 		-w /app \
 		-v `pwd`:/app \
-		node:17.7.2 bash -c "npm install -g pnpm && pnpm install"
+		node:16.15 bash -c "npm install -g pnpm@7.1.0 && pnpm install"
 
 .PHONY: lint
 lint:

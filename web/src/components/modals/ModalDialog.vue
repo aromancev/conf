@@ -1,20 +1,23 @@
 <template>
-  <div class="background" @click="close"></div>
+  <div class="background"></div>
   <div class="content">
     <div class="wrapper">
       <slot></slot>
     </div>
     <table v-if="buttons">
       <tr>
-        <td v-for="(text, id) in buttons" :key="id" class="cell" @click="click(id)">{{ text }}</td>
+        <td v-for="(text, id) in buttons" :key="id" class="cell" :class="{ disabled: disabled }" @click="click(id)">
+          {{ text }}
+        </td>
       </tr>
     </table>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   buttons: Record<string, string>
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +25,9 @@ const emit = defineEmits<{
 }>()
 
 function click(id: string) {
+  if (props.disabled) {
+    return
+  }
   emit("click", id)
 }
 </script>
@@ -68,14 +74,15 @@ table
   table-layout: fixed
 
 .cell
-  padding: 0.5rem 0
-
-td
   @include theme.clickable
+  padding: 0.5rem 0
   font-weight: 500
-  &:hover
+  &.disabled
+    cursor: default
+    background-color: var(--color-fade-background)
+  &:hover:not(.disabled)
     background-color: var(--color-highlight-background)
 
-td + td
+.cell + .cell
   border-left: 1px solid var(--color-outline)
 </style>

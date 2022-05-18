@@ -21,12 +21,12 @@ interface Local {
 }
 
 interface State {
-  tracks: { [key: string]: Track }
+  tracks: Map<string, Track>
 }
 
 export class LiveRoom {
   messages: Message[]
-  peers: { [k: string]: Peer }
+  peers: Map<string, Peer>
 
   private local: Local
   private remote: Remote
@@ -34,8 +34,8 @@ export class LiveRoom {
   private publishing: Ref<boolean>
   private rtc: RTCPeer
   private state: State
-  private streamsByTrackId: { [key: string]: RemoteStream }
-  private tracksById: { [key: string]: Track }
+  private streamsByTrackId: Map<string, RemoteStream>
+  private tracksById: Map<string, Track>
   private profileRepo: ProfileRepository
 
   constructor() {
@@ -54,13 +54,13 @@ export class LiveRoom {
     this.joined = ref<boolean>(false)
     this.publishing = ref<boolean>(false)
     this.messages = reactive<Message[]>([])
-    this.peers = reactive<{ [k: string]: Peer }>({})
+    this.peers = reactive<Map<string, Peer>>(new Map<string, Peer>())
 
-    this.profileRepo = new ProfileRepository(500, 3000)
+    this.profileRepo = new ProfileRepository(100, 3000)
     this.rtc = new RTCPeer()
-    this.state = { tracks: {} }
-    this.streamsByTrackId = {}
-    this.tracksById = {}
+    this.state = { tracks: new Map() }
+    this.streamsByTrackId = new Map()
+    this.tracksById = new Map()
   }
 
   close(): void {
@@ -114,10 +114,10 @@ export class LiveRoom {
       }
 
       const id = trackId(stream)
-      this.streamsByTrackId[id] = stream
+      this.streamsByTrackId.set(id, stream)
       this.computeRemote()
       stream.onremovetrack = () => {
-        delete this.streamsByTrackId[id]
+        this.streamsByTrackId.delete(id)
         this.computeRemote()
       }
     }
@@ -246,8 +246,8 @@ export class LiveRoom {
       this.publishing.value = true
       const stream = await fetch()
       const tId = trackId(stream)
-      this.state.tracks[tId] = { id: tId, hint: hint }
-      await this.rtc.state({ tracks: Object.values(this.state.tracks) })
+      this.state.tracks.set(tId, { id: tId, hint: hint })
+      await this.rtc.state({ tracks: Array.from(this.state.tracks.values()) })
       this.rtc.publish(stream)
       return stream
     } catch (e) {
@@ -262,7 +262,7 @@ export class LiveRoom {
     if (!stream) {
       return
     }
-    delete this.state.tracks[trackId(stream)]
+    this.state.tracks.delete(trackId(stream))
     stream.unpublish()
     for (const t of stream.getTracks()) {
       t.stop()
@@ -276,7 +276,7 @@ export class LiveRoom {
       return
     }
     for (const t of payload.tracks) {
-      this.tracksById[t.id] = t
+      this.tracksById.set(t.id, t)
     }
     this.computeRemote()
   }
@@ -286,23 +286,23 @@ export class LiveRoom {
     this.remote.screen = null
     this.remote.audios = []
 
-    for (const id in this.streamsByTrackId) {
-      const track = this.tracksById[id]
+    this.streamsByTrackId.forEach((stream: RemoteStream, trackId: string) => {
+      const track = this.tracksById.get(trackId)
       if (!track) {
-        continue
+        return
       }
       switch (track.hint) {
         case Hint.Camera:
-          this.remote.camera = this.streamsByTrackId[id]
+          this.remote.camera = stream
           break
         case Hint.Screen:
-          this.remote.screen = this.streamsByTrackId[id]
+          this.remote.screen = stream
           break
         case Hint.UserAudio:
-          this.remote.audios.push(this.streamsByTrackId[id])
+          this.remote.audios.push(stream)
           break
       }
-    }
+    })
   }
 }
 

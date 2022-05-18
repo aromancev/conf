@@ -55,19 +55,26 @@ func (m *Mongo) Create(ctx context.Context, requests ...Profile) ([]Profile, err
 }
 
 func (m *Mongo) CreateOrUpdate(ctx context.Context, request Profile) (Profile, error) {
-	request.CreatedAt = mongoNow()
+	if err := request.Validate(); err != nil {
+		return Profile{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+
+	insert := bson.M{
+		"_id":       request.ID,
+		"ownerId":   request.Owner,
+		"createdAt": mongoNow(),
+	}
 	update := make(bson.M)
-	if request.Handle != "" {
-		update["handle"] = request.Handle
+	if request.Handle == "" {
+		insert["handle"] = request.ID.String()
 	} else {
-		request.Handle = request.ID.String()
+		update["handle"] = request.Handle
 	}
 	if request.DisplayName != "" {
 		update["displayName"] = request.DisplayName
 	}
-
-	if err := request.Validate(); err != nil {
-		return Profile{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	if len(request.AvatarThumbnail.Data) > 0 {
+		update["avatarThumbnail"] = request.AvatarThumbnail
 	}
 
 	res := m.db.Collection("profiles").FindOneAndUpdate(
@@ -76,22 +83,19 @@ func (m *Mongo) CreateOrUpdate(ctx context.Context, request Profile) (Profile, e
 			"ownerId": request.Owner,
 		},
 		bson.M{
-			"$set": update,
-			"$setOnInsert": bson.M{
-				"_id":       request.ID,
-				"ownerId":   request.Owner,
-				"createdAt": request.CreatedAt,
-			},
+			"$setOnInsert": insert,
+			"$set":         update,
 		},
 		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
 	)
 	if err := res.Err(); err != nil {
 		return Profile{}, err
 	}
-	if err := res.Decode(&request); err != nil {
+	var upserted Profile
+	if err := res.Decode(&upserted); err != nil {
 		return Profile{}, err
 	}
-	return request, nil
+	return upserted, nil
 }
 
 func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Profile, error) {

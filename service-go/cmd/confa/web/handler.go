@@ -8,6 +8,7 @@ import (
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rs/zerolog/log"
 
+	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
@@ -15,7 +16,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(resolver *Resolver) *Handler {
+func NewHandler(resolver *Resolver, publicKey *auth.PublicKey) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)

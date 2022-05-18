@@ -3,6 +3,8 @@ package web
 import (
 	"context"
 	_ "embed"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 
 	"github.com/aromancev/confa/auth"
@@ -132,10 +134,16 @@ type Profiles struct {
 }
 
 type Profile struct {
-	ID          string
-	OwnerID     string
-	Handle      string
-	DisplayName string
+	ID              string
+	OwnerID         string
+	Handle          string
+	DisplayName     *string
+	AvatarThumbnail *Image
+}
+
+type Image struct {
+	Format string
+	Data   string
 }
 
 type ProfileMask struct {
@@ -148,21 +156,28 @@ type ProfileLookup struct {
 	Handle   *string
 }
 
-type Resolver struct {
-	publicKey *auth.PublicKey
-	confas    *confa.CRUD
-	talks     *talk.CRUD
-	claps     *clap.CRUD
-	profiles  *profile.Mongo
+type UploadToken struct {
+	URL      string
+	FormData string
 }
 
-func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, profiles *profile.Mongo) *Resolver {
+type Resolver struct {
+	publicKey      *auth.PublicKey
+	confas         *confa.CRUD
+	talks          *talk.CRUD
+	claps          *clap.CRUD
+	profiles       *profile.Mongo
+	profileUpdater *profile.Updater
+}
+
+func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
 	return &Resolver{
-		publicKey: pk,
-		confas:    confas,
-		talks:     talks,
-		claps:     claps,
-		profiles:  profiles,
+		publicKey:      pk,
+		confas:         confas,
+		talks:          talks,
+		claps:          claps,
+		profiles:       profiles,
+		profileUpdater: uploader,
 	}
 }
 
@@ -532,7 +547,7 @@ func (r *Resolver) Profiles(ctx context.Context, args struct {
 	fetched, err := r.profiles.Fetch(ctx, lookup)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to fetch profiles.")
-		return Profiles{Limit: args.Limit}, NewInternalError()
+		return Profiles{}, NewInternalError()
 	}
 	res := Profiles{
 		Items: make([]Profile, len(fetched)),
@@ -545,6 +560,29 @@ func (r *Resolver) Profiles(ctx context.Context, args struct {
 		res.Items[i] = newProfile(p)
 	}
 	return res, nil
+}
+
+func (r *Resolver) RequestAvatarUpload(ctx context.Context) (UploadToken, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return UploadToken{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	url, data, err := r.profileUpdater.RequestUpload(ctx, claims.UserID)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to request upload.")
+		return UploadToken{}, NewInternalError()
+	}
+	formData, err := json.Marshal(data)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal form data.")
+		return UploadToken{}, NewInternalError()
+	}
+
+	return UploadToken{
+		URL:      url,
+		FormData: string(formData),
+	}, nil
 }
 
 func newConfaLookup(input ConfaLookup, limit int32, from *string) (confa.Lookup, error) {
@@ -648,12 +686,21 @@ func newTalk(t talk.Talk) Talk {
 }
 
 func newProfile(p profile.Profile) Profile {
-	return Profile{
-		ID:          p.ID.String(),
-		OwnerID:     p.Owner.String(),
-		Handle:      p.Handle,
-		DisplayName: p.DisplayName,
+	api := Profile{
+		ID:      p.ID.String(),
+		OwnerID: p.Owner.String(),
+		Handle:  p.Handle,
 	}
+	if p.DisplayName != "" {
+		api.DisplayName = &p.DisplayName
+	}
+	if !p.AvatarThumbnail.IsEmpty() {
+		api.AvatarThumbnail = &Image{
+			Format: p.AvatarThumbnail.Format,
+			Data:   base64.StdEncoding.EncodeToString(p.AvatarThumbnail.Data),
+		}
+	}
+	return api
 }
 
 //go:embed schema.graphql

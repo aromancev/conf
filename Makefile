@@ -4,6 +4,8 @@ start:
 
 .PHONY: migrate
 migrate:
+	./minio/mc.sh mb -p local/user-uploads local/user-public
+	./minio/mc.sh policy set download local/user-public
 	./mongo/init.sh
 	./mongo/migrate.sh -source file://service-go/migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
 	./mongo/migrate.sh -source file://service-go/migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up

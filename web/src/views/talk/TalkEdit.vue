@@ -73,7 +73,8 @@ const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { talkClient, Talk, TalkMask, errorCode, Code, currentUser } from "@/api"
+import { talkClient, Talk, errorCode, Code, currentUser } from "@/api"
+import { TalkMask } from "@/api/schema"
 import { useRouter } from "vue-router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"

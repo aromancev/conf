@@ -108,15 +108,54 @@ func TestMongo(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.Equal(t, created, fetched[0])
+		})
 
-			request.DisplayName = "changed"
-			created, err = profiles.CreateOrUpdate(ctx, request)
+		t.Run("Updates fields", func(t *testing.T) {
+			t.Parallel()
+
+			profiles := NewMongo(dockerMongo(t))
+
+			request := Profile{
+				ID:          uuid.New(),
+				Owner:       uuid.New(),
+				Handle:      "test",
+				DisplayName: "test",
+			}
+			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
-			fetched, err = profiles.Fetch(ctx, Lookup{
-				Owners: []uuid.UUID{request.Owner},
+
+			created.DisplayName = "changed"
+			created.AvatarThumbnail = Image{
+				Format: "jpeg",
+				Data:   []byte{1},
+			}
+			updated, err := profiles.CreateOrUpdate(ctx, created)
+			require.NoError(t, err)
+			assert.Equal(t, created, updated)
+		})
+
+		t.Run("Does not override create only fields", func(t *testing.T) {
+			t.Parallel()
+
+			profiles := NewMongo(dockerMongo(t))
+
+			request := Profile{
+				ID:          uuid.New(),
+				Owner:       uuid.New(),
+				Handle:      "test",
+				DisplayName: "test",
+			}
+			created, err := profiles.CreateOrUpdate(ctx, request)
+			require.NoError(t, err)
+
+			updated, err := profiles.CreateOrUpdate(ctx, Profile{
+				ID:          uuid.New(),
+				Owner:       request.Owner,
+				DisplayName: "changed",
 			})
+			created.DisplayName = "changed"
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched[0])
+			assert.Equal(t, created, updated)
 		})
 
 		t.Run("Fills handle if empty", func(t *testing.T) {

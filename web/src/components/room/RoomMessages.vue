@@ -11,7 +11,11 @@
         >
           <div class="message-body" :class="{ me: msg.model.fromId === userId, last: msg.isLastFrom }">
             <div v-if="msg.showAvatar" class="avatar">
-              <router-link v-if="msg.model.profile.handle" :to="route.profile(msg.model.profile.handle, 'overview')" target="_blank">
+              <router-link
+                v-if="msg.model.profile.handle"
+                :to="route.profile(msg.model.profile.handle, 'overview')"
+                target="_blank"
+              >
                 <img :src="msg.model.profile.avatar" width="32" height="32" />
               </router-link>
               <img v-if="!msg.model.profile.handle" :src="msg.model.profile.avatar" width="32" height="32" />

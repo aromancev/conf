@@ -158,12 +158,19 @@ export interface eventsVariables {
 // GraphQL query operation: profiles
 // ====================================================
 
+export interface profiles_profiles_items_avatarThumbnail {
+  __typename: "Image";
+  format: string;
+  data: string;
+}
+
 export interface profiles_profiles_items {
   __typename: "Profile";
   id: string;
   ownerId: string;
   handle: string;
-  displayName: string;
+  displayName: string | null;
+  avatarThumbnail: profiles_profiles_items_avatarThumbnail | null;
 }
 
 export interface profiles_profiles {
@@ -196,7 +203,7 @@ export interface updateProfile_updateProfile {
   id: string;
   ownerId: string;
   handle: string;
-  displayName: string;
+  displayName: string | null;
 }
 
 export interface updateProfile {
@@ -205,6 +212,25 @@ export interface updateProfile {
 
 export interface updateProfileVariables {
   request: ProfileMask;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: requestAvatarUpload
+// ====================================================
+
+export interface requestAvatarUpload_requestAvatarUpload {
+  __typename: "UploadToken";
+  url: string;
+  formData: string;
+}
+
+export interface requestAvatarUpload {
+  requestAvatarUpload: requestAvatarUpload_requestAvatarUpload;
 }
 
 /* tslint:disable */

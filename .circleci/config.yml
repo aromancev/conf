@@ -35,7 +35,7 @@ jobs:
             - web-v1
       - run: |
           cd ./web
-          sudo npm install --unsafe-perm -g pnpm
+          sudo npm install --unsafe-perm -g pnpm@7.1.0
           pnpm install
           pnpm run build
       - save_cache:
@@ -58,6 +58,7 @@ jobs:
           sudo npm install --unsafe-perm -g pnpm
           pnpm install
           pnpm run lint
+          git diff --exit-code
       - save_cache:
           key: web-v1-{{ checksum "web/pnpm-lock.yaml" }}
           paths:

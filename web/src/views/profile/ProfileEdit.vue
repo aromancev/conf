@@ -1,6 +1,15 @@
 <template>
   <div class="form">
     <div class="form-row">
+      <div class="form-cell"></div>
+      <div class="form-cell">
+        <div class="avatar">
+          <img class="avatar-img" :src="avatar" />
+          <div class="avatar-edit-icon material-icons" @click="editAvatar">edit</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-cell label">Handle</div>
       <div class="form-cell">
         <Input
@@ -41,6 +50,13 @@
     </div>
   </div>
 
+  <AvatarEditor
+    v-if="modal === 'avatar_edit'"
+    :avatar="uploadedAvatar"
+    :loading="saving"
+    @close="modal = 'none'"
+    @update="uploadAvatar"
+  ></AvatarEditor>
   <ModalDialog v-if="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Profile with this handle already exits.</p>
     <p>Try a different handle.</p>
@@ -63,31 +79,36 @@ const displayNameValidator = new RegexValidator("^[a-zA-Z ]{0,64}$", [
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { profileClient, Profile, ProfileMask, errorCode, Code, currentUser } from "@/api"
+import { profileClient, Profile, errorCode, Code, currentUser } from "@/api"
+import { ProfileMask } from "@/api/schema"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
+import AvatarEditor from "./AvatarEditor.vue"
 
-type Modal = "none" | "error" | "duplicate_entry"
+type Modal = "none" | "avatar_edit" | "error" | "duplicate_entry"
 
 const emit = defineEmits<{
   (e: "update", input: Profile): void
+  (e: "avatar", full: string, thumbnail: string): void
 }>()
 
 const props = defineProps<{
   profile: Profile
+  avatar: string
 }>()
 
 const router = useRouter()
 
 const modal = ref<Modal>("none")
 const handle = ref(props.profile.handle)
-const displayName = ref(props.profile.displayName)
+const displayName = ref<string>(props.profile.displayName || "")
 const update = ref<ProfileMask>({})
-const saving = ref(false)
+const saving = ref<boolean>(false)
+const uploadedAvatar = ref<string>("")
 
 const handleError = handleValidator.reactive(handle)
 const displayNameError = displayNameValidator.reactive(displayName)
@@ -148,6 +169,37 @@ async function save() {
     saving.value = false
   }
 }
+
+async function editAvatar() {
+  const file = await new Promise<File>((resolve) => {
+    const input = document.createElement("input") as HTMLInputElement
+    input.type = "file"
+    input.onchange = () => {
+      if (!input.files) {
+        throw new Error("Failed to parse files.")
+      }
+      resolve(input.files[0])
+    }
+    input.click()
+  })
+
+  uploadedAvatar.value = await new Promise<string>((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      resolve(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  })
+  modal.value = "avatar_edit"
+}
+
+async function uploadAvatar(full: string, thumbnail: string) {
+  saving.value = true
+  await profileClient.uploadAvatar(full)
+  emit("avatar", full, thumbnail)
+  modal.value = "none"
+  saving.value = false
+}
 </script>
 
 <style scoped lang="sass">
@@ -172,8 +224,33 @@ async function save() {
   text-align: right
   padding-right: 30px
 
+.avatar
+  position: relative
+  display: flex
+  margin-bottom: 20px
+  width: 200px
+
+.avatar-img
+  @include theme.shadow-l
+
+  border-radius: 50%
+  width: 100%
+  height: 100%
+
+.avatar-edit-icon
+  cursor: pointer
+  border-radius: 10px
+  padding: 10px
+  background: #222
+  color: white
+  position: absolute
+  right: 0
+  bottom: 10%
+  &:hover
+    background: #2A2A2A
+
 .form-input
-  width: 800px
+  width: 400px
 
 .controls
   display: flex

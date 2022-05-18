@@ -1,4 +1,7 @@
 export const config = {
+  storage: {
+    baseURL: import.meta.env.VITE_STORAGE_URL as string,
+  },
   rtc: {
     room: {
       baseURL: import.meta.env.VITE_RTC_ROOM_URL as string,
