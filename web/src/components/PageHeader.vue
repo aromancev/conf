@@ -42,7 +42,7 @@
         My profile
       </router-link>
       <div class="control-divider"></div>
-      <div class="control-item">
+      <div class="control-item" @click="logout">
         <span class="icon material-icons">logout</span>
         Sign out
       </div>
@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from "vue"
-import { currentUser, currentProfile } from "@/api"
+import { currentUser, currentProfile, client } from "@/api"
 import { genAvatar, genName } from "@/platform/gen"
 import { route, handleNew } from "@/router"
 import { Theme } from "@/platform/theme"
@@ -98,6 +98,10 @@ onMounted(() => {
   theme.value = (localStorage.getItem("theme") as Theme) || Theme.Light
 })
 
+async function logout() {
+  await client.logout()
+  window.location.reload()
+}
 function switchModal(val: Modal) {
   if (modal.value === val) {
     modal.value = "none"

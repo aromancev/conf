@@ -59,6 +59,10 @@ func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.Publi
 		"/login",
 		login(baseURL, secretKey, producer, tubeEmail),
 	)
+	r.Handle(
+		"/logout",
+		logout(sessions),
+	)
 
 	return &Handler{
 		router: r,
@@ -164,6 +168,7 @@ func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *
 		var sessionRequest Session
 		err := json.NewDecoder(r.Body).Decode(&sessionRequest)
 		if err != nil {
+			log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -171,6 +176,7 @@ func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *
 		var claims auth.EmailClaims
 		err = publicKey.Verify(sessionRequest.EmailToken, &claims)
 		if err != nil {
+			log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -278,5 +284,27 @@ func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubeEma
 			return
 		}
 		log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted.")
+	}
+}
+
+func logout(sessions *session.CRUD) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		authCtx := auth.NewHTTPContext(w, r)
+		err := sessions.Delete(ctx, authCtx.Session())
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to delete session.")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		authCtx.ResetSession()
+		log.Ctx(ctx).Info().Str("sessionKey", authCtx.Session()).Msg("User logged out.")
 	}
 }
