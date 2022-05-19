@@ -19,7 +19,6 @@ import { ApolloError } from "@apollo/client/core"
 import { userStore } from "./models"
 
 const minRefresh = 10 * Duration.second
-const requestReady = 4
 const httpOK = 200
 const httpCreated = 202
 
@@ -70,6 +69,11 @@ export function errorCode(e: unknown): Code {
   }
 
   return Code.Unknown
+}
+
+interface Token {
+  token: string
+  expiresIn: number
 }
 
 export class Client {
@@ -146,65 +150,64 @@ export class Client {
   }
 
   async login(email: string): Promise<void> {
-    const xhr = new XMLHttpRequest()
-    xhr.open("POST", "/api/iam/login", true)
-    xhr.setRequestHeader("Content-Type", "application/json")
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState != requestReady) return
-
-      if (xhr.status != httpOK) {
-        throw new APIError(Code.Unknown, "Login failed.")
-      }
-    }
-    xhr.send(
-      JSON.stringify({
+    const resp = await fetch("/api/iam/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         address: email,
       }),
-    )
+    })
+    if (resp.status !== httpOK) {
+      throw new APIError(Code.Unknown, "Login failed.")
+    }
+  }
+
+  async logout(): Promise<void> {
+    const resp = await fetch("/api/iam/logout", {
+      method: "POST",
+    })
+    if (resp.status !== httpOK) {
+      throw new APIError(Code.Unknown, "Logout failed.")
+    }
   }
 
   async createSession(emailToken: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const xhr = new XMLHttpRequest()
-    xhr.open("POST", "/api/iam/session", true)
-    xhr.setRequestHeader("Content-Type", "application/json")
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState != requestReady) return
-
-      if (xhr.status == httpCreated) {
-        const data = JSON.parse(xhr.responseText)
-        this.setToken(data.token, data.expiresIn)
-      } else {
-        console.error("No token present in session response. Trying to refresh.")
-        // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
-        this.refreshToken() // No point in waiting for it, so no `await`.
-      }
-    }
-    xhr.send(
-      JSON.stringify({
+    const resp = await fetch("/api/iam/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         emailToken: emailToken,
       }),
-    )
+    })
+    if (resp.status === httpCreated) {
+      const data = (await resp.json()) as Token
+      this.setToken(data.token, data.expiresIn)
+    } else {
+      console.error("No token present in session response. Trying to refresh.")
+      // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
+      this.refreshToken() // No point in waiting for it, so no `await`.
+    }
   }
 
   async refreshToken() {
     this.setRefreshInProgress()
 
-    const xhr = new XMLHttpRequest()
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState != requestReady) return
-
-      if (xhr.status == httpOK) {
-        const data = JSON.parse(xhr.responseText)
-        this.setToken(data.token, data.expiresIn)
-      } else {
-        // Failed to refresh the token. Give up and set an empty token.
-        this.setToken("", 0)
-      }
+    const resp = await fetch("/api/iam/token", {
+      method: "GET",
+    })
+    if (resp.status === httpOK) {
+      const data = (await resp.json()) as Token
+      this.setToken(data.token, data.expiresIn)
+    } else {
+      // Failed to refresh the token. Give up and set an empty token.
+      this.setToken("", 0)
     }
-    xhr.open("GET", "/api/iam/token")
-    xhr.send()
   }
 
   async clearCache(): Promise<void> {

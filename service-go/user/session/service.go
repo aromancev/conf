@@ -9,6 +9,7 @@ import (
 
 type Repo interface {
 	Create(ctx context.Context, requests ...Session) ([]Session, error)
+	Delete(ctx context.Context, lookup Lookup) error
 	FetchOne(ctx context.Context, lookup Lookup) (Session, error)
 }
 
@@ -30,6 +31,13 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID) (Session, error) {
 	}
 
 	return created[0], nil
+}
+
+func (c *CRUD) Delete(ctx context.Context, key string) error {
+	if key == "" {
+		return ErrNotFound
+	}
+	return c.repo.Delete(ctx, Lookup{Key: key})
 }
 
 func (c *CRUD) Fetch(ctx context.Context, key string) (Session, error) {

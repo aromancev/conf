@@ -1,7 +1,7 @@
-import { createApp } from "vue"
+import { createApp, watch } from "vue"
 import App from "./App.vue"
 import router from "./router"
-import { client, profileClient } from "@/api"
+import { client, profileClient, currentUser } from "@/api"
 
 const app = createApp(App)
 
@@ -30,6 +30,12 @@ app.directive("click-outside", {
 app.use(router)
 app.mount("#app")
 
-client.refreshToken().then(() => {
-  profileClient.refreshProfile()
-})
+watch(
+  currentUser,
+  () => {
+    profileClient.refreshProfile()
+  },
+  { immediate: true },
+)
+
+client.refreshToken()

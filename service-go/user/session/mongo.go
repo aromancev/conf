@@ -56,6 +56,28 @@ func (m *Mongo) Create(ctx context.Context, requests ...Session) ([]Session, err
 	return requests, nil
 }
 
+func (m *Mongo) Delete(ctx context.Context, lookup Lookup) error {
+	filter := bson.M{}
+	if lookup.Key != "" {
+		filter["_id"] = lookup.Key
+	}
+	if lookup.Owner != uuid.Nil {
+		filter["owner"] = lookup.Owner
+	}
+	if lookup.Limit > batchLimit || lookup.Limit == 0 {
+		lookup.Limit = batchLimit
+	}
+
+	_, err := m.db.Collection("sessions").DeleteMany(
+		ctx,
+		filter,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Session, error) {
 	filter := bson.M{}
 	if lookup.Key != "" {

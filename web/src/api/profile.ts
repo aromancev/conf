@@ -164,6 +164,9 @@ export class ProfileClient {
 
   async refreshProfile(): Promise<void> {
     try {
+      if (currentUser.id === "") {
+        throw new APIError(Code.NotFound, "failed to fetch user")
+      }
       const profile = await this.fetchOne({ ownerIds: [currentUser.id] })
       profileStore.update(profile)
     } catch (e) {
