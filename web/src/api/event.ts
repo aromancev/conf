@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client/core"
-import { Client, FetchPolicy, Policy } from "./api"
+import { Client, FetchPolicy } from "./api"
 import {
   EventLookup,
   EventLimit,
@@ -12,6 +12,21 @@ import {
 } from "./schema"
 import { RoomEvent, EventPeerState, Status, Hint } from "./room/schema"
 
+interface OptionalFetchParams {
+  policy?: FetchPolicy
+  order?: EventOrder
+}
+
+interface FetchParams {
+  policy: FetchPolicy
+  order: EventOrder
+}
+
+const defaultParams: FetchParams = {
+  policy: "cache-first",
+  order: EventOrder.ASC,
+}
+
 export class EventClient {
   private api: Client
 
@@ -19,8 +34,8 @@ export class EventClient {
     this.api = api
   }
 
-  async fetchOne(lookup: EventLookup, order?: EventOrder): Promise<RoomEvent | null> {
-    const iter = this.fetch(lookup, order)
+  async fetchOne(lookup: EventLookup, params?: OptionalFetchParams): Promise<RoomEvent | null> {
+    const iter = this.fetch(lookup, params)
     const events = await iter.next()
     if (events.length === 0) {
       return null
@@ -31,12 +46,8 @@ export class EventClient {
     return events[0]
   }
 
-  fetch(
-    lookup: EventLookup,
-    order: EventOrder = EventOrder.ASC,
-    policy: FetchPolicy = Policy.CacheFirst,
-  ): EventIterator {
-    return new EventIterator(this.api, lookup, order, policy)
+  fetch(lookup: EventLookup, params?: OptionalFetchParams): EventIterator {
+    return new EventIterator(this.api, lookup, params)
   }
 }
 
@@ -44,15 +55,16 @@ class EventIterator {
   private api: Client
   private lookup: EventLookup
   private from: EventFromInput | null
-  private order: EventOrder | null
-  private policy: FetchPolicy
+  private params: FetchParams
 
-  constructor(api: Client, lookup: EventLookup, order: EventOrder, policy: FetchPolicy) {
+  constructor(api: Client, lookup: EventLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
     this.from = null
-    this.order = order
-    this.policy = policy
+    this.params = {
+      ...defaultParams,
+      ...params,
+    }
   }
 
   async next(limit?: EventLimit): Promise<RoomEvent[]> {
@@ -89,9 +101,9 @@ class EventIterator {
         where: this.lookup,
         from: this.from,
         limit: limit || { count: 100, seconds: 0 },
-        order: this.order,
+        order: this.params.order,
       },
-      fetchPolicy: this.policy,
+      fetchPolicy: this.params.policy,
     })
 
     this.from = resp.data.events.nextFrom

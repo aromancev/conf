@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client/core"
-import { Client, APIError, Code, errorCode } from "./api"
+import { Client, APIError, Code, errorCode, FetchPolicy } from "./api"
 import {
   ProfileMask,
   ProfileLookup,
@@ -12,14 +12,31 @@ import {
 import { Profile, currentUser, profileStore } from "./models"
 import { config } from "@/config"
 
+interface OptionalFetchParams {
+  policy?: FetchPolicy
+}
+
+interface FetchParams {
+  policy: FetchPolicy
+}
+
+const defaultParams: FetchParams = {
+  policy: "cache-first",
+}
+
 class ProfileIterator {
   private api: Client
   private lookup: ProfileLookup
   private from: string | null
+  private params: FetchParams
 
-  constructor(api: Client, lookup: ProfileLookup) {
+  constructor(api: Client, lookup: ProfileLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
+    this.params = {
+      ...defaultParams,
+      ...params,
+    }
     this.from = null
   }
 
@@ -47,6 +64,7 @@ class ProfileIterator {
         limit: 100,
         from: this.from,
       },
+      fetchPolicy: this.params.policy,
     })
 
     this.from = resp.data.profiles.nextFrom
@@ -184,7 +202,7 @@ export class ProfileClient {
     }
   }
 
-  fetch(lookup: ProfileLookup): ProfileIterator {
-    return new ProfileIterator(this.api, lookup)
+  fetch(lookup: ProfileLookup, params?: OptionalFetchParams): ProfileIterator {
+    return new ProfileIterator(this.api, lookup, params)
   }
 }

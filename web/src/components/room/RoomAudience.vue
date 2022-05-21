@@ -74,6 +74,9 @@ onUnmounted(() => {
 })
 
 function resize() {
+  if (document.fullscreenElement) {
+    return
+  }
   if (!audience.value || !selection.value) {
     return
   }

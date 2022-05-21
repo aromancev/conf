@@ -4,13 +4,12 @@
       <div class="video-content">
         <div class="videos">
           <div class="screen video-container">
-            <video
+            <RoomOnlineVideo
               v-if="local.screen || remote.screen"
-              class="screen-video"
-              :srcObject="local.screen || remote.screen"
-              autoplay
-              muted
-            ></video>
+              class="video screen-video"
+              :src="local.screen || remote.screen"
+            >
+            </RoomOnlineVideo>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
@@ -18,7 +17,7 @@
           <div class="camera video-container">
             <video
               v-if="local.camera || remote.camera"
-              class="camera-video"
+              class="video camera-video"
               :class="{ local: local.camera }"
               :srcObject="local.camera || remote.camera"
               autoplay
@@ -108,6 +107,7 @@ import { LiveRoom } from "@/components/room"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
+import RoomOnlineVideo from "@/components/room/RoomOnlineVideo.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
 
@@ -207,10 +207,7 @@ function switchSidePanel(panel: SidePanel) {
   localStorage.setItem(sidePanelKey, panel)
 
   nextTick(() => {
-    if (!audience.value) {
-      return
-    }
-    audience.value.resize()
+    audience.value?.resize()
   })
 }
 </script>
@@ -248,7 +245,7 @@ function switchSidePanel(panel: SidePanel) {
   flex-direction: row
   justify-content: center
 
-video
+.video
   position: absolute
   left: 50%
   top: 50%

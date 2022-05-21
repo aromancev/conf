@@ -1,5 +1,5 @@
-import { gql, DocumentNode } from "@apollo/client/core"
-import { Client, FetchPolicy, Policy, APIError, Code } from "./api"
+import { gql } from "@apollo/client/core"
+import { Client, FetchPolicy, APIError, Code } from "./api"
 import {
   TalkLookup,
   TalkMask,
@@ -8,69 +8,95 @@ import {
   createTalkVariables,
   talks,
   talksVariables,
+  talksHydrated,
+  talksHydratedVariables,
   updateTalk,
   updateTalkVariables,
 } from "./schema"
 import { Talk } from "./models"
 
-const queryHydrated = gql`
-  query talksHydrated($where: TalkLookup!, $limit: Int!, $from: String) {
-    talks(where: $where, limit: $limit, from: $from) {
-      items {
-        id
-        ownerId
-        confaId
-        roomId
-        handle
-        title
-        description
-      }
-      nextFrom
-    }
-  }
-`
+interface FetchParams {
+  policy: FetchPolicy
+  hydrated: boolean
+}
 
-const query = gql`
-  query talks($where: TalkLookup!, $limit: Int!, $from: String) {
-    talks(where: $where, limit: $limit, from: $from) {
-      items {
-        id
-        ownerId
-        confaId
-        roomId
-        handle
-      }
-      nextFrom
-    }
-  }
-`
+interface OptionalFetchParams {
+  policy?: FetchPolicy
+  hydrated?: boolean
+}
+
+const defaultParams: FetchParams = {
+  policy: "cache-first",
+  hydrated: false,
+}
 
 class TalkIterator {
   private api: Client
   private lookup: TalkLookup
   private from: string | null
-  private query: DocumentNode
-  private policy: FetchPolicy
+  private params: FetchParams
 
-  constructor(api: Client, lookup: TalkLookup, hydrated: boolean, policy: FetchPolicy) {
+  constructor(api: Client, lookup: TalkLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
     this.from = null
-    this.query = hydrated ? queryHydrated : query
-    this.policy = policy
+    this.params = {
+      ...defaultParams,
+      ...params,
+    }
   }
 
   async next(): Promise<Talk[]> {
+    if (this.params.hydrated) {
+      const resp = await this.api.query<talksHydrated, talksHydratedVariables>({
+        query: gql`
+          query talksHydrated($where: TalkLookup!, $limit: Int!, $from: String) {
+            talks(where: $where, limit: $limit, from: $from) {
+              items {
+                id
+                ownerId
+                confaId
+                roomId
+                handle
+                title
+                description
+              }
+              nextFrom
+            }
+          }
+        `,
+        variables: {
+          where: this.lookup,
+          from: this.from,
+          limit: 100,
+        },
+        fetchPolicy: this.params.policy,
+      })
+      this.from = resp.data.talks.nextFrom
+      return resp.data.talks.items
+    }
     const resp = await this.api.query<talks, talksVariables>({
-      query: this.query,
+      query: gql`
+        query talks($where: TalkLookup!, $limit: Int!, $from: String) {
+          talks(where: $where, limit: $limit, from: $from) {
+            items {
+              id
+              ownerId
+              confaId
+              roomId
+              handle
+            }
+            nextFrom
+          }
+        }
+      `,
       variables: {
         where: this.lookup,
         from: this.from,
         limit: 100,
       },
-      fetchPolicy: this.policy,
+      fetchPolicy: this.params.policy,
     })
-
     this.from = resp.data.talks.nextFrom
     return resp.data.talks.items
   }
@@ -138,8 +164,8 @@ export class TalkClient {
     return resp.data.updateTalk
   }
 
-  async fetchOne(input: TalkLookup, hydrated = true): Promise<Talk | null> {
-    const iter = this.fetch(input, hydrated)
+  async fetchOne(input: TalkLookup, params?: OptionalFetchParams): Promise<Talk | null> {
+    const iter = this.fetch(input, params)
     const talks = await iter.next()
     if (talks.length === 0) {
       throw new APIError(Code.NotFound, "Talk not found.")
@@ -150,7 +176,7 @@ export class TalkClient {
     return talks[0]
   }
 
-  fetch(lookup: TalkLookup, hydrated = false, policy: FetchPolicy = Policy.CacheFirst): TalkIterator {
-    return new TalkIterator(this.api, lookup, hydrated, policy)
+  fetch(lookup: TalkLookup, params?: OptionalFetchParams): TalkIterator {
+    return new TalkIterator(this.api, lookup, params)
   }
 }

@@ -10,7 +10,6 @@ import {
   ApolloClient,
   createHttpLink,
   InMemoryCache,
-  FetchPolicy as ApolloFetchPolicy,
 } from "@apollo/client/core"
 import { onError, ErrorResponse } from "@apollo/client/link/error"
 import { setContext } from "@apollo/client/link/context"
@@ -22,24 +21,21 @@ const minRefresh = 10 * Duration.second
 const httpOK = 200
 const httpCreated = 202
 
-export type FetchPolicy = ApolloFetchPolicy
-
-export enum Policy {
+export type FetchPolicy =
   // Apollo Client first executes the query against the cache. If all requested data is present in the cache, that data is returned. Otherwise, Apollo Client executes the query against your GraphQL server and returns that data after caching it.
   // Prioritizes minimizing the number of network requests sent by your application.
   // This is the default fetch policy.
-  CacheFirst = "cache-first",
+  | "cache-first"
   // Apollo Client executes the full query against your GraphQL server, without first checking the cache. The query's result is stored in the cache.
   // Prioritizes consistency with server data, but can't provide a near-instantaneous response when cached data is available.
-  NetworkOnly = "network-only",
+  | "network-only"
   // Apollo Client executes the query only against the cache. It never queries your server in this case.
   // A cache-only query throws an error if the cache does not contain data for all requested fields.
-  CacheOnly = "cache-only",
+  | "cache-only"
   // Similar to network-only, except the query's result is not stored in the cache.
-  NoCache = "no-cache",
+  | "no-cache"
   // Uses the same logic as cache-first, except this query does not automatically update when underlying field values change. You can still manually update this query with refetch and updateQueries.
-  Standby = "standby",
-}
+  | "standby"
 
 export class APIError extends Error {
   code: Code
