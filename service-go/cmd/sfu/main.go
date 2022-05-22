@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	psfu "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
 	"github.com/pion/ion-sfu/cmd/signal/grpc/server"
 	"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
 	"github.com/pion/ion-sfu/pkg/sfu"
+	"github.com/pion/ion/proto/rtc"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -63,7 +63,7 @@ func main() {
 	dc := sfuService.NewDatachannel(sfu.APIChannelLabel)
 	dc.Use(datachannel.SubscriberAPI)
 
-	psfu.RegisterSFUServer(grpcServer, server.NewServer(sfuService))
+	rtc.RegisterRTCServer(grpcServer, server.NewSFUServer(sfuService))
 
 	lis, err := net.Listen("tcp", config.ListenWebAddress)
 	if err != nil {
