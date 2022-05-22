@@ -8,7 +8,7 @@ import (
 	"io"
 	"sync"
 
-	pb "github.com/pion/ion-sfu/cmd/signal/grpc/proto"
+	"github.com/pion/ion/proto/rtc"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -48,11 +48,11 @@ type Message struct {
 
 type GRPCSignal struct {
 	m      sync.Mutex
-	stream pb.SFU_SignalClient
+	stream rtc.RTC_SignalClient
 }
 
 func NewGRPCSignal(ctx context.Context, conn *grpc.ClientConn) (*GRPCSignal, error) {
-	stream, err := pb.NewSFUClient(conn).Signal(ctx)
+	stream, err := rtc.NewRTCClient(conn).Signal(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -68,52 +68,55 @@ func (s *GRPCSignal) Send(ctx context.Context, msg Message) error {
 	switch {
 	case msg.Join != nil:
 		pl := msg.Join
-		desc, err := json.Marshal(pl.Description)
-		if err != nil {
-			return fmt.Errorf("failed to marshal join: %w", err)
-		}
-		return s.stream.Send(&pb.SignalRequest{
-			Payload: &pb.SignalRequest_Join{
-				Join: &pb.JoinRequest{
-					Sid:         pl.SessionID,
-					Uid:         pl.UserID,
-					Description: desc,
+		return s.stream.Send(&rtc.Request{
+			Payload: &rtc.Request_Join{
+				Join: &rtc.JoinRequest{
+					Sid: pl.SessionID,
+					Uid: pl.UserID,
+					Description: &rtc.SessionDescription{
+						Target: rtc.Target_PUBLISHER,
+						Type:   pl.Description.Type.String(),
+						Sdp:    pl.Description.SDP,
+					},
 				},
 			},
 		})
+
 	case msg.Offer != nil:
 		pl := msg.Offer
-		desc, err := json.Marshal(pl.Description)
-		if err != nil {
-			return fmt.Errorf("failed to marshal offer: %w", err)
-		}
-		return s.stream.Send(&pb.SignalRequest{
-			Payload: &pb.SignalRequest_Description{
-				Description: desc,
+		return s.stream.Send(&rtc.Request{
+			Payload: &rtc.Request_Description{
+				Description: &rtc.SessionDescription{
+					Target: rtc.Target_PUBLISHER,
+					Type:   pl.Description.Type.String(),
+					Sdp:    pl.Description.SDP,
+				},
 			},
 		})
+
 	case msg.Answer != nil:
 		pl := msg.Answer
-		desc, err := json.Marshal(pl.Description)
-		if err != nil {
-			return fmt.Errorf("failed to marshal answer: %w", err)
-		}
-		return s.stream.Send(&pb.SignalRequest{
-			Payload: &pb.SignalRequest_Description{
-				Description: desc,
+		return s.stream.Send(&rtc.Request{
+			Payload: &rtc.Request_Description{
+				Description: &rtc.SessionDescription{
+					Target: rtc.Target_SUBSCRIBER,
+					Type:   pl.Description.Type.String(),
+					Sdp:    pl.Description.SDP,
+				},
 			},
 		})
+
 	case msg.Trickle != nil:
 		pl := msg.Trickle
 		cand, err := json.Marshal(pl.Candidate)
 		if err != nil {
 			return fmt.Errorf("failed to marshal trickle: %w", err)
 		}
-		return s.stream.Send(&pb.SignalRequest{
-			Payload: &pb.SignalRequest_Trickle{
-				Trickle: &pb.Trickle{
+		return s.stream.Send(&rtc.Request{
+			Payload: &rtc.Request_Trickle{
+				Trickle: &rtc.Trickle{
 					Init:   string(cand),
-					Target: pb.Trickle_Target(pl.Target),
+					Target: rtc.Target(pl.Target),
 				},
 			},
 		})
@@ -134,31 +137,48 @@ func (s *GRPCSignal) Receive(ctx context.Context) (Message, error) {
 	}
 
 	switch payload := res.Payload.(type) {
-	case *pb.SignalReply_Join:
-		var s webrtc.SessionDescription
-		err := json.Unmarshal(payload.Join.Description, &s)
-		if err != nil {
-			return Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
+	case *rtc.Reply_Join:
+		if !payload.Join.Success {
+			return Message{}, fmt.Errorf("failed to join: %s", payload.Join.Error.String())
 		}
-		return Message{Answer: &Answer{Description: s}}, nil
+		return Message{
+			Answer: &Answer{
+				Description: webrtc.SessionDescription{
+					Type: webrtc.NewSDPType(payload.Join.Description.Type),
+					SDP:  payload.Join.Description.Sdp,
+				},
+			},
+		}, nil
 
-	case *pb.SignalReply_Description:
-		var s webrtc.SessionDescription
-		err := json.Unmarshal(payload.Description, &s)
-		if err != nil {
-			return Message{}, fmt.Errorf("failed to unmarshal session: %w", err)
+	case *rtc.Reply_Description:
+		desc := webrtc.SessionDescription{
+			Type: webrtc.NewSDPType(payload.Description.Type),
+			SDP:  payload.Description.Sdp,
 		}
-		switch s.Type {
+		switch desc.Type {
 		case webrtc.SDPTypeOffer:
-			return Message{Offer: &Offer{Description: s}}, nil
+			return Message{
+				Offer: &Offer{
+					Description: desc,
+				},
+			}, nil
 		case webrtc.SDPTypeAnswer:
-			return Message{Answer: &Answer{Description: s}}, nil
+			return Message{
+				Answer: &Answer{
+					Description: desc,
+				},
+			}, nil
 		}
 
-	case *pb.SignalReply_Trickle:
+	case *rtc.Reply_Trickle:
 		var c webrtc.ICECandidateInit
 		_ = json.Unmarshal([]byte(payload.Trickle.Init), &c) // Init unmarshal errors are ont critical.
-		return Message{Trickle: &Trickle{Candidate: c, Target: int(payload.Trickle.Target)}}, nil
+		return Message{
+			Trickle: &Trickle{
+				Candidate: c,
+				Target:    int(payload.Trickle.Target),
+			},
+		}, nil
 	}
 
 	return Message{}, ErrUnknownMessage
