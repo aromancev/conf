@@ -1,6 +1,6 @@
 import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
-import { RTCPeer, eventClient, Policy } from "@/api"
+import { RTCPeer, eventClient } from "@/api"
 import { BufferedAggregator } from "./buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./messages"
@@ -9,15 +9,15 @@ import { RoomEvent, Hint, Track } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
 
 interface Remote {
-  camera: MediaStream | null
-  screen: MediaStream | null
+  camera?: MediaStream
+  screen?: MediaStream
   audios: MediaStream[]
 }
 
 interface Local {
-  camera: LocalStream | null
-  screen: LocalStream | null
-  mic: LocalStream | null
+  camera?: LocalStream
+  screen?: LocalStream
+  mic?: LocalStream
 }
 
 interface State {
@@ -39,15 +39,8 @@ export class LiveRoom {
   private profileRepo: ProfileRepository
 
   constructor() {
-    this.local = reactive<Local>({
-      camera: null,
-      screen: null,
-      mic: null,
-    }) as Local
-
+    this.local = reactive<Local>({}) as Local
     this.remote = reactive<Remote>({
-      camera: null,
-      screen: null,
       audios: [],
     })
 
@@ -123,7 +116,7 @@ export class LiveRoom {
     }
     await this.rtc.join(roomId, true)
 
-    const iter = eventClient.fetch({ roomId: roomId }, EventOrder.DESC, Policy.NetworkOnly)
+    const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
     const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
     // Sorting events to always be in chronological order.
     events.sort((l: RoomEvent, r: RoomEvent): number => {
@@ -190,7 +183,7 @@ export class LiveRoom {
 
   unshareCamera() {
     this.unshare(this.local.camera)
-    this.local.camera = null
+    this.local.camera = undefined
   }
 
   async shareScreen() {
@@ -220,7 +213,7 @@ export class LiveRoom {
 
   unshareScreen() {
     this.unshare(this.local.screen)
-    this.local.screen = null
+    this.local.screen = undefined
   }
 
   async shareMic() {
@@ -234,12 +227,12 @@ export class LiveRoom {
 
   unshareMic() {
     this.unshare(this.local.mic)
-    this.local.mic = null
+    this.local.mic = undefined
   }
 
-  private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | null> {
+  private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | undefined> {
     if (!this.rtc || !this.joined.value || this.publishing.value) {
-      return null
+      return undefined
     }
 
     try {
@@ -252,7 +245,7 @@ export class LiveRoom {
       return stream
     } catch (e) {
       console.warn("Failed to share media:", e)
-      return null
+      return undefined
     } finally {
       this.publishing.value = false
     }
@@ -282,8 +275,8 @@ export class LiveRoom {
   }
 
   computeRemote() {
-    this.remote.camera = null
-    this.remote.screen = null
+    this.remote.camera = undefined
+    this.remote.screen = undefined
     this.remote.audios = []
 
     this.streamsByTrackId.forEach((stream: RemoteStream, trackId: string) => {

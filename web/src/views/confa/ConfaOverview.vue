@@ -61,7 +61,12 @@ async function loadTalks() {
     return
   }
   talksLoading.value = true
-  const iter = talkClient.fetch({ confaId: props.confa.id }, false)
+  const iter = talkClient.fetch(
+    { confaId: props.confa.id },
+    {
+      hydrated: false,
+    },
+  )
   talks.value = await iter.next()
   talksLoading.value = false
 }

@@ -1,5 +1,5 @@
 import { reactive } from "vue"
-import { debounce } from "@/platform/debounce"
+import { throttle } from "@/platform/sync"
 import { profileClient } from "@/api"
 import { genName, genAvatar } from "@/platform/gen"
 import { LRU } from "@/platform/cache"
@@ -20,11 +20,11 @@ interface Entry {
 
 export class ProfileRepository {
   private cache: LRU<Entry>
-  private fetchDebounced: () => void
+  private fetchThrottled: () => void
 
   constructor(cacheLimit: number, debounceFetchMS: number) {
     this.cache = new LRU<Entry>(cacheLimit)
-    this.fetchDebounced = debounce(() => {
+    this.fetchThrottled = throttle(() => {
       this.fetch()
     }, debounceFetchMS)
   }
@@ -48,7 +48,7 @@ export class ProfileRepository {
       entry.profile.avatar = src
     })
     this.cache.set(id, entry)
-    this.fetchDebounced()
+    this.fetchThrottled()
 
     return entry.profile
   }
@@ -68,7 +68,7 @@ export class ProfileRepository {
     }
 
     // Fetch profiles. Only fetching one page.
-    const iter = profileClient.fetch({ ownerIds: toFetch.map((e) => e.profile.userId) })
+    const iter = profileClient.fetch({ ownerIds: toFetch.map((e) => e.profile.userId) }, { policy: "no-cache" })
     const profiles = await iter.next()
 
     // Update info in all the entries.
