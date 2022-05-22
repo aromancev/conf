@@ -77,7 +77,7 @@ function toggleFullscreen() {
   left: 0
   height: 100%
   width: 100%
-  background-image: linear-gradient(180deg, transparent 85%, black 95%)
+  background-image: linear-gradient(0, black 0, transparent 50px)
 
 .bottom-panel
   position: absolute
@@ -95,6 +95,7 @@ function toggleFullscreen() {
 .panel-btn
   @include theme.clickable
 
+  color: white
   padding: 10px
 
 .video
