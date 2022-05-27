@@ -174,7 +174,7 @@ export class LiveRoom {
       return await LocalStream.getUserMedia({
         codec: "vp8",
         resolution: "vga",
-        simulcast: true,
+        simulcast: false,
         video: true,
         audio: false,
       })
@@ -191,7 +191,7 @@ export class LiveRoom {
       const stream = await LocalStream.getDisplayMedia({
         codec: "vp8",
         resolution: "hd",
-        simulcast: true,
+        simulcast: false,
         video: {
           width: { ideal: 2560 },
           height: { ideal: 1440 },
@@ -265,7 +265,7 @@ export class LiveRoom {
 
   private put(event: RoomEvent): void {
     const payload = event.payload.peerState
-    if (!payload?.tracks) {
+    if (!payload?.tracks || payload.tracks.length === 0) {
       return
     }
     for (const t of payload.tracks) {
