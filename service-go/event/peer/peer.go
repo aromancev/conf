@@ -47,7 +47,9 @@ func (s State) Validate() error {
 
 func (s State) Track(id string) (event.Track, bool) {
 	for _, t := range s.Tracks {
-		return t, true
+		if t.ID == id {
+			return t, true
+		}
 	}
 	return event.Track{}, false
 }
