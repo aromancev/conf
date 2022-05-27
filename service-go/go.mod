@@ -3,6 +3,7 @@ module github.com/aromancev/confa
 go 1.17
 
 require (
+	github.com/at-wat/ebml-go v0.16.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/disintegration/imaging v1.6.2
 	github.com/go-logr/logr v1.2.0
@@ -15,8 +16,11 @@ require (
 	github.com/movio/bramble v1.3.3
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pion/ion v1.10.0
+	github.com/pion/ion-sdk-go v0.7.0
 	github.com/pion/ion-sfu v1.11.0
 	github.com/pion/logging v0.2.2
+	github.com/pion/rtcp v1.2.8
+	github.com/pion/rtp v1.7.4
 	github.com/pion/turn/v2 v2.0.6
 	github.com/pion/webrtc/v3 v3.1.7
 	github.com/prep/beanstalk v1.4.1
@@ -48,6 +52,8 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/ebml-go/ebml v0.0.0-20160925193348-ca8851a10894 // indirect
+	github.com/ebml-go/webm v0.0.0-20160924163542-629e38feef2a // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gammazero/deque v0.1.0 // indirect
@@ -82,6 +88,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v1.0.0-rc9 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pion/datachannel v1.5.0 // indirect
 	github.com/pion/dtls/v2 v2.0.10 // indirect
 	github.com/pion/ice/v2 v2.1.13 // indirect
@@ -89,8 +96,6 @@ require (
 	github.com/pion/ion-log v1.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtcp v1.2.8 // indirect
-	github.com/pion/rtp v1.7.4 // indirect
 	github.com/pion/sctp v1.7.12 // indirect
 	github.com/pion/sdp/v3 v3.0.4 // indirect
 	github.com/pion/srtp/v2 v2.0.5 // indirect
@@ -122,7 +127,6 @@ require (
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20210828152312-66f60bf46e71 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect

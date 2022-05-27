@@ -152,6 +152,46 @@ services:
       - PUBLIC_IP=127.0.0.1
       - PUBLIC_KEY=$PUBLIC_KEY
 
+  tracker:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile
+    command: "go run ./cmd/tracker/."
+    volumes:
+      - ./service-go:/app
+    networks:
+      - confa
+    environment:
+      - LISTEN_RPC_ADDRESS=:8080
+      - SFU_ADDRESS=sfu:8080
+      - LOG_FORMAT=console
+      - PUBLIC_KEY=$PUBLIC_KEY
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
+      - BEANSTALKD_POOL=beanstalkd:11300
+      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
+
+  avp:
+    build:
+      context: ./service-go
+      dockerfile: Dockerfile.ffmpeg
+    command: "go run ./cmd/avp/."
+    volumes:
+      - ./service-go:/app
+    networks:
+      - confa
+    environment:
+      - LOG_FORMAT=console
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
+      - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
+      - BEANSTALKD_POOL=beanstalkd:11300
+      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
+
   beanstalkd:
     build:
       context: ./beanstalkd
@@ -170,7 +210,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=mongo
       - MONGO_INITDB_ROOT_PASSWORD=mongo
     volumes:
-      - ./.artifacts/mongo/:/data/db
+      - .artifacts/mongo/:/data/db
     entrypoint:
       - bash
       - -c

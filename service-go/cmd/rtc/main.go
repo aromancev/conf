@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,7 +31,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	config := Config{}.WithDefault().WithEnv()
+	config := Config{}.WithEnv()
 	if err := config.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid config")
 	}
@@ -115,6 +116,9 @@ func main() {
 		),
 	}
 	rpcServer := &http.Server{
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
 		Addr:         config.ListenRPCAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,

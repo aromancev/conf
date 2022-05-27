@@ -29,3 +29,17 @@ protoc confa.proto \
     --go_opt=Mconfa.proto=github.com/aromancev/confa/internal/proto/confa \
     --go_out=${GO_PATH}/internal/proto/confa \
     --twirp_out=${GO_PATH}/internal/proto/confa
+
+protoc tracker.proto \
+    --proto_path=. \
+    --go_opt=paths=source_relative \
+    --go_opt=Mtracker.proto=github.com/aromancev/confa/internal/proto/tracker \
+    --go_out=${GO_PATH}/internal/proto/tracker \
+    --twirp_out=${GO_PATH}/internal/proto/tracker
+
+protoc avp.proto \
+    --proto_path=. \
+    --go_opt=paths=source_relative \
+    --go_opt=Mavp.proto=github.com/aromancev/confa/internal/proto/avp \
+    --go_out=${GO_PATH}/internal/proto/avp \
+    --twirp_out=${GO_PATH}/internal/proto/avp

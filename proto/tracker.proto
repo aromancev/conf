@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+service Tracker {
+    rpc Join(JoinParams) returns (Joined) {}
+}
+
+message JoinParams {
+    bytes room_id = 1;
+}
+
+message Joined {
+}
