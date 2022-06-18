@@ -27,15 +27,16 @@ func AutoTouch(h JobHandle) JobHandle {
 				case <-time.After(job.TouchAfter()):
 					err := job.Touch(touchCtx)
 					switch {
-					case errors.Is(context.Canceled, err):
+					case errors.Is(err, context.Canceled):
 						return
-					case errors.Is(beanstalk.ErrJobFinished, err):
+					case errors.Is(err, beanstalk.ErrJobFinished):
 						return
 					case err != nil:
 						log.Ctx(ctx).Err(err).Msg("Failed to touch job.")
 						return
 					}
-				case <-ctx.Done():
+					log.Ctx(ctx).Debug().Uint64("jobId", job.ID).Msg("Touched job.")
+				case <-touchCtx.Done():
 					return
 				}
 			}
@@ -44,5 +45,6 @@ func AutoTouch(h JobHandle) JobHandle {
 		h(ctx, job)
 		cancel()
 		touch.Wait()
+		log.Ctx(ctx).Debug().Msg("Auto touch finished.")
 	}
 }

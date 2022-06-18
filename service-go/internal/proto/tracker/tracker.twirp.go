@@ -28,28 +28,30 @@ import url "net/url"
 // See https://twitchtv.github.io/twirp/docs/version_matrix.html
 const _ = twirp.TwirpPackageMinVersion_8_1_0
 
-// =================
-// Tracker Interface
-// =================
+// ==================
+// Registry Interface
+// ==================
 
-type Tracker interface {
-	Join(context.Context, *JoinParams) (*Joined, error)
+type Registry interface {
+	Start(context.Context, *StartParams) (*Tracker, error)
+
+	Stop(context.Context, *StopParams) (*Tracker, error)
 }
 
-// =======================
-// Tracker Protobuf Client
-// =======================
+// ========================
+// Registry Protobuf Client
+// ========================
 
-type trackerProtobufClient struct {
+type registryProtobufClient struct {
 	client      HTTPClient
-	urls        [1]string
+	urls        [2]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
 
-// NewTrackerProtobufClient creates a Protobuf client that implements the Tracker interface.
+// NewRegistryProtobufClient creates a Protobuf client that implements the Registry interface.
 // It communicates using Protobuf and can be configured with a custom HTTPClient.
-func NewTrackerProtobufClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) Tracker {
+func NewRegistryProtobufClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) Registry {
 	if c, ok := client.(*http.Client); ok {
 		client = withoutRedirects(c)
 	}
@@ -69,12 +71,13 @@ func NewTrackerProtobufClient(baseURL string, client HTTPClient, opts ...twirp.C
 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(pathPrefix, "", "Tracker")
-	urls := [1]string{
-		serviceURL + "Join",
+	serviceURL += baseServicePath(pathPrefix, "", "Registry")
+	urls := [2]string{
+		serviceURL + "Start",
+		serviceURL + "Stop",
 	}
 
-	return &trackerProtobufClient{
+	return &registryProtobufClient{
 		client:      client,
 		urls:        urls,
 		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
@@ -82,26 +85,26 @@ func NewTrackerProtobufClient(baseURL string, client HTTPClient, opts ...twirp.C
 	}
 }
 
-func (c *trackerProtobufClient) Join(ctx context.Context, in *JoinParams) (*Joined, error) {
+func (c *registryProtobufClient) Start(ctx context.Context, in *StartParams) (*Tracker, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "")
-	ctx = ctxsetters.WithServiceName(ctx, "Tracker")
-	ctx = ctxsetters.WithMethodName(ctx, "Join")
-	caller := c.callJoin
+	ctx = ctxsetters.WithServiceName(ctx, "Registry")
+	ctx = ctxsetters.WithMethodName(ctx, "Start")
+	caller := c.callStart
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *JoinParams) (*Joined, error) {
+		caller = func(ctx context.Context, req *StartParams) (*Tracker, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*JoinParams)
+					typedReq, ok := req.(*StartParams)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*JoinParams) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartParams) when calling interceptor")
 					}
-					return c.callJoin(ctx, typedReq)
+					return c.callStart(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*Joined)
+				typedResp, ok := resp.(*Tracker)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*Joined) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -111,8 +114,8 @@ func (c *trackerProtobufClient) Join(ctx context.Context, in *JoinParams) (*Join
 	return caller(ctx, in)
 }
 
-func (c *trackerProtobufClient) callJoin(ctx context.Context, in *JoinParams) (*Joined, error) {
-	out := new(Joined)
+func (c *registryProtobufClient) callStart(ctx context.Context, in *StartParams) (*Tracker, error) {
+	out := new(Tracker)
 	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
@@ -128,20 +131,66 @@ func (c *trackerProtobufClient) callJoin(ctx context.Context, in *JoinParams) (*
 	return out, nil
 }
 
-// ===================
-// Tracker JSON Client
-// ===================
+func (c *registryProtobufClient) Stop(ctx context.Context, in *StopParams) (*Tracker, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "")
+	ctx = ctxsetters.WithServiceName(ctx, "Registry")
+	ctx = ctxsetters.WithMethodName(ctx, "Stop")
+	caller := c.callStop
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *StopParams) (*Tracker, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StopParams)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StopParams) when calling interceptor")
+					}
+					return c.callStop(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Tracker)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
 
-type trackerJSONClient struct {
+func (c *registryProtobufClient) callStop(ctx context.Context, in *StopParams) (*Tracker, error) {
+	out := new(Tracker)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+// ====================
+// Registry JSON Client
+// ====================
+
+type registryJSONClient struct {
 	client      HTTPClient
-	urls        [1]string
+	urls        [2]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
 
-// NewTrackerJSONClient creates a JSON client that implements the Tracker interface.
+// NewRegistryJSONClient creates a JSON client that implements the Registry interface.
 // It communicates using JSON and can be configured with a custom HTTPClient.
-func NewTrackerJSONClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) Tracker {
+func NewRegistryJSONClient(baseURL string, client HTTPClient, opts ...twirp.ClientOption) Registry {
 	if c, ok := client.(*http.Client); ok {
 		client = withoutRedirects(c)
 	}
@@ -161,12 +210,13 @@ func NewTrackerJSONClient(baseURL string, client HTTPClient, opts ...twirp.Clien
 
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
-	serviceURL += baseServicePath(pathPrefix, "", "Tracker")
-	urls := [1]string{
-		serviceURL + "Join",
+	serviceURL += baseServicePath(pathPrefix, "", "Registry")
+	urls := [2]string{
+		serviceURL + "Start",
+		serviceURL + "Stop",
 	}
 
-	return &trackerJSONClient{
+	return &registryJSONClient{
 		client:      client,
 		urls:        urls,
 		interceptor: twirp.ChainInterceptors(clientOpts.Interceptors...),
@@ -174,26 +224,26 @@ func NewTrackerJSONClient(baseURL string, client HTTPClient, opts ...twirp.Clien
 	}
 }
 
-func (c *trackerJSONClient) Join(ctx context.Context, in *JoinParams) (*Joined, error) {
+func (c *registryJSONClient) Start(ctx context.Context, in *StartParams) (*Tracker, error) {
 	ctx = ctxsetters.WithPackageName(ctx, "")
-	ctx = ctxsetters.WithServiceName(ctx, "Tracker")
-	ctx = ctxsetters.WithMethodName(ctx, "Join")
-	caller := c.callJoin
+	ctx = ctxsetters.WithServiceName(ctx, "Registry")
+	ctx = ctxsetters.WithMethodName(ctx, "Start")
+	caller := c.callStart
 	if c.interceptor != nil {
-		caller = func(ctx context.Context, req *JoinParams) (*Joined, error) {
+		caller = func(ctx context.Context, req *StartParams) (*Tracker, error) {
 			resp, err := c.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*JoinParams)
+					typedReq, ok := req.(*StartParams)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*JoinParams) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartParams) when calling interceptor")
 					}
-					return c.callJoin(ctx, typedReq)
+					return c.callStart(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*Joined)
+				typedResp, ok := resp.(*Tracker)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*Joined) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -203,8 +253,8 @@ func (c *trackerJSONClient) Join(ctx context.Context, in *JoinParams) (*Joined, 
 	return caller(ctx, in)
 }
 
-func (c *trackerJSONClient) callJoin(ctx context.Context, in *JoinParams) (*Joined, error) {
-	out := new(Joined)
+func (c *registryJSONClient) callStart(ctx context.Context, in *StartParams) (*Tracker, error) {
+	out := new(Tracker)
 	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[0], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
@@ -220,12 +270,58 @@ func (c *trackerJSONClient) callJoin(ctx context.Context, in *JoinParams) (*Join
 	return out, nil
 }
 
-// ======================
-// Tracker Server Handler
-// ======================
+func (c *registryJSONClient) Stop(ctx context.Context, in *StopParams) (*Tracker, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "")
+	ctx = ctxsetters.WithServiceName(ctx, "Registry")
+	ctx = ctxsetters.WithMethodName(ctx, "Stop")
+	caller := c.callStop
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *StopParams) (*Tracker, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StopParams)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StopParams) when calling interceptor")
+					}
+					return c.callStop(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Tracker)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
 
-type trackerServer struct {
-	Tracker
+func (c *registryJSONClient) callStop(ctx context.Context, in *StopParams) (*Tracker, error) {
+	out := new(Tracker)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[1], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+// =======================
+// Registry Server Handler
+// =======================
+
+type registryServer struct {
+	Registry
 	interceptor      twirp.Interceptor
 	hooks            *twirp.ServerHooks
 	pathPrefix       string // prefix for routing
@@ -233,10 +329,10 @@ type trackerServer struct {
 	jsonCamelCase    bool   // JSON fields are serialized as lowerCamelCase rather than keeping the original proto names
 }
 
-// NewTrackerServer builds a TwirpServer that can be used as an http.Handler to handle
+// NewRegistryServer builds a TwirpServer that can be used as an http.Handler to handle
 // HTTP requests that are routed to the right method in the provided svc implementation.
 // The opts are twirp.ServerOption modifiers, for example twirp.WithServerHooks(hooks).
-func NewTrackerServer(svc Tracker, opts ...interface{}) TwirpServer {
+func NewRegistryServer(svc Registry, opts ...interface{}) TwirpServer {
 	serverOpts := newServerOpts(opts)
 
 	// Using ReadOpt allows backwards and forwads compatibility with new options in the future
@@ -249,8 +345,8 @@ func NewTrackerServer(svc Tracker, opts ...interface{}) TwirpServer {
 		pathPrefix = "/twirp" // default prefix
 	}
 
-	return &trackerServer{
-		Tracker:          svc,
+	return &registryServer{
+		Registry:         svc,
 		hooks:            serverOpts.Hooks,
 		interceptor:      twirp.ChainInterceptors(serverOpts.Interceptors...),
 		pathPrefix:       pathPrefix,
@@ -261,12 +357,12 @@ func NewTrackerServer(svc Tracker, opts ...interface{}) TwirpServer {
 
 // writeError writes an HTTP response with a valid Twirp error format, and triggers hooks.
 // If err is not a twirp.Error, it will get wrapped with twirp.InternalErrorWith(err)
-func (s *trackerServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
+func (s *registryServer) writeError(ctx context.Context, resp http.ResponseWriter, err error) {
 	writeError(ctx, resp, err, s.hooks)
 }
 
 // handleRequestBodyError is used to handle error when the twirp server cannot read request
-func (s *trackerServer) handleRequestBodyError(ctx context.Context, resp http.ResponseWriter, msg string, err error) {
+func (s *registryServer) handleRequestBodyError(ctx context.Context, resp http.ResponseWriter, msg string, err error) {
 	if context.Canceled == ctx.Err() {
 		s.writeError(ctx, resp, twirp.NewError(twirp.Canceled, "failed to read request: context canceled"))
 		return
@@ -278,16 +374,16 @@ func (s *trackerServer) handleRequestBodyError(ctx context.Context, resp http.Re
 	s.writeError(ctx, resp, twirp.WrapError(malformedRequestError(msg), err))
 }
 
-// TrackerPathPrefix is a convenience constant that may identify URL paths.
+// RegistryPathPrefix is a convenience constant that may identify URL paths.
 // Should be used with caution, it only matches routes generated by Twirp Go clients,
 // with the default "/twirp" prefix and default CamelCase service and method names.
 // More info: https://twitchtv.github.io/twirp/docs/routing.html
-const TrackerPathPrefix = "/twirp/Tracker/"
+const RegistryPathPrefix = "/twirp/Registry/"
 
-func (s *trackerServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (s *registryServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	ctx = ctxsetters.WithPackageName(ctx, "")
-	ctx = ctxsetters.WithServiceName(ctx, "Tracker")
+	ctx = ctxsetters.WithServiceName(ctx, "Registry")
 	ctx = ctxsetters.WithResponseWriter(ctx, resp)
 
 	var err error
@@ -305,7 +401,7 @@ func (s *trackerServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	// Verify path format: [<prefix>]/<package>.<Service>/<Method>
 	prefix, pkgService, method := parseTwirpPath(req.URL.Path)
-	if pkgService != "Tracker" {
+	if pkgService != "Registry" {
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
 		s.writeError(ctx, resp, badRouteError(msg, req.Method, req.URL.Path))
 		return
@@ -317,8 +413,11 @@ func (s *trackerServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	switch method {
-	case "Join":
-		s.serveJoin(ctx, resp, req)
+	case "Start":
+		s.serveStart(ctx, resp, req)
+		return
+	case "Stop":
+		s.serveStop(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -327,7 +426,7 @@ func (s *trackerServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *trackerServer) serveJoin(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *registryServer) serveStart(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	header := req.Header.Get("Content-Type")
 	i := strings.Index(header, ";")
 	if i == -1 {
@@ -335,9 +434,9 @@ func (s *trackerServer) serveJoin(ctx context.Context, resp http.ResponseWriter,
 	}
 	switch strings.TrimSpace(strings.ToLower(header[:i])) {
 	case "application/json":
-		s.serveJoinJSON(ctx, resp, req)
+		s.serveStartJSON(ctx, resp, req)
 	case "application/protobuf":
-		s.serveJoinProtobuf(ctx, resp, req)
+		s.serveStartProtobuf(ctx, resp, req)
 	default:
 		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
 		twerr := badRouteError(msg, req.Method, req.URL.Path)
@@ -345,9 +444,9 @@ func (s *trackerServer) serveJoin(ctx context.Context, resp http.ResponseWriter,
 	}
 }
 
-func (s *trackerServer) serveJoinJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *registryServer) serveStartJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "Join")
+	ctx = ctxsetters.WithMethodName(ctx, "Start")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -360,29 +459,29 @@ func (s *trackerServer) serveJoinJSON(ctx context.Context, resp http.ResponseWri
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
-	reqContent := new(JoinParams)
+	reqContent := new(StartParams)
 	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
 		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
 		return
 	}
 
-	handler := s.Tracker.Join
+	handler := s.Registry.Start
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *JoinParams) (*Joined, error) {
+		handler = func(ctx context.Context, req *StartParams) (*Tracker, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*JoinParams)
+					typedReq, ok := req.(*StartParams)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*JoinParams) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartParams) when calling interceptor")
 					}
-					return s.Tracker.Join(ctx, typedReq)
+					return s.Registry.Start(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*Joined)
+				typedResp, ok := resp.(*Tracker)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*Joined) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -391,7 +490,7 @@ func (s *trackerServer) serveJoinJSON(ctx context.Context, resp http.ResponseWri
 	}
 
 	// Call service method
-	var respContent *Joined
+	var respContent *Tracker
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -402,7 +501,7 @@ func (s *trackerServer) serveJoinJSON(ctx context.Context, resp http.ResponseWri
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *Joined and nil error while calling Join. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Tracker and nil error while calling Start. nil responses are not supported"))
 		return
 	}
 
@@ -428,9 +527,9 @@ func (s *trackerServer) serveJoinJSON(ctx context.Context, resp http.ResponseWri
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *trackerServer) serveJoinProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+func (s *registryServer) serveStartProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
 	var err error
-	ctx = ctxsetters.WithMethodName(ctx, "Join")
+	ctx = ctxsetters.WithMethodName(ctx, "Start")
 	ctx, err = callRequestRouted(ctx, s.hooks)
 	if err != nil {
 		s.writeError(ctx, resp, err)
@@ -442,28 +541,28 @@ func (s *trackerServer) serveJoinProtobuf(ctx context.Context, resp http.Respons
 		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
 		return
 	}
-	reqContent := new(JoinParams)
+	reqContent := new(StartParams)
 	if err = proto.Unmarshal(buf, reqContent); err != nil {
 		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
 		return
 	}
 
-	handler := s.Tracker.Join
+	handler := s.Registry.Start
 	if s.interceptor != nil {
-		handler = func(ctx context.Context, req *JoinParams) (*Joined, error) {
+		handler = func(ctx context.Context, req *StartParams) (*Tracker, error) {
 			resp, err := s.interceptor(
 				func(ctx context.Context, req interface{}) (interface{}, error) {
-					typedReq, ok := req.(*JoinParams)
+					typedReq, ok := req.(*StartParams)
 					if !ok {
-						return nil, twirp.InternalError("failed type assertion req.(*JoinParams) when calling interceptor")
+						return nil, twirp.InternalError("failed type assertion req.(*StartParams) when calling interceptor")
 					}
-					return s.Tracker.Join(ctx, typedReq)
+					return s.Registry.Start(ctx, typedReq)
 				},
 			)(ctx, req)
 			if resp != nil {
-				typedResp, ok := resp.(*Joined)
+				typedResp, ok := resp.(*Tracker)
 				if !ok {
-					return nil, twirp.InternalError("failed type assertion resp.(*Joined) when calling interceptor")
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
 				}
 				return typedResp, err
 			}
@@ -472,7 +571,7 @@ func (s *trackerServer) serveJoinProtobuf(ctx context.Context, resp http.Respons
 	}
 
 	// Call service method
-	var respContent *Joined
+	var respContent *Tracker
 	func() {
 		defer ensurePanicResponses(ctx, resp, s.hooks)
 		respContent, err = handler(ctx, reqContent)
@@ -483,7 +582,7 @@ func (s *trackerServer) serveJoinProtobuf(ctx context.Context, resp http.Respons
 		return
 	}
 	if respContent == nil {
-		s.writeError(ctx, resp, twirp.InternalError("received a nil *Joined and nil error while calling Join. nil responses are not supported"))
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Tracker and nil error while calling Start. nil responses are not supported"))
 		return
 	}
 
@@ -507,19 +606,199 @@ func (s *trackerServer) serveJoinProtobuf(ctx context.Context, resp http.Respons
 	callResponseSent(ctx, s.hooks)
 }
 
-func (s *trackerServer) ServiceDescriptor() ([]byte, int) {
+func (s *registryServer) serveStop(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveStopJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveStopProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *registryServer) serveStopJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "Stop")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(StopParams)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.Registry.Stop
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *StopParams) (*Tracker, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StopParams)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StopParams) when calling interceptor")
+					}
+					return s.Registry.Stop(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Tracker)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *Tracker
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Tracker and nil error while calling Stop. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: !s.jsonCamelCase, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *registryServer) serveStopProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "Stop")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(StopParams)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.Registry.Stop
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *StopParams) (*Tracker, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*StopParams)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*StopParams) when calling interceptor")
+					}
+					return s.Registry.Stop(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Tracker)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Tracker) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *Tracker
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Tracker and nil error while calling Stop. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *registryServer) ServiceDescriptor() ([]byte, int) {
 	return twirpFileDescriptor0, 0
 }
 
-func (s *trackerServer) ProtocGenTwirpVersion() string {
+func (s *registryServer) ProtocGenTwirpVersion() string {
 	return "v8.1.0"
 }
 
 // PathPrefix returns the base service path, in the form: "/<prefix>/<package>.<Service>/"
 // that is everything in a Twirp route except for the <Method>. This can be used for routing,
 // for example to identify the requests that are targeted to this service in a mux.
-func (s *trackerServer) PathPrefix() string {
-	return baseServicePath(s.pathPrefix, "", "Tracker")
+func (s *registryServer) PathPrefix() string {
+	return baseServicePath(s.pathPrefix, "", "Registry")
 }
 
 // =====
@@ -1091,13 +1370,22 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 114 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2d, 0x29, 0x4a, 0x4c,
-	0xce, 0x4e, 0x2d, 0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x57, 0x52, 0xe5, 0xe2, 0xf2, 0xca, 0xcf,
-	0xcc, 0x0b, 0x48, 0x2c, 0x4a, 0xcc, 0x2d, 0x16, 0x12, 0xe7, 0x62, 0x2f, 0xca, 0xcf, 0xcf, 0x8d,
-	0xcf, 0x4c, 0x91, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x09, 0x62, 0x03, 0x71, 0x3d, 0x53, 0x94, 0x38,
-	0xb8, 0xd8, 0x40, 0xca, 0x52, 0x53, 0x8c, 0x34, 0xb9, 0xd8, 0x43, 0x20, 0x26, 0x08, 0xc9, 0x71,
-	0xb1, 0x80, 0x04, 0x85, 0xb8, 0xf5, 0x10, 0x46, 0x48, 0xb1, 0xeb, 0x41, 0x14, 0x2a, 0x31, 0x24,
-	0xb1, 0x81, 0xad, 0x30, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0xd6, 0xfb, 0xd6, 0xc1, 0x73, 0x00,
-	0x00, 0x00,
+	// 272 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x91, 0xcf, 0x4a, 0xc3, 0x40,
+	0x10, 0xc6, 0xbb, 0x36, 0x49, 0xe3, 0x34, 0x2d, 0x32, 0x17, 0xa3, 0x20, 0xc6, 0x80, 0x10, 0x3c,
+	0xe4, 0x50, 0x5f, 0xc0, 0xa2, 0x3d, 0xf4, 0xe0, 0x1f, 0xb6, 0xde, 0xc3, 0xda, 0x2c, 0x12, 0x4c,
+	0xba, 0x61, 0x76, 0x0e, 0xed, 0xeb, 0xf8, 0xa4, 0xb2, 0x49, 0xc0, 0x9e, 0x7b, 0xdc, 0xdf, 0xb7,
+	0x30, 0xdf, 0xfc, 0x06, 0x66, 0x4c, 0x6a, 0xfb, 0xa3, 0x29, 0x6f, 0xc9, 0xb0, 0x49, 0xb7, 0x30,
+	0xdd, 0xb0, 0x22, 0xfe, 0x50, 0xa4, 0x1a, 0x8b, 0x97, 0x30, 0x21, 0x63, 0x9a, 0xa2, 0x2a, 0x63,
+	0x91, 0x88, 0x2c, 0x92, 0x81, 0x7b, 0xae, 0x4b, 0xbc, 0x02, 0x8f, 0x4c, 0xad, 0xe3, 0xb3, 0x44,
+	0x64, 0xf3, 0x85, 0x9f, 0x4b, 0x53, 0x6b, 0xd9, 0x21, 0x4c, 0x20, 0xd2, 0xfb, 0xb6, 0x22, 0x5d,
+	0x54, 0xbb, 0xa2, 0xb1, 0xf1, 0x38, 0x11, 0xd9, 0x58, 0x42, 0xcf, 0xd6, 0xbb, 0x57, 0x9b, 0x3e,
+	0x01, 0x6c, 0xd8, 0xb4, 0xa7, 0xcf, 0x48, 0x7f, 0x05, 0x4c, 0x3e, 0xfb, 0xe2, 0x27, 0x75, 0xbc,
+	0x01, 0xb0, 0x6e, 0x4d, 0x5d, 0x16, 0x8a, 0x87, 0x86, 0xe7, 0x03, 0x59, 0xb2, 0x8b, 0xfb, 0xba,
+	0xd6, 0xc5, 0x5e, 0x1f, 0x0f, 0x64, 0xc9, 0x78, 0x0f, 0x73, 0x55, 0x93, 0x56, 0xe5, 0xa1, 0xd0,
+	0xfb, 0xca, 0xb2, 0x8d, 0xfd, 0x44, 0x64, 0xa1, 0x9c, 0x0d, 0x74, 0xd5, 0xc1, 0x07, 0x04, 0xcf,
+	0x8d, 0x44, 0x80, 0x40, 0xae, 0x9e, 0xdf, 0xe5, 0xcb, 0xc5, 0x68, 0xf1, 0x06, 0xa1, 0xd4, 0xdf,
+	0x95, 0x65, 0x3a, 0xe0, 0x1d, 0xf8, 0x9d, 0x6b, 0x8c, 0xf2, 0x23, 0xe7, 0xd7, 0x61, 0x3e, 0x6c,
+	0x96, 0x8e, 0xf0, 0x16, 0x3c, 0x67, 0x0a, 0xa7, 0xf9, 0xbf, 0xb0, 0xe3, 0x0f, 0x5f, 0x41, 0x77,
+	0xb6, 0xc7, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x11, 0x5b, 0x11, 0xfc, 0xc7, 0x01, 0x00, 0x00,
 }

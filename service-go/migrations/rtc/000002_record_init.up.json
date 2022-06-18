@@ -1,0 +1,23 @@
+[
+  {
+    "createIndexes": "records",
+    "indexes": [
+      {
+        "key": {
+          "roomId": 1,
+          "active": 1
+        },
+        "name": "unique_room_active",
+        "unique": true
+      },
+      {
+        "key": {
+          "roomId": 1,
+          "key": 1
+        },
+        "name": "unique_room_key",
+        "unique": true
+      }
+    ]
+  }
+]

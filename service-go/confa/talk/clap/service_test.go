@@ -30,6 +30,7 @@ func TestCRUD(t *testing.T) {
 				Owner:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   talk.StateCreated,
 				Handle:  "test",
 			}
 
@@ -68,6 +69,7 @@ func TestCRUD(t *testing.T) {
 				Speaker: uuid.UUID{1},
 				Room:    uuid.UUID{1},
 				Handle:  "test",
+				State:   talk.StateCreated,
 			}
 
 			_, err := talkMongo.Create(ctx, tlk)

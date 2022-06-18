@@ -102,25 +102,32 @@ export interface events_events_items_payload_peerState_tracks {
 
 export interface events_events_items_payload_peerState {
   __typename: "EventPeerState";
-  status: Status | null;
+  peerId: string;
+  status: PeerStatus | null;
   tracks: events_events_items_payload_peerState_tracks[];
 }
 
 export interface events_events_items_payload_message {
   __typename: "EventMessage";
+  fromId: string;
   text: string;
+}
+
+export interface events_events_items_payload_recording {
+  __typename: "EventRecording";
+  status: RecordingStatus;
 }
 
 export interface events_events_items_payload {
   __typename: "EventPayload";
   peerState: events_events_items_payload_peerState | null;
   message: events_events_items_payload_message | null;
+  recording: events_events_items_payload_recording | null;
 }
 
 export interface events_events_items {
   __typename: "Event";
   id: string;
-  ownerId: string;
   roomId: string;
   createdAt: number;
   payload: events_events_items_payload;
@@ -251,6 +258,7 @@ export interface talksHydrated_talks_items {
   handle: string;
   title: string;
   description: string;
+  state: TalkState;
 }
 
 export interface talksHydrated_talks {
@@ -321,6 +329,7 @@ export interface createTalk_createTalk {
   handle: string;
   title: string;
   description: string;
+  state: TalkState;
 }
 
 export interface createTalk {
@@ -366,6 +375,58 @@ export interface updateTalkVariables {
 // @generated
 // This file was automatically generated and should not be edited.
 
+// ====================================================
+// GraphQL mutation operation: startTalkRecording
+// ====================================================
+
+export interface startTalkRecording_startTalkRecording {
+  __typename: "Talk";
+  id: string;
+  ownerId: string;
+  confaId: string;
+  roomId: string;
+  handle: string;
+}
+
+export interface startTalkRecording {
+  startTalkRecording: startTalkRecording_startTalkRecording;
+}
+
+export interface startTalkRecordingVariables {
+  where: TalkLookup;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: stopTalkRecording
+// ====================================================
+
+export interface stopTalkRecording_stopTalkRecording {
+  __typename: "Talk";
+  id: string;
+  ownerId: string;
+  confaId: string;
+  roomId: string;
+  handle: string;
+}
+
+export interface stopTalkRecording {
+  stopTalkRecording: stopTalkRecording_stopTalkRecording;
+}
+
+export interface stopTalkRecordingVariables {
+  where: TalkLookup;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
 //==============================================================
 // START Enums and Input Objects
 //==============================================================
@@ -382,9 +443,21 @@ export enum Hint {
   user_audio = "user_audio",
 }
 
-export enum Status {
+export enum PeerStatus {
   joined = "joined",
   left = "left",
+}
+
+export enum RecordingStatus {
+  started = "started",
+  stopped = "stopped",
+}
+
+export enum TalkState {
+  CREATED = "CREATED",
+  ENDED = "ENDED",
+  LIVE = "LIVE",
+  RECORDING = "RECORDING",
 }
 
 export interface ConfaLookup {

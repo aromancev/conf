@@ -43,7 +43,6 @@ type From struct {
 
 type Event struct {
 	ID        uuid.UUID `bson:"_id"`
-	Owner     uuid.UUID `bson:"ownerId"`
 	Room      uuid.UUID `bson:"roomId"`
 	CreatedAt time.Time `bson:"createdAt"`
 	Payload   Payload   `bson:"payload"`
@@ -53,9 +52,6 @@ func (e Event) Validate() error {
 	if e.ID == uuid.Nil {
 		return errors.New("id should not be empty")
 	}
-	if e.Owner == uuid.Nil {
-		return errors.New("owner should not be empty")
-	}
 	if e.Room == uuid.Nil {
 		return errors.New("room should not be empty")
 	}
@@ -63,8 +59,9 @@ func (e Event) Validate() error {
 }
 
 type Payload struct {
-	PeerState *PayloadPeerState
-	Message   *PayloadMessage
+	PeerState *PayloadPeerState `bson:"peerState"`
+	Message   *PayloadMessage   `bson:"message"`
+	Recording *PayloadRecording `bson:"recording"`
 }
 
 func (p Payload) Validate() error {
@@ -81,6 +78,12 @@ func (p Payload) Validate() error {
 		}
 		hasPayload = true
 	}
+	if p.Recording != nil {
+		if err := p.Recording.Validate(); err != nil {
+			return err
+		}
+		hasPayload = true
+	}
 	if !hasPayload {
 		return errors.New("payload must not be empty")
 	}
@@ -88,11 +91,15 @@ func (p Payload) Validate() error {
 }
 
 type PayloadPeerState struct {
+	Peer   uuid.UUID  `bson:"peerId"`
 	Status PeerStatus `bson:"status,omitempty"`
 	Tracks []Track    `bson:"tracks,omitempty"`
 }
 
 func (p PayloadPeerState) Validate() error {
+	if p.Peer == uuid.Nil {
+		return errors.New("peer must not be nil")
+	}
 	if len(p.Tracks) > 3 {
 		return errors.New("no more than 3 tracks allowed")
 	}
@@ -143,12 +150,36 @@ const (
 )
 
 type PayloadMessage struct {
-	Text string `bson:"text"`
+	From uuid.UUID `bson:"fromId"`
+	Text string    `bson:"text"`
 }
 
 func (p PayloadMessage) Validate() error {
+	if p.From == uuid.Nil {
+		return errors.New("from must not be nil")
+	}
 	if p.Text == "" {
 		return errors.New("text must not be empty")
+	}
+	return nil
+}
+
+type RecordStatus string
+
+const (
+	RecordingStarted = "started"
+	RecordingStopped = "stopped"
+)
+
+type PayloadRecording struct {
+	Status RecordStatus `bson:"status"`
+}
+
+func (p PayloadRecording) Validate() error {
+	switch p.Status {
+	case RecordingStarted, RecordingStopped:
+	default:
+		return errors.New("invalid status")
 	}
 	return nil
 }

@@ -23,6 +23,7 @@ const (
 	CodeUnauthorized     = "UNAUTHORIZED"
 	CodeDuplicateEntry   = "DUPLICATE_ENTRY"
 	CodeNotFound         = "NOT_FOUND"
+	CodeAmbiguousLookup  = "AMBIGIOUS_LOOKUP"
 	CodePermissionDenied = "PERMISSION_DENIED"
 	CodeUnknown          = "UNKNOWN_CODE"
 )
@@ -50,7 +51,7 @@ func NewResolverError(code Code, message string) ResolverError {
 }
 
 func NewInternalError() ResolverError {
-	return NewResolverError("internal system error", CodeUnknown)
+	return NewResolverError(CodeUnknown, "internal system error")
 }
 
 type Service struct {
@@ -94,6 +95,7 @@ type Talk struct {
 	Handle      string
 	Title       string
 	Description string
+	State       string
 }
 
 type TalkLookup struct {
@@ -164,13 +166,13 @@ type UploadToken struct {
 type Resolver struct {
 	publicKey      *auth.PublicKey
 	confas         *confa.CRUD
-	talks          *talk.CRUD
+	talks          *talk.UserService
 	claps          *clap.CRUD
 	profiles       *profile.Mongo
 	profileUpdater *profile.Updater
 }
 
-func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.CRUD, claps *clap.CRUD, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
+func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.UserService, claps *clap.CRUD, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
 	return &Resolver{
 		publicKey:      pk,
 		confas:         confas,
@@ -330,7 +332,7 @@ func (r *Resolver) CreateConfa(ctx context.Context, args struct {
 	case errors.Is(err, confa.ErrValidation):
 		return Confa{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrDuplicateEntry):
-		return Confa{}, NewResolverError(CodeDuplicateEntry, err.Error())
+		return Confa{}, NewResolverError(CodeDuplicateEntry, "Confa already exists.")
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create confa.")
 		return Confa{}, NewInternalError()
@@ -366,9 +368,9 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 	case errors.Is(err, confa.ErrValidation):
 		return Confa{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrNotFound):
-		return Confa{}, NewResolverError(CodeNotFound, err.Error())
+		return Confa{}, NewResolverError(CodeNotFound, "")
 	case errors.Is(err, confa.ErrDuplicateEntry):
-		return Confa{}, NewResolverError(CodeDuplicateEntry, err.Error())
+		return Confa{}, NewResolverError(CodeDuplicateEntry, "Confa already exists.")
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update confa.")
 		return Confa{}, NewInternalError()
@@ -406,13 +408,13 @@ func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 	created, err := r.talks.Create(ctx, claims.UserID, confaLookup, req)
 	switch {
 	case errors.Is(err, confa.ErrNotFound):
-		return Talk{}, NewResolverError(CodeNotFound, err.Error())
-	case errors.Is(err, confa.ErrUnexpectedResult):
-		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
+		return Talk{}, NewResolverError(CodeNotFound, "Confa not found.")
+	case errors.Is(err, confa.ErrAmbiguousLookup):
+		return Talk{}, NewResolverError(CodeAmbiguousLookup, "Confa lookup should match exactly one confa.")
 	case errors.Is(err, talk.ErrValidation):
 		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, talk.ErrDuplicateEntry):
-		return Talk{}, NewResolverError(CodeDuplicateEntry, err.Error())
+		return Talk{}, NewResolverError(CodeDuplicateEntry, "Talk already exists.")
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to create talk.")
 		return Talk{}, NewInternalError()
@@ -447,14 +449,78 @@ func (r *Resolver) UpdateTalk(ctx context.Context, args struct {
 	case errors.Is(err, confa.ErrValidation):
 		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
 	case errors.Is(err, confa.ErrNotFound):
-		return Talk{}, NewResolverError(CodeNotFound, err.Error())
+		return Talk{}, NewResolverError(CodeNotFound, "Confa not found.")
 	case errors.Is(err, talk.ErrDuplicateEntry):
-		return Talk{}, NewResolverError(CodeDuplicateEntry, err.Error())
+		return Talk{}, NewResolverError(CodeDuplicateEntry, "Talk already exists.")
 	case err != nil:
 		log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
 		return Talk{}, NewInternalError()
 	}
 	return newTalk(updated), nil
+}
+
+func (r *Resolver) StartTalkRecording(ctx context.Context, args struct {
+	Where TalkLookup
+}) (Talk, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Talk{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return Talk{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
+	}
+
+	lookup, err := newTalkLookup(args.Where, 0, nil)
+	if err != nil {
+		return Talk{}, nil
+	}
+	started, err := r.talks.StartRecording(ctx, claims.UserID, lookup)
+	switch {
+	case errors.Is(err, talk.ErrValidation):
+		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
+	case errors.Is(err, talk.ErrNotFound):
+		return Talk{}, NewResolverError(CodeNotFound, "Talk not found")
+	case errors.Is(err, talk.ErrAmbigiousLookup):
+		return Talk{}, NewResolverError(CodeAmbiguousLookup, "Lookup should match exactly one talk.")
+	case errors.Is(err, talk.ErrWrongState):
+		return Talk{}, NewResolverError(CodeBadRequest, "Talk must be live to start recording.")
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
+		return Talk{}, NewInternalError()
+	}
+	return newTalk(started), nil
+}
+
+func (r *Resolver) StopTalkRecording(ctx context.Context, args struct {
+	Where TalkLookup
+}) (Talk, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Talk{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+	if !claims.AllowedWrite() {
+		return Talk{}, NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
+	}
+
+	lookup, err := newTalkLookup(args.Where, 0, nil)
+	if err != nil {
+		return Talk{}, nil
+	}
+	started, err := r.talks.StopRecording(ctx, claims.UserID, lookup)
+	switch {
+	case errors.Is(err, talk.ErrValidation):
+		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
+	case errors.Is(err, talk.ErrNotFound):
+		return Talk{}, NewResolverError(CodeNotFound, "Talk not found")
+	case errors.Is(err, talk.ErrAmbigiousLookup):
+		return Talk{}, NewResolverError(CodeAmbiguousLookup, "Lookup should match exactly one talk.")
+	case errors.Is(err, talk.ErrWrongState):
+		return Talk{}, NewResolverError(CodeBadRequest, "Talk must be recording to stop recording.")
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
+		return Talk{}, NewInternalError()
+	}
+	return newTalk(started), nil
 }
 
 func (r *Resolver) UpdateClap(ctx context.Context, args struct {
@@ -682,6 +748,7 @@ func newTalk(t talk.Talk) Talk {
 		Handle:      t.Handle,
 		Title:       t.Title,
 		Description: t.Description,
+		State:       string(t.State),
 	}
 }
 

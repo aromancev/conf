@@ -12,11 +12,18 @@ import (
 )
 
 var (
-	ErrClosed = errors.New("runtime stopped")
+	ErrClosed   = errors.New("runtime stopped")
+	ErrNotFound = errors.New("tracker not found")
 )
 
 type Tracker interface {
-	Close() error
+	Close(context.Context) error
+}
+
+type Info struct {
+	AlreadyExists bool
+	StartedAt     time.Time
+	ExpiresAt     time.Time
 }
 
 type NewTracker func(ctx context.Context, roomID uuid.UUID) (Tracker, error)
@@ -39,7 +46,7 @@ func NewRuntime() *Runtime {
 // StartTracker returns true if a tracker with the same room and role already exists and live.
 // If tracker creation errored before and was not clean up by GC yet, it will try to initiate it again.
 // Context passed to `newTracker` will be cancelled only when tracker is closed. It is safe to use for background processing.
-func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role string, expireAt time.Time, newTracker NewTracker) (bool, error) {
+func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role string, expireAt time.Time, newTracker NewTracker) (Info, error) {
 	key := trackerKey{
 		roomID: roomID,
 		role:   role,
@@ -47,7 +54,7 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 	r.mutex.Lock()
 	if r.shuttingDown {
 		r.mutex.Unlock()
-		return false, ErrClosed
+		return Info{}, ErrClosed
 	}
 	entry, ok := r.trackers[key]
 	if ok {
@@ -68,16 +75,53 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 	entry.Lock()
 	defer entry.Unlock()
 	if atomic.LoadUint32(&entry.status) == statusLive {
-		return true, nil
+		return Info{
+			AlreadyExists: true,
+			StartedAt:     entry.startedAt,
+			ExpiresAt:     entry.expireAt,
+		}, nil
 	}
 	tracker, err := newTracker(entry.ctx, roomID)
 	if err != nil {
 		atomic.StoreUint32(&entry.status, statusError)
-		return false, err
+		return Info{}, err
 	}
 	entry.tracker = tracker
+	entry.startedAt = time.Now()
 	atomic.StoreUint32(&entry.status, statusLive)
-	return false, nil
+	return Info{
+		AlreadyExists: false,
+		StartedAt:     entry.startedAt,
+		ExpiresAt:     entry.expireAt,
+	}, nil
+}
+
+func (r *Runtime) StopTracker(ctx context.Context, roomID uuid.UUID, role string) (Info, error) {
+	key := trackerKey{
+		roomID: roomID,
+		role:   role,
+	}
+	r.mutex.Lock()
+	if r.shuttingDown {
+		r.mutex.Unlock()
+		return Info{}, ErrClosed
+	}
+	entry, ok := r.trackers[key]
+	if !ok {
+		return Info{}, ErrNotFound
+	}
+	r.mutex.Unlock()
+
+	r.closeTrackers(ctx, map[trackerKey]*trackerEntry{
+		key: entry,
+	})
+	entry.Lock()
+	defer entry.Unlock()
+	return Info{
+		AlreadyExists: true,
+		StartedAt:     entry.startedAt,
+		ExpiresAt:     entry.expireAt,
+	}, nil
 }
 
 // Run starts the GC cycle to remove and close expired peer.
@@ -129,8 +173,9 @@ type trackerEntry struct {
 	ctx       context.Context
 	cancelCtx func()
 	// Only atomic access be ause it's used in GC cycle without lock toa void blocking the whole map.
-	status  uint32
-	tracker Tracker
+	status    uint32
+	tracker   Tracker
+	startedAt time.Time
 	// Can only be changed and read when `Runtime.mutex` is locked.
 	expireAt time.Time
 }
@@ -147,18 +192,17 @@ func (r *Runtime) closeTrackers(ctx context.Context, trackers map[trackerKey]*tr
 	for _, entry := range trackers {
 		entry := entry
 		go func() {
-			entry.cancelCtx()
+			entry.Lock()
+			defer entry.Unlock()
 			switch atomic.LoadUint32(&entry.status) {
 			case statusError, statusClosing, statusClosed:
 				return
 			}
-
-			entry.Lock()
-			defer entry.Unlock()
 			atomic.StoreUint32(&entry.status, statusClosing)
-			if err := entry.tracker.Close(); err != nil {
+			if err := entry.tracker.Close(ctx); err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to close tracker.")
 			}
+			entry.cancelCtx()
 			atomic.StoreUint32(&entry.status, statusClosed)
 			r.trackersClosed.Done()
 		}()

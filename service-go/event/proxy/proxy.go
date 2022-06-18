@@ -70,6 +70,7 @@ func NewProxy(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor
 	}
 	_, err := p.emit(ctx, event.Payload{
 		PeerState: &event.PayloadPeerState{
+			Peer:   p.userID,
 			Status: event.PeerJoined,
 		},
 	})
@@ -101,6 +102,7 @@ func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Messag
 		}
 		_, err = p.emit(ctx, event.Payload{
 			PeerState: &event.PayloadPeerState{
+				Peer:   p.userID,
 				Tracks: tracks,
 			},
 		})
@@ -113,6 +115,7 @@ func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Messag
 func (p *Proxy) SendMessage(ctx context.Context, text string) (event.Event, error) {
 	return p.emit(ctx, event.Payload{
 		Message: &event.PayloadMessage{
+			From: p.userID,
 			Text: text,
 		},
 	})
@@ -155,6 +158,7 @@ func (p *Proxy) Close(ctx context.Context) {
 
 	_, err := p.emit(ctx, event.Payload{
 		PeerState: &event.PayloadPeerState{
+			Peer:   p.userID,
 			Status: event.PeerLeft,
 		},
 	})
@@ -166,7 +170,6 @@ func (p *Proxy) Close(ctx context.Context) {
 func (p *Proxy) emit(ctx context.Context, payload event.Payload) (event.Event, error) {
 	ev := event.Event{
 		ID:      uuid.New(),
-		Owner:   p.userID,
 		Room:    p.roomID,
 		Payload: payload,
 	}

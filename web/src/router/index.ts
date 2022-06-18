@@ -4,7 +4,7 @@ export const handleNew = "new"
 
 export type ProfileTab = "overview" | "edit"
 export type ConfaTab = "overview" | "edit"
-export type TalkTab = "overview" | "edit" | "online"
+export type TalkTab = "overview" | "edit" | "live"
 
 export const route = {
   home(): RouteLocationRaw {
@@ -127,12 +127,12 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/:confa/:talk/on",
-    name: "talk.online",
+    name: "talk.live",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.talk as string,
         confaHandle: to.params.confa as string,
-        tab: "online",
+        tab: "live",
       }
     },
     component: () => import("@/views/talk/TalkRoot.vue"),

@@ -142,8 +142,10 @@ func (c StorageConfig) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool             string `envconfig:"BEANSTALKD_POOL"`
-	TubeUpdateAvatar string `envconfig:"BEANSTALKD_TUBE_UPDATE_AVATAR"`
+	Pool               string `envconfig:"BEANSTALKD_POOL"`
+	TubeUpdateAvatar   string `envconfig:"BEANSTALKD_TUBE_UPDATE_AVATAR"`
+	TubeStartRecording string `envconfig:"BEANSTALKD_TUBE_START_RECORDING"`
+	TubeStopRecording  string `envconfig:"BEANSTALKD_TUBE_STOP_RECORDING"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -152,6 +154,12 @@ func (c BeanstalkConfig) Validate() error {
 	}
 	if c.TubeUpdateAvatar == "" {
 		return errors.New("tube `update avatar` not set")
+	}
+	if c.TubeStartRecording == "" {
+		return errors.New("tube `start recording` not set")
+	}
+	if c.TubeStopRecording == "" {
+		return errors.New("tube `stop recording` not set")
 	}
 	return nil
 }

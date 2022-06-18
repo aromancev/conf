@@ -91,6 +91,8 @@ services:
       - STORAGE_BUCKET_USER_PUBLIC=user-public
       - BEANSTALKD_POOL=beanstalkd:11300
       - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
+      - BEANSTALKD_TUBE_START_RECORDING=confa/start-recording
+      - BEANSTALKD_TUBE_STOP_RECORDING=confa/stop-recording
     volumes:
       - ./service-go:/app
 
@@ -111,8 +113,9 @@ services:
       - MONGO_PASSWORD=rtc
       - MONGO_DATABASE=rtc
       - RTC_SFU_ADDRESS=sfu:8080
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_STORE_EVENT=rtc/store-event
+      - TRACKER_RPC_ADDRESS=http://tracker:8080
+      - BEANSTALK_POOL=beanstalkd:11300
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
     volumes:
       - ./service-go:/app
 

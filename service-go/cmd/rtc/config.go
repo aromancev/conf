@@ -15,13 +15,14 @@ const (
 )
 
 type Config struct {
-	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
-	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
-	LogFormat        string `envconfig:"LOG_FORMAT"`
-	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	Mongo            MongoConfig
-	Beanstalkd       BeanstalkdConfig
-	RTC              RTCConfig
+	ListenWebAddress  string `envconfig:"LISTEN_WEB_ADDRESS"`
+	ListenRPCAddress  string `envconfig:"LISTEN_RPC_ADDRESS"`
+	TrackerRPCAddress string `envconfig:"TRACKER_RPC_ADDRESS"`
+	LogFormat         string `envconfig:"LOG_FORMAT"`
+	PublicKey         string `envconfig:"PUBLIC_KEY"`
+	Mongo             MongoConfig
+	Beanstalk         BeanstalkConfig
+	RTC               RTCConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -45,13 +46,16 @@ func (c Config) Validate() error {
 	if c.ListenRPCAddress == "" {
 		return errors.New("listen rpc address not set")
 	}
+	if c.TrackerRPCAddress == "" {
+		return errors.New("tracker rpc address not set")
+	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
 	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)
 	}
-	if err := c.Beanstalkd.Validate(); err != nil {
+	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalkd config: %w", err)
 	}
 	if err := c.RTC.Validate(); err != nil {
@@ -84,12 +88,12 @@ func (c MongoConfig) Validate() error {
 	return nil
 }
 
-type BeanstalkdConfig struct {
-	Pool           string `envconfig:"BEANSTALKD_POOL"`
-	TubeStoreEvent string `envconfig:"BEANSTALKD_TUBE_STORE_EVENT"`
+type BeanstalkConfig struct {
+	Pool           string `envconfig:"BEANSTALK_POOL"`
+	TubeStoreEvent string `envconfig:"BEANSTALK_TUBE_STORE_EVENT"`
 }
 
-func (c BeanstalkdConfig) Validate() error {
+func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
 		return errors.New("pool not set")
 	}
@@ -100,7 +104,7 @@ func (c BeanstalkdConfig) Validate() error {
 	return nil
 }
 
-func (c BeanstalkdConfig) ParsePool() []string {
+func (c BeanstalkConfig) ParsePool() []string {
 	return strings.Split(c.Pool, ",")
 }
 

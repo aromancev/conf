@@ -7,7 +7,6 @@ import (
 func NewRoomEvent(ev event.Event) *RoomEvent {
 	sev := RoomEvent{
 		ID:        ev.ID.String(),
-		OwnerID:   ev.Owner.String(),
 		RoomID:    ev.Room.String(),
 		CreatedAt: float64(ev.CreatedAt.UTC().UnixMilli()),
 	}
@@ -15,9 +14,11 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 	switch {
 	case ev.Payload.PeerState != nil:
 		pl := *ev.Payload.PeerState
-		var state EventPeerState
+		state := EventPeerState{
+			PeerID: pl.Peer.String(),
+		}
 		if pl.Status != "" {
-			state.Status = (*Status)(&pl.Status)
+			state.Status = (*PeerStatus)(&pl.Status)
 		}
 		if len(pl.Tracks) != 0 {
 			tracks := make([]Track, len(pl.Tracks))
@@ -33,7 +34,13 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 	case ev.Payload.Message != nil:
 		pl := *ev.Payload.Message
 		payload.Message = &EventMessage{
-			Text: pl.Text,
+			FromID: pl.From.String(),
+			Text:   pl.Text,
+		}
+	case ev.Payload.Recording != nil:
+		pl := *ev.Payload.Recording
+		payload.Recording = &EventRecording{
+			Status: RecordingStatus(pl.Status),
 		}
 	}
 	sev.Payload = payload

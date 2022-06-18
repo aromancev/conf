@@ -55,18 +55,25 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeUpdateAvatar}, beanstalk.Config{
-		Multiply:         1,
-		NumGoroutines:    3,
-		ReserveTimeout:   1 * time.Second,
-		ReconnectTimeout: 3 * time.Second,
-		InfoFunc: func(message string) {
-			log.Info().Msg(message)
+	consumer, err := beanstalk.NewConsumer(
+		config.Beanstalk.ParsePool(),
+		[]string{
+			config.Beanstalk.TubeUpdateAvatar,
+			config.Beanstalk.TubeStartRecording,
+			config.Beanstalk.TubeStopRecording,
 		},
-		ErrorFunc: func(err error, message string) {
-			log.Err(err).Msg(message)
-		},
-	})
+		beanstalk.Config{
+			Multiply:         1,
+			NumGoroutines:    3,
+			ReserveTimeout:   1 * time.Second,
+			ReconnectTimeout: 3 * time.Second,
+			InfoFunc: func(message string) {
+				log.Info().Msg(message)
+			},
+			ErrorFunc: func(err error, message string) {
+				log.Err(err).Msg(message)
+			},
+		})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
@@ -101,7 +108,11 @@ func main() {
 	confaMongo := confa.NewMongo(mongoDB)
 	confaCRUD := confa.NewCRUD(confaMongo)
 	talkMongo := talk.NewMongo(mongoDB)
-	talkCRUD := talk.NewCRUD(talkMongo, confaMongo, rtcClient)
+	talkBeanstalk := talk.NewBeanstalk(producer, talk.Tubes{
+		StartRecording: config.Beanstalk.TubeStartRecording,
+		StopRecording:  config.Beanstalk.TubeStopRecording,
+	})
+	talkUserService := talk.NewUserService(talkMongo, confaMongo, talkBeanstalk, rtcClient)
 	clapMongo := clap.NewMongo(mongoDB)
 	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
 	profileEmitter := profile.NewBeanstalkEmitter(producer, profile.BeanstalkTubes{
@@ -119,9 +130,17 @@ func main() {
 		profileMongo,
 	)
 
-	jobHandler := queue.NewHandler(avatarUploader, queue.Tubes{
-		UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
-	})
+	jobHandler := queue.NewHandler(
+		avatarUploader,
+		rtcClient,
+		talkMongo,
+		talkBeanstalk,
+		queue.Tubes{
+			UpdateAvatar:   config.Beanstalk.TubeUpdateAvatar,
+			StartRecording: config.Beanstalk.TubeStartRecording,
+			StopRecording:  config.Beanstalk.TubeStopRecording,
+		},
+	)
 
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,
@@ -132,7 +151,7 @@ func main() {
 			web.NewResolver(
 				publicKey,
 				confaCRUD,
-				talkCRUD,
+				talkUserService,
 				clapCRUD,
 				profileMongo,
 				avatarUploader,

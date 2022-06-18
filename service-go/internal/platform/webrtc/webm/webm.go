@@ -39,8 +39,8 @@ func (w *VideoRTPWriter) WriteRTP(packet *rtp.Packet) error {
 		}
 
 		// Read VP8 header.
-		videoKeyframe := (sample.Data[0]&0x1 == 0)
-		if videoKeyframe && w.blockWriter == nil {
+		isKeyframe := (sample.Data[0]&0x1 == 0)
+		if isKeyframe && w.blockWriter == nil {
 			// Keyframe has frame information.
 			raw := uint(sample.Data[6]) | uint(sample.Data[7])<<8 | uint(sample.Data[8])<<16 | uint(sample.Data[9])<<24
 			width := int(raw & 0x3FFF)
@@ -50,12 +50,10 @@ func (w *VideoRTPWriter) WriteRTP(packet *rtp.Packet) error {
 				w.writer,
 				[]webm.TrackEntry{
 					{
-						Name:            "Video",
-						TrackNumber:     2,
-						TrackUID:        1,
-						CodecID:         "V_VP8",
-						TrackType:       1,
-						DefaultDuration: 33333333,
+						Name:        "Video",
+						TrackNumber: 1,
+						CodecID:     "V_VP8",
+						TrackType:   1,
 						Video: &webm.Video{
 							PixelWidth:  uint64(width),
 							PixelHeight: uint64(height),
@@ -70,7 +68,7 @@ func (w *VideoRTPWriter) WriteRTP(packet *rtp.Packet) error {
 		}
 		if w.blockWriter != nil {
 			w.timestamp += sample.Duration
-			_, err := w.blockWriter.Write(videoKeyframe, int64(w.timestamp/time.Millisecond), sample.Data)
+			_, err := w.blockWriter.Write(isKeyframe, int64(w.timestamp/time.Millisecond), sample.Data)
 			if err != nil {
 				return err
 			}
@@ -80,7 +78,7 @@ func (w *VideoRTPWriter) WriteRTP(packet *rtp.Packet) error {
 
 func (w *VideoRTPWriter) Close() error {
 	if w.blockWriter != nil {
-		return w.blockWriter.Close()
+		_ = w.blockWriter.Close()
 	}
 	return w.writer.Close()
 }
@@ -93,21 +91,21 @@ type AudioRTPWriter struct {
 }
 
 func NewAudioRTPWriter(writer io.WriteCloser) (*AudioRTPWriter, error) {
-	blockWriter, err := webm.NewSimpleBlockWriter(writer,
+	blockWriter, err := webm.NewSimpleBlockWriter(
+		writer,
 		[]webm.TrackEntry{
 			{
-				Name:            "Audio",
-				TrackNumber:     1,
-				TrackUID:        1,
-				CodecID:         "A_OPUS",
-				TrackType:       2,
-				DefaultDuration: 20000000,
+				Name:        "Audio",
+				TrackNumber: 1,
+				CodecID:     "A_OPUS",
+				TrackType:   2,
 				Audio: &webm.Audio{
 					SamplingFrequency: 48000.0,
 					Channels:          2,
 				},
 			},
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

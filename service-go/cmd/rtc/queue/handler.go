@@ -118,8 +118,9 @@ func storeEvent(events *event.Mongo) JobHandle {
 			return nil
 		case err != nil:
 			return err
-		default:
-			return nil
 		}
+
+		log.Ctx(ctx).Debug().Str("eventId", ev.ID.String()).Msg("Event created.")
+		return nil
 	}
 }

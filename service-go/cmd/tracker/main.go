@@ -70,7 +70,7 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: pb.NewTrackerServer(
+		Handler: pb.NewRegistryServer(
 			rpc.NewHandler(
 				connector,
 				runtime,

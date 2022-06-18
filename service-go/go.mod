@@ -16,20 +16,20 @@ require (
 	github.com/movio/bramble v1.3.3
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pion/ion v1.10.0
-	github.com/pion/ion-sdk-go v0.7.0
-	github.com/pion/ion-sfu v1.11.0
+	github.com/pion/ion-sdk-go v0.7.1-0.20220406041327-12e32a5871b9
+	github.com/pion/ion-sfu v1.11.1-0.20220316020741-68545cc25230
 	github.com/pion/logging v0.2.2
-	github.com/pion/rtcp v1.2.8
-	github.com/pion/rtp v1.7.4
-	github.com/pion/turn/v2 v2.0.6
-	github.com/pion/webrtc/v3 v3.1.7
+	github.com/pion/rtcp v1.2.9
+	github.com/pion/rtp v1.7.13
+	github.com/pion/turn/v2 v2.0.8
+	github.com/pion/webrtc/v3 v3.1.42
 	github.com/prep/beanstalk v1.4.1
 	github.com/rs/zerolog v1.26.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/twitchtv/twirp v8.1.0+incompatible
 	go.mongodb.org/mongo-driver v1.5.4
-	google.golang.org/grpc v1.41.0
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/grpc v1.47.0
+	google.golang.org/protobuf v1.28.0
 	gortc.io/sdp v0.18.2
 	nhooyr.io/websocket v1.8.7
 )
@@ -73,8 +73,8 @@ require (
 	github.com/klauspost/compress v1.13.5 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/lucsky/cuid v1.2.1 // indirect
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-isatty v0.0.12 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/minio/md5-simd v1.1.0 // indirect
@@ -89,18 +89,18 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc9 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
-	github.com/pion/datachannel v1.5.0 // indirect
-	github.com/pion/dtls/v2 v2.0.10 // indirect
-	github.com/pion/ice/v2 v2.1.13 // indirect
-	github.com/pion/interceptor v0.1.0 // indirect
+	github.com/pion/datachannel v1.5.2 // indirect
+	github.com/pion/dtls/v2 v2.1.5 // indirect
+	github.com/pion/ice/v2 v2.2.6 // indirect
+	github.com/pion/interceptor v0.1.11 // indirect
 	github.com/pion/ion-log v1.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/sctp v1.7.12 // indirect
-	github.com/pion/sdp/v3 v3.0.4 // indirect
-	github.com/pion/srtp/v2 v2.0.5 // indirect
+	github.com/pion/sctp v1.8.2 // indirect
+	github.com/pion/sdp/v3 v3.0.5 // indirect
+	github.com/pion/srtp/v2 v2.0.9 // indirect
 	github.com/pion/stun v0.3.5 // indirect
-	github.com/pion/transport v0.13.0 // indirect
+	github.com/pion/transport v0.13.1 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -118,15 +118,15 @@ require (
 	github.com/xdg-go/stringprep v1.0.2 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect
-	golang.org/x/net v0.0.0-20211201190559-0a0e4e1bb54c // indirect
+	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
-	golang.org/x/text v0.3.6 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto v0.0.0-20210828152312-66f60bf46e71 // indirect
+	golang.org/x/sys v0.0.0-20220702020025-31831981b65f // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
+	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
+	google.golang.org/genproto v0.0.0-20220630174209-ad1d48641aa7 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect

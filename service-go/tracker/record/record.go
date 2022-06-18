@@ -33,12 +33,16 @@ type Tracker struct {
 	// Using mutext to protect waitgroup from calling `Wait` before `Add`.
 	mutex   sync.Mutex
 	writers sync.WaitGroup
-	closing bool
+	closed  bool
 }
 
 func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Connector, emitter Emitter, bucket string, roomID uuid.UUID) (*Tracker, error) {
+	rtc, err := sdk.NewRTC(connector)
+	if err != nil {
+		return nil, err
+	}
 	tracker := &Tracker{
-		rtc:     sdk.NewRTC(connector),
+		rtc:     rtc,
 		storage: storage,
 		emitter: emitter,
 		bucket:  bucket,
@@ -47,7 +51,7 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 
 	tracker.rtc.OnTrack = func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		tracker.mutex.Lock()
-		if tracker.closing {
+		if tracker.closed {
 			tracker.mutex.Unlock()
 			log.Ctx(ctx).Debug().Str("trackId", track.ID()).Msg("Received track after closing.")
 			return
@@ -61,7 +65,7 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 		}()
 	}
 
-	err := tracker.rtc.Join(roomID.String(), uuid.NewString())
+	err = rtc.Join(roomID.String(), uuid.NewString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to join room: %w", err)
 	}
@@ -69,17 +73,15 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 	return tracker, nil
 }
 
-func (t *Tracker) Close() error {
+func (t *Tracker) Close(ctx context.Context) error {
 	t.mutex.Lock()
-	if t.closing {
-		t.mutex.Unlock()
+	defer t.mutex.Unlock()
+	if t.closed {
 		return nil
 	}
-	t.closing = true
-	t.mutex.Unlock()
-
 	t.rtc.Close()
 	t.writers.Wait()
+	t.closed = true
 	return nil
 }
 
@@ -163,11 +165,6 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		}()
 
 		for {
-			if err := ctx.Err(); err != nil {
-				log.Ctx(ctx).Debug().Msg("Context cancelled when writing RTP.")
-				return
-			}
-
 			packet, _, err := track.ReadRTP()
 			switch {
 			case errors.Is(err, io.EOF):
@@ -214,5 +211,5 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit track processing event.")
 	}
-	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Dur("duration", duration).Msg("Finished writing track to object.")
+	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Str("duration", duration.String()).Msg("Finished writing track to object.")
 }

@@ -34,7 +34,6 @@ type MessagePayload struct {
 type RoomEvent struct {
 	CreatedAt float64      `json:"createdAt"`
 	ID        string       `json:"id"`       
-	OwnerID   string       `json:"ownerId"`  
 	Payload   EventPayload `json:"payload"`  
 	RoomID    string       `json:"roomId"`   
 }
@@ -42,20 +41,27 @@ type RoomEvent struct {
 type EventPayload struct {
 	Message   *EventMessage   `json:"message,omitempty"`  
 	PeerState *EventPeerState `json:"peerState,omitempty"`
+	Recording *EventRecording `json:"recording,omitempty"`
 }
 
 type EventMessage struct {
-	Text string `json:"text"`
+	FromID string `json:"fromId"`
+	Text   string `json:"text"`  
 }
 
 type EventPeerState struct {
-	Status *Status `json:"status,omitempty"`
-	Tracks []Track `json:"tracks,omitempty"`
+	PeerID string      `json:"peerId"`          
+	Status *PeerStatus `json:"status,omitempty"`
+	Tracks []Track     `json:"tracks,omitempty"`
 }
 
 type Track struct {
 	Hint Hint   `json:"hint"`
 	ID   string `json:"id"`  
+}
+
+type EventRecording struct {
+	Status RecordingStatus `json:"status"`
 }
 
 type PeerMessage struct {
@@ -104,10 +110,10 @@ type PeerState struct {
 	Tracks []Track `json:"tracks,omitempty"`
 }
 
-type Status string
+type PeerStatus string
 const (
-	Joined Status = "joined"
-	Left Status = "left"
+	Joined PeerStatus = "joined"
+	Left PeerStatus = "left"
 )
 
 type Hint string
@@ -116,6 +122,12 @@ const (
 	DeviceAudio Hint = "device_audio"
 	Screen Hint = "screen"
 	UserAudio Hint = "user_audio"
+)
+
+type RecordingStatus string
+const (
+	Started RecordingStatus = "started"
+	Stopped RecordingStatus = "stopped"
 )
 
 type SDPType string

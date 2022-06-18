@@ -142,7 +142,7 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Confa, error) {
 		return Confa{}, ErrNotFound
 	}
 	if len(confas) > 1 {
-		return Confa{}, ErrUnexpectedResult
+		return Confa{}, ErrAmbiguousLookup
 	}
 	return confas[0], nil
 }

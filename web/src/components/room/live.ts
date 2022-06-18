@@ -5,7 +5,7 @@ import { BufferedAggregator } from "./buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./messages"
 import { Peer, PeerAggregator } from "./peers"
-import { RoomEvent, Hint, Track } from "@/api/room/schema"
+import { RoomEvent, Hint, Track, RecordingStatus } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
 
 interface Remote {
@@ -32,6 +32,7 @@ export class LiveRoom {
   private remote: Remote
   private joined: Ref<boolean>
   private publishing: Ref<boolean>
+  private recording: Ref<boolean>
   private rtc: RTCPeer
   private state: State
   private streamsByTrackId: Map<string, RemoteStream>
@@ -46,6 +47,7 @@ export class LiveRoom {
 
     this.joined = ref<boolean>(false)
     this.publishing = ref<boolean>(false)
+    this.recording = ref<boolean>(false)
     this.messages = reactive<Message[]>([])
     this.peers = reactive<Map<string, Peer>>(new Map<string, Peer>())
 
@@ -77,6 +79,10 @@ export class LiveRoom {
 
   isPublishing(): ComputedRef<boolean> {
     return computed(() => this.publishing.value)
+  }
+
+  isRecording(): ComputedRef<boolean> {
+    return computed(() => this.recording.value)
   }
 
   async join(roomId: string) {
@@ -264,14 +270,30 @@ export class LiveRoom {
   }
 
   private put(event: RoomEvent): void {
-    const payload = event.payload.peerState
-    if (!payload?.tracks || payload.tracks.length === 0) {
+    const peerState = event.payload.peerState
+    if (peerState) {
+      if (!peerState?.tracks || peerState.tracks.length === 0) {
+        return
+      }
+      for (const t of peerState.tracks) {
+        this.tracksById.set(t.id, t)
+      }
+      this.computeRemote()
       return
     }
-    for (const t of payload.tracks) {
-      this.tracksById.set(t.id, t)
+
+    const recording = event.payload.recording
+    if (recording) {
+      switch (recording.status) {
+        case RecordingStatus.Started:
+          this.recording.value = true
+          break
+        case RecordingStatus.Stopped:
+          this.recording.value = false
+          break
+      }
+      return
     }
-    this.computeRemote()
   }
 
   computeRemote() {

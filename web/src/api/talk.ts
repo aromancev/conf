@@ -12,6 +12,10 @@ import {
   talksHydratedVariables,
   updateTalk,
   updateTalkVariables,
+  startTalkRecording,
+  startTalkRecordingVariables,
+  stopTalkRecording,
+  stopTalkRecordingVariables,
 } from "./schema"
 import { Talk } from "./models"
 
@@ -60,6 +64,7 @@ class TalkIterator {
                 handle
                 title
                 description
+                state
               }
               nextFrom
             }
@@ -121,6 +126,7 @@ export class TalkClient {
             handle
             title
             description
+            state
           }
         }
       `,
@@ -162,6 +168,52 @@ export class TalkClient {
       throw new Error("No data in response.")
     }
     return resp.data.updateTalk
+  }
+
+  async startRecording(where: TalkLookup): Promise<Talk> {
+    const resp = await this.api.mutate<startTalkRecording, startTalkRecordingVariables>({
+      mutation: gql`
+        mutation startTalkRecording($where: TalkLookup!) {
+          startTalkRecording(where: $where) {
+            id
+            ownerId
+            confaId
+            roomId
+            handle
+          }
+        }
+      `,
+      variables: {
+        where: where,
+      },
+    })
+    if (!resp.data) {
+      throw new Error("No data in response.")
+    }
+    return resp.data.startTalkRecording
+  }
+
+  async stopRecording(where: TalkLookup): Promise<Talk> {
+    const resp = await this.api.mutate<stopTalkRecording, stopTalkRecordingVariables>({
+      mutation: gql`
+        mutation stopTalkRecording($where: TalkLookup!) {
+          stopTalkRecording(where: $where) {
+            id
+            ownerId
+            confaId
+            roomId
+            handle
+          }
+        }
+      `,
+      variables: {
+        where: where,
+      },
+    })
+    if (!resp.data) {
+      throw new Error("No data in response.")
+    }
+    return resp.data.stopTalkRecording
   }
 
   async fetchOne(input: TalkLookup, params?: OptionalFetchParams): Promise<Talk | null> {

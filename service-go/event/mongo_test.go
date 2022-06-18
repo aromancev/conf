@@ -23,11 +23,11 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  uuid.New(),
+				ID:   uuid.New(),
+				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
@@ -48,11 +48,11 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  uuid.New(),
+				ID:   uuid.New(),
+				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
@@ -73,31 +73,31 @@ func TestEventMongo(t *testing.T) {
 		created, err := events.Create(
 			ctx,
 			Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  roomID,
+				ID:   uuid.New(),
+				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
 			},
 			Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  roomID,
+				ID:   uuid.New(),
+				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
 			},
 			Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  roomID,
+				ID:   uuid.New(),
+				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
@@ -151,11 +151,11 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  uuid.New(),
+				ID:   uuid.New(),
+				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},
@@ -176,11 +176,11 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:    uuid.New(),
-				Owner: uuid.New(),
-				Room:  uuid.New(),
+				ID:   uuid.New(),
+				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
 						Status: PeerJoined,
 					},
 				},

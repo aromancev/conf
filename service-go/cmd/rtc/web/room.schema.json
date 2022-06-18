@@ -168,12 +168,9 @@
       "type": "object",
       "title": "RoomEvent",
       "additionalProperties": false,
-      "required": ["id", "ownerId", "roomId", "payload", "createdAt"],
+      "required": ["id", "roomId", "payload", "createdAt"],
       "properties": {
         "id": {
-          "type": "string"
-        },
-        "ownerId": {
           "type": "string"
         },
         "roomId": {
@@ -191,9 +188,14 @@
               "type": "object",
               "title": "EventPeerState",
               "additionalProperties": false,
+              "required": ["peerId"],
               "properties": {
+                "peerId": {
+                  "type": "string"
+                },
                 "status": {
                   "type": "string",
+                  "title": "PeerStatus",
                   "enum": ["joined", "left"]
                 },
                 "tracks": {
@@ -208,10 +210,26 @@
               "type": "object",
               "title": "EventMessage",
               "additionalProperties": false,
-              "required": ["text"],
+              "required": ["fromId", "text"],
               "properties": {
+                "fromId": {
+                  "type": "string"
+                },
                 "text": {
                   "type": "string"
+                }
+              }
+            },
+            "recording": {
+              "type": "object",
+              "title": "EventRecording",
+              "additionalProperties": false,
+              "required": ["status"],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "title": "RecordingStatus",
+                  "enum": ["started", "stopped"]
                 }
               }
             }

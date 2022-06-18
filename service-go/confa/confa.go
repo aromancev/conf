@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrValidation       = errors.New("invalid confa")
-	ErrNotFound         = errors.New("not found")
-	ErrUnexpectedResult = errors.New("unexpected result")
-	ErrDuplicateEntry   = errors.New("confa already exists")
+	ErrValidation      = errors.New("invalid confa")
+	ErrNotFound        = errors.New("not found")
+	ErrAmbiguousLookup = errors.New("ambiguous lookup")
+	ErrDuplicateEntry  = errors.New("confa already exists")
 )
 
 type Confa struct {

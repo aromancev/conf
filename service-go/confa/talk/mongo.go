@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -58,7 +59,7 @@ func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Tal
 		"$set": request,
 	}
 	ret := options.After
-	res := m.db.Collection(collection).FindOneAndUpdate(ctx, lookup.Filter(), update, &options.FindOneAndUpdateOptions{
+	res := m.db.Collection(collection).FindOneAndUpdate(ctx, mongoFilter(lookup), update, &options.FindOneAndUpdateOptions{
 		ReturnDocument: &ret,
 	})
 	switch {
@@ -85,7 +86,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 
 	cur, err := m.db.Collection(collection).Find(
 		ctx,
-		lookup.Filter(),
+		mongoFilter(lookup),
 		&options.FindOptions{
 			Sort:  bson.M{"_id": 1},
 			Limit: &lookup.Limit,
@@ -118,7 +119,7 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Talk, error) {
 		return Talk{}, ErrNotFound
 	}
 	if len(talks) > 1 {
-		return Talk{}, ErrUnexpectedResult
+		return Talk{}, ErrAmbigiousLookup
 	}
 	return talks[0], nil
 }
@@ -126,4 +127,31 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Talk, error) {
 func mongoNow() time.Time {
 	// Mongodb only stores milliseconds.
 	return time.Now().UTC().Round(time.Millisecond)
+}
+
+func mongoFilter(l Lookup) bson.M {
+	filter := make(bson.M)
+	switch {
+	case l.ID != uuid.Nil:
+		filter["_id"] = l.ID
+	case l.From != uuid.Nil:
+		filter["_id"] = bson.M{
+			"$gt": l.From,
+		}
+	}
+	if l.Owner != uuid.Nil {
+		filter["ownerId"] = l.Owner
+	}
+	if l.Confa != uuid.Nil {
+		filter["confaId"] = l.Confa
+	}
+	if l.Handle != "" {
+		filter["handle"] = l.Handle
+	}
+	if len(l.StateIn) != 0 {
+		filter["state"] = bson.M{
+			"$in": l.StateIn,
+		}
+	}
+	return filter
 }

@@ -114,20 +114,23 @@ func (s *SenderInterceptor) BindRemoteStream(info *interceptor.StreamInfo, reade
 		if err != nil {
 			return 0, nil, err
 		}
-		p := rtp.Packet{}
-		err = p.Unmarshal(buf[:i])
+
+		if attr == nil {
+			attr = make(interceptor.Attributes)
+		}
+		header, err := attr.GetRTPHeader(buf[:i])
 		if err != nil {
 			return 0, nil, err
 		}
 		var tccExt rtp.TransportCCExtension
-		if ext := p.GetExtension(hdrExtID); ext != nil {
+		if ext := header.GetExtension(hdrExtID); ext != nil {
 			err = tccExt.Unmarshal(ext)
 			if err != nil {
 				return 0, nil, err
 			}
 
 			s.packetChan <- packet{
-				hdr:            &p.Header,
+				hdr:            header,
 				sequenceNumber: tccExt.TransportSequence,
 				arrivalTime:    time.Since(s.startTime).Microseconds(),
 				ssrc:           info.SSRC,
@@ -163,6 +166,13 @@ func (s *SenderInterceptor) isClosed() bool {
 func (s *SenderInterceptor) loop(w interceptor.RTCPWriter) {
 	defer s.wg.Done()
 
+	select {
+	case <-s.close:
+		return
+	case p := <-s.packetChan:
+		s.recorder.Record(p.ssrc, p.sequenceNumber, p.arrivalTime)
+	}
+
 	ticker := time.NewTicker(s.interval)
 	for {
 		select {
@@ -175,6 +185,9 @@ func (s *SenderInterceptor) loop(w interceptor.RTCPWriter) {
 		case <-ticker.C:
 			// build and send twcc
 			pkts := s.recorder.BuildFeedbackPacket()
+			if pkts == nil {
+				continue
+			}
 			if _, err := w.Write(pkts, nil); err != nil {
 				s.log.Error(err.Error())
 			}

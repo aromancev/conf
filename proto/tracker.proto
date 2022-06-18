@@ -1,12 +1,29 @@
 syntax = "proto3";
 
-service Tracker {
-    rpc Join(JoinParams) returns (Joined) {}
+service Registry {
+    rpc Start(StartParams) returns (Tracker) {}
+    rpc Stop(StopParams) returns (Tracker) {}
 }
 
-message JoinParams {
+enum Role {
+    RECORD = 0;
+}
+
+message StartParams {
     bytes room_id = 1;
+    Role role = 2;
+    int64 expire_in_ms = 3;
 }
 
-message Joined {
+message StopParams {
+    bytes room_id = 1;
+    Role role = 2;
+}
+
+message Tracker {
+    bytes room_id = 1;
+    Role role = 2;
+    int64 started_at = 3;
+    int64 expires_at = 4;
+    bool already_exists = 5;
 }
