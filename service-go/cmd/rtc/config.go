@@ -38,14 +38,12 @@ func (c Config) WithEnv() Config {
 	return c
 }
 
-func (c Config) WithDefault() Config {
-	c.ListenWebAddress = ":80"
-	return c
-}
-
 func (c Config) Validate() error {
 	if c.ListenWebAddress == "" {
 		return errors.New("ADDRESS not set")
+	}
+	if c.ListenRPCAddress == "" {
+		return errors.New("listen rpc address not set")
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
@@ -60,33 +58,6 @@ func (c Config) Validate() error {
 		return fmt.Errorf("invalid rtc config: %w", err)
 	}
 
-	return nil
-}
-
-type PostgresConfig struct {
-	Host     string `envconfig:"POSTGRES_HOST"`
-	Port     uint16 `envconfig:"POSTGRES_PORT"`
-	User     string `envconfig:"POSTGRES_USER"`
-	Password string `envconfig:"POSTGRES_PASSWORD"`
-	Database string `envconfig:"POSTGRES_DATABASE"`
-}
-
-func (c PostgresConfig) Validate() error {
-	if c.Host == "" {
-		return errors.New("host not set")
-	}
-	if c.Port == 0 {
-		return errors.New("port not set")
-	}
-	if c.User == "" {
-		return errors.New("user not set")
-	}
-	if c.Password == "" {
-		return errors.New("password not set")
-	}
-	if c.Database == "" {
-		return errors.New("database not set")
-	}
 	return nil
 }
 

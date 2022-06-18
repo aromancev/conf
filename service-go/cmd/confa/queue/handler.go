@@ -72,7 +72,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 }
 
 func updateAvatar(uploader *profile.Updater) JobHandle {
-	const maxRetries = 10
+	const maxAge = 24 * time.Hour
 	bo := backoff.Backoff{
 		Factor: 1.5,
 		Min:    2 * time.Second,
@@ -111,11 +111,11 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 			return
 		case errors.Is(err, profile.ErrNotFound):
 			log.Ctx(ctx).Debug().Msg("Image is not uploaded yet.")
-			jobRetry(ctx, job, bo, maxRetries)
+			jobRetry(ctx, job, bo, maxAge)
 			return
 		case err != nil:
 			log.Ctx(ctx).Err(err).Msg("Unknown error for update avatar job.")
-			jobRetry(ctx, job, bo, maxRetries)
+			jobRetry(ctx, job, bo, maxAge)
 			return
 		default:
 			log.Ctx(ctx).Info().Msg("Avatar update processed.")
@@ -125,9 +125,9 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 	}
 }
 
-func jobRetry(ctx context.Context, job *beanstalk.Job, bo backoff.Backoff, maxTries int) {
-	if job.Stats.Releases >= maxTries {
-		log.Ctx(ctx).Error().Int("retries", maxTries).Msg("Job retries exceeded. Burying.")
+func jobRetry(ctx context.Context, job *beanstalk.Job, bo backoff.Backoff, maxAge time.Duration) {
+	if job.Stats.Age > maxAge {
+		log.Ctx(ctx).Error().Int("retries", job.Stats.Releases).Dur("age", job.Stats.Age).Msg("Job retries exceeded. Burying.")
 		if err := job.Bury(ctx); err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to bury job")
 		}

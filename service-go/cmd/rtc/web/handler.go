@@ -11,7 +11,7 @@ import (
 
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/event/peer"
+	"github.com/aromancev/confa/event/proxy"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
 	"github.com/google/uuid"
@@ -30,7 +30,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter peer.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
+func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -81,7 +81,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r.WithContext(ctx))
 }
 
-func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientConn, emitter peer.EventEmitter, events event.Watcher) http.Handler {
+func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientConn, emitter proxy.EventEmitter, events event.Watcher) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -120,15 +120,15 @@ func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientCo
 			return
 		}
 
-		wsock, err := NewPeer(ctx, w, r, claims.UserID, rm.ID, events, emitter, sfuConn)
+		pp, err := NewPeerProxy(ctx, w, r, claims.UserID, rm.ID, events, emitter, sfuConn)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to connect to websocket.")
 			return
 		}
-		defer wsock.Close(ctx)
+		defer pp.Close(ctx)
 
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
-		wsock.Serve(ctx, r.URL.Query().Get("media") == "true")
+		pp.Serve(ctx, r.URL.Query().Get("media") == "true")
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer disconnected.")
 	})
 }

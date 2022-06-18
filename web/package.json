@@ -7,13 +7,13 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint --ext .ts,.js,.vue --fix --max-warnings=0 src",
-    "gen:local": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts && curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
+    "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts && curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
   },
   "dependencies": {
     "vue": "^3.2.25",
     "vue-router": "^4.0.12",
     "@apollo/client": "^3.3.20",
-    "dashjs": "^3.2.2",
+    "dashjs": "^4.4.0",
     "graphql": "^15.5.1",
     "graphql-tag": "^2.12.4",
     "ion-sdk-js": "^1.8.2"
@@ -36,7 +36,7 @@
   },
   "pnpm": {
     "peerDependencyRules": {
-      "ignoreMissing": ["webpack", "@apollographql/graphql-language-service-interface"]
+      "ignoreMissing": ["webpack", "apollo-language-server"]
     }
   }
 }

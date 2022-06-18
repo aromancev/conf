@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/event/peer"
+	"github.com/aromancev/confa/event/proxy"
 	"github.com/aromancev/confa/internal/platform/signal"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
@@ -23,13 +23,13 @@ var (
 	ErrClosed = errors.New("connection closed")
 )
 
-type Peer struct {
-	peer    *peer.Peer
+type PeerProxy struct {
+	proxy   *proxy.Proxy
 	conn    *websocket.Conn
 	sfuConn *grpc.ClientConn
 }
 
-func NewPeer(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, roomID uuid.UUID, watcher event.Watcher, emitter peer.EventEmitter, sfuConn *grpc.ClientConn) (*Peer, error) {
+func NewPeerProxy(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, roomID uuid.UUID, watcher event.Watcher, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn) (*PeerProxy, error) {
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to accept websocket connection: %w", err)
@@ -40,14 +40,14 @@ func NewPeer(ctx context.Context, w http.ResponseWriter, r *http.Request, userID
 		return nil, err
 	}
 
-	return &Peer{
+	return &PeerProxy{
 		conn:    conn,
 		sfuConn: sfuConn,
-		peer:    peer.NewPeer(ctx, userID, roomID, cursor, emitter),
+		proxy:   proxy.NewProxy(ctx, userID, roomID, cursor, emitter),
 	}, nil
 }
 
-func (p *Peer) Serve(ctx context.Context, connectMedia bool) {
+func (p *PeerProxy) Serve(ctx context.Context, connectMedia bool) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -88,16 +88,16 @@ func (p *Peer) Serve(ctx context.Context, connectMedia bool) {
 	wg.Wait()
 }
 
-func (p *Peer) Close(ctx context.Context) {
-	p.peer.Close(ctx)
+func (p *PeerProxy) Close(ctx context.Context) {
+	p.proxy.Close(ctx)
 	_ = p.conn.Close(websocket.StatusNormalClosure, "Peer closed.")
 }
 
-func (p *Peer) serveWebsocket(ctx context.Context, sig peer.Signal) {
+func (p *PeerProxy) serveWebsocket(ctx context.Context, sig proxy.Signal) {
 	for {
 		err := p.receiveWebsocket(ctx, sig)
 		switch {
-		case errors.Is(err, peer.ErrValidation):
+		case errors.Is(err, proxy.ErrValidation):
 			log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
 			continue
 		case errors.Is(err, ErrClosed):
@@ -110,7 +110,7 @@ func (p *Peer) serveWebsocket(ctx context.Context, sig peer.Signal) {
 	}
 }
 
-func (p *Peer) pingWebsocket(ctx context.Context) {
+func (p *PeerProxy) pingWebsocket(ctx context.Context) {
 	for {
 		pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		err := p.conn.Ping(pingCtx)
@@ -129,17 +129,17 @@ func (p *Peer) pingWebsocket(ctx context.Context) {
 	}
 }
 
-func (p *Peer) serveSignal(ctx context.Context, sig peer.Signal) {
+func (p *PeerProxy) serveSignal(ctx context.Context, sig proxy.Signal) {
 	if sig == nil {
 		panic("signal client not provided")
 	}
 	for {
-		msg, err := p.peer.ReceiveSignal(ctx, sig)
+		msg, err := p.proxy.ReceiveSignal(ctx, sig)
 		switch {
-		case errors.Is(err, peer.ErrUnknownMessage):
+		case errors.Is(err, proxy.ErrUnknownMessage):
 			log.Ctx(ctx).Debug().Msg("Skipping unknown signal.")
 			continue
-		case errors.Is(err, peer.ErrClosed), errors.Is(err, context.Canceled):
+		case errors.Is(err, proxy.ErrClosed), errors.Is(err, context.Canceled):
 			log.Ctx(ctx).Debug().Msg("Serving signal cancelled.")
 			return
 		case err != nil:
@@ -158,11 +158,11 @@ func (p *Peer) serveSignal(ctx context.Context, sig peer.Signal) {
 	}
 }
 
-func (p *Peer) serveEvents(ctx context.Context) {
+func (p *PeerProxy) serveEvents(ctx context.Context) {
 	for {
-		ev, err := p.peer.RecieveEvent(ctx)
+		ev, err := p.proxy.RecieveEvent(ctx)
 		switch {
-		case errors.Is(err, peer.ErrUnknownMessage):
+		case errors.Is(err, proxy.ErrUnknownMessage):
 			log.Ctx(ctx).Debug().Msg("Skipping unknown event.")
 			continue
 		case errors.Is(err, context.Canceled):
@@ -184,7 +184,7 @@ func (p *Peer) serveEvents(ctx context.Context) {
 	}
 }
 
-func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
+func (p *PeerProxy) receiveWebsocket(ctx context.Context, sig proxy.Signal) error {
 	var msg Message
 	err := wsjson.Read(ctx, p.conn, &msg)
 	switch {
@@ -197,10 +197,10 @@ func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
 	switch {
 	case msg.Payload.Signal != nil && sig != nil:
 		pl := *msg.Payload.Signal
-		return p.peer.SendSignal(ctx, sig, signalMessage(pl))
+		return p.proxy.SendSignal(ctx, sig, signalMessage(pl))
 	case msg.Payload.State != nil:
 		pl := *msg.Payload.State
-		state, err := p.peer.SendState(ctx, peerState(pl))
+		state, err := p.proxy.SendState(ctx, peerState(pl))
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func (p *Peer) receiveWebsocket(ctx context.Context, sig peer.Signal) error {
 		})
 	case msg.Payload.PeerMessage != nil:
 		pl := *msg.Payload.PeerMessage
-		ev, err := p.peer.SendMessage(ctx, pl.Text)
+		ev, err := p.proxy.SendMessage(ctx, pl.Text)
 		if err != nil {
 			return err
 		}
@@ -336,7 +336,7 @@ func webrtcICECandidateInit(init ICECandidateInit) webrtc.ICECandidateInit {
 	return webrtcInit
 }
 
-func peerState(state PeerState) peer.State {
+func peerState(state PeerState) proxy.State {
 	tracks := make([]event.Track, len(state.Tracks))
 	for i, t := range state.Tracks {
 		tracks[i] = event.Track{
@@ -344,7 +344,7 @@ func peerState(state PeerState) peer.State {
 			Hint: event.TrackHint(t.Hint),
 		}
 	}
-	return peer.State{
+	return proxy.State{
 		Tracks: tracks,
 	}
 }

@@ -4,8 +4,9 @@ start:
 
 .PHONY: migrate
 migrate:
-	./minio/mc.sh mb -p local/user-uploads local/user-public
+	./minio/mc.sh mb -p local/user-uploads local/user-public local/confa-tracks-internal local/confa-tracks-public
 	./minio/mc.sh policy set download local/user-public
+	./minio/mc.sh policy set download local/confa-tracks-public
 	./mongo/init.sh
 	./mongo/migrate.sh -source file://service-go/migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
 	./mongo/migrate.sh -source file://service-go/migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
@@ -59,7 +60,9 @@ build:
 		&& go build -o bin/ ./cmd/rtc/... \
 		&& go build -o bin/ ./cmd/gateway/... \
 		&& go build -o bin/ ./cmd/sfu/... \
-		&& go build -o bin/ ./cmd/turn/...
+		&& go build -o bin/ ./cmd/turn/... \
+		&& go build -o bin/ ./cmd/tracker/... \
+		&& go build -o bin/ ./cmd/avp/...
 
 .PHONY: server-api
 server-api:

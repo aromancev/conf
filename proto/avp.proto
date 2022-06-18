@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message ProcessTrack {
+    enum Kind {
+        VIDEO = 0;
+        AUDIO = 1;
+    }
+    string bucket = 1;
+    string object = 2;
+    bytes room_id = 3;
+    bytes record_id = 4;
+    Kind kind = 5;
+    float duration_seconds = 6;
+}

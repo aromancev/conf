@@ -65,6 +65,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/LoginPage.vue"),
   },
   {
+    path: "/test",
+    name: "test",
+    component: () => import("@/views/room/RoomRecordTalk.vue"),
+  },
+  {
     path: "/pro/:profile",
     name: "profile.overview",
     props(to: RouteLocationNormalized): Record<string, string> {

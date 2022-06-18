@@ -1,4 +1,4 @@
-package peer
+package proxy
 
 import (
 	"context"
@@ -54,15 +54,15 @@ func (s State) Track(id string) (event.Track, bool) {
 	return event.Track{}, false
 }
 
-type Peer struct {
+type Proxy struct {
 	emitter        EventEmitter
 	userID, roomID uuid.UUID
 	state          State
 	events         event.Cursor
 }
 
-func NewPeer(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor, emitter EventEmitter) *Peer {
-	p := &Peer{
+func NewProxy(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor, emitter EventEmitter) *Proxy {
+	p := &Proxy{
 		emitter: emitter,
 		events:  events,
 		userID:  userID,
@@ -79,7 +79,7 @@ func NewPeer(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor,
 	return p
 }
 
-func (p *Peer) SendSignal(ctx context.Context, client Signal, msg signal.Message) error {
+func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Message) error {
 	switch {
 	case msg.Join != nil:
 		pl := msg.Join
@@ -110,7 +110,7 @@ func (p *Peer) SendSignal(ctx context.Context, client Signal, msg signal.Message
 	return client.Send(ctx, msg)
 }
 
-func (p *Peer) SendMessage(ctx context.Context, text string) (event.Event, error) {
+func (p *Proxy) SendMessage(ctx context.Context, text string) (event.Event, error) {
 	return p.emit(ctx, event.Payload{
 		Message: &event.PayloadMessage{
 			Text: text,
@@ -118,7 +118,7 @@ func (p *Peer) SendMessage(ctx context.Context, text string) (event.Event, error
 	})
 }
 
-func (p *Peer) SendState(ctx context.Context, state State) (State, error) {
+func (p *Proxy) SendState(ctx context.Context, state State) (State, error) {
 	if err := state.Validate(); err != nil {
 		return State{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
@@ -126,7 +126,7 @@ func (p *Peer) SendState(ctx context.Context, state State) (State, error) {
 	return state, nil
 }
 
-func (p *Peer) RecieveEvent(ctx context.Context) (event.Event, error) {
+func (p *Proxy) RecieveEvent(ctx context.Context) (event.Event, error) {
 	ev, err := p.events.Next(ctx)
 	switch {
 	case errors.Is(err, event.ErrUnknownEvent):
@@ -137,7 +137,7 @@ func (p *Peer) RecieveEvent(ctx context.Context) (event.Event, error) {
 	return ev, err
 }
 
-func (p *Peer) ReceiveSignal(ctx context.Context, client Signal) (signal.Message, error) {
+func (p *Proxy) ReceiveSignal(ctx context.Context, client Signal) (signal.Message, error) {
 	msg, err := client.Receive(ctx)
 	switch {
 	case errors.Is(err, signal.ErrUnknownMessage):
@@ -148,7 +148,7 @@ func (p *Peer) ReceiveSignal(ctx context.Context, client Signal) (signal.Message
 	return msg, err
 }
 
-func (p *Peer) Close(ctx context.Context) {
+func (p *Proxy) Close(ctx context.Context) {
 	if err := p.events.Close(ctx); err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to close events.")
 	}
@@ -163,7 +163,7 @@ func (p *Peer) Close(ctx context.Context) {
 	}
 }
 
-func (p *Peer) emit(ctx context.Context, payload event.Payload) (event.Event, error) {
+func (p *Proxy) emit(ctx context.Context, payload event.Payload) (event.Event, error) {
 	ev := event.Event{
 		ID:      uuid.New(),
 		Owner:   p.userID,
@@ -184,7 +184,7 @@ func (p *Peer) emit(ctx context.Context, payload event.Payload) (event.Event, er
 // Returns error if tracks are not allowed or not present in state. State should be
 // submitted by peer before sending the offer. This is because WebRTC does not support passing
 // additional info with offers.
-func (p *Peer) tracks(desc webrtc.SessionDescription) ([]event.Track, error) {
+func (p *Proxy) tracks(desc webrtc.SessionDescription) ([]event.Track, error) {
 	getID := func(m sdp.Media) string {
 		parts := strings.Split(m.Attribute("msid"), " ")
 		if len(parts) != 2 {
