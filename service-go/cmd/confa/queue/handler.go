@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/proto/confa"
 	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
+	"github.com/twitchtv/twirp"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
@@ -19,7 +22,14 @@ import (
 )
 
 type Tubes struct {
-	UpdateAvatar string
+	UpdateAvatar   string
+	StartRecording string
+	StopRecording  string
+}
+
+type RTC interface {
+	StartRecording(context.Context, *rtc.RecordingParams) (*rtc.Recording, error)
+	StopRecording(context.Context, *rtc.RecordingLookup) (*rtc.Recording, error)
 }
 
 type JobHandle func(ctx context.Context, job *beanstalk.Job)
@@ -28,12 +38,16 @@ type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(uploader *profile.Updater, tubes Tubes) *Handler {
+func NewHandler(uploader *profile.Updater, r RTC, talks *talk.Mongo, emitter *talk.Beanstalk, tubes Tubes) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case tubes.UpdateAvatar:
 				return updateAvatar(uploader)
+			case tubes.StartRecording:
+				return startRecording(talks, r, emitter)
+			case tubes.StopRecording:
+				return stopRecording(talks, r)
 			default:
 				return nil
 			}
@@ -122,6 +136,134 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 			jobDelete(ctx, job)
 			return
 		}
+	}
+}
+
+func startRecording(talks *talk.Mongo, rtcClient RTC, emitter *talk.Beanstalk) JobHandle {
+	const maxAge = 2 * time.Minute
+	const autostopAfter = 5 * time.Minute
+	const maxDuration = time.Hour
+	bo := backoff.Backoff{
+		Factor: 1.2,
+		Min:    1 * time.Second,
+		Max:    10 * time.Second,
+	}
+
+	return func(ctx context.Context, job *beanstalk.Job) {
+		var payload confa.StartRecording
+		err := proto.Unmarshal(job.Body, &payload)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
+			jobDelete(ctx, job)
+			return
+		}
+		var talkID, roomID uuid.UUID
+		_ = talkID.UnmarshalBinary(payload.TalkId)
+		_ = roomID.UnmarshalBinary(payload.RoomId)
+
+		recording, err := rtcClient.StartRecording(ctx, &rtc.RecordingParams{
+			RoomId:     payload.RoomId,
+			Key:        talkID.String(),
+			ExpireInMs: maxDuration.Milliseconds(),
+		})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to start recording.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+		if !recording.AlreadyExists {
+			err := emitter.StopRecording(ctx, talkID, roomID, autostopAfter)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to emit stop recording.")
+				jobRetry(ctx, job, bo, maxAge)
+				return
+			}
+		}
+
+		stateRecording := talk.StateRecording
+		_, err = talks.UpdateOne(
+			ctx,
+			talk.Lookup{
+				ID:      talkID,
+				StateIn: []talk.State{talk.StateLive},
+			},
+			talk.Mask{
+				State: &(stateRecording),
+			},
+		)
+		switch {
+		case errors.Is(err, talk.ErrNotFound):
+			log.Ctx(ctx).Warn().Msg("Talk already started.")
+			jobDelete(ctx, job)
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+
+		log.Ctx(ctx).Info().Msg("Talk recording started.")
+		jobDelete(ctx, job)
+	}
+}
+
+func stopRecording(talks *talk.Mongo, rtcClient RTC) JobHandle {
+	const maxAge = 2 * time.Hour
+	bo := backoff.Backoff{
+		Factor: 1.2,
+		Min:    1 * time.Second,
+		Max:    10 * time.Minute,
+	}
+
+	return func(ctx context.Context, job *beanstalk.Job) {
+		var payload confa.StopRecording
+		err := proto.Unmarshal(job.Body, &payload)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
+			jobDelete(ctx, job)
+			return
+		}
+		var talkID uuid.UUID
+		_ = talkID.UnmarshalBinary(payload.TalkId)
+
+		_, err = rtcClient.StopRecording(ctx, &rtc.RecordingLookup{
+			RoomId: payload.RoomId,
+			Key:    talkID.String(),
+		})
+		var twerr twirp.Error
+		switch {
+		// Not found means it's probably already stopped.
+		case errors.As(err, &twerr) && twerr.Code() == twirp.NotFound:
+			break
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to stop recording.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+
+		stateEnded := talk.StateEnded
+		_, err = talks.UpdateOne(
+			ctx,
+			talk.Lookup{
+				ID:      talkID,
+				StateIn: []talk.State{talk.StateRecording},
+			},
+			talk.Mask{
+				State: &stateEnded,
+			},
+		)
+		switch {
+		case errors.Is(err, talk.ErrNotFound):
+			log.Ctx(ctx).Info().Msg("Talk already stopped.")
+			jobDelete(ctx, job)
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to update talk.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+		log.Ctx(ctx).Info().Msg("Talk recording stopped.")
+		jobDelete(ctx, job)
 	}
 }
 

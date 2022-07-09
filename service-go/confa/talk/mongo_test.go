@@ -41,6 +41,7 @@ func TestMongo(t *testing.T) {
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   StateLive,
 				Handle:  "test",
 			}
 
@@ -64,6 +65,7 @@ func TestMongo(t *testing.T) {
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   StateLive,
 				Handle:  uuid.New().String(),
 			}
 
@@ -87,6 +89,7 @@ func TestMongo(t *testing.T) {
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   StateLive,
 				Handle:  "test",
 			})
 			require.NoError(t, err)
@@ -96,6 +99,7 @@ func TestMongo(t *testing.T) {
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   StateLive,
 				Handle:  "test",
 			})
 			assert.ErrorIs(t, err, ErrDuplicateEntry)
@@ -114,6 +118,7 @@ func TestMongo(t *testing.T) {
 				Confa:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
+				State:   StateLive,
 				Handle:  "1111",
 			}
 			created, err := confas.Create(ctx, request)
@@ -156,6 +161,7 @@ func TestMongo(t *testing.T) {
 					Confa:   uuid.New(),
 					Speaker: uuid.New(),
 					Room:    uuid.New(),
+					State:   StateLive,
 					Handle:  uuid.NewString(),
 				},
 				Talk{
@@ -164,6 +170,7 @@ func TestMongo(t *testing.T) {
 					Confa:   uuid.New(),
 					Speaker: uuid.New(),
 					Room:    uuid.New(),
+					State:   StateLive,
 					Handle:  uuid.NewString(),
 				},
 			)
@@ -187,35 +194,55 @@ func TestMongo(t *testing.T) {
 			Handle: "test",
 		}
 
-		tlk := Talk{
-			ID:      uuid.New(),
-			Owner:   uuid.New(),
-			Speaker: uuid.New(),
-			Room:    uuid.New(),
-			Confa:   conf.ID,
-			Handle:  "test",
+		requests := []Talk{
+			{
+				ID:      uuid.New(),
+				Owner:   uuid.New(),
+				Speaker: uuid.New(),
+				Room:    uuid.New(),
+				State:   StateLive,
+				Confa:   conf.ID,
+				Handle:  "test1",
+			},
+			{
+				ID:      uuid.New(),
+				Owner:   uuid.New(),
+				Speaker: uuid.New(),
+				Room:    uuid.New(),
+				State:   StateEnded,
+				Confa:   conf.ID,
+				Handle:  "test2",
+			},
 		}
 
 		_, err := confas.Create(ctx, conf)
 		require.NoError(t, err)
 
-		createdTalk, err := talks.Create(ctx, tlk)
+		created, err := talks.Create(ctx, requests...)
 		require.NoError(t, err)
 
-		t.Run("ID", func(t *testing.T) {
-			fetchedTalk, err := talks.Fetch(ctx, Lookup{
-				ID: tlk.ID,
+		t.Run("By ID", func(t *testing.T) {
+			fetched, err := talks.Fetch(ctx, Lookup{
+				ID: created[0].ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, createdTalk, fetchedTalk)
+			assert.Equal(t, created[:1], fetched)
 		})
 
-		t.Run("Confa", func(t *testing.T) {
-			fetchedTalk, err := talks.Fetch(ctx, Lookup{
+		t.Run("By Confa", func(t *testing.T) {
+			fetched, err := talks.Fetch(ctx, Lookup{
 				Confa: conf.ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, createdTalk, fetchedTalk)
+			assert.Equal(t, created, fetched)
+		})
+
+		t.Run("By State In", func(t *testing.T) {
+			fetched, err := talks.Fetch(ctx, Lookup{
+				StateIn: []State{StateEnded},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, created[1:], fetched)
 		})
 	})
 }

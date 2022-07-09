@@ -1,3 +1,10 @@
+export enum TalkState {
+  CREATED = "CREATED",
+  ENDED = "ENDED",
+  LIVE = "LIVE",
+  RECORDING = "RECORDING",
+}
+
 export interface Talk {
   id: string
   ownerId: string
@@ -6,4 +13,5 @@ export interface Talk {
   handle: string
   title?: string
   description?: string
+  state?: TalkState
 }

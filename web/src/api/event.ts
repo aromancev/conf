@@ -6,11 +6,12 @@ import {
   EventOrder,
   events,
   eventsVariables,
-  Status as GStatus,
+  PeerStatus as GPeerStatus,
+  RecordingStatus as GRecordingStatus,
   Hint as GHint,
   EventFromInput,
 } from "./schema"
-import { RoomEvent, EventPeerState, Status, Hint } from "./room/schema"
+import { RoomEvent, EventPeerState, PeerStatus, RecordingStatus, Hint } from "./room/schema"
 
 interface OptionalFetchParams {
   policy?: FetchPolicy
@@ -74,11 +75,11 @@ class EventIterator {
           events(where: $where, limit: $limit, from: $from, order: $order) {
             items {
               id
-              ownerId
               roomId
               createdAt
               payload {
                 peerState {
+                  peerId
                   status
                   tracks {
                     id
@@ -86,7 +87,11 @@ class EventIterator {
                   }
                 }
                 message {
+                  fromId
                   text
+                }
+                recording {
+                  status
                 }
               }
             }
@@ -111,7 +116,6 @@ class EventIterator {
     for (const item of resp.data.events.items) {
       const event: RoomEvent = {
         id: item.id,
-        ownerId: item.ownerId,
         roomId: item.roomId,
         createdAt: item.createdAt,
         payload: {},
@@ -121,7 +125,8 @@ class EventIterator {
       }
       if (item.payload.peerState) {
         const state: EventPeerState = {
-          status: item.payload.peerState.status ? fromGState(item.payload.peerState.status) : undefined,
+          peerId: item.payload.peerState.peerId,
+          status: item.payload.peerState.status ? fromGPeerState(item.payload.peerState.status) : undefined,
         }
         if (item.payload.peerState.tracks) {
           state.tracks = []
@@ -134,18 +139,32 @@ class EventIterator {
         }
         event.payload.peerState = state
       }
+      if (item.payload.recording) {
+        event.payload.recording = {
+          status: fromGRecordingState(item.payload.recording.status),
+        }
+      }
       events.push(event)
     }
     return events
   }
 }
 
-function fromGState(s: GStatus): Status {
+function fromGPeerState(s: GPeerStatus): PeerStatus {
   switch (s) {
-    case GStatus.joined:
-      return Status.Joined
-    case GStatus.left:
-      return Status.Left
+    case GPeerStatus.joined:
+      return PeerStatus.Joined
+    case GPeerStatus.left:
+      return PeerStatus.Left
+  }
+}
+
+function fromGRecordingState(s: GRecordingStatus): RecordingStatus {
+  switch (s) {
+    case GRecordingStatus.started:
+      return RecordingStatus.Started
+    case GRecordingStatus.stopped:
+      return RecordingStatus.Stopped
   }
 }
 

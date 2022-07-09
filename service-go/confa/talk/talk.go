@@ -2,20 +2,39 @@ package talk
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
 	ErrValidation       = errors.New("invalid talk")
 	ErrNotFound         = errors.New("not found")
-	ErrUnexpectedResult = errors.New("unexpected result")
+	ErrAmbigiousLookup  = errors.New("ambigious lookup")
 	ErrDuplicateEntry   = errors.New("talk already exits")
 	ErrPermissionDenied = errors.New("permission denied")
+	ErrWrongState       = errors.New("wrong state")
 )
+
+type State string
+
+const (
+	StateCreated   State = "CREATED"
+	StateLive      State = "LIVE"
+	StateRecording State = "RECORDING"
+	StateEnded     State = "ENDED"
+)
+
+func (s State) Validate() error {
+	switch s {
+	case StateCreated, StateLive, StateRecording, StateEnded:
+	default:
+		return fmt.Errorf("should be one of %v", []State{StateCreated, StateLive, StateRecording, StateEnded})
+	}
+	return nil
+}
 
 type Talk struct {
 	ID          uuid.UUID `bson:"_id"`
@@ -26,6 +45,7 @@ type Talk struct {
 	Handle      string    `bson:"handle"`
 	Title       string    `bson:"title"`
 	Description string    `bson:"description"`
+	State       State     `bson:"state"`
 	CreatedAt   time.Time `bson:"createdAt"`
 }
 
@@ -55,8 +75,14 @@ func (t Talk) ValidateAtRest() error {
 	if t.Room == uuid.Nil {
 		return errors.New("room should not be empty")
 	}
+	if t.Title != "" && !validTitle.MatchString(t.Title) {
+		return errors.New("invalid title")
+	}
 	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")
+	}
+	if err := t.State.Validate(); err != nil {
+		return fmt.Errorf("invalid state: %w", err)
 	}
 	return nil
 }
@@ -65,6 +91,7 @@ type Mask struct {
 	Handle      *string `bson:"handle,omitempty"`
 	Title       *string `bson:"title,omitempty"`
 	Description *string `bson:"description,omitempty"`
+	State       *State  `bson:"state,omitempty"`
 }
 
 func (m Mask) Validate() error {
@@ -80,6 +107,11 @@ func (m Mask) Validate() error {
 	if m.Description != nil && len(*m.Description) > maxDescription {
 		return errors.New("ivalid description")
 	}
+	if m.State != nil {
+		if err := m.State.Validate(); err != nil {
+			return fmt.Errorf("invalid state: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -90,29 +122,8 @@ type Lookup struct {
 	Speaker uuid.UUID
 	Handle  string
 	Limit   int64
+	StateIn []State
 	From    uuid.UUID
-}
-
-func (l Lookup) Filter() bson.M {
-	filter := make(bson.M)
-	switch {
-	case l.ID != uuid.Nil:
-		filter["_id"] = l.ID
-	case l.From != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": l.From,
-		}
-	}
-	if l.Owner != uuid.Nil {
-		filter["ownerId"] = l.Owner
-	}
-	if l.Confa != uuid.Nil {
-		filter["confaId"] = l.Confa
-	}
-	if l.Handle != "" {
-		filter["handle"] = l.Handle
-	}
-	return filter
 }
 
 const (

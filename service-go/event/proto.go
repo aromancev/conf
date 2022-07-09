@@ -9,18 +9,14 @@ import (
 
 func ToProto(event Event) *rtc.Event {
 	id, _ := event.ID.MarshalBinary()
-	owner, _ := event.Owner.MarshalBinary()
 	room, _ := event.Room.MarshalBinary()
 	var payload rtc.Event_Payload
-	if event.Payload.Message != nil {
-		pl := *event.Payload.Message
-		payload.Message = &rtc.Event_Payload_PayloadMessage{
-			Text: pl.Text,
-		}
-	}
 	if event.Payload.PeerState != nil {
 		pl := *event.Payload.PeerState
-		payload.PeerState = &rtc.Event_Payload_PayloadPeerState{}
+		peer, _ := pl.Peer.MarshalBinary()
+		payload.PeerState = &rtc.Event_Payload_PayloadPeerState{
+			PeerId: peer,
+		}
 		if pl.Status != "" {
 			payload.PeerState.Status = string(pl.Status)
 		}
@@ -34,9 +30,22 @@ func ToProto(event Event) *rtc.Event {
 			}
 		}
 	}
+	if event.Payload.Message != nil {
+		pl := *event.Payload.Message
+		from, _ := pl.From.MarshalBinary()
+		payload.Message = &rtc.Event_Payload_PayloadMessage{
+			FromId: from,
+			Text:   pl.Text,
+		}
+	}
+	if event.Payload.Recording != nil {
+		pl := *event.Payload.Recording
+		payload.Recording = &rtc.Event_Payload_PayloadRecording{
+			Status: string(pl.Status),
+		}
+	}
 	return &rtc.Event{
 		Id:        id,
-		OwnerId:   owner,
 		RoomId:    room,
 		Payload:   &payload,
 		CreatedAt: event.CreatedAt.UnixMilli(),
@@ -44,20 +53,17 @@ func ToProto(event Event) *rtc.Event {
 }
 
 func FromProto(event *rtc.Event) Event {
-	var id, owner, room uuid.UUID
+	var id, room uuid.UUID
 	_ = id.UnmarshalBinary(event.Id)
-	_ = owner.UnmarshalBinary(event.OwnerId)
 	_ = room.UnmarshalBinary(event.RoomId)
 	var payload Payload
-	if event.Payload != nil && event.Payload.Message != nil {
-		pl := event.Payload.Message
-		payload.Message = &PayloadMessage{
-			Text: pl.Text,
-		}
-	}
 	if event.Payload.PeerState != nil {
 		pl := event.Payload.PeerState
-		payload.PeerState = &PayloadPeerState{}
+		var peer uuid.UUID
+		_ = peer.UnmarshalBinary(pl.PeerId)
+		payload.PeerState = &PayloadPeerState{
+			Peer: peer,
+		}
 		if pl.Status != "" {
 			payload.PeerState.Status = PeerStatus(pl.Status)
 		}
@@ -71,9 +77,23 @@ func FromProto(event *rtc.Event) Event {
 			}
 		}
 	}
+	if event.Payload.Message != nil {
+		pl := event.Payload.Message
+		var from uuid.UUID
+		_ = from.UnmarshalBinary(pl.FromId)
+		payload.Message = &PayloadMessage{
+			From: from,
+			Text: pl.Text,
+		}
+	}
+	if event.Payload.Recording != nil {
+		pl := event.Payload.Recording
+		payload.Recording = &PayloadRecording{
+			Status: RecordStatus(pl.Status),
+		}
+	}
 	return Event{
 		ID:        id,
-		Owner:     owner,
 		Room:      room,
 		Payload:   payload,
 		CreatedAt: time.UnixMilli(event.CreatedAt),

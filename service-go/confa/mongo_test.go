@@ -234,7 +234,7 @@ func TestMongo(t *testing.T) {
 				ID: conf.ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.ElementsMatch(t, created, fetched)
 		})
 
 		t.Run("by owner", func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestMongo(t *testing.T) {
 				Owner: conf.Owner,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.ElementsMatch(t, created, fetched)
 		})
 
 		t.Run("with limit and offset", func(t *testing.T) {

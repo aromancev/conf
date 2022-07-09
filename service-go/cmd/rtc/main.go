@@ -13,10 +13,13 @@ import (
 
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/confa/internal/proto/tracker"
 	"github.com/aromancev/confa/room"
+	"github.com/aromancev/confa/room/record"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
@@ -54,7 +57,7 @@ func main() {
 	}
 	mongoDB := mongoClient.Database(config.Mongo.Database)
 
-	producer, err := beanstalk.NewProducer(config.Beanstalkd.ParsePool(), beanstalk.Config{
+	producer, err := beanstalk.NewProducer(config.Beanstalk.ParsePool(), beanstalk.Config{
 		Multiply:         1,
 		ReconnectTimeout: 3 * time.Second,
 		InfoFunc: func(message string) {
@@ -67,7 +70,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalkd.ParsePool(), []string{config.Beanstalkd.TubeStoreEvent}, beanstalk.Config{
+	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeStoreEvent}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    10,
 		ReserveTimeout:   100 * time.Millisecond,
@@ -83,7 +86,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
 	}
 
-	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithInsecure())
+	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to sfu RPC.")
 	}
@@ -94,11 +97,13 @@ func main() {
 	}
 
 	roomMongo := room.NewMongo(mongoDB)
+	recordMongo := record.NewMongo(mongoDB)
 	eventMongo := event.NewMongo(mongoDB)
 	eventWatcher := event.NewSharedWatcher(eventMongo, 30)
+	eventEmitter := event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent)
 
 	jobHandler := queue.NewHandler(eventMongo, queue.Tubes{
-		StoreEvent: config.Beanstalkd.TubeStoreEvent,
+		StoreEvent: config.Beanstalk.TubeStoreEvent,
 	})
 
 	webServer := &http.Server{
@@ -110,7 +115,7 @@ func main() {
 			publicKey,
 			roomMongo,
 			eventMongo,
-			event.NewBeanstalkEmitter(producer, config.Beanstalkd.TubeStoreEvent),
+			event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent),
 			sfuConn,
 			eventWatcher,
 		),
@@ -123,7 +128,14 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      rtc.NewRTCServer(rpc.NewHandler(roomMongo)),
+		Handler: rtc.NewRTCServer(
+			rpc.NewHandler(
+				roomMongo,
+				recordMongo,
+				tracker.NewRegistryProtobufClient(config.TrackerRPCAddress, &http.Client{}),
+				eventEmitter,
+			),
+		),
 	}
 
 	go func() {

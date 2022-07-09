@@ -20,16 +20,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type JoinParams struct {
+type Role int32
+
+const (
+	Role_RECORD Role = 0
+)
+
+// Enum value maps for Role.
+var (
+	Role_name = map[int32]string{
+		0: "RECORD",
+	}
+	Role_value = map[string]int32{
+		"RECORD": 0,
+	}
+)
+
+func (x Role) Enum() *Role {
+	p := new(Role)
+	*p = x
+	return p
+}
+
+func (x Role) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Role) Descriptor() protoreflect.EnumDescriptor {
+	return file_tracker_proto_enumTypes[0].Descriptor()
+}
+
+func (Role) Type() protoreflect.EnumType {
+	return &file_tracker_proto_enumTypes[0]
+}
+
+func (x Role) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Role.Descriptor instead.
+func (Role) EnumDescriptor() ([]byte, []int) {
+	return file_tracker_proto_rawDescGZIP(), []int{0}
+}
+
+type StartParams struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RoomId []byte `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	RoomId     []byte `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Role       Role   `protobuf:"varint,2,opt,name=role,proto3,enum=Role" json:"role,omitempty"`
+	ExpireInMs int64  `protobuf:"varint,3,opt,name=expire_in_ms,json=expireInMs,proto3" json:"expire_in_ms,omitempty"`
 }
 
-func (x *JoinParams) Reset() {
-	*x = JoinParams{}
+func (x *StartParams) Reset() {
+	*x = StartParams{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_tracker_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -37,13 +82,13 @@ func (x *JoinParams) Reset() {
 	}
 }
 
-func (x *JoinParams) String() string {
+func (x *StartParams) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*JoinParams) ProtoMessage() {}
+func (*StartParams) ProtoMessage() {}
 
-func (x *JoinParams) ProtoReflect() protoreflect.Message {
+func (x *StartParams) ProtoReflect() protoreflect.Message {
 	mi := &file_tracker_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,26 +100,43 @@ func (x *JoinParams) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use JoinParams.ProtoReflect.Descriptor instead.
-func (*JoinParams) Descriptor() ([]byte, []int) {
+// Deprecated: Use StartParams.ProtoReflect.Descriptor instead.
+func (*StartParams) Descriptor() ([]byte, []int) {
 	return file_tracker_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *JoinParams) GetRoomId() []byte {
+func (x *StartParams) GetRoomId() []byte {
 	if x != nil {
 		return x.RoomId
 	}
 	return nil
 }
 
-type Joined struct {
+func (x *StartParams) GetRole() Role {
+	if x != nil {
+		return x.Role
+	}
+	return Role_RECORD
+}
+
+func (x *StartParams) GetExpireInMs() int64 {
+	if x != nil {
+		return x.ExpireInMs
+	}
+	return 0
+}
+
+type StopParams struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	RoomId []byte `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Role   Role   `protobuf:"varint,2,opt,name=role,proto3,enum=Role" json:"role,omitempty"`
 }
 
-func (x *Joined) Reset() {
-	*x = Joined{}
+func (x *StopParams) Reset() {
+	*x = StopParams{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_tracker_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -82,13 +144,13 @@ func (x *Joined) Reset() {
 	}
 }
 
-func (x *Joined) String() string {
+func (x *StopParams) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Joined) ProtoMessage() {}
+func (*StopParams) ProtoMessage() {}
 
-func (x *Joined) ProtoReflect() protoreflect.Message {
+func (x *StopParams) ProtoReflect() protoreflect.Message {
 	mi := &file_tracker_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -100,22 +162,136 @@ func (x *Joined) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Joined.ProtoReflect.Descriptor instead.
-func (*Joined) Descriptor() ([]byte, []int) {
+// Deprecated: Use StopParams.ProtoReflect.Descriptor instead.
+func (*StopParams) Descriptor() ([]byte, []int) {
 	return file_tracker_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StopParams) GetRoomId() []byte {
+	if x != nil {
+		return x.RoomId
+	}
+	return nil
+}
+
+func (x *StopParams) GetRole() Role {
+	if x != nil {
+		return x.Role
+	}
+	return Role_RECORD
+}
+
+type Tracker struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RoomId        []byte `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Role          Role   `protobuf:"varint,2,opt,name=role,proto3,enum=Role" json:"role,omitempty"`
+	StartedAt     int64  `protobuf:"varint,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	ExpiresAt     int64  `protobuf:"varint,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	AlreadyExists bool   `protobuf:"varint,5,opt,name=already_exists,json=alreadyExists,proto3" json:"already_exists,omitempty"`
+}
+
+func (x *Tracker) Reset() {
+	*x = Tracker{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_tracker_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Tracker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Tracker) ProtoMessage() {}
+
+func (x *Tracker) ProtoReflect() protoreflect.Message {
+	mi := &file_tracker_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Tracker.ProtoReflect.Descriptor instead.
+func (*Tracker) Descriptor() ([]byte, []int) {
+	return file_tracker_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Tracker) GetRoomId() []byte {
+	if x != nil {
+		return x.RoomId
+	}
+	return nil
+}
+
+func (x *Tracker) GetRole() Role {
+	if x != nil {
+		return x.Role
+	}
+	return Role_RECORD
+}
+
+func (x *Tracker) GetStartedAt() int64 {
+	if x != nil {
+		return x.StartedAt
+	}
+	return 0
+}
+
+func (x *Tracker) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+func (x *Tracker) GetAlreadyExists() bool {
+	if x != nil {
+		return x.AlreadyExists
+	}
+	return false
 }
 
 var File_tracker_proto protoreflect.FileDescriptor
 
 var file_tracker_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x74, 0x72, 0x61, 0x63, 0x6b, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
-	0x25, 0x0a, 0x0a, 0x4a, 0x6f, 0x69, 0x6e, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x12, 0x17, 0x0a,
-	0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06,
-	0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x22, 0x08, 0x0a, 0x06, 0x4a, 0x6f, 0x69, 0x6e, 0x65, 0x64,
-	0x32, 0x29, 0x0a, 0x07, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x65, 0x72, 0x12, 0x1e, 0x0a, 0x04, 0x4a,
-	0x6f, 0x69, 0x6e, 0x12, 0x0b, 0x2e, 0x4a, 0x6f, 0x69, 0x6e, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73,
-	0x1a, 0x07, 0x2e, 0x4a, 0x6f, 0x69, 0x6e, 0x65, 0x64, 0x22, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x63, 0x0a, 0x0b, 0x53, 0x74, 0x61, 0x72, 0x74, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73, 0x12, 0x17,
+	0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
+	0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x05, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x04, 0x72, 0x6f,
+	0x6c, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x5f, 0x69, 0x6e, 0x5f,
+	0x6d, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65,
+	0x49, 0x6e, 0x4d, 0x73, 0x22, 0x40, 0x0a, 0x0a, 0x53, 0x74, 0x6f, 0x70, 0x50, 0x61, 0x72, 0x61,
+	0x6d, 0x73, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x04, 0x72,
+	0x6f, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x05, 0x2e, 0x52, 0x6f, 0x6c, 0x65,
+	0x52, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x22, 0xa2, 0x01, 0x0a, 0x07, 0x54, 0x72, 0x61, 0x63, 0x6b,
+	0x65, 0x72, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x04, 0x72,
+	0x6f, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x05, 0x2e, 0x52, 0x6f, 0x6c, 0x65,
+	0x52, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65,
+	0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73, 0x74, 0x61, 0x72,
+	0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x73,
+	0x5f, 0x61, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x65, 0x78, 0x70, 0x69, 0x72,
+	0x65, 0x73, 0x41, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x61, 0x6c, 0x72, 0x65, 0x61, 0x64, 0x79, 0x5f,
+	0x65, 0x78, 0x69, 0x73, 0x74, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0d, 0x61, 0x6c,
+	0x72, 0x65, 0x61, 0x64, 0x79, 0x45, 0x78, 0x69, 0x73, 0x74, 0x73, 0x2a, 0x12, 0x0a, 0x04, 0x52,
+	0x6f, 0x6c, 0x65, 0x12, 0x0a, 0x0a, 0x06, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x10, 0x00, 0x32,
+	0x4e, 0x0a, 0x08, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x72, 0x79, 0x12, 0x21, 0x0a, 0x05, 0x53,
+	0x74, 0x61, 0x72, 0x74, 0x12, 0x0c, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x50, 0x61, 0x72, 0x61,
+	0x6d, 0x73, 0x1a, 0x08, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x65, 0x72, 0x22, 0x00, 0x12, 0x1f,
+	0x0a, 0x04, 0x53, 0x74, 0x6f, 0x70, 0x12, 0x0b, 0x2e, 0x53, 0x74, 0x6f, 0x70, 0x50, 0x61, 0x72,
+	0x61, 0x6d, 0x73, 0x1a, 0x08, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x65, 0x72, 0x22, 0x00, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -130,19 +306,27 @@ func file_tracker_proto_rawDescGZIP() []byte {
 	return file_tracker_proto_rawDescData
 }
 
-var file_tracker_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_tracker_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tracker_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_tracker_proto_goTypes = []interface{}{
-	(*JoinParams)(nil), // 0: JoinParams
-	(*Joined)(nil),     // 1: Joined
+	(Role)(0),           // 0: Role
+	(*StartParams)(nil), // 1: StartParams
+	(*StopParams)(nil),  // 2: StopParams
+	(*Tracker)(nil),     // 3: Tracker
 }
 var file_tracker_proto_depIdxs = []int32{
-	0, // 0: Tracker.Join:input_type -> JoinParams
-	1, // 1: Tracker.Join:output_type -> Joined
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: StartParams.role:type_name -> Role
+	0, // 1: StopParams.role:type_name -> Role
+	0, // 2: Tracker.role:type_name -> Role
+	1, // 3: Registry.Start:input_type -> StartParams
+	2, // 4: Registry.Stop:input_type -> StopParams
+	3, // 5: Registry.Start:output_type -> Tracker
+	3, // 6: Registry.Stop:output_type -> Tracker
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_tracker_proto_init() }
@@ -152,7 +336,7 @@ func file_tracker_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_tracker_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*JoinParams); i {
+			switch v := v.(*StartParams); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -164,7 +348,19 @@ func file_tracker_proto_init() {
 			}
 		}
 		file_tracker_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Joined); i {
+			switch v := v.(*StopParams); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_tracker_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Tracker); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -181,13 +377,14 @@ func file_tracker_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_tracker_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_tracker_proto_goTypes,
 		DependencyIndexes: file_tracker_proto_depIdxs,
+		EnumInfos:         file_tracker_proto_enumTypes,
 		MessageInfos:      file_tracker_proto_msgTypes,
 	}.Build()
 	File_tracker_proto = out.File

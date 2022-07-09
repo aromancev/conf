@@ -23,9 +23,9 @@
         Overview
       </router-link>
       <router-link
-        :to="route.talk(confaHandle, handle, 'online')"
+        :to="route.talk(confaHandle, handle, 'live')"
         class="header-item"
-        :class="{ active: tab === 'online' }"
+        :class="{ active: tab === 'live' }"
       >
         <span class="material-icons icon">podcasts</span>
         Online
@@ -43,8 +43,8 @@
     <div class="header-divider"></div>
     <div class="tab">
       <TalkOverview v-if="tab === 'overview'" :talk="talk" />
-      <TalkOnline
-        v-if="tab === 'online'"
+      <TalkLive
+        v-if="tab === 'live'"
         :talk="talk"
         :join-confirmed="joinConfirmed"
         :invite-link="inviteLink"
@@ -69,7 +69,7 @@ import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
 import TalkEdit from "./TalkEdit.vue"
 import TalkOverview from "./TalkOverview.vue"
-import TalkOnline from "./TalkOnline.vue"
+import TalkLive from "./TalkLive.vue"
 
 type Modal = "none" | "error"
 
@@ -88,7 +88,7 @@ const modal = ref<Modal>("none")
 const joinConfirmed = ref(false)
 
 const inviteLink = computed(() => {
-  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "online")).fullPath
+  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "live")).fullPath
 })
 
 watch(
@@ -119,9 +119,14 @@ watch(
         talk.value = await talkClient.create({ handle: confaHandle }, {})
         talkHandle = talk.value.handle
       } else {
-        talk.value = await talkClient.fetchOne({
-          handle: talkHandle,
-        })
+        talk.value = await talkClient.fetchOne(
+          {
+            handle: talkHandle,
+          },
+          {
+            hydrated: true,
+          },
+        )
       }
       if (props.confaHandle != confaHandle || props.handle != talkHandle) {
         router.replace(route.talk(confaHandle, talkHandle, props.tab))

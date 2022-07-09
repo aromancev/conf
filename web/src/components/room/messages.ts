@@ -30,16 +30,17 @@ export class MessageAggregator {
   }
 
   put(event: RoomEvent): void {
-    if (!event.payload.message) {
+    const message = event.payload.message
+    if (!message) {
       return
     }
 
     const msg: Message = {
       id: event.id || "",
-      fromId: event.ownerId || "",
-      text: event.payload.message.text,
+      fromId: message.fromId,
+      text: message.text,
       accepted: true,
-      profile: this.repo.profile(event.ownerId),
+      profile: this.repo.profile(message.fromId),
     }
 
     const existing = this.find(msg.id)

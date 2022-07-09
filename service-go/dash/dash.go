@@ -59,7 +59,7 @@ func (c *Converter) ConvertVideo(ctx context.Context, roomID uuid.UUID, record R
 	if err != nil {
 		return fmt.Errorf("failed to write video file: %w", err)
 	}
-	err = ffmpeg.WriteDashManifest(videoPath, manifestPath)
+	err = ffmpeg.WriteDashManifest(ctx, videoPath, manifestPath)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest file: %w", err)
 	}
@@ -114,7 +114,7 @@ func (c *Converter) ConvertAudio(ctx context.Context, roomID uuid.UUID, record R
 	if err != nil {
 		return fmt.Errorf("failed to write audio file: %w", err)
 	}
-	err = ffmpeg.WriteDashManifest(audioPath, manifestPath)
+	err = ffmpeg.WriteDashManifest(ctx, audioPath, manifestPath)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest file: %w", err)
 	}

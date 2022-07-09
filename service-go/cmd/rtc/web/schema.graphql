@@ -6,7 +6,6 @@ type Service {
 
 type Event {
     id: String!
-    ownerId: String!
     roomId: String!
     payload: EventPayload!
     createdAt: Float!
@@ -15,20 +14,32 @@ type Event {
 type EventPayload {
     message: EventMessage
     peerState: EventPeerState
+    recording: EventRecording
 }
 
 type EventMessage {
+    fromId: String!
     text: String!
 }
 
+enum PeerStatus {
+    joined
+    left
+}
+
 type EventPeerState {
-    status: Status
+    peerId: String!
+    status: PeerStatus
     tracks: [Track!]!
 }
 
-enum Status {
-    joined
-    left
+enum RecordingStatus {
+    started
+    stopped
+}
+
+type EventRecording {
+    status: RecordingStatus!
 }
 
 type Track {

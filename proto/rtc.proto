@@ -2,11 +2,32 @@ syntax = "proto3";
 
 service RTC {
     rpc CreateRoom(Room) returns (Room) {}
+    rpc StartRecording(RecordingParams) returns (Recording) {}
+    rpc StopRecording(RecordingLookup) returns (Recording) {}
 }
 
 message Room {
     bytes id = 1;
     bytes ownerId = 2;
+}
+
+message RecordingParams {
+    bytes room_id = 1;
+    string key = 2;
+    int64 expire_in_ms = 3;
+}
+
+message RecordingLookup {
+    bytes room_id = 1;
+    bytes recording_id = 2;
+    string key = 3;
+}
+
+message Recording {
+    bytes room_id = 1;
+    bytes recording_id = 2;
+    int64 started_at = 3;
+    bool already_exists = 4;
 }
 
 message StoreEvent {
@@ -21,20 +42,25 @@ message Event {
 
     message Payload {
         message PayloadPeerState {
-            string status = 1;  
-            repeated Track tracks = 2;        
+            bytes peer_id = 1;
+            string status = 2;  
+            repeated Track tracks = 3;        
         }
         message PayloadMessage {
-            string text = 1;
+            bytes from_id = 1;
+            string text = 2;
+        }
+        message PayloadRecording {
+            string status = 1;
         }
 
         PayloadPeerState peer_state = 1;
         PayloadMessage message = 2;
+        PayloadRecording recording = 3;
     }
 
     Payload payload = 1;
     bytes id = 2;
-    bytes owner_id = 3;
-    bytes room_id = 4;
-    int64 created_at = 5;
+    bytes room_id = 3;
+    int64 created_at = 4;
 }

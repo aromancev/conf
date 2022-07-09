@@ -87,7 +87,8 @@ func WriteDashVideo(ctx context.Context, in SourceVideo, out DestinationVideo) e
 	if minFrames > 150 {
 		minFrames = 150
 	}
-	cmd := exec.Command( //nolint:gosec
+	cmd := exec.CommandContext( //nolint:gosec
+		ctx,
 		"ffmpeg",
 		// Yes to everything.
 		"-y",
@@ -102,6 +103,8 @@ func WriteDashVideo(ctx context.Context, in SourceVideo, out DestinationVideo) e
 		// Frames per DASH segment.
 		// Has to be the same as keyint_min.
 		"-g", fmt.Sprintf("%d", minFrames),
+		// Making sure the framerate is constant otherwise, the resulting DASH file will have gaps in it.
+		"-vsync", "1",
 		"-row-mt", "1",
 		"-tile-columns", "4",
 		"-frame-parallel", "1",
@@ -174,8 +177,9 @@ func WriteDashAudio(ctx context.Context, in SourceAudio, out DestinationAudio) e
 // WriteDashManifest creates a DASH manifest from a webm file.
 // It cannot operate on streams because ffmpeg performs seeks on input and output. There is no simple way to "stream" dash compatible files.
 // More info: http://wiki.webmproject.org/adaptive-streaming/instructions-to-playback-adaptive-webm-using-dash
-func WriteDashManifest(in, out string) error {
-	cmd := exec.Command( //nolint:gosec
+func WriteDashManifest(ctx context.Context, in, out string) error {
+	cmd := exec.CommandContext( //nolint:gosec
+		ctx,
 		"ffmpeg",
 		"-y",
 		"-f", "webm_dash_manifest",

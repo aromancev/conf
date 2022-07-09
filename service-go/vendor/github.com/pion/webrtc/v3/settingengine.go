@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package webrtc
@@ -49,6 +50,12 @@ type SettingEngine struct {
 		DTLS  *uint
 		SRTP  *uint
 		SRTCP *uint
+	}
+	dtls struct {
+		retransmissionInterval time.Duration
+	}
+	sctp struct {
+		maxReceiveBufferSize uint32
 	}
 	sdpMediaLevelFingerprints                 bool
 	answeringDTLSRole                         DTLSRole
@@ -294,4 +301,15 @@ func (e *SettingEngine) DisableMediaEngineCopy(isDisabled bool) {
 // Leave this 0 for the default receiveMTU
 func (e *SettingEngine) SetReceiveMTU(receiveMTU uint) {
 	e.receiveMTU = receiveMTU
+}
+
+// SetDTLSRetransmissionInterval sets the retranmission interval for DTLS.
+func (e *SettingEngine) SetDTLSRetransmissionInterval(interval time.Duration) {
+	e.dtls.retransmissionInterval = interval
+}
+
+// SetSCTPMaxReceiveBufferSize sets the maximum receive buffer size.
+// Leave this 0 for the default maxReceiveBufferSize.
+func (e *SettingEngine) SetSCTPMaxReceiveBufferSize(maxReceiveBufferSize uint32) {
+	e.sctp.maxReceiveBufferSize = maxReceiveBufferSize
 }

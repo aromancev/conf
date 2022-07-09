@@ -7,7 +7,6 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/logging"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 // ReceiverInterceptorFactory is a interceptor.Factory for a ReceiverInterceptor
@@ -99,13 +98,9 @@ func (r *ReceiverInterceptor) loop(rtcpWriter interceptor.RTCPWriter) {
 		case <-ticker.C:
 			now := r.now()
 			r.streams.Range(func(key, value interface{}) bool {
-				stream := value.(*receiverStream)
-
-				var pkts []rtcp.Packet
-
-				pkts = append(pkts, stream.generateReport(now))
-
-				if _, err := rtcpWriter.Write(pkts, interceptor.Attributes{}); err != nil {
+				if stream, ok := value.(*receiverStream); !ok {
+					r.log.Warnf("failed to cast ReceiverInterceptor stream")
+				} else if _, err := rtcpWriter.Write([]rtcp.Packet{stream.generateReport(now)}, interceptor.Attributes{}); err != nil {
 					r.log.Warnf("failed sending: %+v", err)
 				}
 
@@ -130,12 +125,15 @@ func (r *ReceiverInterceptor) BindRemoteStream(info *interceptor.StreamInfo, rea
 			return 0, nil, err
 		}
 
-		pkt := rtp.Packet{}
-		if err = pkt.Unmarshal(b[:i]); err != nil {
+		if attr == nil {
+			attr = make(interceptor.Attributes)
+		}
+		header, err := attr.GetRTPHeader(b[:i])
+		if err != nil {
 			return 0, nil, err
 		}
 
-		stream.processRTP(r.now(), &pkt)
+		stream.processRTP(r.now(), header)
 
 		return i, attr, nil
 	})
@@ -155,7 +153,10 @@ func (r *ReceiverInterceptor) BindRTCPReader(reader interceptor.RTCPReader) inte
 			return 0, nil, err
 		}
 
-		pkts, err := rtcp.Unmarshal(b[:i])
+		if attr == nil {
+			attr = make(interceptor.Attributes)
+		}
+		pkts, err := attr.GetRTCPPackets(b[:i])
 		if err != nil {
 			return 0, nil, err
 		}
@@ -167,8 +168,11 @@ func (r *ReceiverInterceptor) BindRTCPReader(reader interceptor.RTCPReader) inte
 					continue
 				}
 
-				stream := value.(*receiverStream)
-				stream.processSenderReport(r.now(), sr)
+				if stream, ok := value.(*receiverStream); !ok {
+					r.log.Warnf("failed to cast ReceiverInterceptor stream")
+				} else {
+					stream.processSenderReport(r.now(), sr)
+				}
 			}
 		}
 

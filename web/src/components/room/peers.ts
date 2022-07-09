@@ -1,4 +1,4 @@
-import { RoomEvent, Status } from "@/api/room/schema"
+import { RoomEvent, PeerStatus } from "@/api/room/schema"
 
 interface Profile {
   handle: string
@@ -31,21 +31,20 @@ export class PeerAggregator {
       return
     }
 
-    const userId = event.ownerId || ""
     switch (state.status) {
-      case Status.Joined:
-        if (this.peers.has(userId)) {
+      case PeerStatus.Joined:
+        if (this.peers.has(state.peerId)) {
           return
         }
 
-        this.peers.set(userId, {
-          userId: userId,
+        this.peers.set(state.peerId, {
+          userId: state.peerId,
           joinedAt: event.createdAt || 0,
-          profile: this.repo.profile(userId),
+          profile: this.repo.profile(state.peerId),
         })
         break
-      case Status.Left:
-        this.peers.delete(userId)
+      case PeerStatus.Left:
+        this.peers.delete(state.peerId)
         break
     }
     return

@@ -3,6 +3,7 @@ package double
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/google/uuid"
@@ -35,4 +36,18 @@ func (m *Memory) Room(ctx context.Context, roomID string) (*rtc.Room, error) {
 		return nil, errors.New("not found")
 	}
 	return room, nil
+}
+
+func (m *Memory) StartRecording(ctx context.Context, request *rtc.RecordingParams) (*rtc.Recording, error) {
+	return &rtc.Recording{
+		RoomId:    request.RoomId,
+		StartedAt: time.Now().UnixMilli(),
+	}, nil
+}
+
+func (m *Memory) StopRecording(ctx context.Context, request *rtc.RecordingLookup) (*rtc.Recording, error) {
+	return &rtc.Recording{
+		RoomId:    request.RoomId,
+		StartedAt: time.Now().UnixMilli(),
+	}, nil
 }

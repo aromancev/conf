@@ -1,0 +1,10 @@
+[
+  {
+    "dropIndexes": "records",
+    "index": "unique_room_active"
+  },
+  {
+    "dropIndexes": "records",
+    "index": "unique_room_key"
+  }
+]

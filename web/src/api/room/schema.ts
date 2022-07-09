@@ -23,7 +23,6 @@ export interface MessagePayload {
 export interface RoomEvent {
     createdAt: number;
     id:        string;
-    ownerId:   string;
     payload:   EventPayload;
     roomId:    string;
 }
@@ -31,18 +30,21 @@ export interface RoomEvent {
 export interface EventPayload {
     message?:   EventMessage;
     peerState?: EventPeerState;
+    recording?: EventRecording;
 }
 
 export interface EventMessage {
-    text: string;
+    fromId: string;
+    text:   string;
 }
 
 export interface EventPeerState {
-    status?: Status;
+    peerId:  string;
+    status?: PeerStatus;
     tracks?: Track[];
 }
 
-export enum Status {
+export enum PeerStatus {
     Joined = "joined",
     Left = "left",
 }
@@ -57,6 +59,15 @@ export enum Hint {
     DeviceAudio = "device_audio",
     Screen = "screen",
     UserAudio = "user_audio",
+}
+
+export interface EventRecording {
+    status: RecordingStatus;
+}
+
+export enum RecordingStatus {
+    Started = "started",
+    Stopped = "stopped",
 }
 
 export interface PeerMessage {
@@ -271,24 +282,29 @@ const typeMap: any = {
     "RoomEvent": o([
         { json: "createdAt", js: "createdAt", typ: 3.14 },
         { json: "id", js: "id", typ: "" },
-        { json: "ownerId", js: "ownerId", typ: "" },
         { json: "payload", js: "payload", typ: r("EventPayload") },
         { json: "roomId", js: "roomId", typ: "" },
     ], false),
     "EventPayload": o([
         { json: "message", js: "message", typ: u(undefined, r("EventMessage")) },
         { json: "peerState", js: "peerState", typ: u(undefined, r("EventPeerState")) },
+        { json: "recording", js: "recording", typ: u(undefined, r("EventRecording")) },
     ], false),
     "EventMessage": o([
+        { json: "fromId", js: "fromId", typ: "" },
         { json: "text", js: "text", typ: "" },
     ], false),
     "EventPeerState": o([
-        { json: "status", js: "status", typ: u(undefined, r("Status")) },
+        { json: "peerId", js: "peerId", typ: "" },
+        { json: "status", js: "status", typ: u(undefined, r("PeerStatus")) },
         { json: "tracks", js: "tracks", typ: u(undefined, a(r("Track"))) },
     ], false),
     "Track": o([
         { json: "hint", js: "hint", typ: r("Hint") },
         { json: "id", js: "id", typ: "" },
+    ], false),
+    "EventRecording": o([
+        { json: "status", js: "status", typ: r("RecordingStatus") },
     ], false),
     "PeerMessage": o([
         { json: "text", js: "text", typ: "" },
@@ -327,7 +343,7 @@ const typeMap: any = {
     "PeerState": o([
         { json: "tracks", js: "tracks", typ: u(undefined, a(r("Track"))) },
     ], false),
-    "Status": [
+    "PeerStatus": [
         "joined",
         "left",
     ],
@@ -336,6 +352,10 @@ const typeMap: any = {
         "device_audio",
         "screen",
         "user_audio",
+    ],
+    "RecordingStatus": [
+        "started",
+        "stopped",
     ],
     "SDPType": [
         "answer",
