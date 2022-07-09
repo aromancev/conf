@@ -21,7 +21,7 @@ type Tracker interface {
 }
 
 type EventEmitter interface {
-	Emit(ctx context.Context, event event.Event) error
+	EmitEvent(ctx context.Context, event event.Event) error
 }
 
 type Handler struct {
@@ -95,7 +95,7 @@ func (h *Handler) StartRecording(ctx context.Context, request *rtc.RecordingPara
 	}
 
 	if !alreadyExists {
-		err := h.emitter.Emit(ctx, event.Event{
+		err := h.emitter.EmitEvent(ctx, event.Event{
 			ID:   uuid.New(),
 			Room: roomID,
 			Payload: event.Payload{
@@ -161,7 +161,7 @@ func (h *Handler) StopRecording(ctx context.Context, request *rtc.RecordingLooku
 		return nil, fmt.Errorf("failed to stop tracker: %w", err)
 	}
 
-	err = h.emitter.Emit(ctx, event.Event{
+	err = h.emitter.EmitEvent(ctx, event.Event{
 		ID:   uuid.New(),
 		Room: roomID,
 		Payload: event.Payload{

@@ -67,7 +67,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: "/test",
     name: "test",
-    component: () => import("@/views/room/RoomRecordTalk.vue"),
+    component: () => import("@/views/talk/TalkReplay.vue"),
   },
   {
     path: "/pro/:profile",

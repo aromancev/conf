@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	batchLimit = 500
+	batchLimit = 5000
 )
 
 type MongoCursor struct {

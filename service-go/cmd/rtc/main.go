@@ -118,6 +118,7 @@ func main() {
 			event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent),
 			sfuConn,
 			eventWatcher,
+			recordMongo,
 		),
 	}
 	rpcServer := &http.Server{

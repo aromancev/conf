@@ -1,10 +1,10 @@
 import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
 import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
 import { RTCPeer, eventClient } from "@/api"
-import { BufferedAggregator } from "./buffered"
+import { BufferedAggregator } from "./aggregators/buffered"
 import { ProfileRepository } from "./profiles"
-import { MessageAggregator, Message } from "./messages"
-import { Peer, PeerAggregator } from "./peers"
+import { MessageAggregator, Message } from "./aggregators/messages"
+import { Peer, PeerAggregator } from "./aggregators/peers"
 import { RoomEvent, Hint, Track, RecordingStatus } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
 
@@ -199,8 +199,8 @@ export class LiveRoom {
         resolution: "hd",
         simulcast: false,
         video: {
-          width: { ideal: 2560 },
-          height: { ideal: 1440 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
           frameRate: {
             ideal: 30,
             max: 30,

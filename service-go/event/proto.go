@@ -44,6 +44,14 @@ func ToProto(event Event) *rtc.Event {
 			Status: string(pl.Status),
 		}
 	}
+	if event.Payload.TrackRecording != nil {
+		pl := *event.Payload.TrackRecording
+		binID, _ := pl.ID.MarshalBinary()
+		payload.TrackRecording = &rtc.Event_Payload_PayloadTrackRecording{
+			Id:      binID,
+			TrackId: pl.TrackID,
+		}
+	}
 	return &rtc.Event{
 		Id:        id,
 		RoomId:    room,
@@ -90,6 +98,15 @@ func FromProto(event *rtc.Event) Event {
 		pl := event.Payload.Recording
 		payload.Recording = &PayloadRecording{
 			Status: RecordStatus(pl.Status),
+		}
+	}
+	if event.Payload.TrackRecording != nil {
+		pl := event.Payload.TrackRecording
+		var id uuid.UUID
+		_ = id.UnmarshalBinary(pl.Id)
+		payload.TrackRecording = &PayloadTrackRecording{
+			ID:      id,
+			TrackID: pl.TrackId,
 		}
 	}
 	return Event{

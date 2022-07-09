@@ -15,6 +15,7 @@ type EventPayload {
     message: EventMessage
     peerState: EventPeerState
     recording: EventRecording
+    trackRecording: EventTrackRecording
 }
 
 type EventMessage {
@@ -42,6 +43,11 @@ type EventRecording {
     status: RecordingStatus!
 }
 
+type EventTrackRecording {
+    id: String!
+    trackId: String!
+}
+
 type Track {
     id: String!
     hint: Hint!
@@ -60,17 +66,17 @@ input EventLookup {
 
 type EventFrom {
     id: String!
-    createdAt: Float!
+    createdAt: String!
 }
 
 input EventFromInput {
+    createdAt: String!
     id: String!
-    createdAt: Float!
 }
 
 input EventLimit {
     count: Int! = 100
-    seconds: Int!
+    seconds: Int
 }
 
 enum EventOrder {
@@ -84,8 +90,36 @@ type Events {
     nextFrom: EventFrom
 }
 
+type Recording {
+    key: String!
+    roomId: String!
+    createdAt: Float!
+    startedAt: Float!
+    stoppedAt: Float
+}
+
+input RecordingLookup {
+    roomId: String!
+    key: String
+}
+
+type RecordingFrom {
+    key: String!
+}
+
+input RecordingFromInput {
+    key: String!
+}
+
+type Recordings {
+    items: [Recording!]!
+    limit: Int!
+    nextFrom: RecordingFrom
+}
+
 type Query {
     service: Service!
 
     events(where: EventLookup! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
+    recordings(where: RecordingLookup!, limit: Int! = 100, from: RecordingFromInput): Recordings!
 }

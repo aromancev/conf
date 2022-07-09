@@ -226,7 +226,7 @@ func TestMongo(t *testing.T) {
 				ID: created[0].ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created[:1], fetched)
+			assert.ElementsMatch(t, created[:1], fetched)
 		})
 
 		t.Run("By Confa", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestMongo(t *testing.T) {
 				Confa: conf.ID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.ElementsMatch(t, created, fetched)
 		})
 
 		t.Run("By State In", func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestMongo(t *testing.T) {
 				StateIn: []State{StateEnded},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created[1:], fetched)
+			assert.ElementsMatch(t, created[1:], fetched)
 		})
 	})
 }

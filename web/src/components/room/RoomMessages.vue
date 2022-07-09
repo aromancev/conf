@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from "vue"
-import { Message } from "./messages"
+import { Message } from "./aggregators/messages"
 import { route } from "@/router"
 import Textarea from "@/components/fields/TextareaField.vue"
 import PageLoader from "@/components/PageLoader.vue"

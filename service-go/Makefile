@@ -10,3 +10,14 @@ lint:
 		-w /app \
 		-v `pwd`:/app \
 		golangci/golangci-lint:v1.45-alpine golangci-lint run
+
+.PHONY: build
+build:
+	go build -o bin/ ./cmd/iam/... \
+		&& go build -o bin/ ./cmd/confa/... \
+		&& go build -o bin/ ./cmd/rtc/... \
+		&& go build -o bin/ ./cmd/gateway/... \
+		&& go build -o bin/ ./cmd/sfu/... \
+		&& go build -o bin/ ./cmd/turn/... \
+		&& go build -o bin/ ./cmd/tracker/... \
+		&& go build -o bin/ ./cmd/avp/...

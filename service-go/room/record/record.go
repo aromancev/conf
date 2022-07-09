@@ -35,9 +35,9 @@ func (r Record) Validate() error {
 }
 
 type Lookup struct {
-	ID    uuid.UUID
-	Room  uuid.UUID
-	Key   string
-	Limit int64
-	From  uuid.UUID
+	ID      uuid.UUID
+	Room    uuid.UUID
+	Key     string
+	Limit   int64
+	FromKey string
 }

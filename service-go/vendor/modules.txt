@@ -142,7 +142,7 @@ github.com/google/uuid
 # github.com/gorilla/websocket v1.4.2
 ## explicit; go 1.12
 github.com/gorilla/websocket
-# github.com/graph-gophers/graphql-go v1.3.0
+# github.com/graph-gophers/graphql-go v1.4.0
 ## explicit; go 1.13
 github.com/graph-gophers/graphql-go
 github.com/graph-gophers/graphql-go/decode
@@ -158,7 +158,8 @@ github.com/graph-gophers/graphql-go/internal/validation
 github.com/graph-gophers/graphql-go/introspection
 github.com/graph-gophers/graphql-go/log
 github.com/graph-gophers/graphql-go/relay
-github.com/graph-gophers/graphql-go/trace
+github.com/graph-gophers/graphql-go/trace/noop
+github.com/graph-gophers/graphql-go/trace/tracer
 github.com/graph-gophers/graphql-go/types
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 ## explicit
@@ -263,9 +264,6 @@ github.com/opencontainers/image-spec/specs-go/v1
 github.com/opencontainers/runc/libcontainer/user
 # github.com/opentracing/opentracing-go v1.2.0
 ## explicit; go 1.14
-github.com/opentracing/opentracing-go
-github.com/opentracing/opentracing-go/ext
-github.com/opentracing/opentracing-go/log
 # github.com/ory/dockertest/v3 v3.6.3
 ## explicit; go 1.13
 github.com/ory/dockertest/v3
@@ -362,7 +360,6 @@ github.com/pion/rtcp
 ## explicit; go 1.13
 github.com/pion/rtp
 github.com/pion/rtp/codecs
-github.com/pion/rtp/pkg/frame
 github.com/pion/rtp/pkg/obu
 # github.com/pion/sctp v1.8.2
 ## explicit; go 1.13
@@ -402,7 +399,6 @@ github.com/pion/webrtc/v3/internal/fmtp
 github.com/pion/webrtc/v3/internal/mux
 github.com/pion/webrtc/v3/internal/util
 github.com/pion/webrtc/v3/pkg/media
-github.com/pion/webrtc/v3/pkg/media/ivfwriter
 github.com/pion/webrtc/v3/pkg/media/samplebuilder
 github.com/pion/webrtc/v3/pkg/rtcerr
 # github.com/pkg/errors v0.9.1

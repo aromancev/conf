@@ -4,12 +4,12 @@
       <div class="video-content">
         <div class="videos">
           <div class="screen video-container">
-            <RoomOnlineVideo
+            <RoomLiveVideo
               v-if="local.screen || remote.screen"
               class="video screen-video"
               :src="local.screen || remote.screen"
             >
-            </RoomOnlineVideo>
+            </RoomLiveVideo>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
@@ -115,7 +115,7 @@ import { LiveRoom } from "@/components/room"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
-import RoomOnlineVideo from "@/components/room/RoomOnlineVideo.vue"
+import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
 

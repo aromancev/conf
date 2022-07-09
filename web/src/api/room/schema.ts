@@ -28,9 +28,10 @@ export interface RoomEvent {
 }
 
 export interface EventPayload {
-    message?:   EventMessage;
-    peerState?: EventPeerState;
-    recording?: EventRecording;
+    message?:        EventMessage;
+    peerState?:      EventPeerState;
+    recording?:      EventRecording;
+    trackRecording?: EventTrackRecording;
 }
 
 export interface EventMessage {
@@ -68,6 +69,11 @@ export interface EventRecording {
 export enum RecordingStatus {
     Started = "started",
     Stopped = "stopped",
+}
+
+export interface EventTrackRecording {
+    id:      string;
+    trackId: string;
 }
 
 export interface PeerMessage {
@@ -289,6 +295,7 @@ const typeMap: any = {
         { json: "message", js: "message", typ: u(undefined, r("EventMessage")) },
         { json: "peerState", js: "peerState", typ: u(undefined, r("EventPeerState")) },
         { json: "recording", js: "recording", typ: u(undefined, r("EventRecording")) },
+        { json: "trackRecording", js: "trackRecording", typ: u(undefined, r("EventTrackRecording")) },
     ], false),
     "EventMessage": o([
         { json: "fromId", js: "fromId", typ: "" },
@@ -305,6 +312,10 @@ const typeMap: any = {
     ], false),
     "EventRecording": o([
         { json: "status", js: "status", typ: r("RecordingStatus") },
+    ], false),
+    "EventTrackRecording": o([
+        { json: "id", js: "id", typ: "" },
+        { json: "trackId", js: "trackId", typ: "" },
     ], false),
     "PeerMessage": o([
         { json: "text", js: "text", typ: "" },

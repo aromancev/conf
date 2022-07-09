@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	evtrack "github.com/aromancev/confa/event/tracker"
 	pb "github.com/aromancev/confa/internal/proto/tracker"
-	"github.com/aromancev/confa/tracker/record"
+	"github.com/aromancev/confa/tracker"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	sdk "github.com/pion/ion-sdk-go"
 	"github.com/twitchtv/twirp"
-
-	"github.com/aromancev/confa/tracker"
 )
 
 type Buckets struct {
@@ -24,17 +23,19 @@ type Handler struct {
 	connector    *sdk.Connector
 	runtime      *tracker.Runtime
 	storage      *minio.Client
-	trackEmitter record.Emitter
+	trackEmitter evtrack.TrackEmitter
+	eventEmitter evtrack.EventEmitter
 	buckets      Buckets
 }
 
-func NewHandler(connector *sdk.Connector, runtime *tracker.Runtime, storage *minio.Client, trackEmitter record.Emitter, buckets Buckets) *Handler {
+func NewHandler(connector *sdk.Connector, runtime *tracker.Runtime, storage *minio.Client, trackEmitter evtrack.TrackEmitter, eventEmitter evtrack.EventEmitter, buckets Buckets) *Handler {
 	return &Handler{
 		connector:    connector,
 		runtime:      runtime,
 		storage:      storage,
 		buckets:      buckets,
 		trackEmitter: trackEmitter,
+		eventEmitter: eventEmitter,
 	}
 }
 
@@ -51,7 +52,7 @@ func (h *Handler) Start(ctx context.Context, params *pb.StartParams) (*pb.Tracke
 		params.Role.String(),
 		time.Now().Add(time.Duration(params.ExpireInMs)*time.Millisecond),
 		func(ctx context.Context, roomID uuid.UUID) (tracker.Tracker, error) {
-			return record.NewTracker(ctx, h.storage, h.connector, h.trackEmitter, h.buckets.TrackRecords, roomID)
+			return evtrack.NewTracker(ctx, h.storage, h.connector, h.trackEmitter, h.eventEmitter, h.buckets.TrackRecords, roomID)
 		},
 	)
 	if err != nil {
