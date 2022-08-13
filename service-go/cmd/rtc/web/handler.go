@@ -14,6 +14,7 @@ import (
 	"github.com/aromancev/confa/event/proxy"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
+	"github.com/aromancev/confa/room/record"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
@@ -30,7 +31,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher) *Handler {
+func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher, recs *record.Mongo) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -40,7 +41,7 @@ func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emit
 			&relay.Handler{
 				Schema: graphql.MustParseSchema(
 					gqlSchema,
-					NewResolver(pk, events),
+					NewResolver(pk, events, recs),
 					graphql.UseFieldResolvers(),
 				),
 			},

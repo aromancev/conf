@@ -173,8 +173,9 @@ services:
       - STORAGE_ACCESS_KEY=minio
       - STORAGE_SECRET_KEY=miniominio
       - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_POOL=beanstalkd:11300
+      - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
 
   avp:
     build:

@@ -54,15 +54,8 @@ cert-renew:
 
 .PHONY: build
 build:
-	cd service-go \
-		&& go build -o bin/ ./cmd/iam/... \
-		&& go build -o bin/ ./cmd/confa/... \
-		&& go build -o bin/ ./cmd/rtc/... \
-		&& go build -o bin/ ./cmd/gateway/... \
-		&& go build -o bin/ ./cmd/sfu/... \
-		&& go build -o bin/ ./cmd/turn/... \
-		&& go build -o bin/ ./cmd/tracker/... \
-		&& go build -o bin/ ./cmd/avp/...
+	cd service-go && $(MAKE) build
+	cd web && $(MAKE) build
 
 .PHONY: server-api
 server-api:

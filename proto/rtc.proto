@@ -53,10 +53,15 @@ message Event {
         message PayloadRecording {
             string status = 1;
         }
+        message PayloadTrackRecording {
+            bytes id = 1;
+            string track_id = 2;
+        }
 
         PayloadPeerState peer_state = 1;
         PayloadMessage message = 2;
         PayloadRecording recording = 3;
+        PayloadTrackRecording track_recording = 4;
     }
 
     Payload payload = 1;

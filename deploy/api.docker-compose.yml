@@ -78,6 +78,8 @@ services:
       - STORAGE_BUCKET_USER_PUBLIC=user-public
       - BEANSTALKD_POOL=beanstalkd:11300
       - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
+      - BEANSTALKD_TUBE_START_RECORDING=confa/start-recording
+      - BEANSTALKD_TUBE_STOP_RECORDING=confa/stop-recording
 
   rtc:
     restart: on-failure
@@ -89,6 +91,7 @@ services:
     environment:
       - LISTEN_WEB_ADDRESS=:80
       - LISTEN_RPC_ADDRESS=:8080
+      - TRACKER_RPC_ADDRESS=http://tracker:8080
       - LOG_FORMAT=console
       - PUBLIC_KEY=$PUBLIC_KEY
       - MONGO_HOSTS=mongo:27017
@@ -96,8 +99,43 @@ services:
       - MONGO_PASSWORD=rtc
       - MONGO_DATABASE=rtc
       - RTC_SFU_ADDRESS=sfu.confa.io:8080
+      - BEANSTALK_POOL=beanstalkd:11300
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+
+  tracker:
+    build:
+      context: ../service-go
+      dockerfile: ./cmd/tracker/Dockerfile
+    networks:
+      - confa
+    environment:
+      - LOG_FORMAT=console
+      - LISTEN_RPC_ADDRESS=:8080
+      - SFU_ADDRESS=sfu.confa.io:8080
+      - PUBLIC_KEY=$PUBLIC_KEY
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
+      - BEANSTALK_POOL=beanstalkd:11300
+      - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+
+  avp:
+    build:
+      context: ../service-go
+      dockerfile: ./cmd/avp/Dockerfile
+    networks:
+      - confa
+    environment:
+      - LOG_FORMAT=console
+      - STORAGE_HOST=minio:80
+      - STORAGE_ACCESS_KEY=minio
+      - STORAGE_SECRET_KEY=miniominio
+      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
+      - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
       - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_STORE_EVENT=rtc/store-event
+      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
 
   beanstalkd:
     restart: on-failure

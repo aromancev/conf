@@ -30,7 +30,6 @@ export class PeerAggregator {
     if (!state?.status) {
       return
     }
-
     switch (state.status) {
       case PeerStatus.Joined:
         if (this.peers.has(state.peerId)) {

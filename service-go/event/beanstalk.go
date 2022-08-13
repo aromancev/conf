@@ -28,7 +28,7 @@ func NewBeanstalkEmitter(producer Producer, tube string) *BeansltalkEmitter {
 	}
 }
 
-func (e *BeansltalkEmitter) Emit(ctx context.Context, event Event) error {
+func (e *BeansltalkEmitter) EmitEvent(ctx context.Context, event Event) error {
 	if err := event.Validate(); err != nil {
 		return fmt.Errorf("%w: %s", ErrValidation, err)
 	}

@@ -44,12 +44,13 @@
     <div class="tab">
       <TalkOverview v-if="tab === 'overview'" :talk="talk" />
       <TalkLive
-        v-if="tab === 'live'"
+        v-if="tab === 'live' && talk.state !== TalkState.ENDED"
         :talk="talk"
         :join-confirmed="joinConfirmed"
         :invite-link="inviteLink"
         @join="join"
       />
+      <TalkReplay v-if="tab === 'live' && talk.state === TalkState.ENDED" :talk="talk" />
       <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />
     </div>
   </div>
@@ -62,7 +63,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue"
 import { useRouter } from "vue-router"
-import { talkClient, Talk, userStore, confaClient, errorCode, Code } from "@/api"
+import { talkClient, Talk, userStore, confaClient, errorCode, Code, TalkState } from "@/api"
 import { route, TalkTab, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
@@ -70,6 +71,7 @@ import NotFound from "@/views/NotFound.vue"
 import TalkEdit from "./TalkEdit.vue"
 import TalkOverview from "./TalkOverview.vue"
 import TalkLive from "./TalkLive.vue"
+import TalkReplay from "./TalkReplay.vue"
 
 type Modal = "none" | "error"
 

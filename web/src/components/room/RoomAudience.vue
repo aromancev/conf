@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue"
-import { Peer } from "./peers"
+import { Peer } from "./aggregators/peers"
 import { route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
 

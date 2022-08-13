@@ -26,7 +26,7 @@ type Signal interface {
 }
 
 type EventEmitter interface {
-	Emit(context.Context, event.Event) error
+	EmitEvent(context.Context, event.Event) error
 }
 
 type State struct {
@@ -173,7 +173,7 @@ func (p *Proxy) emit(ctx context.Context, payload event.Payload) (event.Event, e
 		Room:    p.roomID,
 		Payload: payload,
 	}
-	err := p.emitter.Emit(ctx, ev)
+	err := p.emitter.EmitEvent(ctx, ev)
 	switch {
 	case errors.Is(err, event.ErrValidation):
 		return event.Event{}, ErrValidation

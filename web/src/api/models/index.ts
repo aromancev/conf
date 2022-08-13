@@ -5,6 +5,7 @@ export * from "./user"
 export * from "./profile"
 export * from "./confa"
 export * from "./talk"
+export * from "./recording"
 
 export const userStore = new UserStore()
 export const profileStore = new ProfileStore()

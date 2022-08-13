@@ -59,9 +59,10 @@ func (e Event) Validate() error {
 }
 
 type Payload struct {
-	PeerState *PayloadPeerState `bson:"peerState"`
-	Message   *PayloadMessage   `bson:"message"`
-	Recording *PayloadRecording `bson:"recording"`
+	PeerState      *PayloadPeerState      `bson:"peerState"`
+	Message        *PayloadMessage        `bson:"message"`
+	Recording      *PayloadRecording      `bson:"recording"`
+	TrackRecording *PayloadTrackRecording `bson:"trackRecording"`
 }
 
 func (p Payload) Validate() error {
@@ -80,6 +81,12 @@ func (p Payload) Validate() error {
 	}
 	if p.Recording != nil {
 		if err := p.Recording.Validate(); err != nil {
+			return err
+		}
+		hasPayload = true
+	}
+	if p.TrackRecording != nil {
+		if err := p.TrackRecording.Validate(); err != nil {
 			return err
 		}
 		hasPayload = true
@@ -180,6 +187,21 @@ func (p PayloadRecording) Validate() error {
 	case RecordingStarted, RecordingStopped:
 	default:
 		return errors.New("invalid status")
+	}
+	return nil
+}
+
+type PayloadTrackRecording struct {
+	ID      uuid.UUID `bson:"id"`
+	TrackID string    `bson:"trackId"`
+}
+
+func (p PayloadTrackRecording) Validate() error {
+	if p.ID == uuid.Nil {
+		return errors.New("id should not be zero")
+	}
+	if p.TrackID == "" {
+		return errors.New("track id should not be zero")
 	}
 	return nil
 }

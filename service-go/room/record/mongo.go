@@ -111,7 +111,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Record, error) {
 		ctx,
 		mongoFilter(lookup),
 		&options.FindOptions{
-			Sort:  bson.M{"_id": 1},
+			Sort:  bson.M{"key": 1},
 			Limit: &lookup.Limit,
 		},
 	)
@@ -156,9 +156,9 @@ func mongoFilter(l Lookup) bson.M {
 	switch {
 	case l.ID != uuid.Nil:
 		filter["_id"] = l.ID
-	case l.From != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": l.From,
+	case l.FromKey != "":
+		filter["key"] = bson.M{
+			"$gt": l.FromKey,
 		}
 	}
 	if l.Room != uuid.Nil {

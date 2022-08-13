@@ -16,6 +16,7 @@ import { RoomEvent, EventPeerState, PeerStatus, RecordingStatus, Hint } from "./
 interface OptionalFetchParams {
   policy?: FetchPolicy
   order?: EventOrder
+  from?: EventFromInput
 }
 
 interface FetchParams {
@@ -55,17 +56,17 @@ export class EventClient {
 class EventIterator {
   private api: Client
   private lookup: EventLookup
-  private from: EventFromInput | null
+  private from?: EventFromInput
   private params: FetchParams
 
   constructor(api: Client, lookup: EventLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
-    this.from = null
     this.params = {
       ...defaultParams,
       ...params,
     }
+    this.from = params?.from
   }
 
   async next(limit?: EventLimit): Promise<RoomEvent[]> {
@@ -93,6 +94,10 @@ class EventIterator {
                 recording {
                   status
                 }
+                trackRecording {
+                  id
+                  trackId
+                }
               }
             }
             nextFrom {
@@ -111,7 +116,7 @@ class EventIterator {
       fetchPolicy: this.params.policy,
     })
 
-    this.from = resp.data.events.nextFrom
+    this.from = resp.data.events.nextFrom || undefined
     const events: RoomEvent[] = []
     for (const item of resp.data.events.items) {
       const event: RoomEvent = {
@@ -143,6 +148,9 @@ class EventIterator {
         event.payload.recording = {
           status: fromGRecordingState(item.payload.recording.status),
         }
+      }
+      if (item.payload.trackRecording) {
+        event.payload.trackRecording = item.payload.trackRecording
       }
       events.push(event)
     }

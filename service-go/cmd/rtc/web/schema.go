@@ -39,9 +39,10 @@ type RoomEvent struct {
 }
 
 type EventPayload struct {
-	Message   *EventMessage   `json:"message,omitempty"`  
-	PeerState *EventPeerState `json:"peerState,omitempty"`
-	Recording *EventRecording `json:"recording,omitempty"`
+	Message        *EventMessage        `json:"message,omitempty"`       
+	PeerState      *EventPeerState      `json:"peerState,omitempty"`     
+	Recording      *EventRecording      `json:"recording,omitempty"`     
+	TrackRecording *EventTrackRecording `json:"trackRecording,omitempty"`
 }
 
 type EventMessage struct {
@@ -62,6 +63,11 @@ type Track struct {
 
 type EventRecording struct {
 	Status RecordingStatus `json:"status"`
+}
+
+type EventTrackRecording struct {
+	ID      string `json:"id"`     
+	TrackID string `json:"trackId"`
 }
 
 type PeerMessage struct {

@@ -3,10 +3,12 @@ package web
 import (
 	"context"
 	_ "embed"
+	"strconv"
 	"time"
 
 	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/event"
+	"github.com/aromancev/confa/room/record"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -71,27 +73,56 @@ type EventLookup struct {
 
 type EventFrom struct {
 	ID        string
-	CreatedAt float64
+	CreatedAt string
 }
 
 type EventLimit struct {
 	Count   int32
-	Seconds int32
+	Seconds *int32
+}
+
+type Recording struct {
+	Key       string
+	RoomID    string
+	CreatedAt float64
+	StartedAt float64
+	StoppedAt *float64
+}
+
+type Recordings struct {
+	Items    []Recording
+	Limit    int32
+	NextFrom *RecordingFrom
+}
+
+type RecordingLookup struct {
+	RoomID string
+	Key    *string
+}
+
+type RecordingFrom struct {
+	Key string
 }
 
 type EventRepo interface {
 	Fetch(ctx context.Context, lookup event.Lookup) ([]event.Event, error)
 }
 
-type Resolver struct {
-	publicKey *auth.PublicKey
-	events    EventRepo
+type RecordRepo interface {
+	Fetch(ctx context.Context, lookup record.Lookup) ([]record.Record, error)
 }
 
-func NewResolver(pk *auth.PublicKey, events EventRepo) *Resolver {
+type Resolver struct {
+	publicKey  *auth.PublicKey
+	events     EventRepo
+	recordings RecordRepo
+}
+
+func NewResolver(pk *auth.PublicKey, events EventRepo, recordings RecordRepo) *Resolver {
 	return &Resolver{
-		publicKey: pk,
-		events:    events,
+		publicKey:  pk,
+		events:     events,
+		recordings: recordings,
 	}
 }
 
@@ -109,6 +140,8 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 	From  *EventFrom
 	Order *string
 }) (Events, error) {
+	const batchLimit = 3000
+
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return Events{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
@@ -122,8 +155,8 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		Limit: int64(args.Limit.Count),
 		Asc:   args.Order != nil && *args.Order == OrderAsc,
 	}
-	if args.Limit.Seconds != 0 {
-		delta := time.Second * time.Duration(args.Limit.Seconds)
+	if args.Limit.Seconds != nil {
+		delta := time.Second * time.Duration(*args.Limit.Seconds)
 		if lookup.Asc {
 			lookup.From.CreatedAt = time.Now().UTC().Add(delta)
 		} else {
@@ -136,13 +169,18 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		return Events{}, nil
 	}
 	if args.From != nil {
-		id, err := uuid.Parse(args.From.ID)
+		createdAt, err := strconv.ParseInt(args.From.CreatedAt, 10, 64)
 		if err != nil {
-			return Events{}, NewResolverError(CodeBadRequest, "Invalid from ID")
+			return Events{}, NewResolverError(CodeBadRequest, "Invalid from.createdAt")
 		}
 		lookup.From = event.From{
-			ID:        id,
-			CreatedAt: time.UnixMilli(int64(args.From.CreatedAt)),
+			CreatedAt: time.UnixMilli(createdAt),
+		}
+		if args.From.ID != "" {
+			id, err := uuid.Parse(args.From.ID)
+			if err == nil {
+				lookup.From.ID = id
+			}
 		}
 	}
 
@@ -159,7 +197,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		lastEvent := events[len(events)-1]
 		res.NextFrom = &EventFrom{
 			ID:        lastEvent.ID.String(),
-			CreatedAt: float64(lastEvent.CreatedAt.UnixMilli()),
+			CreatedAt: strconv.FormatInt(lastEvent.CreatedAt.UnixMilli(), 10),
 		}
 	}
 	for i, e := range events {
@@ -168,9 +206,71 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 	return res, nil
 }
 
+func (r *Resolver) Recordings(ctx context.Context, args struct {
+	Where RecordingLookup
+	Limit int32
+	From  *RecordingFrom
+}) (Recordings, error) {
+	const batchLimit = 100
+
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Recordings{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	if args.Limit < 0 || args.Limit > batchLimit {
+		args.Limit = batchLimit
+	}
+
+	lookup := record.Lookup{
+		Limit: int64(args.Limit),
+	}
+	var err error
+	lookup.Room, err = uuid.Parse(args.Where.RoomID)
+	if err != nil {
+		return Recordings{Limit: args.Limit}, nil
+	}
+	if args.Where.Key != nil {
+		lookup.Key = *args.Where.Key
+	}
+	if args.From != nil {
+		lookup.FromKey = args.From.Key
+	}
+
+	recordings, err := r.recordings.Fetch(ctx, lookup)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch events.")
+		return Recordings{}, NewInternalError()
+	}
+	res := Recordings{
+		Items: make([]Recording, len(recordings)),
+		Limit: int32(lookup.Limit),
+	}
+	if len(recordings) != 0 {
+		last := recordings[len(recordings)-1]
+		res.NextFrom = &RecordingFrom{
+			Key: last.Key,
+		}
+	}
+	for i, r := range recordings {
+		res.Items[i] = newRecording(r)
+	}
+	return res, nil
+}
+
+func newRecording(rec record.Record) Recording {
+	api := Recording{
+		Key:       rec.Key,
+		RoomID:    rec.Room.String(),
+		CreatedAt: float64(rec.CreatedAt.UTC().UnixMilli()),
+		StartedAt: float64(rec.StartedAt.UTC().UnixMilli()),
+	}
+	if !rec.StoppedAt.IsZero() {
+		t := float64(rec.StoppedAt.UTC().UnixMilli())
+		api.StoppedAt = &t
+	}
+	return api
+}
+
 //go:embed schema.graphql
 var gqlSchema string
-
-const (
-	batchLimit = 100
-)

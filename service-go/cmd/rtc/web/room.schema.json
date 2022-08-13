@@ -232,6 +232,20 @@
                   "enum": ["started", "stopped"]
                 }
               }
+            },
+            "trackRecording": {
+              "type": "object",
+              "title": "EventTrackRecording",
+              "additionalProperties": false,
+              "required": ["id", "trackId"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "trackId": {
+                  "type": "string"
+                }
+              }
             }
           }
         }

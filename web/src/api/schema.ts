@@ -118,11 +118,18 @@ export interface events_events_items_payload_recording {
   status: RecordingStatus;
 }
 
+export interface events_events_items_payload_trackRecording {
+  __typename: "EventTrackRecording";
+  id: string;
+  trackId: string;
+}
+
 export interface events_events_items_payload {
   __typename: "EventPayload";
   peerState: events_events_items_payload_peerState | null;
   message: events_events_items_payload_message | null;
   recording: events_events_items_payload_recording | null;
+  trackRecording: events_events_items_payload_trackRecording | null;
 }
 
 export interface events_events_items {
@@ -136,7 +143,7 @@ export interface events_events_items {
 export interface events_events_nextFrom {
   __typename: "EventFrom";
   id: string;
-  createdAt: number;
+  createdAt: string;
 }
 
 export interface events_events {
@@ -238,6 +245,45 @@ export interface requestAvatarUpload_requestAvatarUpload {
 
 export interface requestAvatarUpload {
   requestAvatarUpload: requestAvatarUpload_requestAvatarUpload;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL query operation: recordings
+// ====================================================
+
+export interface recordings_recordings_items {
+  __typename: "Recording";
+  key: string;
+  roomId: string;
+  createdAt: number;
+  startedAt: number;
+  stoppedAt: number | null;
+}
+
+export interface recordings_recordings_nextFrom {
+  __typename: "RecordingFrom";
+  key: string;
+}
+
+export interface recordings_recordings {
+  __typename: "Recordings";
+  items: recordings_recordings_items[];
+  nextFrom: recordings_recordings_nextFrom | null;
+}
+
+export interface recordings {
+  recordings: recordings_recordings;
+}
+
+export interface recordingsVariables {
+  where: RecordingLookup;
+  limit: number;
+  from?: RecordingFromInput | null;
 }
 
 /* tslint:disable */
@@ -473,13 +519,13 @@ export interface ConfaMask {
 }
 
 export interface EventFromInput {
+  createdAt: string;
   id: string;
-  createdAt: number;
 }
 
 export interface EventLimit {
   count: number;
-  seconds: number;
+  seconds?: number | null;
 }
 
 export interface EventLookup {
@@ -494,6 +540,15 @@ export interface ProfileLookup {
 export interface ProfileMask {
   handle?: string | null;
   displayName?: string | null;
+}
+
+export interface RecordingFromInput {
+  key: string;
+}
+
+export interface RecordingLookup {
+  roomId: string;
+  key?: string | null;
 }
 
 export interface TalkLookup {

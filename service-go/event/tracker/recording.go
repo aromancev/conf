@@ -1,4 +1,4 @@
-package record
+package tracker
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/webrtc/webm"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
@@ -19,16 +20,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Emitter interface {
+type TrackEmitter interface {
 	ProcessTrack(ctx context.Context, roomID, recordID uuid.UUID, bucket, object string, kind webrtc.RTPCodecType, duration time.Duration) error
 }
 
+type EventEmitter interface {
+	EmitEvent(ctx context.Context, event event.Event) error
+}
+
 type Tracker struct {
-	rtc     *sdk.RTC
-	storage *minio.Client
-	emitter Emitter
-	bucket  string
-	roomID  uuid.UUID
+	rtc          *sdk.RTC
+	storage      *minio.Client
+	trackEmitter TrackEmitter
+	eventEmitter EventEmitter
+	bucket       string
+	roomID       uuid.UUID
 
 	// Using mutext to protect waitgroup from calling `Wait` before `Add`.
 	mutex   sync.Mutex
@@ -36,17 +42,18 @@ type Tracker struct {
 	closed  bool
 }
 
-func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Connector, emitter Emitter, bucket string, roomID uuid.UUID) (*Tracker, error) {
+func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Connector, trackEmitter TrackEmitter, eventEmitter EventEmitter, bucket string, roomID uuid.UUID) (*Tracker, error) {
 	rtc, err := sdk.NewRTC(connector)
 	if err != nil {
 		return nil, err
 	}
 	tracker := &Tracker{
-		rtc:     rtc,
-		storage: storage,
-		emitter: emitter,
-		bucket:  bucket,
-		roomID:  roomID,
+		rtc:          rtc,
+		storage:      storage,
+		trackEmitter: trackEmitter,
+		eventEmitter: eventEmitter,
+		bucket:       bucket,
+		roomID:       roomID,
 	}
 
 	tracker.rtc.OnTrack = func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
@@ -99,19 +106,41 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Msg("Started writing track to object.")
 
-	// If any process exits, cancel the context. We're done.
-	ctx, cancelCtx := context.WithCancel(ctx)
-	defer cancelCtx()
+	watchdogCtx, cancelWatchdog := context.WithCancel(ctx)
+	defer cancelWatchdog()
 	var wg sync.WaitGroup
-	done := func() {
-		cancelCtx()
-		wg.Done()
-	}
+
+	// Emitting a track event after the minimum track time has passed.
+	// Not emitting immediately to avoid creating an even with invalid track.
+	// This is not technically correct because one second of real time doesn't exactly match to a one second actual track duration.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		select {
+		case <-watchdogCtx.Done():
+		case <-time.After(minDuration):
+			err := t.eventEmitter.EmitEvent(ctx, event.Event{
+				ID:   uuid.New(),
+				Room: t.roomID,
+				Payload: event.Payload{
+					TrackRecording: &event.PayloadTrackRecording{
+						ID:      recordID,
+						TrackID: track.ID(),
+					},
+				},
+			})
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to emit track recording event.")
+			}
+		}
+	}()
 
 	// Sending PLI to receive keyframes at certain intervals.
 	wg.Add(1)
 	go func() {
-		defer done()
+		defer wg.Done()
+		defer cancelWatchdog()
 
 		for {
 			err := t.rtc.GetSubTransport().GetPeerConnection().WriteRTCP(
@@ -124,8 +153,9 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to write PLI packet.")
 			}
+			log.Ctx(ctx).Debug().Msg("Sent PLI.")
 			select {
-			case <-ctx.Done():
+			case <-watchdogCtx.Done():
 				return
 			case <-time.After(pliPeriod):
 			}
@@ -140,7 +170,8 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 	var duration time.Duration
 	wg.Add(1)
 	go func() {
-		defer done()
+		defer wg.Done()
+		defer cancelWatchdog()
 
 		var rtpWriter RTPWriteCloser
 		if kind == webrtc.RTPCodecTypeVideo {
@@ -150,6 +181,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 				return
 			}
 			rtpWriter = w
+			log.Ctx(ctx).Debug().Msg("Created video writer.")
 		} else {
 			w, err := webm.NewAudioRTPWriter(pipedWriter)
 			if err != nil {
@@ -157,6 +189,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 				return
 			}
 			rtpWriter = w
+			log.Ctx(ctx).Debug().Msg("Created audio writer.")
 		}
 		defer func() {
 			rtpWriter.Close()
@@ -185,10 +218,10 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 	// Reading WebM into an object from pipedReader.
 	wg.Add(1)
 	go func() {
-		defer done()
+		defer wg.Done()
+		defer cancelWatchdog()
 
-		// Even if the parent context is cancelled, object write must finish normally. Never cancel its context.
-		_, err := t.storage.PutObject(context.Background(), t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{})
+		_, err := t.storage.PutObject(ctx, t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to write object from track.")
 		}
@@ -196,18 +229,16 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 	wg.Wait()
 
-	// Remve track shorter than allowed duration.
 	if duration < minDuration {
-		log.Ctx(ctx).Info().Msg("Track durations is less than minimum allowed WebM duration. Removing record.")
-		err := t.storage.RemoveObject(context.Background(), t.bucket, objectPath, minio.RemoveObjectOptions{})
+		log.Ctx(ctx).Info().Str("duration", duration.String()).Msg("Track durations is less than minimum allowed WebM duration. Removing record.")
+		err := t.storage.RemoveObject(ctx, t.bucket, objectPath, minio.RemoveObjectOptions{})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to remove object from storage.")
 		}
 		return
 	}
 
-	// Even if the parent context is cancelled, object write must finish normally. Never cancel its context.
-	err := t.emitter.ProcessTrack(context.Background(), t.roomID, recordID, t.bucket, objectPath, kind, duration)
+	err := t.trackEmitter.ProcessTrack(ctx, t.roomID, recordID, t.bucket, objectPath, kind, duration)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit track processing event.")
 	}
