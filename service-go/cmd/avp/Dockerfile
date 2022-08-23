@@ -11,7 +11,7 @@ FROM alpine:latest
 WORKDIR /app
 
 RUN apk update \
-    && apk add --no-cache ffmpeg
+    && apk add --no-cache ffmpeg=5.0.1-r1
 
 COPY --from=builder /app/bin/* /app/
 

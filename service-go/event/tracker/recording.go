@@ -101,6 +101,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 	const pliPeriod = 3 * time.Second
 	const minDuration = 1 * time.Second
+	const rtpMaxLate = 250
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
 
@@ -175,7 +176,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 		var rtpWriter RTPWriteCloser
 		if kind == webrtc.RTPCodecTypeVideo {
-			w, err := webm.NewVideoRTPWriter(pipedWriter)
+			w, err := webm.NewVideoRTPWriter(pipedWriter, rtpMaxLate)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to create video writer.")
 				return

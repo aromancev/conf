@@ -59,8 +59,9 @@
           {{ local.mic ? "mic" : "mic_off" }}
         </div>
         <div
+          v-if="recordingStatus !== 'stopped'"
           class="ctrl-btn btn-switch material-icons record-icon"
-          :disabled="recordingStatus === 'pending' || recordingStatus === 'stopped' ? true : null"
+          :disabled="recordingStatus === 'pending' ? true : null"
           @click="handleRecording"
         >
           {{ recordingStatus !== "recording" ? "radio_button_checked" : "stop_circle" }}

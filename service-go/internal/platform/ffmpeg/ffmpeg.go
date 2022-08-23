@@ -56,6 +56,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -83,7 +84,7 @@ func WriteDashVideo(ctx context.Context, in SourceVideo, out DestinationVideo) e
 	// Minimum number of frames for DASH encoding. The ideal value is 150 frames.
 	// If the video is shorter, it will output invalid DASH file.
 	// This is why we set it to either the total number of frames in the video or 150.
-	minFrames := uint(in.Duration.Seconds()) * out.FPS
+	minFrames := uint(in.Duration.Seconds())*out.FPS - 1
 	if minFrames > 150 {
 		minFrames = 150
 	}
@@ -104,16 +105,17 @@ func WriteDashVideo(ctx context.Context, in SourceVideo, out DestinationVideo) e
 		// Has to be the same as keyint_min.
 		"-g", fmt.Sprintf("%d", minFrames),
 		// Making sure the framerate is constant otherwise, the resulting DASH file will have gaps in it.
-		"-vsync", "1",
+		"-vsync", "cfr",
 		"-row-mt", "1",
 		"-tile-columns", "4",
 		"-frame-parallel", "1",
 		"-movflags", "faststart",
+		// Ignore audio.
+		"-an",
 		"-f", "webm",
 		"-dash", "1",
 		"-speed", "3",
-		"-threads", "1",
-		"-an",
+		"-threads", fmt.Sprintf("%d", runtime.NumCPU()),
 		// Scale video down if it's bigger than the desired resoltuon.
 		"-vf", "scale='min(1920,iw)':min'(1080,ih)':force_original_aspect_ratio=decrease",
 		// Bitrate.
@@ -159,9 +161,10 @@ func WriteDashAudio(ctx context.Context, in SourceAudio, out DestinationAudio) e
 		// ‘audio’ - Favor faithfulness to the input (the default).
 		// ‘lowdelay’ - Restrict to only the lowest delay modes.
 		"-application", "voip",
-		// Pad video to 5 seconds with silence.
+		// Pad audio to 5 seconds with silence.
 		// We have to do this becuase otherwise it will produce an invalid DASH file and the manifest creation will fail.
 		"-af", "apad='whole_dur=5'",
+		// Ignore video.
 		"-vn",
 		"-f", "webm",
 		// Sample rate.

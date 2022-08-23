@@ -9,14 +9,21 @@
     <div v-if="state.isInterfaceVisible" class="interface">
       <div class="free-screen" @dblclick="toggleFullscreen" @click="emit('togglePlay')"></div>
       <div class="bottom-panel">
-        <div ref="timeline" class="timeline" @click="onRewind">
+        <div
+          ref="timeline"
+          class="timeline"
+          @click="onRewind"
+          @mousemove="updateHighlight"
+          @mouseenter="updateHighlight"
+        >
           <div class="buffer" :style="{ width: (props.buffer / props.duration) * 100 + '%' }"></div>
+          <div class="highlight" :style="{ width: state.highlight * 100 + '%' }"></div>
           <div class="progress" :style="{ width: (state.progress / props.duration) * 100 + '%' }"></div>
         </div>
         <div class="bottom-tools">
           <div class="bottom-left-panel">
             <div class="material-icons panel-btn" @click="emit('togglePlay')">
-              {{ isPlaying ? "pause" : "play_arrow" }}
+              {{ isPlaying ? "pause" : state.progress < duration ? "play_arrow" : "replay" }}
             </div>
           </div>
           <div class="bottom-right-panel">
@@ -31,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, onMounted, onUnmounted, reactive, watch } from "vue"
+import { ref, onMounted, onUnmounted, reactive, watch } from "vue"
 import { debounce } from "@/platform/sync"
 import { Media } from "./aggregators/media"
 import { MediaController } from "./media-controller"
@@ -55,30 +62,20 @@ const state = reactive({
   isFullscreen: false,
   isInterfaceVisible: !props.disableControlls,
   progress: 0,
+  highlight: 0,
 })
 const container = ref<HTMLElement>()
 const timeline = ref<HTMLElement>()
 const video = ref<HTMLElement>()
-const controller = new MediaController()
+const controller = new MediaController({
+  media: () => props.media,
+  element: video,
+  isPlaying: () => props.isPlaying,
+  unpausedAt: () => props.unpausedAt,
+  delta: () => props.delta,
+})
 const controllerState = controller.state()
 let progressInterval: ReturnType<typeof setInterval> = 0
-
-watch(
-  [() => props.media, () => props.isPlaying, () => props.delta, () => props.unpausedAt, video],
-  () => {
-    controller.update({
-      media: props.media,
-      element: video.value,
-      isPlaying: props.isPlaying,
-      delta: props.delta,
-      unpausedAt: props.unpausedAt,
-    })
-  },
-  {
-    immediate: true,
-    deep: true,
-  },
-)
 
 watch([() => props.isPlaying, () => state.isInterfaceVisible], () => {
   clearInterval(progressInterval)
@@ -139,6 +136,14 @@ function onRewind(event: MouseEvent) {
   state.progress = progressMs
   emit("rewind", progressMs)
 }
+
+function updateHighlight(event: MouseEvent) {
+  if (!timeline.value) {
+    throw new Error("Timeline element not found.")
+  }
+  const rect = timeline.value.getBoundingClientRect()
+  state.highlight = (event.clientX - rect.left) / rect.width
+}
 </script>
 
 <style lang="sass" scoped>
@@ -171,24 +176,32 @@ function onRewind(event: MouseEvent) {
   position: relative
   cursor: pointer
   width: 100%
-  height: 10px
-
-.buffer
-  bottom: 0
-  left: 0
-  position: absolute
-  height: 2px
-  width: 100%
-  background-color: grey
+  height: 7px
+  &:hover > .progress, &:hover > .highlight
+    height: 100%
 
 .progress
   bottom: 0
   left: 0
   position: absolute
   height: 2px
-  width: 100%
   background-color: var(--color-highlight-background)
-  transition: width 50ms linear
+  transition: width 50ms linear, height 100ms ease-in
+
+.highlight
+  bottom: 0
+  left: 0
+  position: absolute
+  height: 0px
+  background-color: lightgrey
+  transition: height 100ms ease-in
+
+.buffer
+  bottom: 0
+  left: 0
+  position: absolute
+  height: 2px
+  background-color: grey
 
 .bottom-tools
   width: 100%

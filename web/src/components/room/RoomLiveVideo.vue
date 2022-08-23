@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, onMounted, onUnmounted } from "vue"
+import { ref, onMounted, onUnmounted } from "vue"
 import { debounce } from "@/platform/sync"
 
 defineProps<{
