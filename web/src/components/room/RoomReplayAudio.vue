@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, watch } from "vue"
+import { ref, onUnmounted } from "vue"
 import { Media } from "./aggregators/media"
 import { MediaController } from "./media-controller"
 
@@ -16,22 +16,15 @@ const props = defineProps<{
 }>()
 
 const audio = ref<HTMLElement>()
-const controller = new MediaController()
+const controller = new MediaController({
+  media: () => props.media,
+  element: audio,
+  isPlaying: () => props.isPlaying,
+  unpausedAt: () => props.unpausedAt,
+  delta: () => props.delta,
+})
 
-watch(
-  [() => props.media, () => props.isPlaying, () => props.delta, () => props.unpausedAt, audio],
-  () => {
-    controller.update({
-      media: props.media,
-      element: audio.value,
-      isPlaying: props.isPlaying,
-      delta: props.delta,
-      unpausedAt: props.unpausedAt,
-    })
-  },
-  {
-    immediate: true,
-    deep: true,
-  },
-)
+onUnmounted(() => {
+  controller.close()
+})
 </script>

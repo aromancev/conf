@@ -27,6 +27,7 @@ export class ReplayRoom {
   private replayTimeout: ReturnType<typeof setTimeout>
   private eventsPrepeared: number
   private eventsConsumed: number
+  private stopped: boolean
 
   constructor() {
     this._state = reactive<State>({
@@ -46,6 +47,7 @@ export class ReplayRoom {
     this.events = []
     this.aggregators = []
     this.replayTimeout = -1
+    this.stopped = false
   }
 
   state(): State {
@@ -96,6 +98,11 @@ export class ReplayRoom {
     if (!this._state.isLoaded) {
       return
     }
+    // If unpaused is unset, it means we are playing from the beginning.
+    if (this.stopped) {
+      this.rewind(0)
+      this.stopped = false
+    }
     clearTimeout(this.replayTimeout)
     this._state.isPlaying = true
     this._state.unpausedAt = Date.now()
@@ -119,6 +126,7 @@ export class ReplayRoom {
     clearTimeout(this.replayTimeout)
     this._state.delta = 0
     this._state.unpausedAt = 0
+    this.stopped = true
   }
 
   togglePlay(): void {
@@ -130,8 +138,9 @@ export class ReplayRoom {
   }
 
   rewind(pos: number): void {
-    const wasPlaying = this._state.isPlaying ? true : false
-    this.stop()
+    clearTimeout(this.replayTimeout)
+    this._state.delta = 0
+    this._state.unpausedAt = 0
     for (const agg of this.aggregators) {
       if (agg.reset) {
         agg.reset()
@@ -142,13 +151,18 @@ export class ReplayRoom {
     this.eventsConsumed = 0
     this.consumeUntil(this.recordingStartedAt + pos)
     this._state.delta = pos
-    if (wasPlaying) {
-      this.play()
+    if (this._state.isPlaying) {
+      this._state.unpausedAt = Date.now()
+      this.iterate()
     }
   }
 
   private iterate(): void {
     const progress = Date.now() - this._state.unpausedAt + this._state.delta
+    if (progress >= this._state.duration) {
+      this.stop()
+      return
+    }
     const nextEventAt = this.consumeUntil(this.recordingStartedAt + progress)
     if (nextEventAt === 0) {
       return

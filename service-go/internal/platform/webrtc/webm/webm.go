@@ -17,10 +17,10 @@ type VideoRTPWriter struct {
 	timestamp   time.Duration
 }
 
-func NewVideoRTPWriter(writer io.WriteCloser) (*VideoRTPWriter, error) {
+func NewVideoRTPWriter(writer io.WriteCloser, maxLate uint16) (*VideoRTPWriter, error) {
 	return &VideoRTPWriter{
 		writer:  writer,
-		builder: samplebuilder.New(10, &codecs.VP8Packet{}, 90000),
+		builder: samplebuilder.New(maxLate, &codecs.VP8Packet{}, 90000),
 	}, nil
 }
 

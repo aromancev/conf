@@ -125,6 +125,10 @@ services:
     build:
       context: ../service-go
       dockerfile: ./cmd/avp/Dockerfile
+    deploy:
+      resources:
+        limits:
+          cpus: '0.70'
     networks:
       - confa
     environment:
