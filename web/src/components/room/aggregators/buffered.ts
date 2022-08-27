@@ -8,13 +8,13 @@ interface Aggregator {
 export class BufferedAggregator {
   private autoflush: boolean
   private aggregators: Aggregator[]
-  private cache: FIFO<RoomEvent>
+  private cache: FIFO<string, RoomEvent>
   private cap: number
   private buffered: RoomEvent[]
 
   constructor(aggregators: Aggregator[], cap: number) {
     this.aggregators = aggregators
-    this.cache = new FIFO<RoomEvent>(cap)
+    this.cache = new FIFO(cap)
     this.cap = cap
     this.buffered = []
     this.autoflush = false

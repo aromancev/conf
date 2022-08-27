@@ -46,20 +46,56 @@ export function debounce(fn: () => void, ms: number): () => void {
   }
 }
 
-export function throttle(fn: () => void, ms: number): () => void {
-  let timeoutId: ReturnType<typeof setTimeout>
-  let lastCalled: number
-  return () => {
-    clearTimeout(timeoutId)
-    const sinceLastCall = Date.now() - lastCalled
-    if (sinceLastCall >= ms) {
-      fn()
-      lastCalled = Date.now()
-    } else {
-      timeoutId = setTimeout(() => {
-        fn()
-        lastCalled = Date.now()
-      }, ms - sinceLastCall)
+export interface ThrottleParams {
+  delayMs: number
+}
+
+export class Throttler<T> {
+  func?: (() => Promise<T>) | (() => T)
+
+  private params: ThrottleParams
+  private promise: Promise<T>
+  private resolve?: (t: T) => void
+  private isReady: boolean
+  private doAfterReady: boolean
+
+  constructor(params: ThrottleParams) {
+    this.params = params
+    this.promise = new Promise((r) => {
+      this.resolve = r
+    })
+    this.isReady = true
+    this.doAfterReady = false
+  }
+
+  async do(): Promise<T> {
+    if (!this.isReady) {
+      this.doAfterReady = true
+      return this.promise
     }
+
+    if (!this.func) {
+      throw new Error("Throttler function not defined.")
+    }
+
+    this.isReady = false
+    const prevResolve = this.resolve
+    this.promise = new Promise((r) => {
+      this.resolve = r
+    })
+    const t = await this.func()
+    if (prevResolve) {
+      prevResolve(t)
+    }
+
+    setTimeout(() => {
+      this.isReady = true
+      if (this.doAfterReady) {
+        this.doAfterReady = false
+        this.do()
+      }
+    }, this.params.delayMs)
+
+    return t
   }
 }

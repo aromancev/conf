@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"sort"
 	"testing"
 	"time"
 
@@ -73,7 +72,7 @@ func TestEventMongo(t *testing.T) {
 		created, err := events.Create(
 			ctx,
 			Event{
-				ID:   uuid.New(),
+				ID:   uuid.UUID{10},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -83,7 +82,7 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.New(),
+				ID:   uuid.UUID{11},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -93,7 +92,7 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.New(),
+				ID:   uuid.UUID{12},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -104,10 +103,22 @@ func TestEventMongo(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		// Events are sorted by createdAt, id DESC.
-		sort.Slice(created, func(i, j int) bool {
-			return created[i].ID.String() > created[j].ID.String()
-		})
+
+		time.Sleep(10 * time.Millisecond)
+		createdLater, err := events.Create(
+			ctx,
+			Event{
+				ID:   uuid.UUID{1},
+				Room: roomID,
+				Payload: Payload{
+					PeerState: &PayloadPeerState{
+						Peer:   uuid.New(),
+						Status: PeerJoined,
+					},
+				},
+			},
+		)
+		require.NoError(t, err)
 
 		t.Run("by id", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
@@ -122,25 +133,20 @@ func TestEventMongo(t *testing.T) {
 				Room: roomID,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, created, fetched)
+			assert.ElementsMatch(t, append(created, createdLater...), fetched)
 		})
 
 		t.Run("with limit and offset", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
-				Room:  roomID,
-				Limit: 3,
-			})
-			require.NoError(t, err)
-			assert.Equal(t, 3, len(fetched))
-
-			// 3 in total, skipped one.
-			fetched, err = events.Fetch(ctx, Lookup{
 				From: From{
-					ID: fetched[2].ID,
+					ID:        created[2].ID,
+					CreatedAt: created[2].CreatedAt,
 				},
+				Limit: 1,
+				Asc:   true,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, 2, len(fetched))
+			assert.ElementsMatch(t, createdLater, fetched)
 		})
 	})
 
