@@ -53,11 +53,12 @@ export class EventClient {
   }
 }
 
-class EventIterator {
+export class EventIterator {
   private api: Client
   private lookup: EventLookup
   private from?: EventFromInput
   private params: FetchParams
+  private pages: number
 
   constructor(api: Client, lookup: EventLookup, params?: OptionalFetchParams) {
     this.api = api
@@ -67,9 +68,16 @@ class EventIterator {
       ...params,
     }
     this.from = params?.from
+    this.pages = 0
+  }
+
+  pagesIterated(): number {
+    return this.pages
   }
 
   async next(limit?: EventLimit): Promise<RoomEvent[]> {
+    this.pages++
+
     const resp = await this.api.query<events, eventsVariables>({
       query: gql`
         query events($where: EventLookup!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {

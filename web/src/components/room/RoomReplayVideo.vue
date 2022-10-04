@@ -5,7 +5,12 @@
     :style="state.isFullscreen && !state.isInterfaceVisible ? { cursor: 'none' } : {}"
     @mousemove="onMouseMove"
   >
-    <video ref="video" class="video" muted :style="{ display: controllerState.isActive ? undefined : 'none' }"></video>
+    <video
+      ref="video"
+      class="video"
+      muted
+      :style="{ display: controllerState.isActive ? undefined : 'none', objectFit: fit || 'contain' }"
+    ></video>
     <div v-if="state.isInterfaceVisible" class="interface">
       <div class="free-screen" @dblclick="toggleFullscreen" @click="emit('togglePlay')"></div>
       <div class="bottom-panel">
@@ -16,9 +21,9 @@
           @mousemove="updateHighlight"
           @mouseenter="updateHighlight"
         >
-          <div class="buffer" :style="{ width: (props.buffer / props.duration) * 100 + '%' }"></div>
-          <div class="highlight" :style="{ width: state.highlight * 100 + '%' }"></div>
-          <div class="progress" :style="{ width: (state.progress / props.duration) * 100 + '%' }"></div>
+          <div class="buffer" :style="{ width: `${((props.buffer || 0) / props.duration) * 100}%` }"></div>
+          <div class="highlight" :style="{ width: `${state.highlight * 100}%` }"></div>
+          <div class="progress" :style="{ width: `${(state.progress / props.duration) * 100}%` }"></div>
         </div>
         <div class="bottom-tools">
           <div class="bottom-left-panel">
@@ -34,6 +39,9 @@
         </div>
       </div>
     </div>
+    <div v-if="isBuffering && !hideLoader" class="loader-box">
+      <PageLoader></PageLoader>
+    </div>
   </div>
 </template>
 
@@ -42,20 +50,25 @@ import { ref, onMounted, onUnmounted, reactive, watch } from "vue"
 import { debounce } from "@/platform/sync"
 import { Media } from "./aggregators/media"
 import { MediaController } from "./media-controller"
+import PageLoader from "@/components/PageLoader.vue"
+import { Progress } from "./replay"
 
 const props = defineProps<{
   media?: Media
   isPlaying: boolean
+  isBuffering: boolean
   duration: number
-  delta: number
-  unpausedAt: number
-  buffer: number
+  progress: Progress
+  buffer?: number
   disableControlls?: boolean
+  fit?: "contain" | "cover"
+  hideLoader?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: "togglePlay"): void
-  (e: "rewind", p: number): void
+  (e: "rewind", ms: number): void
+  (e: "buffer", ms: number): void
 }>()
 
 const state = reactive({
@@ -71,19 +84,29 @@ const controller = new MediaController({
   media: () => props.media,
   element: video,
   isPlaying: () => props.isPlaying,
-  unpausedAt: () => props.unpausedAt,
-  delta: () => props.delta,
+  isBuffering: () => props.isBuffering,
+  progress: () => props.progress,
 })
+controller.onBuffer = (ms) => {
+  emit("buffer", ms)
+}
 const controllerState = controller.state()
 let progressInterval: ReturnType<typeof setInterval> = 0
 
-watch([() => props.isPlaying, () => state.isInterfaceVisible], () => {
+watch([() => props.isPlaying, () => props.isBuffering, () => state.isInterfaceVisible], () => {
   clearInterval(progressInterval)
-  if (props.isPlaying && state.isInterfaceVisible) {
-    iterate()
-    progressInterval = setInterval(() => iterate(), 100)
+  if (props.isPlaying && !props.isBuffering && state.isInterfaceVisible) {
+    updateProgress()
+    progressInterval = setInterval(() => updateProgress(), 100)
   }
 })
+
+watch(
+  () => props.progress.value,
+  () => {
+    updateProgress()
+  },
+)
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", onFullscreen)
@@ -99,8 +122,8 @@ const hideInterfaceDebounced = debounce(() => {
   state.isInterfaceVisible = false
 }, 3000)
 
-function iterate(): void {
-  state.progress = Date.now() - props.unpausedAt + props.delta
+function updateProgress(): void {
+  state.progress = progressForNow(props.progress)
 }
 
 function onMouseMove() {
@@ -133,7 +156,6 @@ function onRewind(event: MouseEvent) {
   const rect = timeline.value.getBoundingClientRect()
   const progresss = (event.clientX - rect.left) / rect.width
   const progressMs = props.duration * progresss
-  state.progress = progressMs
   emit("rewind", progressMs)
 }
 
@@ -144,6 +166,13 @@ function updateHighlight(event: MouseEvent) {
   const rect = timeline.value.getBoundingClientRect()
   state.highlight = (event.clientX - rect.left) / rect.width
 }
+
+function progressForNow(progress: Progress): number {
+  if (!progress.increasingSince) {
+    return progress.value
+  }
+  return Date.now() - progress.increasingSince + progress.value
+}
 </script>
 
 <style lang="sass" scoped>
@@ -152,6 +181,9 @@ function updateHighlight(event: MouseEvent) {
 .container
   width: 100%
   height: 100%
+  display: flex
+  align-items: center
+  justify-content: center
 
 .interface
   position: absolute
@@ -176,9 +208,9 @@ function updateHighlight(event: MouseEvent) {
   position: relative
   cursor: pointer
   width: 100%
-  height: 7px
+  height: 10px
   &:hover > .progress, &:hover > .highlight
-    height: 100%
+    height: 5px
 
 .progress
   bottom: 0
@@ -220,7 +252,12 @@ function updateHighlight(event: MouseEvent) {
   padding: 10px
 
 .video
-  object-fit: contain
   width: 100%
   height: 100%
+
+.loader-box
+  border-radius: 15px
+  position: absolute
+  padding: 10px
+  background: #000B
 </style>

@@ -3,7 +3,7 @@
     <div class="selected">{{ selected?.profile.name || "" }}</div>
     <div class="divider"></div>
     <div class="canvas">
-      <canvas ref="audience"></canvas>
+      <canvas ref="audience" :style="{ display: isLoading ? 'none' : 'block' }"></canvas>
       <canvas ref="selection"></canvas>
       <router-link
         v-if="selected?.profile.handle"
@@ -11,7 +11,7 @@
         :to="route.profile(selected.profile.handle, 'overview')"
         target="_blank"
       ></router-link>
-      <PageLoader v-if="loading"></PageLoader>
+      <PageLoader v-if="isLoading"></PageLoader>
     </div>
   </div>
 </template>
@@ -23,7 +23,7 @@ import { route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
 
 const props = defineProps<{
-  loading?: boolean
+  isLoading?: boolean
   peers: Map<string, Peer>
 }>()
 

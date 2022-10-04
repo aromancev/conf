@@ -1,5 +1,5 @@
 import { reactive } from "vue"
-import { throttle } from "@/platform/sync"
+import { Throttler } from "@/platform/sync"
 import { profileClient } from "@/api"
 import { genName, genAvatar } from "@/platform/gen"
 import { LRU } from "@/platform/cache"
@@ -19,14 +19,13 @@ interface Entry {
 }
 
 export class ProfileRepository {
-  private cache: LRU<Entry>
-  private fetchThrottled: () => void
+  private cache: LRU<string, Entry>
+  private fetchThrottle: Throttler<void>
 
   constructor(cacheLimit: number, debounceFetchMS: number) {
-    this.cache = new LRU<Entry>(cacheLimit)
-    this.fetchThrottled = throttle(() => {
-      this.fetch()
-    }, debounceFetchMS)
+    this.cache = new LRU(cacheLimit)
+    this.fetchThrottle = new Throttler({ delayMs: debounceFetchMS })
+    this.fetchThrottle.func = () => this.fetch()
   }
 
   profile(id: string): Profile {
@@ -48,7 +47,8 @@ export class ProfileRepository {
       entry.profile.avatar = src
     })
     this.cache.set(id, entry)
-    this.fetchThrottled()
+    // this.fetchThrottled()
+    this.fetchThrottle.do()
 
     return entry.profile
   }

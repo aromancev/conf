@@ -1,27 +1,34 @@
 import { reactive, readonly } from "vue"
 import { RoomEvent, Track, Hint } from "@/api/room/schema"
 import { config } from "@/config"
+import { FIFO } from "@/platform/cache"
 
 export interface Media {
+  id: string
   manifestUrl: string
   hint: Hint
-  startsAt?: number
+  startsAt: number
+  isLive: boolean
+}
+
+export interface State {
+  medias: Map<string, Media>
 }
 
 export class MediaAggregator {
   private roomId: string
   private startedAt: number
-  private recordings: Map<string, Recording>
-  private tracks: Map<string, Track>
+  private recordings: FIFO<string, Recording>
+  private tracks: FIFO<string, Track>
   private _state: State
 
   constructor(roomId: string, startedAt: number) {
     this.roomId = roomId
     this.startedAt = startedAt
-    this.recordings = new Map()
-    this.tracks = new Map()
+    this.recordings = new FIFO(CAPACITY)
+    this.tracks = new FIFO(CAPACITY)
     this._state = reactive({
-      medias: new Map(),
+      medias: new FIFO(CAPACITY),
     })
   }
 
@@ -36,6 +43,8 @@ export class MediaAggregator {
         this.recordings.set(recording.trackId, {
           id: recording.id,
           trackId: recording.trackId,
+          startsAt: event.createdAt - this.startedAt,
+          isLive: false,
         })
         continue
       }
@@ -63,15 +72,13 @@ export class MediaAggregator {
     if (!rec) {
       return
     }
-
-    rec.startsAt = event.createdAt - this.startedAt
+    rec.isLive = true
     this.calculateMedias()
-    return
   }
 
   reset(): void {
     for (const recording of this.recordings.values()) {
-      recording.startsAt = undefined
+      recording.isLive = false
     }
     this.calculateMedias()
   }
@@ -85,20 +92,21 @@ export class MediaAggregator {
         break
       }
       this._state.medias.set(rec.id, {
+        id: rec.id,
         manifestUrl: `${config.storage.baseURL}/confa-tracks-public/${this.roomId}/${rec.id}/manifest`,
         hint: track.hint,
         startsAt: rec.startsAt,
+        isLive: rec.isLive,
       })
     }
   }
 }
 
+const CAPACITY = 10
+
 interface Recording {
   id: string
   trackId: string
-  startsAt?: number
-}
-
-interface State {
-  medias: Map<string, Media>
+  startsAt: number
+  isLive: boolean
 }

@@ -1,8 +1,8 @@
 <template>
   <div class="messages">
-    <PageLoader v-if="loading"></PageLoader>
+    <PageLoader v-if="isLoading"></PageLoader>
     <div ref="browser" class="browser" @scroll="onScroll">
-      <div v-if="!loading" class="message-list">
+      <div v-if="!isLoading" class="message-list">
         <div
           v-for="msg in renderMessages"
           :key="msg.model.id"
@@ -36,7 +36,7 @@
       class="message-input"
       :spellcheck="false"
       placeholder="message"
-      :disabled="loading"
+      :disabled="isLoading"
       @keydown="keySend"
     ></Textarea>
     <div v-if="message" class="send material-icons" @click="send">send</div>
@@ -64,7 +64,7 @@ const emit = defineEmits<{
 const props = defineProps<{
   userId: string
   messages: Message[]
-  loading?: boolean
+  isLoading?: boolean
 }>()
 
 const browser = ref<HTMLElement>()

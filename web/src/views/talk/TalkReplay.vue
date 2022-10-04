@@ -6,14 +6,15 @@
           <div class="screen video-container">
             <RoomReplayVideo
               :media="screen"
-              :duration="roomState.duration"
-              :delta="roomState.delta"
-              :unpaused-at="roomState.unpausedAt"
-              :buffer="1000000"
-              :is-playing="roomState.isPlaying"
+              :duration="room.state.duration"
+              :progress="room.state.progress"
+              :buffer="room.state.buffer"
+              :is-playing="room.state.isPlaying"
+              :is-buffering="room.state.isBuffering"
               class="video screen-video"
               @toggle-play="() => room.togglePlay()"
-              @rewind="(pos: number) => room.rewind(pos)"
+              @rewind="(pos) => room.rewind(pos)"
+              @buffer="(ms) => room.updateMediaBuffer(screen?.id || '', ms)"
             >
             </RoomReplayVideo>
           </div>
@@ -21,12 +22,14 @@
             <RoomReplayVideo
               v-if="camera"
               :media="camera"
-              :duration="roomState.duration"
-              :delta="roomState.delta"
-              :unpaused-at="roomState.unpausedAt"
-              :buffer="1000000"
-              :is-playing="roomState.isPlaying"
+              :duration="room.state.duration"
+              :progress="room.state.progress"
+              :buffer="room.state.buffer"
+              :is-playing="room.state.isPlaying"
+              :is-buffering="room.state.isBuffering"
               :disable-controlls="true"
+              :fit="'cover'"
+              :hide-loader="true"
               class="video camera-video"
             >
             </RoomReplayVideo>
@@ -37,7 +40,7 @@
         </div>
       </div>
 
-      <RoomAudience ref="audience" :loading="!roomState.isLoaded" :peers="roomState.peers" />
+      <RoomAudience ref="audience" :is-loading="room.state.isLoading" :peers="room.state.peers" />
     </div>
     <div class="controls">
       <div class="controls-bottom">
@@ -58,7 +61,7 @@
       </div>
     </div>
     <div v-if="sidePanel !== SidePanel.None" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="roomState.messages" :loading="!roomState.isLoaded" />
+      <RoomMessages :user-id="user.id" :messages="room.state.messages" :is-loading="room.state.isLoading" />
     </div>
   </div>
 
@@ -66,17 +69,18 @@
     v-for="source in audios"
     :key="source.manifestUrl"
     :media="source"
-    :duration="roomState.duration"
-    :delta="roomState.delta"
-    :unpaused-at="roomState.unpausedAt"
-    :is-playing="roomState.isPlaying"
+    :duration="room.state.duration"
+    :progress="room.state.progress"
+    :is-playing="room.state.isPlaying"
+    :is-buffering="room.state.isBuffering"
+    @buffer="(ms) => room.updateMediaBuffer(source?.id || '', ms)"
   ></RoomReplayAudio>
 
   <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from "vue"
+import { ref, computed, watch, nextTick, onUnmounted } from "vue"
 import { Talk, userStore } from "@/api/models"
 import { ReplayRoom } from "@/components/room"
 import InternalError from "@/components/modals/InternalError.vue"
@@ -85,7 +89,7 @@ import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomReplayVideo from "@/components/room/RoomReplayVideo.vue"
 import RoomReplayAudio from "@/components/room/RoomReplayAudio.vue"
 import { Media } from "@/components/room/aggregators/media"
-import { Hint } from "@/api/room/schema.js"
+import { Hint } from "@/api/room/schema"
 
 type Modal = "none" | "error"
 
@@ -110,12 +114,11 @@ const modal = ref<Modal>("none")
 const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
 const audience = ref<Resizer>()
 const room = new ReplayRoom()
-const roomState = room.state()
 const roomId = computed<string>(() => {
   return props.talk.roomId
 })
 const screen = computed<Media | undefined>(() => {
-  for (const media of roomState.medias.values()) {
+  for (const media of room.state.medias.values()) {
     if (media.hint === Hint.Screen) {
       return media
     }
@@ -123,7 +126,7 @@ const screen = computed<Media | undefined>(() => {
   return undefined
 })
 const camera = computed<Media | undefined>(() => {
-  for (const media of roomState.medias.values()) {
+  for (const media of room.state.medias.values()) {
     if (media.hint === Hint.Camera) {
       return media
     }
@@ -132,7 +135,7 @@ const camera = computed<Media | undefined>(() => {
 })
 const audios = computed<Media[]>(() => {
   const auds: Media[] = []
-  for (const media of roomState.medias.values()) {
+  for (const media of room.state.medias.values()) {
     if (media.hint === Hint.UserAudio) {
       auds.push(media)
     }
@@ -160,6 +163,10 @@ function switchSidePanel(panel: SidePanel) {
     audience.value?.resize()
   })
 }
+
+onUnmounted(() => {
+  room.close()
+})
 </script>
 
 <style scoped lang="sass">

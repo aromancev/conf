@@ -85,7 +85,7 @@
       </div>
     </div>
     <div v-if="sidePanel !== SidePanel.None" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="room.messages" :loading="!roomJoined" @message="sendMessage" />
+      <RoomMessages :user-id="user.id" :messages="room.messages" :is-loading="!roomJoined" @message="sendMessage" />
     </div>
   </div>
 

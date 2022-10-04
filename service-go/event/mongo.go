@@ -95,25 +95,6 @@ func (m *Mongo) CreateOne(ctx context.Context, request Event) (Event, error) {
 }
 
 func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Event, error) {
-	filter := bson.M{}
-	switch {
-	case lookup.ID != uuid.Nil:
-		filter["_id"] = lookup.ID
-	case lookup.From.ID != uuid.Nil:
-		filter["_id"] = bson.M{
-			"$gt": lookup.From.ID,
-		}
-	case lookup.From.CreatedAt != time.Time{}:
-		filter["createdAt"] = bson.M{
-			"$gt": lookup.From.CreatedAt,
-		}
-	}
-	if lookup.Room != uuid.Nil {
-		filter["roomId"] = lookup.Room
-	}
-	if lookup.Limit > batchLimit || lookup.Limit == 0 {
-		lookup.Limit = batchLimit
-	}
 	order := -1
 	if lookup.Asc {
 		order = 1
@@ -121,7 +102,7 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Event, error) {
 
 	cur, err := m.db.Collection("events").Find(
 		ctx,
-		filter,
+		mongoFilter(lookup),
 		&options.FindOptions{
 			Sort:  bson.D{{Key: "createdAt", Value: order}, {Key: "_id", Value: order}},
 			Limit: &lookup.Limit,
@@ -184,4 +165,34 @@ func (m *Mongo) Watch(ctx context.Context, roomID uuid.UUID) (Cursor, error) {
 func mongoNow() time.Time {
 	// Mongodb only stores milliseconds.
 	return time.Now().UTC().Round(time.Millisecond)
+}
+
+func mongoFilter(l Lookup) bson.M {
+	filter := make(bson.M)
+	switch {
+	case l.ID != uuid.Nil:
+		filter["_id"] = l.ID
+	case !l.From.CreatedAt.IsZero() && l.From.ID != uuid.Nil:
+		filter["$or"] = bson.A{
+			bson.M{
+				"createdAt": bson.M{
+					"$gt": l.From.CreatedAt,
+				},
+			},
+			bson.M{
+				"createdAt": l.From.CreatedAt,
+				"_id": bson.M{
+					"$gt": l.From.ID,
+				},
+			},
+		}
+	case !l.From.CreatedAt.IsZero():
+		filter["createdAt"] = bson.M{
+			"$gt": l.From.CreatedAt,
+		}
+	}
+	if l.Room != uuid.Nil {
+		filter["roomId"] = l.Room
+	}
+	return filter
 }
