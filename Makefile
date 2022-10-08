@@ -47,10 +47,12 @@ cert-create:
 
 .PHONY: cert-renew
 cert-renew:
+	cd deploy && docker-compose -f api.docker-compose.yml down
 	docker run -it --rm -p 443:443 -p 80:80 --name certbot \
 	  -v /etc/letsencrypt:/etc/letsencrypt          \
 	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
 	  certbot/certbot renew
+	cd deploy && docker-compose -f api.docker-compose.yml up -d
 
 .PHONY: build
 build:
