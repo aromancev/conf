@@ -19,5 +19,8 @@ export default defineConfig({
         hmr: {
             clientPort: 80,
         },
+    },
+    build: {
+        chunkSizeWarningLimit: 700,
     }
 })

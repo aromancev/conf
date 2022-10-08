@@ -1,61 +1,59 @@
-import { LocalStream, RemoteStream, Constraints } from "ion-sdk-js"
-import { computed, reactive, readonly, ref, Ref, ComputedRef } from "vue"
+import { LocalStream, Constraints } from "ion-sdk-js"
+import { reactive, readonly } from "vue"
 import { RTCPeer, eventClient } from "@/api"
 import { BufferedAggregator } from "./aggregators/buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
 import { Peer, PeerAggregator } from "./aggregators/peers"
-import { RoomEvent, Hint, Track, RecordingStatus } from "@/api/room/schema"
+import { Stream, StreamAggregator } from "./aggregators/streams"
+import { RecordingAggregator } from "./aggregators/recording"
+import { RoomEvent, Hint, Track } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
 
-interface Remote {
-  camera?: MediaStream
-  screen?: MediaStream
-  audios: MediaStream[]
-}
-
-interface Local {
-  camera?: LocalStream
-  screen?: LocalStream
-  mic?: LocalStream
-}
-
 interface State {
-  tracks: Map<string, Track>
+  peers: Map<string, Peer>
+  messages: Message[]
+  isPublishing: boolean
+  isLoading: boolean
+  recording: {
+    isRecording: boolean
+  }
+  remote: Map<string, Stream>
+  local: {
+    camera?: LocalStream
+    screen?: LocalStream
+    mic?: LocalStream
+  }
 }
 
 export class LiveRoom {
-  messages: Message[]
-  peers: Map<string, Peer>
-
-  private local: Local
-  private remote: Remote
-  private joined: Ref<boolean>
-  private publishing: Ref<boolean>
-  private recording: Ref<boolean>
   private rtc: RTCPeer
-  private state: State
-  private streamsByTrackId: Map<string, RemoteStream>
-  private tracksById: Map<string, Track>
+  private _state: State
+  private readState: State
+  private peerState: PeerState
   private profileRepo: ProfileRepository
+  private messageAggregator?: MessageAggregator
 
   constructor() {
-    this.local = reactive<Local>({}) as Local
-    this.remote = reactive<Remote>({
-      audios: [],
-    })
-
-    this.joined = ref<boolean>(false)
-    this.publishing = ref<boolean>(false)
-    this.recording = ref<boolean>(false)
-    this.messages = reactive<Message[]>([])
-    this.peers = reactive<Map<string, Peer>>(new Map<string, Peer>())
-
+    this._state = reactive<State>({
+      peers: new Map(),
+      messages: [],
+      isLoading: false,
+      isPublishing: false,
+      recording: {
+        isRecording: false,
+      },
+      remote: new Map(),
+      local: {},
+    }) as State
+    this.readState = readonly(this._state) as State
     this.profileRepo = new ProfileRepository(100, 3000)
     this.rtc = new RTCPeer()
-    this.state = { tracks: new Map() }
-    this.streamsByTrackId = new Map()
-    this.tracksById = new Map()
+    this.peerState = { tracks: new Map() }
+  }
+
+  get state(): State {
+    return this.readState
   }
 
   close(): void {
@@ -65,94 +63,50 @@ export class LiveRoom {
     this.rtc.close()
   }
 
-  remoteStreams(): Remote {
-    return readonly(this.remote) as Remote
-  }
-
-  localStreams(): Local {
-    return readonly(this.local) as Local
-  }
-
-  isJoined(): ComputedRef<boolean> {
-    return computed(() => this.joined.value)
-  }
-
-  isPublishing(): ComputedRef<boolean> {
-    return computed(() => this.publishing.value)
-  }
-
-  isRecording(): ComputedRef<boolean> {
-    return computed(() => this.recording.value)
-  }
-
   async join(roomId: string) {
-    this.joined.value = false
+    this._state.isLoading = true
 
-    // A workaround to avoid creating a new class to hide `put` method from the public API.
-    const thisAggregator = {
-      put: (event: RoomEvent) => {
-        this.put(event)
-      },
-    }
+    try {
+      const streams = new StreamAggregator()
+      const peers = new PeerAggregator(this.profileRepo)
+      const recording = new RecordingAggregator()
+      this.messageAggregator = new MessageAggregator(this.profileRepo)
+      const aggregators = new BufferedAggregator([peers, streams, recording, this.messageAggregator], 50)
 
-    const aggregators = new BufferedAggregator(
-      [
-        new MessageAggregator(this.profileRepo, this.messages),
-        new PeerAggregator(this.profileRepo, this.peers),
-        thisAggregator,
-      ],
-      50,
-    )
+      this._state.remote = streams.state().streams
+      this._state.peers = peers.state().peers
+      this._state.recording = recording.state()
+      this._state.messages = this.messageAggregator.state().messages
 
-    this.rtc.onevent = (event: RoomEvent): void => {
-      aggregators.put(event)
-    }
-    this.rtc.ontrack = (track: MediaStreamTrack, stream: RemoteStream): void => {
-      if (track.kind !== "video" && track.kind !== "audio") {
-        return
+      this.rtc.onevent = (event: RoomEvent): void => {
+        aggregators.put(event)
       }
+      this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
+      await this.rtc.join(roomId, true)
 
-      const id = trackId(stream)
-      this.streamsByTrackId.set(id, stream)
-      this.computeRemote()
-      stream.onremovetrack = () => {
-        this.streamsByTrackId.delete(id)
-        this.computeRemote()
-      }
+      const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
+      const events = await iter.next({ count: 3000, seconds: 2 * 60 * 60 })
+      // Sorting events to always be in chronological order.
+      events.reverse()
+      aggregators.prepend(...events)
+      aggregators.flush()
+    } finally {
+      this._state.isLoading = false
     }
-    await this.rtc.join(roomId, true)
-
-    const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
-    const events = await iter.next({ count: 500, seconds: 2 * 60 * 60 })
-    // Sorting events to always be in chronological order.
-    events.sort((l: RoomEvent, r: RoomEvent): number => {
-      return l.createdAt - r.createdAt
-    })
-    aggregators.prepend(...events)
-    aggregators.flush()
-
-    this.joined.value = true
   }
 
   async send(userId: string, message: string): Promise<void> {
-    if (!this.rtc) {
+    if (!this.rtc || !this.messageAggregator) {
       throw new Error("Must join room before sending a message.")
     }
 
-    const msg: Message = {
-      id: "",
-      fromId: userId,
-      text: message,
-      accepted: false,
-      profile: this.profileRepo.profile(userId),
-    }
-    this.messages.push(msg)
+    const setId = this.messageAggregator.addMessage(userId, message)
     const event = await this.rtc.message({ text: message })
-    msg.id = event.id
+    setId(event.id)
   }
 
   switchCamera() {
-    if (this.local.camera) {
+    if (this._state.local.camera) {
       this.unshareCamera()
     } else {
       this.shareCamera()
@@ -160,7 +114,7 @@ export class LiveRoom {
   }
 
   switchScreen() {
-    if (this.local.screen) {
+    if (this._state.local.screen) {
       this.unshareScreen()
     } else {
       this.shareScreen()
@@ -168,7 +122,7 @@ export class LiveRoom {
   }
 
   switchMic() {
-    if (this.local.mic) {
+    if (this._state.local.mic) {
       this.unshareMic()
     } else {
       this.shareMic()
@@ -176,7 +130,7 @@ export class LiveRoom {
   }
 
   async shareCamera() {
-    this.local.camera = await this.share(async () => {
+    this._state.local.camera = await this.share(async () => {
       return await LocalStream.getUserMedia({
         codec: "vp8",
         resolution: "vga",
@@ -188,12 +142,12 @@ export class LiveRoom {
   }
 
   unshareCamera() {
-    this.unshare(this.local.camera)
-    this.local.camera = undefined
+    this.unshare(this._state.local.camera)
+    this._state.local.camera = undefined
   }
 
   async shareScreen() {
-    this.local.screen = await this.share(async () => {
+    this._state.local.screen = await this.share(async () => {
       const stream = await LocalStream.getDisplayMedia({
         codec: "vp8",
         resolution: "hd",
@@ -218,12 +172,12 @@ export class LiveRoom {
   }
 
   unshareScreen() {
-    this.unshare(this.local.screen)
-    this.local.screen = undefined
+    this.unshare(this._state.local.screen)
+    this._state.local.screen = undefined
   }
 
   async shareMic() {
-    this.local.mic = await this.share(() => {
+    this._state.local.mic = await this.share(() => {
       return LocalStream.getUserMedia({
         video: false,
         audio: true,
@@ -232,28 +186,28 @@ export class LiveRoom {
   }
 
   unshareMic() {
-    this.unshare(this.local.mic)
-    this.local.mic = undefined
+    this.unshare(this._state.local.mic)
+    this._state.local.mic = undefined
   }
 
   private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | undefined> {
-    if (!this.rtc || !this.joined.value || this.publishing.value) {
+    if (!this.rtc || this._state.isLoading || this._state.isPublishing) {
       return undefined
     }
 
+    this._state.isPublishing = true
     try {
-      this.publishing.value = true
       const stream = await fetch()
       const tId = trackId(stream)
-      this.state.tracks.set(tId, { id: tId, hint: hint })
-      await this.rtc.state({ tracks: Array.from(this.state.tracks.values()) })
+      this.peerState.tracks.set(tId, { id: tId, hint: hint })
+      await this.rtc.state({ tracks: Array.from(this.peerState.tracks.values()) })
       this.rtc.publish(stream)
       return stream
     } catch (e) {
       console.warn("Failed to share media:", e)
       return undefined
     } finally {
-      this.publishing.value = false
+      this._state.isPublishing = false
     }
   }
 
@@ -261,64 +215,17 @@ export class LiveRoom {
     if (!stream) {
       return
     }
-    this.state.tracks.delete(trackId(stream))
+    this.peerState.tracks.delete(trackId(stream))
     stream.unpublish()
     for (const t of stream.getTracks()) {
       t.stop()
       stream.removeTrack(t)
     }
   }
+}
 
-  private put(event: RoomEvent): void {
-    const peerState = event.payload.peerState
-    if (peerState) {
-      if (!peerState?.tracks || peerState.tracks.length === 0) {
-        return
-      }
-      for (const t of peerState.tracks) {
-        this.tracksById.set(t.id, t)
-      }
-      this.computeRemote()
-      return
-    }
-
-    const recording = event.payload.recording
-    if (recording) {
-      switch (recording.status) {
-        case RecordingStatus.Started:
-          this.recording.value = true
-          break
-        case RecordingStatus.Stopped:
-          this.recording.value = false
-          break
-      }
-      return
-    }
-  }
-
-  computeRemote() {
-    this.remote.camera = undefined
-    this.remote.screen = undefined
-    this.remote.audios = []
-
-    this.streamsByTrackId.forEach((stream: RemoteStream, trackId: string) => {
-      const track = this.tracksById.get(trackId)
-      if (!track) {
-        return
-      }
-      switch (track.hint) {
-        case Hint.Camera:
-          this.remote.camera = stream
-          break
-        case Hint.Screen:
-          this.remote.screen = stream
-          break
-        case Hint.UserAudio:
-          this.remote.audios.push(stream)
-          break
-      }
-    })
-  }
+interface PeerState {
+  tracks: Map<string, Track>
 }
 
 function trackId(s: MediaStream): string {

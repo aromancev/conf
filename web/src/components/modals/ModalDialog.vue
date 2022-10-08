@@ -15,9 +15,14 @@
 </template>
 
 <script setup lang="ts">
+interface Controller {
+  submit(id: string): void
+}
+
 const props = defineProps<{
   buttons: Record<string, string>
   disabled?: boolean
+  ctrl?: Controller
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +32,9 @@ const emit = defineEmits<{
 function click(id: string) {
   if (props.disabled) {
     return
+  }
+  if (props.ctrl) {
+    props.ctrl.submit(id)
   }
   emit("click", id)
 }

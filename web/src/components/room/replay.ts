@@ -9,7 +9,7 @@ import { RoomEvent } from "@/api/room/schema"
 import { duration } from "@/platform/time"
 import { Throttler } from "@/platform/sync"
 
-export interface State {
+interface State {
   isLoading: boolean
   isPlaying: boolean
   isBuffering: boolean
@@ -91,12 +91,13 @@ export class ReplayRoom {
       }
 
       const media = new MediaAggregator(roomId, recording.startedAt)
+      const peers = new PeerAggregator(this.profileRepo)
+      const messages = new MessageAggregator(this.profileRepo)
+      this.aggregators = [messages, peers, media]
+
       this._state.medias = media.state().medias
-      this.aggregators = [
-        new MessageAggregator(this.profileRepo, this._state.messages),
-        new PeerAggregator(this.profileRepo, this._state.peers),
-        media,
-      ]
+      this._state.peers = peers.state().peers
+      this._state.messages = messages.state().messages
 
       this.resetState()
       this.resetEventFetching()
@@ -313,8 +314,6 @@ export class ReplayRoom {
         agg.reset()
       }
     }
-    this._state.messages.splice(0, this._state.messages.length)
-    this._state.peers.clear()
     this.putFromIndex = 0
   }
 

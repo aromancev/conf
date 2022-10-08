@@ -1,6 +1,5 @@
+import { reactive, readonly } from "vue"
 import { RoomEvent } from "@/api/room/schema"
-
-const maxMessages = 100
 
 interface Profile {
   handle: string
@@ -12,6 +11,10 @@ interface Repo {
   profile(id: string): Profile
 }
 
+export interface State {
+  messages: Message[]
+}
+
 export interface Message {
   id: string
   fromId: string
@@ -21,12 +24,18 @@ export interface Message {
 }
 
 export class MessageAggregator {
-  private messages: Message[]
+  private _state: State
   private repo: Repo
 
-  constructor(repo: Repo, messages: Message[]) {
+  constructor(repo: Repo) {
+    this._state = reactive({
+      messages: [],
+    })
     this.repo = repo
-    this.messages = messages
+  }
+
+  state(): State {
+    return readonly(this._state) as State
   }
 
   put(event: RoomEvent): void {
@@ -49,18 +58,41 @@ export class MessageAggregator {
       existing.text = msg.text
       existing.accepted = msg.accepted
     } else {
-      this.messages.push(msg)
+      this._state.messages.push(msg)
     }
 
     // Drop outstanding message.
-    if (this.messages.length > maxMessages) {
-      this.messages.shift()
+    if (this._state.messages.length > CAPACITY) {
+      this._state.messages.shift()
+    }
+  }
+
+  reset(): void {
+    this._state.messages.splice(0, this._state.messages.length)
+  }
+
+  // addMessage returns a function that can be called to provide message id for created message.
+  addMessage(userId: string, text: string): (id: string) => void {
+    const msg: Message = {
+      id: "",
+      fromId: userId,
+      text: text,
+      accepted: false,
+      profile: this.repo.profile(userId),
+    }
+    this._state.messages.push(msg)
+    // Drop outstanding message.
+    if (this._state.messages.length > CAPACITY) {
+      this._state.messages.shift()
+    }
+    return (id: string) => {
+      msg.id = id
     }
   }
 
   // Since the number of messages is not too large, we don't use a separate map for simplicity.
   private find(id: string): Message | null {
-    for (const m of this.messages) {
+    for (const m of this._state.messages) {
       if (m.id === id) {
         return m
       }
@@ -68,3 +100,5 @@ export class MessageAggregator {
     return null
   }
 }
+
+const CAPACITY = 500
