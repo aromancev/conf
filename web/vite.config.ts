@@ -8,6 +8,8 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Only including mediaplayer to reduce bundle size.
+            'dashjs': require.resolve('dashjs/dist/dash.mediaplayer.min.js')
         },
     },
     plugins: [vue()],
