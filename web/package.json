@@ -10,7 +10,7 @@
     "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts && curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
   },
   "dependencies": {
-    "vue": "^3.2.25",
+    "vue": "^3.2.40",
     "vue-router": "^4.0.12",
     "@apollo/client": "^3.3.20",
     "dashjs": "^4.5.0",
@@ -38,6 +38,8 @@
     "peerDependencyRules": {
       "ignoreMissing": [
         "webpack", 
+        "apollo",
+        "apollo-codegen-core",
         "apollo-language-server",
         "@apollographql/graphql-language-service-interface",
         "@apollographql/graphql-language-service-parser",

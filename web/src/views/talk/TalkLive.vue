@@ -4,22 +4,17 @@
       <div class="video-content">
         <div class="videos">
           <div class="screen video-container">
-            <RoomLiveVideo
-              v-if="local.screen || remote.screen"
-              class="video screen-video"
-              :src="local.screen || remote.screen"
-            >
-            </RoomLiveVideo>
+            <RoomLiveVideo v-if="screen" class="video screen-video" :src="screen"> </RoomLiveVideo>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
           </div>
           <div class="camera video-container">
             <video
-              v-if="local.camera || remote.camera"
+              v-if="camera"
               class="video camera-video"
-              :class="{ local: local.camera }"
-              :srcObject="local.camera || remote.camera"
+              :class="{ local: room.state.local.camera }"
+              :srcObject="camera"
               autoplay
               muted
             ></video>
@@ -30,33 +25,33 @@
         </div>
       </div>
 
-      <RoomAudience ref="audience" :loading="!roomJoined" :peers="room.peers" />
+      <RoomAudience ref="audience" :loading="room.state.isLoading" :peers="room.state.peers" />
     </div>
     <div class="controls">
       <div class="controls-top">
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: local.screen }"
-          :disabled="roomJoined && !roomPublishing ? null : true"
+          :class="{ active: room.state.local.screen }"
+          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
           @click="room.switchScreen"
         >
-          {{ local.screen ? "desktop_windows" : "desktop_access_disabled" }}
+          {{ room.state.local.screen ? "desktop_windows" : "desktop_access_disabled" }}
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: local.camera }"
-          :disabled="roomJoined && !roomPublishing ? null : true"
+          :class="{ active: room.state.local.camera }"
+          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
           @click="room.switchCamera"
         >
-          {{ local.camera ? "videocam" : "videocam_off" }}
+          {{ room.state.local.camera ? "videocam" : "videocam_off" }}
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: local.mic }"
-          :disabled="roomJoined && !roomPublishing ? null : true"
+          :class="{ active: room.state.local.mic }"
+          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
           @click="room.switchMic"
         >
-          {{ local.mic ? "mic" : "mic_off" }}
+          {{ room.state.local.mic ? "mic" : "mic_off" }}
         </div>
         <div
           v-if="recordingStatus !== 'stopped'"
@@ -85,26 +80,36 @@
       </div>
     </div>
     <div v-if="sidePanel !== SidePanel.None" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="room.messages" :is-loading="!roomJoined" @message="sendMessage" />
+      <RoomMessages
+        :user-id="user.id"
+        :messages="room.state.messages"
+        :is-loading="room.state.isLoading"
+        @message="sendMessage"
+      />
     </div>
   </div>
 
   <div v-if="joinConfirmed">
-    <audio v-for="stream in remote.audios" :key="stream.id" :srcObject="stream" autoplay></audio>
+    <audio v-for="stream in audios" :key="stream.id" :srcObject="stream" autoplay></audio>
   </div>
 
-  <ModalDialog v-if="modal === 'confirm_join'" :buttons="{ join: 'Join', leave: 'Leave' }" @click="confirmJoin">
+  <ModalDialog
+    v-if="modal.state.current === 'confirm_join'"
+    :ctrl="modal"
+    :buttons="{ join: 'Join', leave: 'Leave' }"
+    @click="confirmJoin"
+  >
     <p>You are about to join the talk online</p>
     <p v-if="inviteLink">
       Share this link to invite people<br />
       <CopyField :value="inviteLink"></CopyField>
     </p>
   </ModalDialog>
-  <ModalDialog v-if="modal === 'confirm_leave'" :buttons="{ leave: 'Leave', stay: 'Stay' }" @click="onModalClose">
+  <ModalDialog v-if="modal.state.current === 'confirm_leave'" :ctrl="modal" :buttons="{ leave: 'Leave', stay: 'Stay' }">
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
-  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
+  <InternalError v-if="modal.state.current === 'error'" :ctrl="modal" />
 </template>
 
 <script setup lang="ts">
@@ -113,6 +118,8 @@ import { onBeforeRouteLeave } from "vue-router"
 import { talkClient } from "@/api"
 import { Talk, TalkState, userStore } from "@/api/models"
 import { LiveRoom } from "@/components/room"
+import { Hint } from "@/api/room/schema"
+import { ModalController } from "@/components/modals/controller"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
@@ -120,8 +127,9 @@ import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
 
-type Modal = "none" | "error" | "confirm_join" | "confirm_leave"
 type RecordingStatus = "none" | "pending" | "recording" | "stopped"
+
+const modal = new ModalController<"error" | "confirm_join" | "confirm_leave">()
 
 enum SidePanel {
   None = "",
@@ -146,21 +154,47 @@ const props = defineProps<{
   joinConfirmed?: boolean
 }>()
 
-const modal = ref<Modal>("none")
 const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
 const audience = ref<Resizer>()
 const room = new LiveRoom()
-const roomJoined = room.isJoined()
-const roomPublishing = room.isPublishing()
-const roomRecording = room.isRecording()
-const local = room.localStreams()
-const remote = room.remoteStreams()
 const recordingStatus = ref<RecordingStatus>("none")
 const roomId = computed<string>(() => {
   return props.talk.roomId
 })
 
-let modalClosed: (button: string) => void = () => {} // eslint-disable-line @typescript-eslint/no-empty-function
+const screen = computed<MediaStream | undefined>(() => {
+  if (room.state.local.screen) {
+    return room.state.local.screen
+  }
+
+  for (const stream of room.state.remote.values()) {
+    if (stream.hint === Hint.Screen) {
+      return stream.sourse
+    }
+  }
+  return undefined
+})
+const camera = computed<MediaStream | undefined>(() => {
+  if (room.state.local.camera) {
+    return room.state.local.camera
+  }
+
+  for (const stream of room.state.remote.values()) {
+    if (stream.hint === Hint.Camera) {
+      return stream.sourse
+    }
+  }
+  return undefined
+})
+const audios = computed<MediaStream[]>(() => {
+  const auds: MediaStream[] = []
+  for (const stream of room.state.remote.values()) {
+    if (stream.hint === Hint.UserAudio) {
+      auds.push(stream.sourse)
+    }
+  }
+  return auds
+})
 
 watch(
   roomId,
@@ -171,8 +205,8 @@ watch(
   { immediate: true },
 )
 
-watch(roomRecording, (isRecording: boolean) => {
-  recordingStatus.value = isRecording ? "recording" : "stopped"
+watch(room.state.recording, (r) => {
+  recordingStatus.value = r.isRecording ? "recording" : "stopped"
 })
 watch(
   () => props.talk.state,
@@ -195,7 +229,7 @@ watch(
 
 onMounted(() => {
   if (!props.joinConfirmed) {
-    modal.value = "confirm_join"
+    modal.set("confirm_join")
   }
 })
 
@@ -204,27 +238,16 @@ onUnmounted(() => {
 })
 
 onBeforeRouteLeave(async (to, from, next) => {
-  if (!local.screen && !local.camera && !local.mic) {
+  if (!room.state.local.screen && !room.state.local.camera && !room.state.local.mic) {
     next()
     return
   }
-  const btn = await new Promise<string>((resolve) => {
-    modalClosed = (button: string) => {
-      resolve(button)
-    }
-    modal.value = "confirm_leave"
-  })
+  const btn = await modal.set("confirm_leave")
   next(btn === "leave")
 })
 
-function onModalClose(button: string): void {
-  modalClosed(button)
-  modal.value = "none"
-}
-
 function confirmJoin(value: string) {
   emit("join", value === "join")
-  modal.value = "none"
 }
 
 function sendMessage(message: string) {
@@ -251,7 +274,7 @@ async function handleRecording() {
       try {
         await talkClient.startRecording({ id: props.talk.id })
       } catch (e) {
-        modal.value = "error"
+        modal.set("error")
       }
       break
     case "recording":
@@ -259,7 +282,7 @@ async function handleRecording() {
       try {
         await talkClient.stopRecording({ id: props.talk.id })
       } catch (e) {
-        modal.value = "error"
+        modal.set("error")
       }
       break
   }
