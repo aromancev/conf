@@ -19,7 +19,7 @@ ENV VITE_SFU_TURN_URLS=$VITE_SFU_TURN_URLS
 ENV VITE_SFU_STUN_URLS=$VITE_SFU_STUN_URLS
 ENV VITE_STORAGE_URL=$VITE_STORAGE_URL
 
-RUN NODE_OPTIONS=--max-old-space-size=1024 pnpm run build
+RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm run build
 
 FROM nginx:1.19.6-alpine
 
