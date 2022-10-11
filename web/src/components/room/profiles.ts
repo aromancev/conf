@@ -25,7 +25,7 @@ export class ProfileRepository {
   constructor(cacheLimit: number, debounceFetchMS: number) {
     this.cache = new LRU(cacheLimit)
     this.fetchThrottle = new Throttler({ delayMs: debounceFetchMS })
-    this.fetchThrottle.func = () => this.fetch()
+    this.fetchThrottle.func = async () => await this.fetch()
   }
 
   profile(id: string): Profile {

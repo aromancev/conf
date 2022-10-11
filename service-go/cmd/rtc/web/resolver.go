@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -62,9 +63,16 @@ type Service struct {
 }
 
 type Events struct {
-	Items    []RoomEvent
+	Items    []GraphEvent
 	Limit    int32
 	NextFrom *EventFrom
+}
+
+type GraphEvent struct {
+	ID        string
+	RoomID    string
+	CreatedAt float64
+	Payload   string
 }
 
 type EventLookup struct {
@@ -190,7 +198,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		return Events{}, NewInternalError()
 	}
 	res := Events{
-		Items: make([]RoomEvent, len(events)),
+		Items: make([]GraphEvent, len(events)),
 		Limit: int32(lookup.Limit),
 	}
 	if len(events) != 0 {
@@ -201,7 +209,7 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		}
 	}
 	for i, e := range events {
-		res.Items[i] = *NewRoomEvent(e)
+		res.Items[i] = *newGraphEvent(e)
 	}
 	return res, nil
 }
@@ -270,6 +278,17 @@ func newRecording(rec record.Record) Recording {
 		api.StoppedAt = &t
 	}
 	return api
+}
+
+func newGraphEvent(ev event.Event) *GraphEvent {
+	room := NewRoomEvent(ev)
+	pl, _ := json.Marshal(room.Payload)
+	return &GraphEvent{
+		ID:        room.ID,
+		RoomID:    room.RoomID,
+		CreatedAt: room.CreatedAt,
+		Payload:   string(pl),
+	}
 }
 
 //go:embed schema.graphql
