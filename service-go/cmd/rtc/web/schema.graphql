@@ -7,57 +7,8 @@ type Service {
 type Event {
     id: String!
     roomId: String!
-    payload: EventPayload!
+    payload: String!
     createdAt: Float!
-}
-
-type EventPayload {
-    message: EventMessage
-    peerState: EventPeerState
-    recording: EventRecording
-    trackRecording: EventTrackRecording
-}
-
-type EventMessage {
-    fromId: String!
-    text: String!
-}
-
-enum PeerStatus {
-    joined
-    left
-}
-
-type EventPeerState {
-    peerId: String!
-    status: PeerStatus
-    tracks: [Track!]!
-}
-
-enum RecordingStatus {
-    started
-    stopped
-}
-
-type EventRecording {
-    status: RecordingStatus!
-}
-
-type EventTrackRecording {
-    id: String!
-    trackId: String!
-}
-
-type Track {
-    id: String!
-    hint: Hint!
-}
-
-enum Hint {
-    camera
-    screen
-    user_audio
-    device_audio
 }
 
 input EventLookup {

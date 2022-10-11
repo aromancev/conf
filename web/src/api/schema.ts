@@ -94,50 +94,12 @@ export interface updateConfaVariables {
 // GraphQL query operation: events
 // ====================================================
 
-export interface events_events_items_payload_peerState_tracks {
-  __typename: "Track";
-  id: string;
-  hint: Hint;
-}
-
-export interface events_events_items_payload_peerState {
-  __typename: "EventPeerState";
-  peerId: string;
-  status: PeerStatus | null;
-  tracks: events_events_items_payload_peerState_tracks[];
-}
-
-export interface events_events_items_payload_message {
-  __typename: "EventMessage";
-  fromId: string;
-  text: string;
-}
-
-export interface events_events_items_payload_recording {
-  __typename: "EventRecording";
-  status: RecordingStatus;
-}
-
-export interface events_events_items_payload_trackRecording {
-  __typename: "EventTrackRecording";
-  id: string;
-  trackId: string;
-}
-
-export interface events_events_items_payload {
-  __typename: "EventPayload";
-  peerState: events_events_items_payload_peerState | null;
-  message: events_events_items_payload_message | null;
-  recording: events_events_items_payload_recording | null;
-  trackRecording: events_events_items_payload_trackRecording | null;
-}
-
 export interface events_events_items {
   __typename: "Event";
   id: string;
   roomId: string;
   createdAt: number;
-  payload: events_events_items_payload;
+  payload: string;
 }
 
 export interface events_events_nextFrom {
@@ -480,23 +442,6 @@ export interface stopTalkRecordingVariables {
 export enum EventOrder {
   ASC = "ASC",
   DESC = "DESC",
-}
-
-export enum Hint {
-  camera = "camera",
-  device_audio = "device_audio",
-  screen = "screen",
-  user_audio = "user_audio",
-}
-
-export enum PeerStatus {
-  joined = "joined",
-  left = "left",
-}
-
-export enum RecordingStatus {
-  started = "started",
-  stopped = "stopped",
 }
 
 export enum TalkState {

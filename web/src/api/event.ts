@@ -1,17 +1,7 @@
 import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy } from "./api"
-import {
-  EventLookup,
-  EventLimit,
-  EventOrder,
-  events,
-  eventsVariables,
-  PeerStatus as GPeerStatus,
-  RecordingStatus as GRecordingStatus,
-  Hint as GHint,
-  EventFromInput,
-} from "./schema"
-import { RoomEvent, EventPeerState, PeerStatus, RecordingStatus, Hint } from "./room/schema"
+import { EventLookup, EventLimit, EventOrder, events, eventsVariables, EventFromInput } from "./schema"
+import { RoomEvent } from "./room/schema"
 
 interface OptionalFetchParams {
   policy?: FetchPolicy
@@ -86,27 +76,7 @@ export class EventIterator {
               id
               roomId
               createdAt
-              payload {
-                peerState {
-                  peerId
-                  status
-                  tracks {
-                    id
-                    hint
-                  }
-                }
-                message {
-                  fromId
-                  text
-                }
-                recording {
-                  status
-                }
-                trackRecording {
-                  id
-                  trackId
-                }
-              }
+              payload
             }
             nextFrom {
               id
@@ -127,72 +97,13 @@ export class EventIterator {
     this.from = resp.data.events.nextFrom || undefined
     const events: RoomEvent[] = []
     for (const item of resp.data.events.items) {
-      const event: RoomEvent = {
+      events.push({
         id: item.id,
         roomId: item.roomId,
         createdAt: item.createdAt,
-        payload: {},
-      }
-      if (item.payload.message) {
-        event.payload.message = item.payload.message
-      }
-      if (item.payload.peerState) {
-        const state: EventPeerState = {
-          peerId: item.payload.peerState.peerId,
-          status: item.payload.peerState.status ? fromGPeerState(item.payload.peerState.status) : undefined,
-        }
-        if (item.payload.peerState.tracks) {
-          state.tracks = []
-          for (const t of item.payload.peerState.tracks) {
-            state.tracks.push({
-              id: t.id,
-              hint: fromGHint(t.hint) || Hint.Camera,
-            })
-          }
-        }
-        event.payload.peerState = state
-      }
-      if (item.payload.recording) {
-        event.payload.recording = {
-          status: fromGRecordingState(item.payload.recording.status),
-        }
-      }
-      if (item.payload.trackRecording) {
-        event.payload.trackRecording = item.payload.trackRecording
-      }
-      events.push(event)
+        payload: JSON.parse(item.payload),
+      })
     }
     return events
-  }
-}
-
-function fromGPeerState(s: GPeerStatus): PeerStatus {
-  switch (s) {
-    case GPeerStatus.joined:
-      return PeerStatus.Joined
-    case GPeerStatus.left:
-      return PeerStatus.Left
-  }
-}
-
-function fromGRecordingState(s: GRecordingStatus): RecordingStatus {
-  switch (s) {
-    case GRecordingStatus.started:
-      return RecordingStatus.Started
-    case GRecordingStatus.stopped:
-      return RecordingStatus.Stopped
-  }
-}
-
-function fromGHint(h: GHint): Hint {
-  switch (h) {
-    case GHint.camera:
-      return Hint.Camera
-    case GHint.device_audio:
-      return Hint.DeviceAudio
-    case GHint.screen:
-      return Hint.Screen
-    case GHint.user_audio:
-      return Hint.UserAudio
   }
 }
