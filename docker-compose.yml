@@ -1,7 +1,48 @@
 version: '3.9'
+
+x-go-common: &go-common
+  image: golang:1.19-alpine
+  restart: on-failure
+  volumes:
+    - ./auth:/app/auth:delegated
+    - ./gateway:/app/gateway:delegated
+    - ./proto:/app/proto:delegated
+    - ./service-go:/app/service-go:delegated
+    - ./telemetry:/app/telemetry:delegated
+    - ./avp:/app/avp:delegated
+    - ./iam:/app/iam:delegated
+    - ./gateway/cmd/gateway/config.json:/config.json:delegated
+  networks:
+      - confa
+
+x-go-env: &go-env
+  GOWORK: "off"
+  LOG_FORMAT: "console"
+  LISTEN_WEB_ADDRESS: ":80"
+  LISTEN_RPC_ADDRESS: ":8080"
+  SECRET_KEY: "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo="
+  PUBLIC_KEY: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+  MONGO_HOSTS: "mongo:27017"
+  BEANSTALK_POOL: "beanstalk:11300"
+  BEANSTALK_TUBE_SEND_EMAIL: "iam/send-email"
+  BEANSTALK_TUBE_UPDATE_AVATAR: "confa/update-avatar"
+  BEANSTALK_TUBE_START_RECORDING: "confa/start-recording"
+  BEANSTALK_TUBE_STOP_RECORDING: "confa/stop-recording"
+  BEANSTALK_TUBE_STORE_EVENT: "rtc/store-event"
+  BEANSTALK_TUBE_PROCESS_TRACK: "avp/process-track"
+  STORAGE_HOST: "minio:80"
+  STORAGE_ACCESS_KEY: "minio"
+  STORAGE_SECRET_KEY: "miniominio"
+  STORAGE_PUBLIC_URL: "/api/storage"
+  STORAGE_BUCKET_USER_PUBLIC: "user-public"
+  STORAGE_BUCKET_USER_UPLOADS: "user-uploads"
+  STORAGE_BUCKET_TRACK_RECORDS: "confa-tracks-internal"
+  STORAGE_BUCKET_TRACK_PUBLIC: "confa-tracks-public"
+
 services:
   nginx:
     image: nginx:1.19.6
+    restart: on-failure
     networks:
       - confa
     ports:
@@ -10,6 +51,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
 
   web:
+    restart: on-failure
     build:
       context: ./web
       dockerfile: Dockerfile.dev
@@ -17,195 +59,112 @@ services:
     networks:
       - confa
     environment:
-      - VITE_RTC_ROOM_URL=ws://localhost/api/rtc/room/socket
-      - VITE_SFU_TURN_URLS=turn:localhost?transport=tcp
-      - VITE_STORAGE_URL=/api/storage
+      VITE_RTC_ROOM_URL: "ws://localhost/api/rtc/room/socket"
+      VITE_SFU_TURN_URLS: "turn:localhost?transport=tcp"
+      VITE_STORAGE_URL: "/api/storage"
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
 
   gateway:
-    restart: on-failure
-    depends_on:
-      - confa
-      - rtc
-      
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/gateway/. -conf /config.json"
-    networks:
-      - confa
-    volumes:
-      - ./service-go:/app
-      - ./service-go/cmd/gateway/config.json:/config.json
+    <<: *go-common
+    working_dir: /app/gateway
+    command: "go run ./cmd/gateway -conf /config.json"
+    environment:
+      <<: *go-env
 
   iam:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/iam/."
-    networks:
-      - confa
+    <<: *go-common
+    working_dir: /app/iam
+    command: "go run ./cmd/iam"
     environment:
-      - LISTEN_WEB_ADDRESS=:80
-      - BASE_URL=http://localhost
-      - LOG_FORMAT=console
-      - SECRET_KEY=$SECRET_KEY
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - EMAIL_SERVER=email-client
-      - EMAIL_PORT=1025
-      - EMAIL_ADDRESS=noreply@confa.io
-      - EMAIL_PASSWORD=stub
-      - EMAIL_SECURE=false
-      - MONGO_HOSTS=mongo:27017
-      - MONGO_USER=iam
-      - MONGO_PASSWORD=iam
-      - MONGO_DATABASE=iam
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_SEND_EMAIL=iam/send-email
-    volumes:
-      - ./service-go:/app
+      <<: *go-env
+      BASE_URL: "http://localhost"
+      EMAIL_SERVER: "email-client"
+      EMAIL_PORT: "1025"
+      EMAIL_ADDRESS: "noreply@confa.io"
+      EMAIL_PASSWORD: "stub"
+      EMAIL_SECURE: "false"
+      MONGO_USER: "iam"
+      MONGO_PASSWORD: "iam"
+      MONGO_DATABASE: "iam"
 
   confa:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/confa/."
-    networks:
-      - confa
+    <<: *go-common
+    working_dir: /app/service-go
+    command: "go run ./cmd/confa"
     environment:
-      - LISTEN_WEB_ADDRESS=:80
-      - RTC_ADDRESS=http://rtc:8080
-      - LOG_FORMAT=console
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - MONGO_HOSTS=mongo:27017
-      - MONGO_USER=confa
-      - MONGO_PASSWORD=confa
-      - MONGO_DATABASE=confa
-      - STORAGE_HOST=minio:80
-      - STORAGE_ACCESS_KEY=minio
-      - STORAGE_SECRET_KEY=miniominio
-      - STORAGE_PUBLIC_URL=/api/storage
-      - STORAGE_BUCKET_USER_UPLOADS=user-uploads
-      - STORAGE_BUCKET_USER_PUBLIC=user-public
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
-      - BEANSTALKD_TUBE_START_RECORDING=confa/start-recording
-      - BEANSTALKD_TUBE_STOP_RECORDING=confa/stop-recording
-    volumes:
-      - ./service-go:/app
+      <<: *go-env
+      RTC_ADDRESS: "http://rtc:8080"
+      MONGO_USER: "confa"
+      MONGO_PASSWORD: "confa"
+      MONGO_DATABASE: "confa"
 
   rtc:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/rtc/."
-    networks:
-      - confa
+    <<: *go-common
+    working_dir: /app/service-go
+    command: "go run ./cmd/rtc"
     environment:
-      - LOG_FORMAT=console
-      - LISTEN_WEB_ADDRESS=:80
-      - LISTEN_RPC_ADDRESS=:8080
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - MONGO_HOSTS=mongo:27017
-      - MONGO_USER=rtc
-      - MONGO_PASSWORD=rtc
-      - MONGO_DATABASE=rtc
-      - RTC_SFU_ADDRESS=sfu:8080
-      - TRACKER_RPC_ADDRESS=http://tracker:8080
-      - BEANSTALK_POOL=beanstalkd:11300
-      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
-    volumes:
-      - ./service-go:/app
+      <<: *go-env
+      MONGO_USER: "rtc"
+      MONGO_PASSWORD: "rtc"
+      MONGO_DATABASE: "rtc"
+      RTC_SFU_ADDRESS: "sfu:8080"
+      TRACKER_RPC_ADDRESS: "http://tracker:8080"
 
   sfu:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/sfu/."
-    volumes:
-      - ./service-go:/app
-    networks:
-      - confa
+    <<: *go-common
+    working_dir: /app/service-go
+    command: "go run ./cmd/sfu"
     environment:
-      - LISTEN_WEB_ADDRESS=:8080
-      - ICE_PORT_MIN=5000
-      - ICE_PORT_MAX=5010
-      - ICE_URLS=stun:stun.stunprotocol.org:3478
-      - LOG_FORMAT=console
+      <<: *go-env
+      ICE_PORT_MIN: "5000"
+      ICE_PORT_MAX: "5010"
+      ICE_URLS: "stun:stun.stunprotocol.org:3478"
 
   turn:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/turn/."
+    <<: *go-common
+    working_dir: /app/service-go
+    command: "go run ./cmd/turn"
     ports:
       - "3478:3478"
-    volumes:
-      - ./service-go:/app
-    networks:
-      - confa
     environment:
-      - LISTEN_WEB_ADDRESS=:3478
-      - LOG_FORMAT=console
-      - REALM=confa.io
-      - USERNAME=confa
-      - CREDENTIAL=confa
-      - PUBLIC_IP=127.0.0.1
-      - PUBLIC_KEY=$PUBLIC_KEY
+      <<: *go-env
+      LISTEN_WEB_ADDRESS: ":3478"
+      REALM: "confa.io"
+      USERNAME: "confa"
+      CREDENTIAL: "confa"
+      PUBLIC_IP: "127.0.0.1"
 
   tracker:
-    build:
-      context: ./service-go
-      dockerfile: Dockerfile
-    command: "go run ./cmd/tracker/."
-    volumes:
-      - ./service-go:/app
-    networks:
-      - confa
+    <<: *go-common
+    working_dir: /app/service-go
+    command: "go run ./cmd/tracker"
     environment:
-      - LISTEN_RPC_ADDRESS=:8080
-      - SFU_ADDRESS=sfu:8080
-      - LOG_FORMAT=console
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - STORAGE_HOST=minio:80
-      - STORAGE_ACCESS_KEY=minio
-      - STORAGE_SECRET_KEY=miniominio
-      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
-      - BEANSTALK_POOL=beanstalkd:11300
-      - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
-      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+      <<: *go-env
+      SFU_ADDRESS: "sfu:8080"
 
   avp:
+    <<: *go-common
     build:
-      context: ./service-go
-      dockerfile: Dockerfile.ffmpeg
-    command: "go run ./cmd/avp/."
-    volumes:
-      - ./service-go:/app
-    networks:
-      - confa
+      dockerfile: Dockerfile
+    working_dir: /app/avp
+    command: "go run ./cmd/avp"
     environment:
-      - LOG_FORMAT=console
-      - STORAGE_HOST=minio:80
-      - STORAGE_ACCESS_KEY=minio
-      - STORAGE_SECRET_KEY=miniominio
-      - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
-      - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
+      <<: *go-env
 
-  beanstalkd:
+  beanstalk:
+    restart: on-failure
     build:
-      context: ./beanstalkd
+      context: ./beanstalk
       dockerfile: Dockerfile
     networks:
       - confa
     volumes:
-      - .artifacts/beanstalkd:/var/lib/beanstalkd
+      - .artifacts/beanstalk:/var/lib/beanstalkd
 
   mongo:
+    restart: on-failure
     image: mongo:4.4
     command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
     networks:
@@ -226,6 +185,7 @@ services:
         exec docker-entrypoint.sh $$@
 
   minio:
+    restart: on-failure
     image: minio/minio:RELEASE.2022-04-16T04-26-02Z
     command: server /data --address=":80"
     environment:
@@ -238,6 +198,7 @@ services:
       - .artifacts/minio:/data
 
   email-client:
+    restart: on-failure
     image: kbedel/fake-smtp-server
     profiles: [ "email-client" ]
     command: fake-smtp-server -s 1025 -h 80

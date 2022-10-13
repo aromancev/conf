@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/avp"
-	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/proto/avp"
+	"github.com/aromancev/proto/queue"
+	"github.com/aromancev/telemetry"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/prep/beanstalk"
@@ -56,7 +56,7 @@ func (b *Beanstalk) ProcessTrack(ctx context.Context, roomID, recordID uuid.UUID
 	body, err := proto.Marshal(
 		&queue.Job{
 			Payload: payload,
-			TraceId: trace.ID(ctx),
+			TraceId: telemetry.ID(ctx),
 		},
 	)
 	if err != nil {

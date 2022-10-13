@@ -23,7 +23,8 @@ mongosh:
 
 .PHONY: test
 test:
-	cd service-go && $(MAKE) test
+	cd ./proto && go test ./... -race -timeout 2m
+	cd ./service-go && go test ./... -race -timeout 2m
 
 .PHONY: lint
 lint:

@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	config := Config{}.WithDefault().WithEnv()
+	config := Config{}.WithEnv()
 	if err := config.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid config.")
 	}
@@ -65,11 +65,11 @@ func main() {
 
 	rtc.RegisterRTCServer(grpcServer, server.NewSFUServer(sfuService))
 
-	lis, err := net.Listen("tcp", config.ListenWebAddress)
+	lis, err := net.Listen("tcp", config.ListenRPCAddress)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to listen TCP.")
 	}
-	log.Info().Msg("Listening on " + config.ListenWebAddress)
+	log.Info().Msg("RPC listening on " + config.ListenRPCAddress)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal().Err(err).Msg("Failed to serve GRPC.")
 	}

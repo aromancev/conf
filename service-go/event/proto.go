@@ -3,7 +3,7 @@ package event
 import (
 	"time"
 
-	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/proto/rtc"
 	"github.com/google/uuid"
 )
 

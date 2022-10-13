@@ -7,8 +7,8 @@ import (
 	"time"
 
 	evtrack "github.com/aromancev/confa/event/tracker"
-	pb "github.com/aromancev/confa/internal/proto/tracker"
 	"github.com/aromancev/confa/tracker"
+	pb "github.com/aromancev/proto/tracker"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	sdk "github.com/pion/ion-sdk-go"

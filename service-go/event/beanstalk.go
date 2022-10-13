@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/queue"
-	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/proto/queue"
+	"github.com/aromancev/proto/rtc"
+	"github.com/aromancev/telemetry"
 	"github.com/prep/beanstalk"
 	"google.golang.org/protobuf/proto"
 )
@@ -42,7 +42,7 @@ func (e *BeansltalkEmitter) EmitEvent(ctx context.Context, event Event) error {
 	body, err := proto.Marshal(
 		&queue.Job{
 			Payload: payload,
-			TraceId: trace.ID(ctx),
+			TraceId: telemetry.ID(ctx),
 		},
 	)
 	if err != nil {

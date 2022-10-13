@@ -56,7 +56,7 @@ func (c Config) Validate() error {
 		return fmt.Errorf("invalid mongo config: %w", err)
 	}
 	if err := c.Beanstalk.Validate(); err != nil {
-		return fmt.Errorf("invalid beanstalkd config: %w", err)
+		return fmt.Errorf("invalid beanstalk config: %w", err)
 	}
 	if err := c.RTC.Validate(); err != nil {
 		return fmt.Errorf("invalid rtc config: %w", err)

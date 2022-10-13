@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/confa"
-	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/proto/rtc"
 
 	"github.com/google/uuid"
 )

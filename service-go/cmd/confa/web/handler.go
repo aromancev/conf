@@ -8,8 +8,8 @@ import (
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/auth"
+	"github.com/aromancev/telemetry"
 )
 
 type Handler struct {
@@ -35,7 +35,7 @@ func NewHandler(resolver *Resolver, publicKey *auth.PublicKey) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := trace.New(r.Context(), r.Header.Get("Trace-Id"))
+	ctx := telemetry.New(r.Context(), r.Header.Get("Trace-Id"))
 
 	defer func() {
 		if err := recover(); err != nil {

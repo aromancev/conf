@@ -10,14 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/auth"
 	"github.com/aromancev/confa/cmd/confa/queue"
 	"github.com/aromancev/confa/cmd/confa/web"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
-	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/profile"
+	"github.com/aromancev/proto/rtc"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/prep/beanstalk"
@@ -53,7 +53,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 	consumer, err := beanstalk.NewConsumer(
 		config.Beanstalk.ParsePool(),
@@ -75,7 +75,7 @@ func main() {
 			},
 		})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf(

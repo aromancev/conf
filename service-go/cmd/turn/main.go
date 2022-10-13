@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/auth"
 	"github.com/pion/logging"
 	"github.com/pion/turn/v2"
 	"github.com/rs/zerolog"

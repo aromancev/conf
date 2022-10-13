@@ -8,9 +8,9 @@ import (
 
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/backoff"
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/queue"
-	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/proto/queue"
+	"github.com/aromancev/proto/rtc"
+	"github.com/aromancev/telemetry"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
@@ -54,7 +54,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("Failed to unmarshal job. Burying.")
 		return
 	}
-	ctx = trace.New(ctx, j.TraceId)
+	ctx = telemetry.New(ctx, j.TraceId)
 	job.Body = j.Payload
 
 	log.Ctx(ctx).Info().Msg("Job received.")

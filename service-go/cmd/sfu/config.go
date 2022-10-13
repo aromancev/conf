@@ -12,7 +12,7 @@ const (
 )
 
 type Config struct {
-	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
 	ICEPortMin       uint16 `envconfig:"ICE_PORT_MIN"`
 	ICEPortMax       uint16 `envconfig:"ICE_PORT_MAX"`
 	ICEUrls          string `envconfig:"ICE_URLS"`
@@ -29,15 +29,8 @@ func (c Config) WithEnv() Config {
 	return c
 }
 
-func (c Config) WithDefault() Config {
-	c.ListenWebAddress = ":8080"
-	c.ICEPortMin = 5000
-	c.ICEPortMax = 5200
-	return c
-}
-
 func (c Config) Validate() error {
-	if c.ListenWebAddress == "" {
+	if c.ListenRPCAddress == "" {
 		return errors.New("address not set")
 	}
 	if c.ICEPortMin == 0 {

@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/internal/proto/rtc"
-	"github.com/aromancev/confa/internal/proto/tracker"
 	"github.com/aromancev/confa/room"
 	"github.com/aromancev/confa/room/record"
+	"github.com/aromancev/proto/rtc"
+	"github.com/aromancev/proto/tracker"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -25,7 +25,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/auth"
 	"github.com/aromancev/confa/cmd/rtc/queue"
 	"github.com/aromancev/confa/cmd/rtc/rpc"
 	"github.com/aromancev/confa/cmd/rtc/web"
@@ -68,7 +68,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeStoreEvent}, beanstalk.Config{
 		Multiply:         1,
@@ -83,7 +83,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
 	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))

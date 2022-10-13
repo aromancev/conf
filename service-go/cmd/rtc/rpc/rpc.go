@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/internal/proto/rtc"
-	"github.com/aromancev/confa/internal/proto/tracker"
 	"github.com/aromancev/confa/room"
 	"github.com/aromancev/confa/room/record"
+	"github.com/aromancev/proto/rtc"
+	"github.com/aromancev/proto/tracker"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/twitchtv/twirp"

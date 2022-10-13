@@ -142,10 +142,10 @@ func (c StorageConfig) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool               string `envconfig:"BEANSTALKD_POOL"`
-	TubeUpdateAvatar   string `envconfig:"BEANSTALKD_TUBE_UPDATE_AVATAR"`
-	TubeStartRecording string `envconfig:"BEANSTALKD_TUBE_START_RECORDING"`
-	TubeStopRecording  string `envconfig:"BEANSTALKD_TUBE_STOP_RECORDING"`
+	Pool               string `envconfig:"BEANSTALK_POOL"`
+	TubeUpdateAvatar   string `envconfig:"BEANSTALK_TUBE_UPDATE_AVATAR"`
+	TubeStartRecording string `envconfig:"BEANSTALK_TUBE_START_RECORDING"`
+	TubeStopRecording  string `envconfig:"BEANSTALK_TUBE_STOP_RECORDING"`
 }
 
 func (c BeanstalkConfig) Validate() error {

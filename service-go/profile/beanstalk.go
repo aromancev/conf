@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/confa"
-	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/proto/confa"
+	"github.com/aromancev/proto/queue"
+	"github.com/aromancev/telemetry"
 	"github.com/google/uuid"
 	"github.com/prep/beanstalk"
 	"google.golang.org/protobuf/proto"
@@ -61,7 +61,7 @@ func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID,
 	body, err := proto.Marshal(
 		&queue.Job{
 			Payload: payload,
-			TraceId: trace.ID(ctx),
+			TraceId: telemetry.ID(ctx),
 		},
 	)
 	if err != nil {

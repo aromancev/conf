@@ -3,8 +3,8 @@ package web
 import (
 	"net/http"
 
-	"github.com/aromancev/confa/auth"
-	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/auth"
+	"github.com/aromancev/telemetry"
 )
 
 func withHTTPAuth(h http.Handler) http.Handler {
@@ -23,7 +23,7 @@ func withWebSocketAuth(h http.Handler) http.Handler {
 
 func withNewTrace(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, _ := trace.Ctx(r.Context())
+		ctx, _ := telemetry.Ctx(r.Context())
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

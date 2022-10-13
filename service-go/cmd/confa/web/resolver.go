@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/auth"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"

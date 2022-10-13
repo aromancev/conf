@@ -9,12 +9,12 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/auth"
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/event/proxy"
-	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
 	"github.com/aromancev/confa/room/record"
+	"github.com/aromancev/telemetry"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
@@ -70,7 +70,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	traceID := r.Header.Get("Trace-Id")
 	if traceID != "" {
-		ctx = trace.New(ctx, traceID)
+		ctx = telemetry.New(ctx, traceID)
 	}
 
 	defer func() {

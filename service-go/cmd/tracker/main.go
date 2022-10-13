@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/event"
-	pb "github.com/aromancev/confa/internal/proto/tracker"
+	pb "github.com/aromancev/proto/tracker"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	sdk "github.com/pion/ion-sdk-go"
@@ -49,7 +49,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalkd")
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
 	minioClient, err := minio.New(config.Storage.Host, &minio.Options{
