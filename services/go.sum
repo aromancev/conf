@@ -707,8 +707,8 @@ github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjY
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
 github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
-github.com/movio/bramble v1.3.3 h1:WzimfMU2L0TSWB7nFyuz9DLqq3UGMhyp2ZmyaSP4sCM=
-github.com/movio/bramble v1.3.3/go.mod h1:XLAJXRrHndKQM6GTZfRNsGhIaXoIyBj+ImiNP4iJ0/M=
+github.com/movio/bramble v1.4.3 h1:pBnBh9vKfy5ZTMoApcJFsFEcPrA7EYZrC3ZU2ahl15A=
+github.com/movio/bramble v1.4.3/go.mod h1:FfcjU4d1A0S07rURUKIqMIBXfx7212nTcCWwAU0Z2EM=
 github.com/mutecomm/go-sqlcipher/v4 v4.4.0/go.mod h1:PyN04SaWalavxRGH9E8ZftG6Ju7rsPrGmQRjrEaVpiY=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f h1:KUppIJq7/+SVif2QVs3tOP0zanoHgBEVAwHxUSIzRqU=

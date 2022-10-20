@@ -109,12 +109,12 @@ func (c BeanstalkConfig) ParsePool() []string {
 }
 
 type RTCConfig struct {
-	SFUAddress string `envconfig:"RTC_SFU_ADDRESS"`
+	SFURPCAddress string `envconfig:"SFU_RPC_ADDRESS"`
 }
 
 func (c RTCConfig) Validate() error {
-	if c.SFUAddress == "" {
-		return errors.New("sfu address not set")
+	if c.SFURPCAddress == "" {
+		return errors.New("SFU_RPC_ADDRESS not set")
 	}
 	return nil
 }

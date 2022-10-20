@@ -1,0 +1,45 @@
+package main
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	LogConsole = "console"
+)
+
+type Config struct {
+	ListenWebAddress      string `envconfig:"LISTEN_WEB_ADDRESS"`
+	LogFormat             string `envconfig:"LOG_FORMAT"`
+	Services              string `envconfig:"SERVICES"`
+	SchemaUpdateIntervalS int    `envconfig:"SCHEMA_UPDATE_INTERVAL_S"`
+}
+
+func (c Config) WithEnv() Config {
+	err := envconfig.Process("", &c)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to process env")
+	}
+	return c
+}
+
+func (c Config) Validate() error {
+	if c.ListenWebAddress == "" {
+		return errors.New("LISTEN_WEB_ADDRESS not set")
+	}
+	if c.Services == "" {
+		return errors.New("SERVICES not set")
+	}
+	if c.SchemaUpdateIntervalS == 0 {
+		return errors.New("SCHEMA_UPDATE_INTERVAL_S not set")
+	}
+	return nil
+}
+
+func (c Config) ParseServices() []string {
+	return strings.Split(c.Services, ",")
+}

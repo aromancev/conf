@@ -24,14 +24,15 @@ type Service struct {
 func NewService(serviceURL string) *Service {
 	s := &Service{
 		ServiceURL: serviceURL,
-		client:     NewClient(WithUserAgent(GenerateUserAgent("update"))),
+		client:     NewClientWithoutKeepAlive(WithUserAgent(GenerateUserAgent("update"))),
 	}
 	return s
 }
 
 // Update queries the service's schema, name and version and updates its status.
 func (s *Service) Update() (bool, error) {
-	req := NewRequest("{ service { name, version, schema} }")
+	req := NewRequest("query brambleServicePoll { service { name, version, schema} }")
+	req.OperationName = "brambleServicePoll"
 	response := struct {
 		Service struct {
 			Name    string `json:"name"`

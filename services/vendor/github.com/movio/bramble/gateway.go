@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -34,12 +36,23 @@ func (g *Gateway) UpdateSchemas(interval time.Duration) {
 }
 
 // Router returns the public http handler
-func (g *Gateway) Router() http.Handler {
+func (g *Gateway) Router(cfg *Config) http.Handler {
 	mux := http.NewServeMux()
+
+	// Duplicated from `handler.NewDefaultServer` minus
+	// the websocket transport and persisted query extension
+	gatewayHandler := handler.New(g.ExecutableSchema)
+	gatewayHandler.AddTransport(transport.Options{})
+	gatewayHandler.AddTransport(transport.GET{})
+	gatewayHandler.AddTransport(transport.POST{})
+	gatewayHandler.AddTransport(transport.MultipartForm{})
+	if !cfg.DisableIntrospection {
+		gatewayHandler.Use(extension.Introspection{})
+	}
 
 	mux.Handle("/query",
 		applyMiddleware(
-			handler.NewDefaultServer(g.ExecutableSchema),
+			gatewayHandler,
 			debugMiddleware,
 		),
 	)

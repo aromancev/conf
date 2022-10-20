@@ -18,7 +18,7 @@ type Config struct {
 	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	SFUAddress       string `envconfig:"SFU_ADDRESS"`
+	SFURPCAddress    string `envconfig:"SFU_RPC_ADDRESS"`
 	Beanstalk        BeanstalkConfig
 	Storage          StorageConfig
 }
@@ -41,7 +41,7 @@ func (c Config) Validate() error {
 	if c.ListenRPCAddress == "" {
 		return errors.New("listen rpc address not set")
 	}
-	if c.SFUAddress == "" {
+	if c.SFURPCAddress == "" {
 		return errors.New("sfu address not set")
 	}
 	if c.PublicKey == "" {
