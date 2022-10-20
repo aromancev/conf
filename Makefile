@@ -8,9 +8,9 @@ migrate:
 	./minio/mc.sh policy set download local/user-public
 	./minio/mc.sh policy set download local/confa-tracks-public
 	./mongo/init.sh
-	./mongo/migrate.sh -source file://service-go/migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
-	./mongo/migrate.sh -source file://service-go/migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
-	./mongo/migrate.sh -source file://service-go/migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
+	./mongo/migrate.sh -source file://services/migrations/iam/ -database "mongodb://iam:iam@mongo:27017/iam?replicaSet=rs" up
+	./mongo/migrate.sh -source file://services/migrations/rtc/ -database "mongodb://rtc:rtc@mongo:27017/rtc?replicaSet=rs" up
+	./mongo/migrate.sh -source file://services/migrations/confa/ -database "mongodb://confa:confa@mongo:27017/confa?replicaSet=rs" up
 
 .PHONY: mongosh
 mongosh:
@@ -23,16 +23,16 @@ mongosh:
 
 .PHONY: test
 test:
-	cd service-go && $(MAKE) test
+	cd services && $(MAKE) test
 
 .PHONY: lint
 lint:
-	cd service-go && $(MAKE) lint
+	cd services && $(MAKE) lint
 	cd web && $(MAKE) lint
 
 .PHONY: gen
 gen:
-	cd proto && $(MAKE) gen
+	cd services && $(MAKE) gen
 
 .PHONY: gen-web
 gen-web:
@@ -56,7 +56,7 @@ cert-renew:
 
 .PHONY: build
 build:
-	cd service-go && $(MAKE) build
+	cd services && $(MAKE) build
 	cd web && $(MAKE) build
 
 .PHONY: server-api

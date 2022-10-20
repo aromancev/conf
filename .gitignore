@@ -4,3 +4,4 @@
 .proto
 .DS_Store
 .env
+bin
