@@ -103,7 +103,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	rtcClient := rtc.NewRTCProtobufClient(config.RTCAddress, &http.Client{})
+	rtcClient := rtc.NewRTCProtobufClient("http://"+config.RTCRPCAddress, &http.Client{})
 
 	confaMongo := confa.NewMongo(mongoDB)
 	confaCRUD := confa.NewCRUD(confaMongo)

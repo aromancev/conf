@@ -16,7 +16,8 @@ import (
 // when building Bramble with custom plugins.
 func Main() {
 	var configFiles arrayFlags
-	flag.Var(&configFiles, "conf", "Config file (can appear multiple times)")
+	flag.Var(&configFiles, "config", "Config file (can appear multiple times)")
+	flag.Var(&configFiles, "conf", "deprecated, use -config instead")
 	flag.Parse()
 
 	log.SetFormatter(&log.JSONFormatter{TimestampFormat: time.RFC3339Nano})
@@ -39,32 +40,26 @@ func Main() {
 
 	go gtw.UpdateSchemas(cfg.PollIntervalDuration)
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-
-	go func() {
-		<-signalChan
-		log.Info("received shutdown signal")
-		cancel()
-	}()
 
 	var wg sync.WaitGroup
 	wg.Add(3)
 
 	go runHandler(ctx, &wg, "metrics", cfg.MetricAddress(), NewMetricsHandler())
 	go runHandler(ctx, &wg, "private", cfg.PrivateAddress(), gtw.PrivateRouter())
-	go runHandler(ctx, &wg, "public", cfg.GatewayAddress(), gtw.Router())
+	go runHandler(ctx, &wg, "public", cfg.GatewayAddress(), gtw.Router(cfg))
 
 	wg.Wait()
 }
 
 func runHandler(ctx context.Context, wg *sync.WaitGroup, name, addr string, handler http.Handler) {
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	go func() {

@@ -86,7 +86,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
-	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFUAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFURPCAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to sfu RPC.")
 	}
@@ -133,7 +133,7 @@ func main() {
 			rpc.NewHandler(
 				roomMongo,
 				recordMongo,
-				tracker.NewRegistryProtobufClient(config.TrackerRPCAddress, &http.Client{}),
+				tracker.NewRegistryProtobufClient("http://"+config.TrackerRPCAddress, &http.Client{}),
 				eventEmitter,
 			),
 		),

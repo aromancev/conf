@@ -6,7 +6,7 @@ x-service-common: &service-common
   working_dir: /app
   volumes:
     - ./services:/app:delegated
-    - ./services/cmd/gateway/config.json:/config.json:delegated
+    - ./.artifacts/.cache:/root/.cache:delegated
   networks:
       - confa
 
@@ -32,6 +32,9 @@ x-service-env: &service-env
   STORAGE_BUCKET_USER_UPLOADS: "user-uploads"
   STORAGE_BUCKET_TRACK_RECORDS: "confa-tracks-internal"
   STORAGE_BUCKET_TRACK_PUBLIC: "confa-tracks-public"
+  RTC_RPC_ADDRESS: "rtc:8080"
+  TRACKER_RPC_ADDRESS: "tracker:8080"
+  SFU_RPC_ADDRESS: "sfu:8080"
 
 services:
   nginx:
@@ -65,6 +68,8 @@ services:
     command: "go run ./cmd/gateway -conf /config.json"
     environment:
       <<: *service-env
+      SERVICES: "http://rtc:80/query,http://confa:80/query"
+      SCHEMA_UPDATE_INTERVAL_S: 5
 
   iam:
     <<: *service-common
@@ -86,7 +91,6 @@ services:
     command: "go run ./cmd/confa"
     environment:
       <<: *service-env
-      RTC_ADDRESS: "http://rtc:8080"
       MONGO_USER: "confa"
       MONGO_PASSWORD: "confa"
       MONGO_DATABASE: "confa"
@@ -99,8 +103,6 @@ services:
       MONGO_USER: "rtc"
       MONGO_PASSWORD: "rtc"
       MONGO_DATABASE: "rtc"
-      RTC_SFU_ADDRESS: "sfu:8080"
-      TRACKER_RPC_ADDRESS: "http://tracker:8080"
 
   sfu:
     <<: *service-common
@@ -129,7 +131,6 @@ services:
     command: "go run ./cmd/tracker"
     environment:
       <<: *service-env
-      SFU_ADDRESS: "sfu:8080"
 
   avp:
     <<: *service-common

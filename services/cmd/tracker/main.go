@@ -60,7 +60,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	connector := sdk.NewConnector(config.SFUAddress)
+	connector := sdk.NewConnector(config.SFURPCAddress)
 	runtime := tracker.NewRuntime()
 
 	rpcServer := &http.Server{

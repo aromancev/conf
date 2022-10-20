@@ -16,7 +16,7 @@ const (
 
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
-	RTCAddress       string `envconfig:"RTC_ADDRESS"`
+	RTCRPCAddress    string `envconfig:"RTC_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
 	Mongo            MongoConfig
@@ -40,13 +40,13 @@ func (c Config) WithEnv() Config {
 
 func (c Config) Validate() error {
 	if c.ListenWebAddress == "" {
-		return errors.New("address not set")
+		return errors.New("LISTEN_WEB_ADDRESS not set")
 	}
 	if c.PublicKey == "" {
-		return errors.New("public key not set")
+		return errors.New("PUBLIC_KEY not set")
 	}
-	if c.RTCAddress == "" {
-		return errors.New("rtc address not set")
+	if c.RTCRPCAddress == "" {
+		return errors.New("RTC_RPC_ADDRESS not set")
 	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)

@@ -13,7 +13,7 @@ require (
 	github.com/graph-gophers/graphql-go v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/minio/minio-go/v7 v7.0.24
-	github.com/movio/bramble v1.3.3
+	github.com/movio/bramble v1.4.3
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pion/ion v1.10.0
 	github.com/pion/ion-sdk-go v0.7.1-0.20220406041327-12e32a5871b9
