@@ -30,13 +30,29 @@ lint:
 	cd services && $(MAKE) lint
 	cd web && $(MAKE) lint
 
-.PHONY: gen
+.PHONY: gen-services
 gen:
 	cd services && $(MAKE) gen
 
 .PHONY: gen-web
 gen-web:
-	cd web && $(MAKE) gen-local
+	cd web && $(MAKE) gen
+
+.PHONY: cert-create
+cert-create:
+	docker run -it --rm -p 443:443 -p 80:80 --name certbot \
+	  -v /etc/letsencrypt:/etc/letsencrypt          \
+	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
+	  certbot/certbot certonly --standalone
+
+.PHONY: cert-renew
+cert-renew:
+	cd deploy && docker-compose -f api.docker-compose.yml down
+	docker run -it --rm -p 443:443 -p 80:80 --name certbot \
+	  -v /etc/letsencrypt:/etc/letsencrypt          \
+	  -v /var/log/letsencrypt:/var/log/letsencrypt  \
+	  certbot/certbot renew
+	cd deploy && docker-compose -f api.docker-compose.yml up -d
 
 .PHONY: build
 build:

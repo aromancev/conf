@@ -22,18 +22,23 @@ services:
   gateway:
     restart: on-failure
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/gateway/Dockerfile
     depends_on:
       - confa
       - rtc
     networks:
       - confa
-
+    environment:
+      - LOG_FORMAT=console
+      - LISTEN_WEB_ADDRESS=:80
+      - SERVICES=http://rtc:80/query,http://confa:80/query
+      - SCHEMA_UPDATE_INTERVAL_S=60
+  
   iam:
     restart: on-failure
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/iam/Dockerfile
     networks:
       - confa
@@ -51,19 +56,19 @@ services:
       - MONGO_USER=iam
       - MONGO_PASSWORD=iam
       - MONGO_DATABASE=iam
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_SEND_EMAIL=iam/send-email
+      - BEANSTALK_POOL=beanstalk:11300
+      - BEANSTALK_TUBE_SEND_EMAIL=iam/send-email
 
   confa:
     restart: on-failure
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/confa/Dockerfile
     networks:
       - confa
     environment:
       - LISTEN_WEB_ADDRESS=:80
-      - RTC_ADDRESS=http://rtc:8080
+      - RTC_RPC_ADDRESS=rtc:8080
       - LOG_FORMAT=console
       - PUBLIC_KEY=$PUBLIC_KEY
       - MONGO_HOSTS=mongo:27017
@@ -76,54 +81,54 @@ services:
       - STORAGE_PUBLIC_URL=/api/storage
       - STORAGE_BUCKET_USER_UPLOADS=user-uploads
       - STORAGE_BUCKET_USER_PUBLIC=user-public
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_UPDATE_AVATAR=confa/update-avatar
-      - BEANSTALKD_TUBE_START_RECORDING=confa/start-recording
-      - BEANSTALKD_TUBE_STOP_RECORDING=confa/stop-recording
+      - BEANSTALK_POOL=beanstalk:11300
+      - BEANSTALK_TUBE_UPDATE_AVATAR=confa/update-avatar
+      - BEANSTALK_TUBE_START_RECORDING=confa/start-recording
+      - BEANSTALK_TUBE_STOP_RECORDING=confa/stop-recording
 
   rtc:
     restart: on-failure
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/rtc/Dockerfile
     networks:
       - confa
     environment:
       - LISTEN_WEB_ADDRESS=:80
       - LISTEN_RPC_ADDRESS=:8080
-      - TRACKER_RPC_ADDRESS=http://tracker:8080
+      - TRACKER_RPC_ADDRESS=tracker:8080
       - LOG_FORMAT=console
       - PUBLIC_KEY=$PUBLIC_KEY
       - MONGO_HOSTS=mongo:27017
       - MONGO_USER=rtc
       - MONGO_PASSWORD=rtc
       - MONGO_DATABASE=rtc
-      - RTC_SFU_ADDRESS=sfu.confa.io:8080
-      - BEANSTALK_POOL=beanstalkd:11300
+      - SFU_RPC_ADDRESS=sfu.confa.io:8080
+      - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
 
   tracker:
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/tracker/Dockerfile
     networks:
       - confa
     environment:
       - LOG_FORMAT=console
       - LISTEN_RPC_ADDRESS=:8080
-      - SFU_ADDRESS=sfu.confa.io:8080
+      - SFU_RPC_ADDRESS=sfu.confa.io:8080
       - PUBLIC_KEY=$PUBLIC_KEY
       - STORAGE_HOST=minio:80
       - STORAGE_ACCESS_KEY=minio
       - STORAGE_SECRET_KEY=miniominio
       - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
-      - BEANSTALK_POOL=beanstalkd:11300
+      - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
 
   avp:
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/avp/Dockerfile
     deploy:
       resources:
@@ -138,18 +143,18 @@ services:
       - STORAGE_SECRET_KEY=miniominio
       - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
       - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
-      - BEANSTALKD_POOL=beanstalkd:11300
-      - BEANSTALKD_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_POOL=beanstalk:11300
+      - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
 
-  beanstalkd:
+  beanstalk:
     restart: on-failure
     build:
-      context: ../beanstalkd
+      context: ../beanstalk
       dockerfile: Dockerfile
     networks:
       - confa
     volumes:
-      - ./.artifacts/beanstalkd:/var/lib/beanstalkd
+      - ./.artifacts/beanstalk:/var/lib/beanstalkd
 
   mongo:
     restart: on-failure

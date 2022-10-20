@@ -8,9 +8,10 @@ RUN go build \
 
 FROM alpine:latest
 
+RUN addgroup -g 1001 -S app && mkdir -p /app && adduser -u 1001 -S -G app -h /app app
+USER app
 WORKDIR /app
 
-COPY --from=builder /app/bin/* /app/
-COPY ./cmd/gateway/config.json /config.json
+COPY --from=builder --chown=app /app/bin/* /app/
 
-CMD ["/app/gateway", "-conf", "/config.json"]
+CMD ["/app/gateway"]

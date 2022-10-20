@@ -6,8 +6,7 @@
     "serve": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint --ext .ts,.js,.vue --fix --max-warnings=0 src",
-    "gen": "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts && curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
+    "lint": "eslint --ext .ts,.js,.vue --fix --max-warnings=0 src"
   },
   "dependencies": {
     "vue": "^3.2.40",
@@ -16,7 +15,9 @@
     "dashjs": "^4.5.0",
     "graphql": "^15.5.1",
     "graphql-tag": "^2.12.4",
-    "ion-sdk-js": "^1.8.2"
+    "ion-sdk-js": "^1.8.2",
+    "@fontsource/roboto": "4.5.8",
+    "@fontsource/material-icons": "4.5.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^2.0.0",
@@ -30,21 +31,12 @@
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-config-prettier": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^5.8.1",
-    "@typescript-eslint/parser": "^5.8.1",
-    "apollo": "^2.33.9",
-    "quicktype": "15.0.260"
+    "@typescript-eslint/parser": "^5.8.1"
   },
   "pnpm": {
     "peerDependencyRules": {
       "ignoreMissing": [
-        "webpack", 
-        "apollo",
-        "apollo-codegen-core",
-        "apollo-language-server",
-        "@apollographql/graphql-language-service-interface",
-        "@apollographql/graphql-language-service-parser",
-        "@apollographql/graphql-language-service-types",
-        "@apollographql/graphql-language-service-utils"
+        "webpack"
       ]
     }
   }
