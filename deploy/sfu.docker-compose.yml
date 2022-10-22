@@ -2,23 +2,23 @@ version: '3.9'
 services:
   sfu:
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/sfu/Dockerfile
     network_mode: "host"
     environment:
-      - LISTEN_WEB_ADDRESS=:8080
       - LOG_FORMAT=console
+      - LISTEN_RPC_ADDRESS=:8080
       - ICE_PORT_MIN=50000
       - ICE_PORT_MAX=60000
 
   turn:
     build:
-      context: ../service-go
+      context: ../services
       dockerfile: ./cmd/turn/Dockerfile
     network_mode: "host"
     environment:
-      - LISTEN_WEB_ADDRESS=:3478
       - LOG_FORMAT=console
+      - LISTEN_WEB_ADDRESS=:3478
       - REALM=confa.io
       - USERNAME=confa
       - CREDENTIAL=confa

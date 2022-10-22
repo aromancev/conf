@@ -7,11 +7,6 @@ import (
 	"github.com/movio/bramble"
 )
 
-func init() {
-	bramble.RegisterPlugin(&PassHeaders{})
-	bramble.RegisterPlugin(&TraceHeader{})
-}
-
 type PassHeaders struct {
 	bramble.BasePlugin
 }
