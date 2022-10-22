@@ -12,6 +12,10 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
@@ -19,6 +23,7 @@ type Config struct {
 	ListenRPCAddress  string `envconfig:"LISTEN_RPC_ADDRESS"`
 	TrackerRPCAddress string `envconfig:"TRACKER_RPC_ADDRESS"`
 	LogFormat         string `envconfig:"LOG_FORMAT"`
+	LogLevel          string `envconfig:"LOG_LEVEL"`
 	PublicKey         string `envconfig:"PUBLIC_KEY"`
 	Mongo             MongoConfig
 	Beanstalk         BeanstalkConfig
@@ -40,14 +45,19 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if c.ListenWebAddress == "" {
-		return errors.New("ADDRESS not set")
+		return errors.New("LISTEN_WEB_ADDRESS not set")
 	}
 	if c.ListenRPCAddress == "" {
-		return errors.New("listen rpc address not set")
+		return errors.New("LISTEN_RPC_ADDRESS not set")
 	}
 	if c.TrackerRPCAddress == "" {
-		return errors.New("tracker rpc address not set")
+		return errors.New("TRACKER_RPC_ADDRESS not set")
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
@@ -74,16 +84,16 @@ type MongoConfig struct {
 
 func (c MongoConfig) Validate() error {
 	if c.Hosts == "" {
-		return errors.New("hosts not set")
+		return errors.New("MONGO_HOSTS not set")
 	}
 	if c.User == "" {
-		return errors.New("iam user not set")
+		return errors.New("MONGO_USER not set")
 	}
 	if c.Password == "" {
-		return errors.New("iam password not set")
+		return errors.New("MONGO_PASSWORD not set")
 	}
 	if c.Database == "" {
-		return errors.New("iam database not set")
+		return errors.New("MONGO_DATABASE not set")
 	}
 	return nil
 }
@@ -95,10 +105,10 @@ type BeanstalkConfig struct {
 
 func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
-		return errors.New("pool not set")
+		return errors.New("BEANSTALK_POOL not set")
 	}
 	if c.TubeStoreEvent == "" {
-		return errors.New("tube `store event` not set")
+		return errors.New("BEANSTALK_TUBE_STORE_EVENT not set")
 	}
 
 	return nil

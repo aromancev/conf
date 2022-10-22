@@ -10,6 +10,7 @@ services:
       - LISTEN_RPC_ADDRESS=:8080
       - ICE_PORT_MIN=50000
       - ICE_PORT_MAX=60000
+      - LOG_LEVEL=error
 
   turn:
     build:
@@ -24,3 +25,4 @@ services:
       - CREDENTIAL=confa
       - PUBLIC_IP=31.184.253.195
       - PUBLIC_KEY=$PUBLIC_KEY
+      - LOG_LEVEL=error

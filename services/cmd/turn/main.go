@@ -23,6 +23,14 @@ func main() {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
+	switch config.LogLevel {
+	case LevelDebug:
+		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+	case LevelError:
+		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
+	default:
+		log.Logger = log.Logger.Level(zerolog.InfoLevel)
+	}
 
 	tcpListener, err := net.Listen("tcp4", config.ListenWebAddress)
 	if err != nil {

@@ -12,11 +12,16 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
+	LogLevel         string `envconfig:"LOG_LEVEL"`
 	BaseURL          string `envconfig:"BASE_URL"`
 	SecretKey        string `envconfig:"SECRET_KEY"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
@@ -47,6 +52,11 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if c.ListenWebAddress == "" {
 		return errors.New("ADDRESS not set")
 	}
@@ -81,16 +91,16 @@ type MongoConfig struct {
 
 func (c MongoConfig) Validate() error {
 	if c.Hosts == "" {
-		return errors.New("hosts not set")
+		return errors.New("MONGO_HOSTS not set")
 	}
 	if c.User == "" {
-		return errors.New("iam user not set")
+		return errors.New("iMONGO_USER not set")
 	}
 	if c.Password == "" {
-		return errors.New("iam password not set")
+		return errors.New("MONGO_PASSWORD not set")
 	}
 	if c.Database == "" {
-		return errors.New("iam database not set")
+		return errors.New("MONGO_DATABASE not set")
 	}
 	return nil
 }
@@ -105,16 +115,16 @@ type EmailConfig struct {
 
 func (c EmailConfig) Validate() error {
 	if c.Server == "" {
-		return errors.New("server not set")
+		return errors.New("EMAIL_SERVER not set")
 	}
 	if c.Port == "" {
-		return errors.New("port not set")
+		return errors.New("EMAIL_PORT not set")
 	}
 	if c.Address == "" {
-		return errors.New("address not set")
+		return errors.New("EMAIL_ADDRESS not set")
 	}
 	if c.Password == "" {
-		return errors.New("password not set")
+		return errors.New("EMAIL_PASSWORD not set")
 	}
 	return nil
 }
@@ -135,10 +145,10 @@ type BeanstalkConfig struct {
 
 func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
-		return errors.New("pool not set")
+		return errors.New("BEANSTALK_POOL not set")
 	}
 	if c.TubeSendEmail == "" {
-		return errors.New("tube 'send email' not set")
+		return errors.New("BEANSTALK_TUBE_SEND_EMAIL not set")
 	}
 
 	return nil

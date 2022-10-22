@@ -16,6 +16,7 @@ require (
 	github.com/movio/bramble v1.4.3
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pion/ion v1.10.0
+	github.com/pion/ion-log v1.2.2
 	github.com/pion/ion-sdk-go v0.7.1-0.20220406041327-12e32a5871b9
 	github.com/pion/ion-sfu v1.11.1-0.20220316020741-68545cc25230
 	github.com/pion/logging v0.2.2
@@ -25,6 +26,7 @@ require (
 	github.com/pion/webrtc/v3 v3.1.42
 	github.com/prep/beanstalk v1.4.1
 	github.com/rs/zerolog v1.26.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.1
 	github.com/twitchtv/twirp v8.1.0+incompatible
 	go.mongodb.org/mongo-driver v1.5.4
@@ -92,7 +94,6 @@ require (
 	github.com/pion/dtls/v2 v2.1.5 // indirect
 	github.com/pion/ice/v2 v2.2.6 // indirect
 	github.com/pion/interceptor v0.1.11 // indirect
-	github.com/pion/ion-log v1.2.2 // indirect
 	github.com/pion/mdns v0.0.5 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.2 // indirect
@@ -109,7 +110,6 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/rs/xid v1.3.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/vektah/gqlparser/v2 v2.3.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

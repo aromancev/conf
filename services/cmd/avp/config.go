@@ -11,10 +11,15 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
 	LogFormat string `envconfig:"LOG_FORMAT"`
+	LogLevel  string `envconfig:"LOG_LEVEL"`
 	Beanstalk BeanstalkConfig
 	Storage   StorageConfig
 }
@@ -28,6 +33,11 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if err := c.Storage.Validate(); err != nil {
 		return fmt.Errorf("invalid storage config: %w", err)
 	}
@@ -44,10 +54,10 @@ type BeanstalkConfig struct {
 
 func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
-		return errors.New("pool not set")
+		return errors.New("BEANSTALK_POOL not set")
 	}
 	if c.TubeProcessTrack == "" {
-		return errors.New("tube `process track` not set")
+		return errors.New("BEANSTALK_TUBE_PROCESS_TRACK not set")
 	}
 	return nil
 }
@@ -66,19 +76,19 @@ type StorageConfig struct {
 
 func (c StorageConfig) Validate() error {
 	if c.Host == "" {
-		return errors.New("host not set")
+		return errors.New("STORAGE_HOST not set")
 	}
 	if c.AccessKey == "" {
-		return errors.New("access key not set")
+		return errors.New("STORAGE_ACCESS_KEY not set")
 	}
 	if c.SecretKey == "" {
-		return errors.New("secret key not set")
+		return errors.New("STORAGE_SECRET_KEY not set")
 	}
 	if c.BucketTrackRecords == "" {
-		return errors.New("bucket track records not set")
+		return errors.New("STORAGE_BUCKET_TRACK_RECORDS not set")
 	}
 	if c.BucketTrackPublic == "" {
-		return errors.New("bucket track public not set")
+		return errors.New("STORAGE_BUCKET_TRACK_PUBLIC not set")
 	}
 	return nil
 }

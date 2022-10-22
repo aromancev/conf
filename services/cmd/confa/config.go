@@ -12,12 +12,17 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
 	RTCRPCAddress    string `envconfig:"RTC_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
+	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
 	Mongo            MongoConfig
 	Storage          StorageConfig
@@ -48,6 +53,11 @@ func (c Config) Validate() error {
 	if c.RTCRPCAddress == "" {
 		return errors.New("RTC_RPC_ADDRESS not set")
 	}
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)
 	}
@@ -56,33 +66,6 @@ func (c Config) Validate() error {
 	}
 	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalk config: %w", err)
-	}
-	return nil
-}
-
-type PostgresConfig struct {
-	Host     string `envconfig:"POSTGRES_HOST"`
-	Port     uint16 `envconfig:"POSTGRES_PORT"`
-	User     string `envconfig:"POSTGRES_USER"`
-	Password string `envconfig:"POSTGRES_PASSWORD"`
-	Database string `envconfig:"POSTGRES_DATABASE"`
-}
-
-func (c PostgresConfig) Validate() error {
-	if c.Host == "" {
-		return errors.New("host not set")
-	}
-	if c.Port == 0 {
-		return errors.New("port not set")
-	}
-	if c.User == "" {
-		return errors.New("user not set")
-	}
-	if c.Password == "" {
-		return errors.New("password not set")
-	}
-	if c.Database == "" {
-		return errors.New("database not set")
 	}
 	return nil
 }
@@ -96,16 +79,16 @@ type MongoConfig struct {
 
 func (c MongoConfig) Validate() error {
 	if c.Hosts == "" {
-		return errors.New("hosts not set")
+		return errors.New("MONGO_HOSTS not set")
 	}
 	if c.User == "" {
-		return errors.New("iam user not set")
+		return errors.New("MONGO_USER not set")
 	}
 	if c.Password == "" {
-		return errors.New("iam password not set")
+		return errors.New("MONGO_PASSWORD not set")
 	}
 	if c.Database == "" {
-		return errors.New("iam database not set")
+		return errors.New("MONGO_DATABASE not set")
 	}
 	return nil
 }
@@ -121,22 +104,22 @@ type StorageConfig struct {
 
 func (c StorageConfig) Validate() error {
 	if c.Host == "" {
-		return errors.New("host not set")
+		return errors.New("STORAGE_HOST not set")
 	}
 	if c.AccessKey == "" {
-		return errors.New("access key not set")
+		return errors.New("STORAGE_ACCESS_KEY not set")
 	}
 	if c.SecretKey == "" {
-		return errors.New("secret key not set")
+		return errors.New("STORAGE_SECRET_KEY not set")
 	}
 	if c.PublicURL == "" {
-		return errors.New("public url not set")
+		return errors.New("STORAGE_PUBLIC_URL not set")
 	}
 	if c.BucketUserUploads == "" {
-		return errors.New("bucket user uploads not set")
+		return errors.New("STORAGE_BUCKET_USER_UPLOADS not set")
 	}
 	if c.BucketUserPublic == "" {
-		return errors.New("bucket user public not set")
+		return errors.New("STORAGE_BUCKET_USER_PUBLIC not set")
 	}
 	return nil
 }
@@ -150,16 +133,16 @@ type BeanstalkConfig struct {
 
 func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
-		return errors.New("pool not set")
+		return errors.New("BEANSTALK_POOL not set")
 	}
 	if c.TubeUpdateAvatar == "" {
-		return errors.New("tube `update avatar` not set")
+		return errors.New("BEANSTALK_TUBE_UPDATE_AVATAR not set")
 	}
 	if c.TubeStartRecording == "" {
-		return errors.New("tube `start recording` not set")
+		return errors.New("BEANSTALK_TUBE_START_RECORDING not set")
 	}
 	if c.TubeStopRecording == "" {
-		return errors.New("tube `stop recording` not set")
+		return errors.New("BEANSTALK_TUBE_STOP_RECORDING not set")
 	}
 	return nil
 }

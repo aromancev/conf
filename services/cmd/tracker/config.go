@@ -12,11 +12,16 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
 	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
+	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
 	SFURPCAddress    string `envconfig:"SFU_RPC_ADDRESS"`
 	Beanstalk        BeanstalkConfig
@@ -38,14 +43,19 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if c.ListenRPCAddress == "" {
-		return errors.New("listen rpc address not set")
+		return errors.New("LISTEN_RPC_ADDRESS not set")
 	}
 	if c.SFURPCAddress == "" {
-		return errors.New("sfu address not set")
+		return errors.New("SFU_RPC_ADDRESS not set")
 	}
 	if c.PublicKey == "" {
-		return errors.New("public key not set")
+		return errors.New("PUBLIC_KEY not set")
 	}
 	if err := c.Storage.Validate(); err != nil {
 		return fmt.Errorf("invalid storage config: %w", err)
@@ -64,13 +74,13 @@ type BeanstalkConfig struct {
 
 func (c BeanstalkConfig) Validate() error {
 	if c.Pool == "" {
-		return errors.New("pool not set")
+		return errors.New("BEANSTALK_POOL not set")
 	}
 	if c.TubeProcessTrack == "" {
-		return errors.New("tube `process track` not set")
+		return errors.New("BEANSTALK_TUBE_PROCESS_TRACK not set")
 	}
 	if c.TubeStoreEvent == "" {
-		return errors.New("tube `store event` not set")
+		return errors.New("BEANSTALK_TUBE_STORE_EVENT not set")
 	}
 	return nil
 }
@@ -88,16 +98,16 @@ type StorageConfig struct {
 
 func (c StorageConfig) Validate() error {
 	if c.Host == "" {
-		return errors.New("host not set")
+		return errors.New("STORAGE_HOST not set")
 	}
 	if c.AccessKey == "" {
-		return errors.New("access key not set")
+		return errors.New("STORAGE_ACCESS_KEY not set")
 	}
 	if c.SecretKey == "" {
-		return errors.New("secret key not set")
+		return errors.New("STORAGE_SECRET_KEY not set")
 	}
 	if c.BucketTrackRecords == "" {
-		return errors.New("bucket track records not set")
+		return errors.New("STORAGE_BUCKET_TRACK_RECORDS not set")
 	}
 	return nil
 }

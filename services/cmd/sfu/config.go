@@ -9,6 +9,10 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
@@ -19,6 +23,7 @@ type Config struct {
 	ICEUsername      string `envconfig:"ICE_USERNAME"`
 	ICECredential    string `envconfig:"ICE_CREDENTIAL"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
+	LogLevel         string `envconfig:"LOG_LEVEL"`
 }
 
 func (c Config) WithEnv() Config {
@@ -30,6 +35,11 @@ func (c Config) WithEnv() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if c.ListenRPCAddress == "" {
 		return errors.New("LISTEN_RPC_ADDRESS not set")
 	}
@@ -38,6 +48,11 @@ func (c Config) Validate() error {
 	}
 	if c.ICEPortMax == 0 {
 		return errors.New("ICE_PORT_MAX not set")
+	}
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
 	}
 	return nil
 }

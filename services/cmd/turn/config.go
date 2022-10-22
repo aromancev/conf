@@ -10,12 +10,17 @@ import (
 
 const (
 	LogConsole = "console"
+
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
 )
 
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
 	Realm            string `envconfig:"REALM"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
+	LogLevel         string `envconfig:"LOG_LEVEL"`
 	Username         string `envconfig:"USERNAME"`
 	Credential       string `envconfig:"CREDENTIAL"`
 	PublicIP         string `envconfig:"PUBLIC_IP"`
@@ -40,23 +45,28 @@ func (c Config) WithDefault() Config {
 }
 
 func (c Config) Validate() error {
+	switch c.LogLevel {
+	case LevelDebug, LevelInfo, LevelError:
+	default:
+		return errors.New("LOG_LEVEL is not valid")
+	}
 	if c.ListenWebAddress == "" {
-		return errors.New("address not set")
+		return errors.New("LISTEN_WEB_ADDRESS not set")
 	}
 	if c.Realm == "" {
-		return errors.New("realm not set")
+		return errors.New("REALM not set")
 	}
 	if c.Username == "" {
-		return errors.New("username not set")
+		return errors.New("USERNAME not set")
 	}
 	if c.Credential == "" {
-		return errors.New("credential not set")
+		return errors.New("CREDENTIAL not set")
 	}
 	if c.PublicIP == "" {
-		return errors.New("public IP not set")
+		return errors.New("PUBLIC_IP not set")
 	}
 	if c.PublicKey == "" {
-		return errors.New("public key not set")
+		return errors.New("PUBLIC_KEY not set")
 	}
 	return nil
 }
