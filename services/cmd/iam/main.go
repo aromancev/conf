@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/cmd/iam/queue"
 	"github.com/aromancev/confa/cmd/iam/web"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"

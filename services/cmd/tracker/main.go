@@ -21,7 +21,7 @@ import (
 
 	"github.com/aromancev/confa/cmd/tracker/rpc"
 	evtrack "github.com/aromancev/confa/event/tracker"
-	"github.com/aromancev/confa/tracker"
+	"github.com/aromancev/confa/internal/tracker"
 )
 
 func main() {

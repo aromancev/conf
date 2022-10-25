@@ -25,10 +25,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/cmd/rtc/queue"
 	"github.com/aromancev/confa/cmd/rtc/rpc"
 	"github.com/aromancev/confa/cmd/rtc/web"
+	"github.com/aromancev/confa/internal/auth"
 )
 
 func main() {

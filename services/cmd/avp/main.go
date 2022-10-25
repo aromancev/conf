@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/cmd/avp/queue"
-	"github.com/aromancev/confa/dash"
+	"github.com/aromancev/confa/internal/dash"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/prep/beanstalk"

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/event"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/room/record"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"

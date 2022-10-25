@@ -8,7 +8,7 @@ import (
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rs/zerolog/log"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 

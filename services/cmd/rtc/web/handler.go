@@ -9,9 +9,9 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/event/proxy"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
 	"github.com/aromancev/confa/room/record"

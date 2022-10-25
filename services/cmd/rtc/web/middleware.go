@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
 )
 
