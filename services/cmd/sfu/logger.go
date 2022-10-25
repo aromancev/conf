@@ -61,7 +61,7 @@ func (l Logger) Error(err error, msg string, kvs ...interface{}) {
 
 // WithValues returns a new LogSink with additional key/value pairs.  See
 // Logger.WithValues for more details.
-func (l Logger) WithValues(kkvseysAndValues ...interface{}) logr.LogSink {
+func (l Logger) WithValues(values ...interface{}) logr.LogSink {
 	return l
 }
 

@@ -28,6 +28,14 @@ func main() {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
+	switch config.LogLevel {
+	case LevelDebug:
+		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+	case LevelError:
+		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
+	default:
+		log.Logger = log.Logger.Level(zerolog.InfoLevel)
+	}
 	ctx = log.Logger.WithContext(ctx)
 
 	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeProcessTrack}, beanstalk.Config{

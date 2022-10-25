@@ -10,6 +10,7 @@ import (
 	"github.com/movio/bramble"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	logrus "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -23,6 +24,18 @@ func main() {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
+	switch config.LogLevel {
+	case LevelDebug:
+		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+		// Bramble uses global logrus logger, so we have to change log level for it manually.
+		logrus.SetLevel(logrus.DebugLevel)
+	case LevelError:
+		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
+		logrus.SetLevel(logrus.ErrorLevel)
+	default:
+		log.Logger = log.Logger.Level(zerolog.InfoLevel)
+		logrus.SetLevel(logrus.InfoLevel)
+	}
 	ctx = log.Logger.WithContext(ctx)
 
 	plugins := []bramble.Plugin{

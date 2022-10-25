@@ -12,6 +12,7 @@ x-service-common: &service-common
 
 x-service-env: &service-env
   LOG_FORMAT: "console"
+  LOG_LEVEL: "info"
   LISTEN_WEB_ADDRESS: ":80"
   LISTEN_RPC_ADDRESS: ":8080"
   SECRET_KEY: "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo="
@@ -158,7 +159,7 @@ services:
 
   mongo:
     image: mongo:4.4
-    command: "mongod --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
+    command: "mongod --logpath /dev/null --dbpath /data/db --replSet rs --keyFile /etc/mongo/mongo-repl.key"
     networks:
       - confa
     environment:

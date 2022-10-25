@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	ilog "github.com/pion/ion-log"
 	"github.com/pion/ion-sfu/cmd/signal/grpc/server"
 	"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
 	"github.com/pion/ion-sfu/pkg/sfu"
@@ -25,6 +26,16 @@ func main() {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
+	switch config.LogLevel {
+	case LevelDebug:
+		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+	case LevelError:
+		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
+	default:
+		log.Logger = log.Logger.Level(zerolog.InfoLevel)
+	}
+	// Some parts of SFU server uses ion-log without option to customise it.
+	ilog.Init(config.LogLevel)
 
 	sfu.Logger = logr.New(NewLogger(log.Logger))
 
