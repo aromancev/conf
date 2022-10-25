@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/cmd/confa/queue"
 	"github.com/aromancev/confa/cmd/confa/web"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/profile"
 	"github.com/minio/minio-go/v7"

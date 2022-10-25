@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aromancev/confa/dash"
+	"github.com/aromancev/confa/internal/dash"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/proto/avp"

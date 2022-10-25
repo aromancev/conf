@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/aromancev/confa/auth"
+	"github.com/aromancev/confa/internal/auth"
 )
 
 func withHTTPAuth(h http.Handler) http.Handler {

@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/aromancev/confa/auth"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/confa/talk/clap"
+	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
