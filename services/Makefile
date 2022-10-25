@@ -23,7 +23,8 @@ build:
 		&& go build -o bin/ ./cmd/sfu/... \
 		&& go build -o bin/ ./cmd/turn/... \
 		&& go build -o bin/ ./cmd/tracker/... \
-		&& go build -o bin/ ./cmd/avp/...
+		&& go build -o bin/ ./cmd/avp/... \
+		&& go build -o bin/ ./cmd/sender/...
 
 .PHONY: gen
 gen:

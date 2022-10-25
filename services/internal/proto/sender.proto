@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+message Message {
+    message LoginViaEmail {
+        string secret_login_url = 1;
+    }
+    oneof message {
+        LoginViaEmail login_via_email = 1;
+    }
+}
+
+message Delivery {
+    message Email {
+        string to_address = 1;
+    }
+
+    oneof delivery {
+        Email email = 1;
+    }
+}
+
+message Send {
+    Message message = 1;
+    Delivery delivery = 2; 
+}

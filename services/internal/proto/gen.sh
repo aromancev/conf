@@ -21,6 +21,13 @@ protoc iam.proto \
     --go_out=iam \
     --twirp_out=iam
 
+protoc sender.proto \
+    --proto_path=. \
+    --go_opt=paths=source_relative \
+    --go_opt=Msender.proto=github.com/aromancev/confa/sender \
+    --go_out=sender \
+    --twirp_out=sender
+
 protoc confa.proto \
     --proto_path=. \
     --go_opt=paths=source_relative \

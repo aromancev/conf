@@ -51,13 +51,13 @@ func NewSender(server, port, fromAddress, password string, secure bool) *Sender 
 	return &Sender{server: server, port: port, fromAddress: fromAddress, password: password, secure: secure}
 }
 
-func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) { // nolint: revive, stylecheck
+func (s *Sender) Send(ctx context.Context, emails ...Email) error {
 	dialer := net.Dialer{
 		Timeout: sendTimeout,
 	}
 	conn, err := dialer.DialContext(ctx, "tcp", s.server+":"+s.port)
 	if err != nil {
-		return err, nil
+		return err
 	}
 	defer conn.Close()
 
@@ -68,20 +68,15 @@ func (s *Sender) Send(ctx context.Context, emails ...Email) (error, []error) { /
 		client, err = s.insecureClient(conn)
 	}
 	if err != nil {
-		return err, nil
+		return err
 	}
-
-	var errs []error
 	for _, m := range emails {
 		if err = s.send(client, m); err != nil {
-			_ = client.Reset()
-			errs = append(errs, err)
-		} else {
-			errs = append(errs, nil)
+			_ = client.Quit()
+			return err
 		}
 	}
-
-	return client.Quit(), errs
+	return nil
 }
 
 func (s *Sender) secureClient(conn net.Conn) (*smtp.Client, error) {

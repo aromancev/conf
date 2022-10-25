@@ -7,13 +7,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
-	"github.com/aromancev/confa/cmd/iam/queue"
 	"github.com/aromancev/confa/cmd/iam/web"
 	"github.com/aromancev/confa/internal/auth"
-	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
 
@@ -72,21 +69,6 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeSendEmail}, beanstalk.Config{
-		Multiply:         1,
-		NumGoroutines:    10,
-		ReserveTimeout:   time.Second,
-		ReconnectTimeout: 3 * time.Second,
-		InfoFunc: func(message string) {
-			log.Info().Msg(message)
-		},
-		ErrorFunc: func(err error, message string) {
-			log.Err(err).Msg(message)
-		},
-	})
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
-	}
 
 	secretKey, err := auth.NewSecretKey(config.SecretKey)
 	if err != nil {
@@ -102,19 +84,14 @@ func main() {
 	sessionMongo := session.NewMongo(mongoDB)
 	sessionCRUD := session.NewCRUD(sessionMongo)
 
-	jobHandler := queue.NewHandler(
-		email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
-		queue.Tubes{
-			SendEmail: config.Beanstalk.TubeSendEmail,
-		},
-	)
-
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      web.NewHandler(config.BaseURL, secretKey, publicKey, sessionCRUD, userCRUD, producer, config.Beanstalk.TubeSendEmail),
+		Handler: web.NewHandler(config.BaseURL, secretKey, publicKey, sessionCRUD, userCRUD, producer, web.Tubes{
+			Send: config.Beanstalk.TubeSend,
+		}),
 	}
 
 	go func() {
@@ -127,12 +104,6 @@ func main() {
 		}
 	}()
 
-	var consumerDone sync.WaitGroup
-	consumerDone.Add(1)
-	go func() {
-		consumer.Receive(ctx, jobHandler.ServeJob)
-		consumerDone.Done()
-	}()
 	log.Info().Msg("Listening on " + config.ListenWebAddress)
 
 	c := make(chan os.Signal, 1)
@@ -147,5 +118,4 @@ func main() {
 
 	_ = webServer.Shutdown(ctx)
 	producer.Stop()
-	consumerDone.Wait()
 }

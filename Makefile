@@ -31,7 +31,7 @@ lint:
 	cd web && $(MAKE) lint
 
 .PHONY: gen-services
-gen:
+gen-services:
 	cd services && $(MAKE) gen
 
 .PHONY: gen-web
