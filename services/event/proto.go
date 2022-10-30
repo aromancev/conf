@@ -14,8 +14,10 @@ func ToProto(event Event) *rtc.Event {
 	if event.Payload.PeerState != nil {
 		pl := *event.Payload.PeerState
 		peer, _ := pl.Peer.MarshalBinary()
+		session, _ := pl.SessionID.MarshalBinary()
 		payload.PeerState = &rtc.Event_Payload_PayloadPeerState{
-			PeerId: peer,
+			PeerId:    peer,
+			SessionId: session,
 		}
 		if pl.Status != "" {
 			payload.PeerState.Status = string(pl.Status)
@@ -67,10 +69,12 @@ func FromProto(event *rtc.Event) Event {
 	var payload Payload
 	if event.Payload.PeerState != nil {
 		pl := event.Payload.PeerState
-		var peer uuid.UUID
+		var peer, session uuid.UUID
 		_ = peer.UnmarshalBinary(pl.PeerId)
+		_ = session.UnmarshalBinary(pl.SessionId)
 		payload.PeerState = &PayloadPeerState{
-			Peer: peer,
+			Peer:      peer,
+			SessionID: session,
 		}
 		if pl.Status != "" {
 			payload.PeerState.Status = PeerStatus(pl.Status)

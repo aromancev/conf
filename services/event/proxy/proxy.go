@@ -55,23 +55,25 @@ func (s State) Track(id string) (event.Track, bool) {
 }
 
 type Proxy struct {
-	emitter        EventEmitter
-	userID, roomID uuid.UUID
-	state          State
-	events         event.Cursor
+	emitter                       EventEmitter
+	userID, roomID, peerSessionID uuid.UUID
+	state                         State
+	events                        event.Cursor
 }
 
 func NewProxy(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor, emitter EventEmitter) *Proxy {
 	p := &Proxy{
-		emitter: emitter,
-		events:  events,
-		userID:  userID,
-		roomID:  roomID,
+		emitter:       emitter,
+		events:        events,
+		userID:        userID,
+		roomID:        roomID,
+		peerSessionID: uuid.New(),
 	}
 	_, err := p.emit(ctx, event.Payload{
 		PeerState: &event.PayloadPeerState{
-			Peer:   p.userID,
-			Status: event.PeerJoined,
+			Peer:      p.userID,
+			SessionID: p.peerSessionID,
+			Status:    event.PeerJoined,
 		},
 	})
 	if err != nil {
@@ -102,8 +104,9 @@ func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Messag
 		}
 		_, err = p.emit(ctx, event.Payload{
 			PeerState: &event.PayloadPeerState{
-				Peer:   p.userID,
-				Tracks: tracks,
+				Peer:      p.userID,
+				SessionID: p.peerSessionID,
+				Tracks:    tracks,
 			},
 		})
 		return err
@@ -158,8 +161,9 @@ func (p *Proxy) Close(ctx context.Context) {
 
 	_, err := p.emit(ctx, event.Payload{
 		PeerState: &event.PayloadPeerState{
-			Peer:   p.userID,
-			Status: event.PeerLeft,
+			Peer:      p.userID,
+			SessionID: p.peerSessionID,
+			Status:    event.PeerLeft,
 		},
 	})
 	if err != nil {

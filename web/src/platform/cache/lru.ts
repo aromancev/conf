@@ -1,4 +1,4 @@
-export class LRU<K, V> extends Map<K, V> {
+export class LRUMap<K, V> extends Map<K, V> {
   private cap: number
 
   constructor(cap: number) {

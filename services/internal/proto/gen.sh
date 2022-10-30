@@ -14,13 +14,6 @@ protoc queue.proto \
     --go_out=queue \
     --twirp_out=queue
 
-protoc iam.proto \
-    --proto_path=. \
-    --go_opt=paths=source_relative \
-    --go_opt=Miam.proto=github.com/aromancev/confa/iam \
-    --go_out=iam \
-    --twirp_out=iam
-
 protoc sender.proto \
     --proto_path=. \
     --go_opt=paths=source_relative \

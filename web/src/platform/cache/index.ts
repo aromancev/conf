@@ -1,2 +1,2 @@
-export { LRU } from "./lru"
-export { FIFO } from "./fifo"
+export { LRUMap } from "./lru"
+export { FIFOMap, FIFOSet } from "./fifo"
