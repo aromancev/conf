@@ -1,4 +1,4 @@
-package emails
+package email
 
 import (
 	"bytes"
@@ -11,22 +11,20 @@ import (
 //go:embed *.html
 var templates embed.FS
 
-var login *template.Template
+var loginViaEmail *template.Template
 
 func init() {
-	login = template.Must(template.ParseFS(templates, "login.html"))
+	loginViaEmail = template.Must(template.ParseFS(templates, "login_via_email.html"))
 }
 
-func Login(baseURL, to, token string) (email.Email, error) {
+func newLoginViaEmail(to, secretLoginURL string) (email.Email, error) {
 	var html bytes.Buffer
-	err := login.Execute(&html, map[string]string{
-		"base_url": baseURL,
-		"token":    token,
+	err := loginViaEmail.Execute(&html, map[string]string{
+		"secretLoginURL": secretLoginURL,
 	})
 	if err != nil {
 		return email.Email{}, err
 	}
-
 	return email.Email{
 		FromName:  "Confa",
 		Subject:   "Login",

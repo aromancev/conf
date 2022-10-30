@@ -19,7 +19,7 @@ x-service-env: &service-env
   PUBLIC_KEY: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
   MONGO_HOSTS: "mongo:27017"
   BEANSTALK_POOL: "beanstalk:11300"
-  BEANSTALK_TUBE_SEND_EMAIL: "iam/send-email"
+  BEANSTALK_TUBE_SEND: "sender/send"
   BEANSTALK_TUBE_UPDATE_AVATAR: "confa/update-avatar"
   BEANSTALK_TUBE_START_RECORDING: "confa/start-recording"
   BEANSTALK_TUBE_STOP_RECORDING: "confa/stop-recording"
@@ -148,6 +148,17 @@ services:
     command: "go run ./cmd/avp"
     environment:
       <<: *service-env
+
+  sender:
+    <<: *service-common
+    command: "go run ./cmd/sender"
+    environment:
+      <<: *service-env
+      EMAIL_SERVER: "email-client"
+      EMAIL_PORT: "1025"
+      EMAIL_ADDRESS: "noreply@confa.io"
+      EMAIL_PASSWORD: "stub"
+      EMAIL_SECURE: "false"
 
   beanstalk:
     build:

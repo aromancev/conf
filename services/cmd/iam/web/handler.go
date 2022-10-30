@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/auth"
-	"github.com/aromancev/confa/internal/emails"
 	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/internal/proto/sender"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
 	"github.com/google/uuid"
@@ -43,7 +42,11 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubeEmail string) *Handler {
+type Tubes struct {
+	Send string
+}
+
+func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubes Tubes) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -57,7 +60,7 @@ func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.Publi
 	)
 	r.Handle(
 		"/login",
-		login(baseURL, secretKey, producer, tubeEmail),
+		login(baseURL, secretKey, producer, tubes),
 	)
 	r.Handle(
 		"/logout",
@@ -217,7 +220,7 @@ func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *
 	}
 }
 
-func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubeEmail string) http.HandlerFunc {
+func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubes Tubes) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -245,20 +248,21 @@ func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubeEma
 			return
 		}
 
-		msg, err := emails.Login(baseURL, loginRequest.Address, token)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to render login email.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		payload, err := proto.Marshal(&iam.SendEmail{
-			Emails: []*iam.Email{{
-				FromName:  msg.FromName,
-				ToAddress: msg.ToAddress,
-				Subject:   msg.Subject,
-				Html:      msg.HTML,
-			}},
+		payload, err := proto.Marshal(&sender.Send{
+			Message: &sender.Message{
+				Message: &sender.Message_LoginViaEmail_{
+					LoginViaEmail: &sender.Message_LoginViaEmail{
+						SecretLoginUrl: baseURL + "/login?token=" + token,
+					},
+				},
+			},
+			Delivery: &sender.Delivery{
+				Delivery: &sender.Delivery_Email_{
+					Email: &sender.Delivery_Email{
+						ToAddress: loginRequest.Address,
+					},
+				},
+			},
 		})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
@@ -277,7 +281,7 @@ func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubeEma
 			return
 		}
 
-		id, err := producer.Put(ctx, tubeEmail, body, beanstalk.PutParams{TTR: 10 * time.Second})
+		id, err := producer.Put(ctx, tubes.Send, body, beanstalk.PutParams{TTR: time.Minute})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
 			w.WriteHeader(http.StatusInternalServerError)

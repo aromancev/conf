@@ -10,7 +10,6 @@ services:
         - VITE_SFU_TURN_URLS=turn:turn.confa.io?transport=tcp
         - VITE_SFU_STUN_URLS=stun:stun.stunprotocol.org:3478
         - VITE_STORAGE_URL=/api/storage
-        - LOG_LEVEL=error
     networks:
       - confa
     ports:
@@ -59,7 +58,7 @@ services:
       - MONGO_PASSWORD=iam
       - MONGO_DATABASE=iam
       - BEANSTALK_POOL=beanstalk:11300
-      - BEANSTALK_TUBE_SEND_EMAIL=iam/send-email
+      - BEANSTALK_TUBE_SEND=sender/send
       - LOG_LEVEL=error
 
   confa:
@@ -151,6 +150,25 @@ services:
       - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
+      - LOG_LEVEL=error
+
+  sender:
+    restart: on-failure
+    build:
+      context: ../services
+      dockerfile: ./cmd/sender/Dockerfile
+    networks:
+      - confa
+    environment:
+      - LISTEN_RPC_ADDRESS=:8080
+      - BASE_URL=https://confa.io
+      - LOG_FORMAT=console
+      - EMAIL_SERVER=smtp.yandex.com
+      - EMAIL_PORT=465
+      - EMAIL_ADDRESS=noreply@confa.io
+      - EMAIL_PASSWORD=$EMAIL_PASSWORD
+      - BEANSTALK_POOL=beanstalk:11300
+      - BEANSTALK_TUBE_SEND=sender/send
       - LOG_LEVEL=error
 
   beanstalk:
