@@ -111,32 +111,6 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 	defer cancelWatchdog()
 	var wg sync.WaitGroup
 
-	// Emitting a track event after the minimum track time has passed.
-	// Not emitting immediately to avoid creating an even with invalid track.
-	// This is not technically correct because one second of real time doesn't exactly match to a one second actual track duration.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		select {
-		case <-watchdogCtx.Done():
-		case <-time.After(minDuration):
-			err := t.eventEmitter.EmitEvent(ctx, event.Event{
-				ID:   uuid.New(),
-				Room: t.roomID,
-				Payload: event.Payload{
-					TrackRecording: &event.PayloadTrackRecording{
-						ID:      recordID,
-						TrackID: track.ID(),
-					},
-				},
-			})
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to emit track recording event.")
-			}
-		}
-	}()
-
 	// Sending PLI to receive keyframes at certain intervals.
 	wg.Add(1)
 	go func() {
@@ -169,6 +143,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 	// Writing WebM into pipedWriter.
 	var duration time.Duration
+	var recordingEventEmitted bool
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -194,8 +169,6 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		}
 		defer func() {
 			rtpWriter.Close()
-			// We have to record the duration of the track because it's not trivial to get it from a stream file without extensive processing.
-			duration = rtpWriter.Duration()
 		}()
 
 		for {
@@ -212,6 +185,25 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 			if err := rtpWriter.WriteRTP(packet); err != nil {
 				log.Ctx(ctx).Warn().Msg("Failed to write RTP packet.")
 				continue
+			}
+			duration = rtpWriter.Duration()
+			// Emitting a track event only after the minimum track duration has beed recorded.
+			// Not emitting immediately to avoid creating an event for invalid track.
+			if !recordingEventEmitted && duration >= minDuration {
+				err := t.eventEmitter.EmitEvent(ctx, event.Event{
+					ID:   uuid.New(),
+					Room: t.roomID,
+					Payload: event.Payload{
+						TrackRecording: &event.PayloadTrackRecording{
+							ID:      recordID,
+							TrackID: track.ID(),
+						},
+					},
+				})
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("Failed to emit track recording event.")
+				}
+				recordingEventEmitted = true
 			}
 		}
 	}()
