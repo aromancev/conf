@@ -1,16 +1,6 @@
 import { reactive, readonly } from "vue"
 import { RoomEvent, PeerStatus } from "@/api/room/schema"
-import { FIFO } from "@/platform/cache"
-
-interface Profile {
-  handle: string
-  name: string
-  avatar: string
-}
-
-interface Repo {
-  profile(id: string): Profile
-}
+import { FIFOMap, FIFOSet } from "@/platform/cache"
 
 export interface State {
   peers: Map<string, Peer>
@@ -18,8 +8,8 @@ export interface State {
 
 export interface Peer {
   userId: string
-  joinedAt: number
   profile: Profile
+  sessionIds: Set<string>
 }
 
 export class PeerAggregator {
@@ -29,7 +19,7 @@ export class PeerAggregator {
   constructor(repo: Repo) {
     this.repo = repo
     this._state = reactive({
-      peers: new FIFO(CAPACITY),
+      peers: new FIFOMap(MAX_PEERS),
     })
   }
 
@@ -44,21 +34,40 @@ export class PeerAggregator {
     }
     switch (state.status) {
       case PeerStatus.Joined:
-        if (this._state.peers.has(state.peerId)) {
-          return
-        }
-
-        this._state.peers.set(state.peerId, {
-          userId: state.peerId,
-          joinedAt: event.createdAt || 0,
-          profile: this.repo.profile(state.peerId),
-        })
+        this.join(state.peerId, state.sessionId)
         break
       case PeerStatus.Left:
-        this._state.peers.delete(state.peerId)
+        this.leave(state.peerId, state.sessionId)
         break
     }
     return
+  }
+
+  private join(peerId: string, sessionId: string): void {
+    const peer = this._state.peers.get(peerId)
+    if (peer) {
+      peer.sessionIds.add(sessionId)
+      return
+    }
+
+    const sessions = new FIFOSet<string>(MAX_SESSIONS_PER_PEER)
+    sessions.add(sessionId)
+    this._state.peers.set(peerId, {
+      userId: peerId,
+      profile: this.repo.profile(peerId),
+      sessionIds: sessions,
+    })
+  }
+
+  private leave(peerId: string, sessionId: string): void {
+    const peer = this._state.peers.get(peerId)
+    if (!peer) {
+      return
+    }
+    peer.sessionIds.delete(sessionId)
+    if (peer.sessionIds.size === 0) {
+      this._state.peers.delete(peerId)
+    }
   }
 
   reset(): void {
@@ -66,4 +75,15 @@ export class PeerAggregator {
   }
 }
 
-const CAPACITY = 3000
+const MAX_PEERS = 3000
+const MAX_SESSIONS_PER_PEER = 10
+
+interface Profile {
+  handle: string
+  name: string
+  avatar: string
+}
+
+interface Repo {
+  profile(id: string): Profile
+}

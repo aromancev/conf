@@ -98,14 +98,18 @@ func (p Payload) Validate() error {
 }
 
 type PayloadPeerState struct {
-	Peer   uuid.UUID  `bson:"peerId"`
-	Status PeerStatus `bson:"status,omitempty"`
-	Tracks []Track    `bson:"tracks,omitempty"`
+	Peer      uuid.UUID  `bson:"peerId"`
+	SessionID uuid.UUID  `bson:"sessionId"`
+	Status    PeerStatus `bson:"status,omitempty"`
+	Tracks    []Track    `bson:"tracks,omitempty"`
 }
 
 func (p PayloadPeerState) Validate() error {
 	if p.Peer == uuid.Nil {
 		return errors.New("peer must not be nil")
+	}
+	if p.SessionID == uuid.Nil {
+		return errors.New("session must not be nil")
 	}
 	if len(p.Tracks) > 3 {
 		return errors.New("no more than 3 tracks allowed")

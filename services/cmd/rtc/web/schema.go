@@ -51,9 +51,10 @@ type EventMessage struct {
 }
 
 type EventPeerState struct {
-	PeerID string      `json:"peerId"`          
-	Status *PeerStatus `json:"status,omitempty"`
-	Tracks []Track     `json:"tracks,omitempty"`
+	PeerID    string      `json:"peerId"`          
+	SessionID string      `json:"sessionId"`       
+	Status    *PeerStatus `json:"status,omitempty"`
+	Tracks    []Track     `json:"tracks,omitempty"`
 }
 
 type Track struct {

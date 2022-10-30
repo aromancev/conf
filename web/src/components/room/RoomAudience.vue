@@ -18,6 +18,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue"
+import { Throttler } from "@/platform/sync"
 import { Peer } from "./aggregators/peers"
 import { route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
@@ -30,6 +31,9 @@ const props = defineProps<{
 const audience = ref<HTMLCanvasElement>()
 const selection = ref<HTMLCanvasElement>()
 const selected = ref(null as Peer | null)
+const updatePeers = new Throttler({
+  delayMs: 300,
+})
 
 let canvas = null as Canvas | null
 let resizeInterval = 0
@@ -37,9 +41,9 @@ let resizeInterval = 0
 watch(
   () => props.peers,
   () => {
-    canvas?.updatePeers()
+    updatePeers.do()
   },
-  { deep: true, immediate: true },
+  { deep: true, immediate: false },
 )
 
 defineExpose({
@@ -63,14 +67,19 @@ onMounted(() => {
     audience.value.width,
     audience.value.height,
   )
+  updatePeers.func = () => {
+    canvas?.updatePeers()
+  }
 
   clearInterval(resizeInterval)
   resizeInterval = window.setInterval(resize, 1000)
+  window.addEventListener("resize", resize)
   resize()
 })
 
 onUnmounted(() => {
   clearInterval(resizeInterval)
+  window.removeEventListener("resize", resize)
 })
 
 function resize() {

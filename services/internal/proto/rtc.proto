@@ -43,8 +43,9 @@ message Event {
     message Payload {
         message PayloadPeerState {
             bytes peer_id = 1;
-            string status = 2;  
-            repeated Track tracks = 3;        
+            bytes session_id = 2;
+            string status = 3;  
+            repeated Track tracks = 4;        
         }
         message PayloadMessage {
             bytes from_id = 1;

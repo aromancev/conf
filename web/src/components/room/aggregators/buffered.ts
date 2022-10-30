@@ -1,5 +1,5 @@
 import { RoomEvent } from "@/api/room/schema"
-import { FIFO } from "@/platform/cache"
+import { FIFOMap } from "@/platform/cache"
 
 interface Aggregator {
   put(event: RoomEvent): void
@@ -8,13 +8,13 @@ interface Aggregator {
 export class BufferedAggregator {
   private autoflush: boolean
   private aggregators: Aggregator[]
-  private cache: FIFO<string, RoomEvent>
+  private cache: FIFOMap<string, RoomEvent>
   private cap: number
   private buffered: RoomEvent[]
 
   constructor(aggregators: Aggregator[], cap: number) {
     this.aggregators = aggregators
-    this.cache = new FIFO(cap)
+    this.cache = new FIFOMap(cap)
     this.cap = cap
     this.buffered = []
     this.autoflush = false

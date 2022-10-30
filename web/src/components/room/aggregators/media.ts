@@ -1,7 +1,7 @@
 import { reactive, readonly } from "vue"
 import { RoomEvent, Track, Hint } from "@/api/room/schema"
 import { config } from "@/config"
-import { FIFO } from "@/platform/cache"
+import { FIFOMap } from "@/platform/cache"
 
 export interface Media {
   id: string
@@ -18,17 +18,17 @@ export interface State {
 export class MediaAggregator {
   private roomId: string
   private startedAt: number
-  private recordings: FIFO<string, Recording>
-  private tracks: FIFO<string, Track>
+  private recordings: FIFOMap<string, Recording>
+  private tracks: FIFOMap<string, Track>
   private _state: State
 
   constructor(roomId: string, startedAt: number) {
     this.roomId = roomId
     this.startedAt = startedAt
-    this.recordings = new FIFO(CAPACITY)
-    this.tracks = new FIFO(CAPACITY)
+    this.recordings = new FIFOMap(CAPACITY)
+    this.tracks = new FIFOMap(CAPACITY)
     this._state = reactive({
-      medias: new FIFO(CAPACITY),
+      medias: new FIFOMap(CAPACITY),
     })
   }
 

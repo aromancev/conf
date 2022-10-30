@@ -26,8 +26,9 @@ func TestEventMongo(t *testing.T) {
 				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			}
@@ -51,8 +52,9 @@ func TestEventMongo(t *testing.T) {
 				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			}
@@ -76,8 +78,9 @@ func TestEventMongo(t *testing.T) {
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			},
@@ -86,8 +89,9 @@ func TestEventMongo(t *testing.T) {
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			},
@@ -96,8 +100,9 @@ func TestEventMongo(t *testing.T) {
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			},
@@ -112,8 +117,9 @@ func TestEventMongo(t *testing.T) {
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			},
@@ -161,8 +167,9 @@ func TestEventMongo(t *testing.T) {
 				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			}
@@ -186,8 +193,9 @@ func TestEventMongo(t *testing.T) {
 				Room: uuid.New(),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
-						Peer:   uuid.New(),
-						Status: PeerJoined,
+						Peer:      uuid.New(),
+						SessionID: uuid.New(),
+						Status:    PeerJoined,
 					},
 				},
 			}

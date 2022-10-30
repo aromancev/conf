@@ -40,9 +40,10 @@ export interface EventMessage {
 }
 
 export interface EventPeerState {
-    peerId:  string;
-    status?: PeerStatus;
-    tracks?: Track[];
+    peerId:    string;
+    sessionId: string;
+    status?:   PeerStatus;
+    tracks?:   Track[];
 }
 
 export enum PeerStatus {
@@ -303,6 +304,7 @@ const typeMap: any = {
     ], false),
     "EventPeerState": o([
         { json: "peerId", js: "peerId", typ: "" },
+        { json: "sessionId", js: "sessionId", typ: "" },
         { json: "status", js: "status", typ: u(undefined, r("PeerStatus")) },
         { json: "tracks", js: "tracks", typ: u(undefined, a(r("Track"))) },
     ], false),

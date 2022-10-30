@@ -188,9 +188,12 @@
               "type": "object",
               "title": "EventPeerState",
               "additionalProperties": false,
-              "required": ["peerId"],
+              "required": ["peerId", "sessionId"],
               "properties": {
                 "peerId": {
+                  "type": "string"
+                },
+                "sessionId": {
                   "type": "string"
                 },
                 "status": {

@@ -1,7 +1,7 @@
 import { reactive, readonly } from "vue"
 import { RemoteStream } from "ion-sdk-js"
 import { RoomEvent, Track, Hint } from "@/api/room/schema"
-import { FIFO } from "@/platform/cache"
+import { FIFOMap } from "@/platform/cache"
 
 export interface Stream {
   id: string
@@ -14,15 +14,15 @@ export interface State {
 }
 
 export class StreamAggregator {
-  private tracks: FIFO<string, Track>
-  private streams: FIFO<string, MediaStream>
+  private tracks: FIFOMap<string, Track>
+  private streams: FIFOMap<string, MediaStream>
   private _state: State
 
   constructor() {
-    this.tracks = new FIFO(CAPACITY)
-    this.streams = new FIFO(CAPACITY)
+    this.tracks = new FIFOMap(CAPACITY)
+    this.streams = new FIFOMap(CAPACITY)
     this._state = reactive({
-      streams: new FIFO(CAPACITY),
+      streams: new FIFOMap(CAPACITY),
     })
   }
 

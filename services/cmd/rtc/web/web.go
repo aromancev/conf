@@ -15,7 +15,8 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 	case ev.Payload.PeerState != nil:
 		pl := *ev.Payload.PeerState
 		state := EventPeerState{
-			PeerID: pl.Peer.String(),
+			PeerID:    pl.Peer.String(),
+			SessionID: pl.SessionID.String(),
 		}
 		if pl.Status != "" {
 			state.Status = (*PeerStatus)(&pl.Status)
