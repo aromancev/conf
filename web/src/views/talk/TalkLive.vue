@@ -32,7 +32,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.screen }"
-          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
+          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
           @click="room.switchScreen"
         >
           {{ room.state.local.screen ? "desktop_windows" : "desktop_access_disabled" }}
@@ -40,7 +40,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.camera }"
-          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
+          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
           @click="room.switchCamera"
         >
           {{ room.state.local.camera ? "videocam" : "videocam_off" }}
@@ -48,7 +48,7 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.mic }"
-          :disabled="room.state.isLoading || room.state.isPublishing ? true : null"
+          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
           @click="room.switchMic"
         >
           {{ room.state.local.mic ? "mic" : "mic_off" }}
@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue"
+import { ref, computed, watch, nextTick, onUnmounted } from "vue"
 import { onBeforeRouteLeave } from "vue-router"
 import { talkClient } from "@/api"
 import { Talk, TalkState, userStore } from "@/api/models"
@@ -200,7 +200,11 @@ watch(
   roomId,
   async (roomId: string) => {
     room.close()
-    await room.join(roomId)
+    await room.joinRTC(roomId)
+    if (!props.joinConfirmed) {
+      await modal.set("confirm_join")
+    }
+    await room.joinMedia()
   },
   { immediate: true },
 )
@@ -226,12 +230,6 @@ watch(
   },
   { immediate: true },
 )
-
-onMounted(() => {
-  if (!props.joinConfirmed) {
-    modal.set("confirm_join")
-  }
-})
 
 onUnmounted(() => {
   room.close()

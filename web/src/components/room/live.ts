@@ -15,6 +15,7 @@ interface State {
   messages: Message[]
   isPublishing: boolean
   isLoading: boolean
+  joinedMedia: boolean
   recording: {
     isRecording: boolean
   }
@@ -40,6 +41,7 @@ export class LiveRoom {
       messages: [],
       isLoading: false,
       isPublishing: false,
+      joinedMedia: false,
       recording: {
         isRecording: false,
       },
@@ -63,7 +65,7 @@ export class LiveRoom {
     this.rtc.close()
   }
 
-  async join(roomId: string) {
+  async joinRTC(roomId: string): Promise<void> {
     this._state.isLoading = true
 
     try {
@@ -82,7 +84,7 @@ export class LiveRoom {
         aggregators.put(event)
       }
       this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
-      await this.rtc.join(roomId, true)
+      await this.rtc.joinRTC(roomId)
 
       const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
       const events = await iter.next({ count: 3000, seconds: 2 * 60 * 60 })
@@ -93,6 +95,12 @@ export class LiveRoom {
     } finally {
       this._state.isLoading = false
     }
+  }
+
+  async joinMedia(): Promise<void> {
+    this._state.joinedMedia = false
+    await this.rtc.joinMedia()
+    this._state.joinedMedia = true
   }
 
   async send(userId: string, message: string): Promise<void> {
