@@ -17,9 +17,11 @@ export class RTCPeer {
 
   private socket: RoomWebSocket
   private sfu?: IonClient
+  private roomId: string
 
   constructor() {
     this.socket = new RoomWebSocket()
+    this.roomId = ""
   }
 
   set onevent(val: (event: RoomEvent) => void) {
@@ -34,13 +36,14 @@ export class RTCPeer {
     return this.socket.state(state)
   }
 
-  async join(roomId: string, media: boolean): Promise<void> {
+  async joinRTC(roomId: string): Promise<void> {
+    this.roomId = roomId
     const token = await client.token()
-    await this.socket.connect(roomId, token, media)
+    await this.socket.connect(roomId, token)
+  }
 
-    if (!media) {
-      return
-    }
+  async joinMedia(): Promise<void> {
+    const token = await client.token()
     const iceServers: RTCIceServer[] = []
     if (config.sfu.stunURLs.length !== 0) {
       iceServers.push({
@@ -60,7 +63,7 @@ export class RTCPeer {
       iceServers: iceServers,
     })
     this.sfu.ontrack = this.ontrack
-    await this.sfu.join(roomId, currentUser.id)
+    await this.sfu.join(this.roomId, currentUser.id)
   }
 
   publish(stream: LocalStream, encodingParams?: RTCRtpEncodingParameters[]): void {
@@ -88,8 +91,8 @@ class RoomWebSocket {
   private requestId = 0
   private pendingRequests: Map<string, (msg: Message) => void> = new Map()
 
-  async connect(roomId: string, token: string, media: boolean): Promise<void> {
-    const socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}&media=${media ? "true" : "false"}`)
+  async connect(roomId: string, token: string): Promise<void> {
+    const socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
     socket.onmessage = (resp) => {
       const msg = JSON.parse(resp.data) as Message
 

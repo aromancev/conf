@@ -129,7 +129,7 @@ func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientCo
 		defer pp.Close(ctx)
 
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
-		pp.Serve(ctx, r.URL.Query().Get("media") == "true")
+		pp.Serve()
 		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer disconnected.")
 	})
 }

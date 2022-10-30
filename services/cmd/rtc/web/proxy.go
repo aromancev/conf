@@ -27,6 +27,8 @@ type PeerProxy struct {
 	proxy   *proxy.Proxy
 	conn    *websocket.Conn
 	sfuConn *grpc.ClientConn
+	workers *workers
+	signal  *signal.GRPCSignal
 }
 
 func NewPeerProxy(ctx context.Context, w http.ResponseWriter, r *http.Request, userID, roomID uuid.UUID, watcher event.Watcher, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn) (*PeerProxy, error) {
@@ -44,97 +46,81 @@ func NewPeerProxy(ctx context.Context, w http.ResponseWriter, r *http.Request, u
 		conn:    conn,
 		sfuConn: sfuConn,
 		proxy:   proxy.NewProxy(ctx, userID, roomID, cursor, emitter),
+		workers: newWorkers(ctx),
 	}, nil
 }
 
-func (p *PeerProxy) Serve(ctx context.Context, connectMedia bool) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	var signalClient *signal.GRPCSignal
-	var wg sync.WaitGroup
-	wg.Add(3)
-	if connectMedia {
-		var err error
-		signalClient, err = signal.NewGRPCSignal(ctx, p.sfuConn)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to connect to signal.")
-			return
+func (p *PeerProxy) Serve() {
+	p.workers.Serve(func(ctx context.Context) {
+		for {
+			err := p.receiveWebsocket(ctx)
+			switch {
+			case errors.Is(err, proxy.ErrValidation):
+				log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
+				continue
+			case errors.Is(err, ErrClosed):
+				return
+			case err != nil:
+				log.Ctx(ctx).Err(err).Msg("Failed to process message.")
+				return
+			}
 		}
-		defer signalClient.Close(ctx)
-
-		wg.Add(1)
-		go func() {
-			p.serveSignal(ctx, signalClient)
+	})
+	p.workers.Serve(func(ctx context.Context) {
+		for {
+			pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			err := p.conn.Ping(pingCtx)
+			if err != nil {
+				cancel()
+				log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")
+				return
+			}
 			cancel()
-			wg.Done()
-		}()
-	}
-	go func() {
-		p.serveWebsocket(ctx, signalClient)
-		cancel()
-		wg.Done()
-	}()
-	go func() {
-		p.pingWebsocket(ctx)
-		cancel()
-		wg.Done()
-	}()
-	go func() {
-		p.serveEvents(ctx)
-		cancel()
-		wg.Done()
-	}()
-	wg.Wait()
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Minute):
+				continue
+			}
+		}
+	})
+	p.workers.Serve(func(ctx context.Context) {
+		for {
+			ev, err := p.proxy.RecieveEvent(ctx)
+			switch {
+			case errors.Is(err, proxy.ErrUnknownMessage):
+				log.Ctx(ctx).Debug().Msg("Skipping unknown event.")
+				continue
+			case errors.Is(err, context.Canceled):
+				return
+			case err != nil:
+				log.Ctx(ctx).Err(err).Msg("Failed to receive event.")
+				return
+			}
+			err = wsjson.Write(ctx, p.conn, Message{
+				Payload: MessagePayload{
+					Event: NewRoomEvent(ev),
+				},
+			})
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to reply to websocket.")
+				return
+			}
+		}
+	})
+	p.workers.Wait()
 }
 
 func (p *PeerProxy) Close(ctx context.Context) {
+	p.workers.Close()
 	p.proxy.Close(ctx)
 	_ = p.conn.Close(websocket.StatusNormalClosure, "Peer closed.")
+	_ = p.signal.Close(ctx)
 }
 
-func (p *PeerProxy) serveWebsocket(ctx context.Context, sig proxy.Signal) {
+func (p *PeerProxy) serveSignal(ctx context.Context) {
 	for {
-		err := p.receiveWebsocket(ctx, sig)
-		switch {
-		case errors.Is(err, proxy.ErrValidation):
-			log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
-			continue
-		case errors.Is(err, ErrClosed):
-			log.Ctx(ctx).Info().Msg("Websocket disconnected.")
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to process message.")
-			return
-		}
-	}
-}
-
-func (p *PeerProxy) pingWebsocket(ctx context.Context) {
-	for {
-		pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-		err := p.conn.Ping(pingCtx)
-		if err != nil {
-			cancel()
-			log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")
-			return
-		}
-		cancel()
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Minute):
-			continue
-		}
-	}
-}
-
-func (p *PeerProxy) serveSignal(ctx context.Context, sig proxy.Signal) {
-	if sig == nil {
-		panic("signal client not provided")
-	}
-	for {
-		msg, err := p.proxy.ReceiveSignal(ctx, sig)
+		msg, err := p.proxy.ReceiveSignal(ctx, p.signal)
 		switch {
 		case errors.Is(err, proxy.ErrUnknownMessage):
 			log.Ctx(ctx).Debug().Msg("Skipping unknown signal.")
@@ -158,33 +144,7 @@ func (p *PeerProxy) serveSignal(ctx context.Context, sig proxy.Signal) {
 	}
 }
 
-func (p *PeerProxy) serveEvents(ctx context.Context) {
-	for {
-		ev, err := p.proxy.RecieveEvent(ctx)
-		switch {
-		case errors.Is(err, proxy.ErrUnknownMessage):
-			log.Ctx(ctx).Debug().Msg("Skipping unknown event.")
-			continue
-		case errors.Is(err, context.Canceled):
-			log.Ctx(ctx).Debug().Msg("Serving events cancelled.")
-			return
-		case err != nil:
-			log.Ctx(ctx).Err(err).Msg("Failed to receive event.")
-			return
-		}
-		err = wsjson.Write(ctx, p.conn, Message{
-			Payload: MessagePayload{
-				Event: NewRoomEvent(ev),
-			},
-		})
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to reply to websocket.")
-			return
-		}
-	}
-}
-
-func (p *PeerProxy) receiveWebsocket(ctx context.Context, sig proxy.Signal) error {
+func (p *PeerProxy) receiveWebsocket(ctx context.Context) error {
 	var msg Message
 	err := wsjson.Read(ctx, p.conn, &msg)
 	switch {
@@ -195,9 +155,16 @@ func (p *PeerProxy) receiveWebsocket(ctx context.Context, sig proxy.Signal) erro
 	}
 
 	switch {
-	case msg.Payload.Signal != nil && sig != nil:
+	case msg.Payload.Signal != nil:
 		pl := *msg.Payload.Signal
-		return p.proxy.SendSignal(ctx, sig, signalMessage(pl))
+		if p.signal == nil {
+			p.signal, err = signal.NewGRPCSignal(ctx, p.sfuConn)
+			if err != nil {
+				return fmt.Errorf("failed to connect to signal: %w", err)
+			}
+			p.workers.Serve(p.serveSignal)
+		}
+		return p.proxy.SendSignal(ctx, p.signal, signalMessage(pl))
 	case msg.Payload.State != nil:
 		pl := *msg.Payload.State
 		state, err := p.proxy.SendState(ctx, peerState(pl))
@@ -347,4 +314,43 @@ func peerState(state PeerState) proxy.State {
 	return proxy.State{
 		Tracks: tracks,
 	}
+}
+
+type workers struct {
+	done   chan struct{}
+	ctx    context.Context
+	cancel func()
+	wg     sync.WaitGroup
+}
+
+func newWorkers(ctx context.Context) *workers {
+	ctx, cancel := context.WithCancel(ctx)
+	return &workers{
+		done:   make(chan struct{}),
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+func (w *workers) Serve(f func(context.Context)) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Ctx(w.ctx).Error().Interface("err", err).Msg("Failed to join worker pool.")
+		}
+	}()
+
+	w.wg.Add(1)
+	go func() {
+		f(w.ctx)
+		w.cancel()
+		w.wg.Done()
+	}()
+}
+
+func (w *workers) Wait() {
+	w.wg.Wait()
+}
+
+func (w *workers) Close() {
+	w.cancel()
 }
