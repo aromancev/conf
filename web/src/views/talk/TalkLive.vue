@@ -109,6 +109,10 @@
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
+  <ModalDialog v-if="modal.state.current === 'reconnect'" :ctrl="modal" :buttons="{ reconnect: 'Reconnect' }">
+    <p>Connection lost.</p>
+    <p>Please check your internet connection and try to reconnect.</p>
+  </ModalDialog>
   <InternalError v-if="modal.state.current === 'error'" :ctrl="modal" />
 </template>
 
@@ -129,7 +133,7 @@ import CopyField from "@/components/fields/CopyField.vue"
 
 type RecordingStatus = "none" | "pending" | "recording" | "stopped"
 
-const modal = new ModalController<"error" | "confirm_join" | "confirm_leave">()
+const modal = new ModalController<"error" | "confirm_join" | "confirm_leave" | "reconnect">()
 
 enum SidePanel {
   None = "",
@@ -212,6 +216,20 @@ watch(
 watch(room.state.recording, (r) => {
   recordingStatus.value = r.isRecording ? "recording" : "stopped"
 })
+watch(
+  () => room.state.error,
+  async (err) => {
+    if (!err) {
+      return
+    }
+
+    const answer = await modal.set("reconnect")
+    if (answer === "reconnect") {
+      await room.joinRTC(roomId.value)
+      await room.joinMedia()
+    }
+  },
+)
 watch(
   () => props.talk.state,
   (state?: TalkState) => {

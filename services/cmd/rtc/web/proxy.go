@@ -115,7 +115,9 @@ func (p *PeerProxy) Close(ctx context.Context) {
 	p.workers.Close()
 	p.proxy.Close(ctx)
 	_ = p.conn.Close(websocket.StatusNormalClosure, "Peer closed.")
-	_ = p.signal.Close(ctx)
+	if p.signal != nil {
+		_ = p.signal.Close(ctx)
+	}
 }
 
 func (p *PeerProxy) serveSignal(ctx context.Context) {
