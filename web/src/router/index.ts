@@ -4,7 +4,7 @@ export const handleNew = "new"
 
 export type ProfileTab = "overview" | "edit"
 export type ConfaTab = "overview" | "edit"
-export type TalkTab = "overview" | "edit" | "live"
+export type TalkTab = "overview" | "edit" | "watch"
 
 export const route = {
   home(): RouteLocationRaw {
@@ -81,7 +81,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/profile/ProfileRoot.vue"),
   },
   {
-    path: "/pro/:profile/ed",
+    path: "/pro/:profile/edit",
     name: "profile.edit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
@@ -103,7 +103,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/confa/ConfaRoot.vue"),
   },
   {
-    path: "/:confa/ed",
+    path: "/:confa/edit",
     name: "confa.edit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
@@ -114,7 +114,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/confa/ConfaRoot.vue"),
   },
   {
-    path: "/:confa/:talk",
+    path: "/:confa/:talk/overview",
     name: "talk.overview",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
@@ -126,19 +126,19 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/talk/TalkRoot.vue"),
   },
   {
-    path: "/:confa/:talk/on",
-    name: "talk.live",
+    path: "/:confa/:talk",
+    name: "talk.watch",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
         handle: to.params.talk as string,
         confaHandle: to.params.confa as string,
-        tab: "live",
+        tab: "watch",
       }
     },
     component: () => import("@/views/talk/TalkRoot.vue"),
   },
   {
-    path: "/:confa/:talk/ed",
+    path: "/:confa/:talk/edit",
     name: "talk.edit",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {

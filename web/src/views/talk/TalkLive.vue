@@ -99,7 +99,7 @@
     :buttons="{ join: 'Join', leave: 'Leave' }"
     @click="confirmJoin"
   >
-    <p>You are about to join the talk online</p>
+    <p>You are about to join a live talk</p>
     <p v-if="inviteLink">
       Share this link to invite people<br />
       <CopyField :value="inviteLink"></CopyField>

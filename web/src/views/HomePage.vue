@@ -2,7 +2,7 @@
   <div class="content">
     <div class="title">Video conference platform</div>
     <div class="sub-title">One click broadcast and recording</div>
-    <router-link class="cta btn" :to="route.talk(handleNew, handleNew, 'live')"> Start a conference </router-link>
+    <router-link class="cta btn" :to="route.talk(handleNew, handleNew, 'watch')"> Start a conference </router-link>
   </div>
 </template>
 
