@@ -15,20 +15,20 @@
     </div>
     <div class="header">
       <router-link
+        :to="route.talk(confaHandle, handle, 'watch')"
+        class="header-item"
+        :class="{ active: tab === 'watch' }"
+      >
+        <span class="material-icons icon">remove_red_eye</span>
+        Watch
+      </router-link>
+      <router-link
         :to="route.talk(confaHandle, handle, 'overview')"
         class="header-item"
         :class="{ active: tab === 'overview' }"
       >
-        <span class="material-icons icon">remove_red_eye</span>
+        <span class="material-icons icon">feed</span>
         Overview
-      </router-link>
-      <router-link
-        :to="route.talk(confaHandle, handle, 'live')"
-        class="header-item"
-        :class="{ active: tab === 'live' }"
-      >
-        <span class="material-icons icon">podcasts</span>
-        Online
       </router-link>
       <router-link
         v-if="talk.ownerId === user.id"
@@ -44,13 +44,13 @@
     <div class="tab">
       <TalkOverview v-if="tab === 'overview'" :talk="talk" />
       <TalkLive
-        v-if="tab === 'live' && talk.state !== TalkState.ENDED"
+        v-if="tab === 'watch' && talk.state !== TalkState.ENDED"
         :talk="talk"
         :join-confirmed="joinConfirmed"
         :invite-link="inviteLink"
         @join="join"
       />
-      <TalkReplay v-if="tab === 'live' && talk.state === TalkState.ENDED" :talk="talk" />
+      <TalkReplay v-if="tab === 'watch' && talk.state === TalkState.ENDED" :talk="talk" />
       <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />
     </div>
   </div>
@@ -90,7 +90,7 @@ const modal = ref<Modal>("none")
 const joinConfirmed = ref(false)
 
 const inviteLink = computed(() => {
-  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "live")).fullPath
+  return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "watch")).fullPath
 })
 
 watch(
