@@ -28,6 +28,10 @@ export class RTCPeer {
     this.socket.onevent = val
   }
 
+  set onclose(val: () => void) {
+    this.socket.onclose = val
+  }
+
   async message(msg: PeerMessage): Promise<RoomEvent> {
     return this.socket.message(msg)
   }
@@ -85,6 +89,7 @@ class RoomWebSocket {
   onnegotiate?: (jsep: RTCSessionDescriptionInit) => void
   ontrickle?: (trickle: Trickle) => void
   onevent?: (event: RoomEvent) => void
+  onclose?: () => void
 
   private socket?: WebSocket
   private onSignalAnswer?: (desc: RTCSessionDescriptionInit) => void
@@ -127,6 +132,12 @@ class RoomWebSocket {
           this.onevent(event)
         }
         return
+      }
+    }
+
+    socket.onclose = () => {
+      if (this.onclose) {
+        this.onclose()
       }
     }
 

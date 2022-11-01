@@ -25,7 +25,10 @@ interface State {
     screen?: LocalStream
     mic?: LocalStream
   }
+  error?: Error
 }
+
+type Error = "UNKNOWN"
 
 export class LiveRoom {
   private rtc: RTCPeer
@@ -50,8 +53,12 @@ export class LiveRoom {
     }) as State
     this.readState = readonly(this._state) as State
     this.profileRepo = new ProfileRepository(100, 3000)
-    this.rtc = new RTCPeer()
     this.peerState = { tracks: new Map() }
+    this.rtc = new RTCPeer()
+    this.rtc.onclose = () => {
+      this.close()
+      this._state.error = "UNKNOWN"
+    }
   }
 
   get state(): State {
@@ -63,9 +70,12 @@ export class LiveRoom {
     this.unshareCamera()
     this.unshareMic()
     this.rtc.close()
+    this.peerState = { tracks: new Map() }
+    this._state.joinedMedia = false
   }
 
   async joinRTC(roomId: string): Promise<void> {
+    this.close()
     this._state.isLoading = true
 
     try {
@@ -75,6 +85,7 @@ export class LiveRoom {
       this.messageAggregator = new MessageAggregator(this.profileRepo)
       const aggregators = new BufferedAggregator([peers, streams, recording, this.messageAggregator], 50)
 
+      this._state.error = undefined
       this._state.remote = streams.state().streams
       this._state.peers = peers.state().peers
       this._state.recording = recording.state()
