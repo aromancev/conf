@@ -141,7 +141,7 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 
 func startRecording(talks *talk.Mongo, rtcClient RTC, emitter *talk.Beanstalk) JobHandle {
 	const maxAge = 2 * time.Minute
-	const autostopAfter = 5 * time.Minute
+	const autostopAfter = 60 * time.Minute
 	const maxDuration = time.Hour
 	bo := backoff.Backoff{
 		Factor: 1.2,
