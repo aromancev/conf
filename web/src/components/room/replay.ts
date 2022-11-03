@@ -72,7 +72,6 @@ export class ReplayRoom {
     this.processEvents.func = () => this.processEventsFunc()
     this.fetchEvents.func = () => this.fetchEventsFunc()
     this.processIntervalId = setInterval(() => this.processEvents.do(), MAX_EVENT_DELAY_MS)
-    this.processIntervalId = 0
     this.deferredProcessTimeoutId = -1
   }
 
@@ -108,6 +107,7 @@ export class ReplayRoom {
       while (this.eventBuffer() <= Math.min(FETCH_ADVANCE_MS, this._state.duration)) {
         await this.fetchEvents.do()
       }
+      await this.processEvents.do()
     } finally {
       this._state.isLoading = false
     }
@@ -340,7 +340,7 @@ export class ReplayRoom {
 const EVENT_BATCH = 3000
 const FETCH_ADVANCE_MS = 60 * 1000
 const MIN_EVENT_DELAY_MS = 100
-const MAX_EVENT_DELAY_MS = 3 * 1000
+const MAX_EVENT_DELAY_MS = 1 * 1000
 const MIN_FETCH_DELAY_MS = 1 * 1000
 const EVENTS_BUFFER_ID = "events"
 

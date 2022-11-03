@@ -13,6 +13,7 @@ const (
 	LevelDebug = "debug"
 	LevelInfo  = "info"
 	LevelError = "error"
+	LevelWarn  = "warn"
 )
 
 type Config struct {
@@ -36,7 +37,7 @@ func (c Config) WithEnv() Config {
 
 func (c Config) Validate() error {
 	switch c.LogLevel {
-	case LevelDebug, LevelInfo, LevelError:
+	case LevelDebug, LevelInfo, LevelWarn, LevelError:
 	default:
 		return errors.New("LOG_LEVEL is not valid")
 	}
@@ -48,11 +49,6 @@ func (c Config) Validate() error {
 	}
 	if c.ICEPortMax == 0 {
 		return errors.New("ICE_PORT_MAX not set")
-	}
-	switch c.LogLevel {
-	case LevelDebug, LevelInfo, LevelError:
-	default:
-		return errors.New("LOG_LEVEL is not valid")
 	}
 	return nil
 }

@@ -29,6 +29,9 @@ func main() {
 		log.Logger = log.Logger.Level(zerolog.DebugLevel)
 		// Bramble uses global logrus logger, so we have to change log level for it manually.
 		logrus.SetLevel(logrus.DebugLevel)
+	case LevelWarn:
+		log.Logger = log.Logger.Level(zerolog.WarnLevel)
+		logrus.SetLevel(logrus.WarnLevel)
 	case LevelError:
 		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
 		logrus.SetLevel(logrus.ErrorLevel)

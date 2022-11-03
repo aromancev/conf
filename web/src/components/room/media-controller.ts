@@ -26,6 +26,7 @@ export class MediaController {
   private _state: State
   private startsAt?: number
   private stopWatch: WatchStopHandle
+  private stopWatchProgress: WatchStopHandle
 
   constructor(watchers: Watchers) {
     this.player = MediaPlayer().create()
@@ -46,7 +47,11 @@ export class MediaController {
       }
       this.onBuffer(ms * 1000)
     })
-
+    this.player.on("bufferStalled", () => {
+      if (this.onBuffer) {
+        this.onBuffer(0)
+      }
+    })
     this._state = reactive<State>({
       isActive: false,
     })
@@ -57,7 +62,17 @@ export class MediaController {
       },
       {
         deep: true,
-        immediate: true,
+        immediate: false,
+      },
+    )
+    this.stopWatchProgress = watch(
+      watchers.progress,
+      (progress) => {
+        this.updateProgress(progress)
+      },
+      {
+        deep: true,
+        immediate: false,
       },
     )
   }
@@ -68,6 +83,7 @@ export class MediaController {
 
   close(): void {
     this.stopWatch()
+    this.stopWatchProgress()
     if (this.player.isReady()) {
       this.player.destroy()
     }
@@ -94,8 +110,8 @@ export class MediaController {
     const progressNow = this.progressForNow(progress)
     const shouldStartByNow = progressNow >= media.startsAt
     if (!shouldStartByNow) {
-      this.player.seek(0)
       this.player.pause()
+      this.player.seek(0)
       return
     }
 
@@ -104,15 +120,15 @@ export class MediaController {
     } else {
       this.player.pause()
     }
-    this.seek(progressNow)
   }
 
-  private seek(progress: number): void {
+  private updateProgress(progress: Progress): void {
+    const progressNow = this.progressForNow(progress)
     if (!this.startsAt) {
       return
     }
 
-    let seek = (progress - this.startsAt) / 1000 // Progress is in ms, but player seeks in seconds
+    let seek = (progressNow - this.startsAt) / 1000 // Progress is in ms, but player seeks in seconds
     if (seek < 0) {
       seek = 0
     }

@@ -26,6 +26,8 @@ func main() {
 	switch config.LogLevel {
 	case LevelDebug:
 		log.Logger = log.Logger.Level(zerolog.DebugLevel)
+	case LevelWarn:
+		log.Logger = log.Logger.Level(zerolog.WarnLevel)
 	case LevelError:
 		log.Logger = log.Logger.Level(zerolog.ErrorLevel)
 	default:

@@ -33,8 +33,8 @@ services:
       - LOG_FORMAT=console
       - LISTEN_WEB_ADDRESS=:80
       - SERVICES=http://rtc:80/query,http://confa:80/query
-      - SCHEMA_UPDATE_INTERVAL_S=60
-      - LOG_LEVEL=error
+      - SCHEMA_UPDATE_INTERVAL_S=20
+      - LOG_LEVEL=warn
   
   iam:
     restart: on-failure
@@ -59,7 +59,7 @@ services:
       - MONGO_DATABASE=iam
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_SEND=sender/send
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   confa:
     restart: on-failure
@@ -87,7 +87,7 @@ services:
       - BEANSTALK_TUBE_UPDATE_AVATAR=confa/update-avatar
       - BEANSTALK_TUBE_START_RECORDING=confa/start-recording
       - BEANSTALK_TUBE_STOP_RECORDING=confa/stop-recording
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   rtc:
     restart: on-failure
@@ -109,7 +109,7 @@ services:
       - SFU_RPC_ADDRESS=sfu.confa.io:8080
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   tracker:
     build:
@@ -129,7 +129,7 @@ services:
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   avp:
     build:
@@ -150,7 +150,7 @@ services:
       - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   sender:
     restart: on-failure
@@ -169,7 +169,7 @@ services:
       - EMAIL_PASSWORD=$EMAIL_PASSWORD
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_SEND=sender/send
-      - LOG_LEVEL=error
+      - LOG_LEVEL=warn
 
   beanstalk:
     restart: on-failure
