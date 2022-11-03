@@ -19,7 +19,6 @@ import { userStore } from "./models"
 
 const minRefresh = 10 * Duration.second
 const httpOK = 200
-const httpCreated = 202
 
 export type FetchPolicy =
   // Apollo Client first executes the query against the cache. If all requested data is present in the cache, that data is returned. Otherwise, Apollo Client executes the query against your GraphQL server and returns that data after caching it.
@@ -181,7 +180,7 @@ export class Client {
         emailToken: emailToken,
       }),
     })
-    if (resp.status === httpCreated) {
+    if (resp.status === httpOK) {
       const data = (await resp.json()) as Token
       this.setToken(data.token, data.expiresIn)
     } else {
