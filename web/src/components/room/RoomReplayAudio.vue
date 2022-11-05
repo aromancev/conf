@@ -20,7 +20,7 @@ const props = defineProps<{
   progress: Progress
 }>()
 
-const audio = ref<HTMLElement>()
+const audio = ref<HTMLMediaElement>()
 const controller = new MediaController({
   media: () => props.media,
   element: audio,

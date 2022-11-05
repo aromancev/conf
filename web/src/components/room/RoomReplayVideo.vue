@@ -79,7 +79,7 @@ const state = reactive({
 })
 const container = ref<HTMLElement>()
 const timeline = ref<HTMLElement>()
-const video = ref<HTMLElement>()
+const video = ref<HTMLMediaElement>()
 const controller = new MediaController({
   media: () => props.media,
   element: video,
