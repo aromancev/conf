@@ -20,7 +20,7 @@ interface State {
 }
 
 export class MediaController {
-  onBuffer?: (ms: number) => void
+  onBuffer?: (bufferMs: number, durationMs: number) => void
 
   private player: MediaPlayerClass
   private _state: State
@@ -37,19 +37,15 @@ export class MediaController {
       if (!this.onBuffer) {
         return
       }
-      const ms = e.request.mediaStartTime + e.request.duration
-      if (!ms) {
+      const sec = e.request.mediaStartTime + e.request.duration
+      if (!sec) {
         return
       }
-      if (ms >= this.player.duration()) {
-        this.onBuffer(Infinity)
-        return
-      }
-      this.onBuffer(ms * 1000)
+      this.onBuffer(sec * 1000, this.player.duration() * 1000)
     })
     this.player.on("bufferStalled", () => {
       if (this.onBuffer) {
-        this.onBuffer(0)
+        this.onBuffer(0, this.player.duration() * 1000)
       }
     })
     this._state = reactive<State>({
@@ -103,15 +99,13 @@ export class MediaController {
 
     if (!this.player.isReady() || this.player.getSource() !== media.manifestUrl) {
       if (this.onBuffer) {
-        this.onBuffer(0)
+        this.onBuffer(0, 0)
       }
       this.player.initialize(element, media.manifestUrl, isPlaying)
     }
     const progressNow = this.progressForNow(progress)
-    const shouldStartByNow = progressNow >= media.startsAt
-    if (!shouldStartByNow) {
+    if (progressNow < media.startsAt || progressNow > media.startsAt + this.player.duration() * 1000) {
       this.player.pause()
-      this.player.seek(0)
       return
     }
 
@@ -133,7 +127,7 @@ export class MediaController {
       seek = 0
     }
     if (seek > this.player.duration()) {
-      seek = this.player.duration()
+      return
     }
     this.player.seek(seek)
   }

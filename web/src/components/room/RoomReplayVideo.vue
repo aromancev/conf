@@ -68,7 +68,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "togglePlay"): void
   (e: "rewind", ms: number): void
-  (e: "buffer", ms: number): void
+  (e: "buffer", bufferMs: number, durationMs: number): void
 }>()
 
 const state = reactive({
@@ -87,8 +87,8 @@ const controller = new MediaController({
   isBuffering: () => props.isBuffering,
   progress: () => props.progress,
 })
-controller.onBuffer = (ms) => {
-  emit("buffer", ms)
+controller.onBuffer = (bufferMs: number, durationMs: number): void => {
+  emit("buffer", bufferMs, durationMs)
 }
 const controllerState = controller.state()
 let progressInterval: ReturnType<typeof setInterval> = 0
@@ -234,6 +234,7 @@ function progressForNow(progress: Progress): number {
   position: absolute
   height: 2px
   background-color: grey
+  transition: width 100ms linear
 
 .bottom-tools
   width: 100%

@@ -9,7 +9,7 @@ import { MediaController } from "./media-controller"
 import { Progress } from "./replay"
 
 const emit = defineEmits<{
-  (e: "buffer", ms: number): void
+  (e: "buffer", bufferMs: number, durationMs: number): void
 }>()
 
 const props = defineProps<{
@@ -28,8 +28,8 @@ const controller = new MediaController({
   isBuffering: () => props.isBuffering,
   progress: () => props.progress,
 })
-controller.onBuffer = (ms) => {
-  emit("buffer", ms)
+controller.onBuffer = (bufferMs: number, durationMs: number): void => {
+  emit("buffer", bufferMs, durationMs)
 }
 
 onUnmounted(() => {

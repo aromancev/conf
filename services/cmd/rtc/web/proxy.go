@@ -60,7 +60,6 @@ func (p *PeerProxy) Serve() {
 				log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
 				continue
 			case errors.Is(err, ErrClosed), errors.Is(err, io.EOF):
-				log.Ctx(ctx).Warn().Err(err).Msg("Failed to read websocket message.")
 				return
 			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Failed to process websocket message.")
@@ -73,7 +72,6 @@ func (p *PeerProxy) Serve() {
 			err := p.ping(ctx)
 			switch {
 			case errors.Is(err, io.EOF), errors.Is(err, ErrClosed), errors.Is(err, context.DeadlineExceeded):
-				log.Ctx(ctx).Warn().Err(err).Msg("Failed to ping websocket.")
 				return
 			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")

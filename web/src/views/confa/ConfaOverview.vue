@@ -6,7 +6,7 @@
         <router-link
           v-if="currentUser.id === confa.ownerId"
           class="btn create-talk"
-          :to="route.talk(confa.handle, handleNew, 'overview')"
+          :to="route.talk(confa.handle, handleNew, 'watch')"
         >
           <span class="material-icons">add</span> New
         </router-link>
@@ -18,7 +18,7 @@
         <div v-if="!talksLoading" class="talks-items">
           <div v-for="talk in talks" :key="talk.id" class="talks-item">
             /
-            <router-link class="talks-link" :to="route.talk(confa.handle, talk.handle, 'overview')">{{
+            <router-link class="talks-link" :to="route.talk(confa.handle, talk.handle, 'watch')">{{
               talk.handle
             }}</router-link>
           </div>

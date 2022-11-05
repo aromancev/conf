@@ -36,7 +36,7 @@ export class ReplayRoom {
   private eventIter?: EventIterator
   private eventBatch: RoomEvent[]
   private putFromIndex: number
-  private buffers: Map<string, number>
+  private buffers: Map<string, MediaBuffer>
   private stopped: boolean
   private processEvents: Throttler<void>
   private fetchEvents: Throttler<void>
@@ -163,7 +163,7 @@ export class ReplayRoom {
       return
     }
 
-    const progress = this.progressFor(Date.now())
+    const progress = this.progressForTime(Date.now())
     if (pos < progress || this.stopped) {
       this.resetState()
       if (this.eventIter && this.eventIter.pagesIterated() > 1) {
@@ -181,12 +181,15 @@ export class ReplayRoom {
     this.processEvents.do()
   }
 
-  updateMediaBuffer(id: string, ms: number): void {
+  updateMediaBuffer(id: string, bufferMs: number, durationMs: number): void {
     const media = this._state.medias.get(id)
     if (!media) {
       return
     }
-    this.updateBuffer(id, media.startsAt + ms)
+    this.updateBuffer(id, {
+      bufferMs: media.startsAt + bufferMs,
+      durationMs: durationMs,
+    })
   }
 
   close(): void {
@@ -194,13 +197,8 @@ export class ReplayRoom {
     clearInterval(this.processIntervalId)
   }
 
-  private updateBuffer(id: string, ms: number): void {
-    this.buffers.set(id, ms)
-    this._state.buffer = Math.min(...Array.from(this.buffers.values()))
-    if (this._state.buffer > this._state.duration) {
-      this._state.buffer = this._state.duration
-    }
-
+  private updateBuffer(id: string, buffer: MediaBuffer): void {
+    this.buffers.set(id, buffer)
     this.processEvents.do()
   }
 
@@ -208,7 +206,7 @@ export class ReplayRoom {
     clearTimeout(this.deferredProcessTimeoutId)
 
     const now = Date.now()
-    const progress = this.progressFor(now)
+    const progress = this.progressForTime(now)
 
     // Kick fetching loop just in case. It will doearly return anyway.
     this.fetchEvents.do()
@@ -222,6 +220,7 @@ export class ReplayRoom {
     }
 
     // Update buffering state.
+    this._state.buffer = this.bufferForProgress(progress)
     const wasBuffering = this._state.isBuffering
     this._state.isBuffering = progress >= this._state.buffer
     if (this._state.isBuffering) {
@@ -253,7 +252,7 @@ export class ReplayRoom {
     if (eventBuffer > this._state.duration) {
       return
     }
-    const progress = this.progressFor(Date.now())
+    const progress = this.progressForTime(Date.now())
     if (progress < eventBuffer - FETCH_ADVANCE_MS) {
       return
     }
@@ -288,7 +287,10 @@ export class ReplayRoom {
       }
     }
     const lastAt = fetched[fetched.length - 1].createdAt
-    this.updateBuffer(EVENTS_BUFFER_ID, lastAt - this.recordingStartedAt)
+    this.updateBuffer(EVENTS_BUFFER_ID, {
+      bufferMs: lastAt - this.recordingStartedAt,
+      durationMs: this._state.duration,
+    })
     return
   }
 
@@ -324,7 +326,7 @@ export class ReplayRoom {
     this.eventBatch = []
   }
 
-  private progressFor(time: number): number {
+  private progressForTime(time: number): number {
     if (!this._state.progress.increasingSince) {
       return this._state.progress.value
     }
@@ -332,8 +334,23 @@ export class ReplayRoom {
     return Math.min(timeProgress, this._state.duration)
   }
 
+  private bufferForProgress(progress: number): number {
+    let min = Infinity
+    this.buffers.forEach((buf: MediaBuffer, id: string) => {
+      const media = this._state.medias.get(id)
+      if (!media) {
+        return
+      }
+      if (media.startsAt + buf.durationMs <= progress) {
+        return
+      }
+      min = Math.min(min, media.startsAt + buf.bufferMs)
+    })
+    return min
+  }
+
   private eventBuffer(): number {
-    return this.buffers.get(EVENTS_BUFFER_ID) || 0
+    return this.buffers.get(EVENTS_BUFFER_ID)?.bufferMs || 0
   }
 }
 
@@ -348,4 +365,9 @@ interface Aggregator {
   put(event: RoomEvent): void
   prepare?(events: RoomEvent[]): void
   reset?(): void
+}
+
+interface MediaBuffer {
+  bufferMs: number
+  durationMs: number
 }
