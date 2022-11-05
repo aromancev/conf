@@ -4,7 +4,7 @@ import { Media } from "./aggregators/media"
 
 interface Watchers {
   media: WatchSource<Media | undefined>
-  element: WatchSource<HTMLElement | undefined>
+  element: WatchSource<HTMLMediaElement | undefined>
   isPlaying: WatchSource<boolean>
   isBuffering: WatchSource<boolean>
   progress: WatchSource<Progress>
@@ -87,7 +87,7 @@ export class MediaController {
 
   private update(
     media: Media | undefined,
-    element: HTMLElement | undefined,
+    element: HTMLMediaElement | undefined,
     isPlaying: boolean,
     isBuffering: boolean,
     progress: Progress,
@@ -110,7 +110,12 @@ export class MediaController {
     }
 
     if (isPlaying && !isBuffering) {
-      this.player.play()
+      // Ignoring the following exception:
+      // The play() request was interrupted by a call to pause()
+      // https://goo.gl/LdLk22
+      //
+      // This did not affect anything functionaly during tests hence it's not handled.
+      element.play().catch(() => {}) // eslint-disable-line @typescript-eslint/no-empty-function
     } else {
       this.player.pause()
     }
