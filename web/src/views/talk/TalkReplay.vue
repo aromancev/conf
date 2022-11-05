@@ -14,7 +14,7 @@
               class="video screen-video"
               @toggle-play="() => room.togglePlay()"
               @rewind="(pos) => room.rewind(pos)"
-              @buffer="(ms) => room.updateMediaBuffer(screen?.id || '', ms)"
+              @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(screen?.id || '', bufferMs, durationMs)"
             >
             </RoomReplayVideo>
           </div>
@@ -73,7 +73,7 @@
     :progress="room.state.progress"
     :is-playing="room.state.isPlaying"
     :is-buffering="room.state.isBuffering"
-    @buffer="(ms) => room.updateMediaBuffer(source?.id || '', ms)"
+    @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.id || '', bufferMs, durationMs)"
   ></RoomReplayAudio>
 
   <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
