@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -58,29 +59,25 @@ func (p *PeerProxy) Serve() {
 			case errors.Is(err, proxy.ErrValidation):
 				log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
 				continue
-			case errors.Is(err, ErrClosed):
+			case errors.Is(err, ErrClosed), errors.Is(err, io.EOF):
+				log.Ctx(ctx).Warn().Err(err).Msg("Failed to read websocket message.")
 				return
 			case err != nil:
-				log.Ctx(ctx).Err(err).Msg("Failed to process message.")
+				log.Ctx(ctx).Err(err).Msg("Failed to process websocket message.")
 				return
 			}
 		}
 	})
 	p.workers.Serve(func(ctx context.Context) {
 		for {
-			pingCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-			err := p.conn.Ping(pingCtx)
-			if err != nil {
-				cancel()
+			err := p.ping(ctx)
+			switch {
+			case errors.Is(err, io.EOF), errors.Is(err, ErrClosed), errors.Is(err, context.DeadlineExceeded):
+				log.Ctx(ctx).Warn().Err(err).Msg("Failed to ping websocket.")
+				return
+			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")
 				return
-			}
-			cancel()
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(time.Minute):
-				continue
 			}
 		}
 	})
@@ -203,6 +200,21 @@ func (p *PeerProxy) receiveWebsocket(ctx context.Context) error {
 	}
 	log.Ctx(ctx).Debug().Msg("Skipping unknown message.")
 	return nil
+}
+
+func (p *PeerProxy) ping(ctx context.Context) error {
+	pingCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	err := p.conn.Ping(pingCtx)
+	if err != nil {
+		return err
+	}
+	select {
+	case <-ctx.Done():
+		return ErrClosed
+	case <-time.After(20 * time.Second):
+		return nil
+	}
 }
 
 func newSignal(msg signal.Message) *Signal {

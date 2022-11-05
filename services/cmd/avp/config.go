@@ -15,6 +15,7 @@ const (
 	LevelDebug = "debug"
 	LevelInfo  = "info"
 	LevelError = "error"
+	LevelWarn  = "warn"
 )
 
 type Config struct {
@@ -34,7 +35,7 @@ func (c Config) WithEnv() Config {
 
 func (c Config) Validate() error {
 	switch c.LogLevel {
-	case LevelDebug, LevelInfo, LevelError:
+	case LevelDebug, LevelInfo, LevelWarn, LevelError:
 	default:
 		return errors.New("LOG_LEVEL is not valid")
 	}
