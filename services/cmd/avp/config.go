@@ -49,8 +49,9 @@ func (c Config) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool             string `envconfig:"BEANSTALK_POOL"`
-	TubeProcessTrack string `envconfig:"BEANSTALK_TUBE_PROCESS_TRACK"`
+	Pool                     string `envconfig:"BEANSTALK_POOL"`
+	TubeProcessTrack         string `envconfig:"BEANSTALK_TUBE_PROCESS_TRACK"`
+	TubeUpdateRecordingTrack string `envconfig:"BEANSTALK_TUBE_UPDATE_RECORDING_TRACK"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -59,6 +60,9 @@ func (c BeanstalkConfig) Validate() error {
 	}
 	if c.TubeProcessTrack == "" {
 		return errors.New("BEANSTALK_TUBE_PROCESS_TRACK not set")
+	}
+	if c.TubeUpdateRecordingTrack == "" {
+		return errors.New("BEANSTALK_TUBE_UPDATE_RECORDING_TRACK not set")
 	}
 	return nil
 }

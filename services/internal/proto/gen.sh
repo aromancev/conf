@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+protoc iam.proto \
+    --proto_path=. \
+    --go_opt=paths=source_relative \
+    --go_opt=Miam.proto=github.com/aromancev/confa/iam \
+    --go_out=iam \
+    --twirp_out=iam
+
 protoc rtc.proto \
     --proto_path=. \
     --go_opt=paths=source_relative \

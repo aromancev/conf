@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/internal/platform/backoff"
 	"github.com/aromancev/confa/internal/platform/trace"
-	"github.com/aromancev/confa/internal/proto/confa"
+	confapb "github.com/aromancev/confa/internal/proto/confa"
 	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/internal/proto/rtc"
+	senderpb "github.com/aromancev/confa/internal/proto/sender"
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
 	"github.com/twitchtv/twirp"
@@ -21,15 +24,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Tubes struct {
-	UpdateAvatar   string
-	StartRecording string
-	StopRecording  string
-}
-
 type RTC interface {
 	StartRecording(context.Context, *rtc.RecordingParams) (*rtc.Recording, error)
 	StopRecording(context.Context, *rtc.RecordingLookup) (*rtc.Recording, error)
+}
+
+type Sender interface {
+	Send(ctx context.Context, userID uuid.UUID, message *senderpb.Message) error
 }
 
 type JobHandle func(ctx context.Context, job *beanstalk.Job)
@@ -38,7 +39,7 @@ type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(uploader *profile.Updater, r RTC, talks *talk.Mongo, emitter *talk.Beanstalk, tubes Tubes) *Handler {
+func NewHandler(uploader *profile.Updater, r RTC, confas *confa.Mongo, talks *talk.Mongo, emitter *talk.Beanstalk, tubes Tubes, sender Sender, rts *routes.Routes) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
@@ -48,6 +49,8 @@ func NewHandler(uploader *profile.Updater, r RTC, talks *talk.Mongo, emitter *ta
 				return startRecording(talks, r, emitter)
 			case tubes.StopRecording:
 				return stopRecording(talks, r)
+			case tubes.RecordingUpdate:
+				return recordingUpdate(confas, talks, sender, rts)
 			default:
 				return nil
 			}
@@ -78,7 +81,8 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 	handle := h.route(job)
 	if handle == nil {
-		log.Ctx(ctx).Error().Msg("No handle for job. Burying.")
+		log.Ctx(ctx).Error().Str("tube", job.Stats.Tube).Msg("No handle for job. Burying.")
+		_ = job.Bury(ctx)
 		return
 	}
 
@@ -94,7 +98,7 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 	}
 
 	return func(ctx context.Context, job *beanstalk.Job) {
-		var payload confa.UpdateProfile
+		var payload confapb.UpdateProfile
 		err := proto.Unmarshal(job.Body, &payload)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
@@ -150,7 +154,7 @@ func startRecording(talks *talk.Mongo, rtcClient RTC, emitter *talk.Beanstalk) J
 	}
 
 	return func(ctx context.Context, job *beanstalk.Job) {
-		var payload confa.StartRecording
+		var payload confapb.StartRecording
 		err := proto.Unmarshal(job.Body, &payload)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
@@ -216,7 +220,7 @@ func stopRecording(talks *talk.Mongo, rtcClient RTC) JobHandle {
 	}
 
 	return func(ctx context.Context, job *beanstalk.Job) {
-		var payload confa.StopRecording
+		var payload confapb.StopRecording
 		err := proto.Unmarshal(job.Body, &payload)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
@@ -263,6 +267,85 @@ func stopRecording(talks *talk.Mongo, rtcClient RTC) JobHandle {
 			return
 		}
 		log.Ctx(ctx).Info().Msg("Talk recording stopped.")
+		jobDelete(ctx, job)
+	}
+}
+
+func recordingUpdate(confas *confa.Mongo, talks *talk.Mongo, sender Sender, rts *routes.Routes) JobHandle {
+	const maxAge = 2 * time.Hour
+	bo := backoff.Backoff{
+		Factor: 1.2,
+		Min:    1 * time.Second,
+		Max:    10 * time.Minute,
+	}
+
+	return func(ctx context.Context, job *beanstalk.Job) {
+		var payload confapb.RecordingUpdate
+		err := proto.Unmarshal(job.Body, &payload)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to unmarshal event job.")
+			jobDelete(ctx, job)
+			return
+		}
+		var roomID uuid.UUID
+		_ = roomID.UnmarshalBinary(payload.RoomId)
+
+		if payload.Update == nil {
+			log.Ctx(ctx).Error().Msg("Recording update is empty.")
+			jobDelete(ctx, job)
+			return
+		}
+		_, ok := payload.Update.Update.(*confapb.RecordingUpdate_Update_ProcessingFinished)
+		if !ok {
+			log.Ctx(ctx).Info().Msg("Skipping recording update.")
+			jobDelete(ctx, job)
+			return
+		}
+
+		tlk, err := talks.FetchOne(ctx, talk.Lookup{
+			Room: roomID,
+		})
+		switch {
+		case errors.Is(err, talk.ErrNotFound):
+			log.Ctx(ctx).Err(err).Msg("Failed to find talk for recording.")
+			jobDelete(ctx, job)
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to find talk for recording.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+		cnf, err := confas.FetchOne(ctx, confa.Lookup{
+			ID: tlk.Confa,
+		})
+		switch {
+		case errors.Is(err, confa.ErrNotFound):
+			log.Ctx(ctx).Err(err).Msg("Failed to find confa for recording.")
+			jobDelete(ctx, job)
+			return
+		case err != nil:
+			log.Ctx(ctx).Err(err).Msg("Failed to find confa for recording.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+
+		err = sender.Send(ctx, tlk.Owner, &senderpb.Message{
+			Message: &senderpb.Message_TalkRecordingReady_{
+				TalkRecordingReady: &senderpb.Message_TalkRecordingReady{
+					ConfaUrl:   rts.Confa(cnf.Handle),
+					ConfaTitle: cnf.Title,
+					TalkUrl:    rts.Talk(cnf.Handle, tlk.Handle),
+					TalkTitle:  tlk.Title,
+				},
+			},
+		})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to send recording notification.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+
+		log.Ctx(ctx).Info().Msg("Talk recording update processed.")
 		jobDelete(ctx, job)
 	}
 }

@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
 
 	"github.com/aromancev/confa/cmd/sender/queue"
+	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/sender"
 	"github.com/aromancev/confa/sender/email"
 
@@ -56,9 +58,12 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
+	iamClient := iam.NewIAMProtobufClient("http://"+config.IAMRPCAddress, &http.Client{})
+
 	jobHandler := queue.NewHandler(
 		sender.NewSender(
 			email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
+			iamClient,
 		),
 		queue.Tubes{
 			Send: config.Beanstalk.TubeSend,

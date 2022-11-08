@@ -20,10 +20,11 @@ const (
 )
 
 type Config struct {
-	LogFormat string `envconfig:"LOG_FORMAT"`
-	LogLevel  string `envconfig:"LOG_LEVEL"`
-	Email     EmailConfig
-	Beanstalk BeanstalkConfig
+	LogFormat     string `envconfig:"LOG_FORMAT"`
+	LogLevel      string `envconfig:"LOG_LEVEL"`
+	IAMRPCAddress string `envconfig:"IAM_RPC_ADDRESS"`
+	Email         EmailConfig
+	Beanstalk     BeanstalkConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -42,13 +43,15 @@ func (c Config) Validate() error {
 	default:
 		return errors.New("LOG_LEVEL is not valid")
 	}
+	if c.IAMRPCAddress == "" {
+		return errors.New("IAM_RPC_ADDRESS not set")
+	}
 	if err := c.Email.Validate(); err != nil {
 		return fmt.Errorf("invalid email config: %w", err)
 	}
 	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalk config: %w", err)
 	}
-
 	return nil
 }
 

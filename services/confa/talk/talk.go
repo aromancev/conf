@@ -120,6 +120,7 @@ type Lookup struct {
 	Owner   uuid.UUID
 	Confa   uuid.UUID
 	Speaker uuid.UUID
+	Room    uuid.UUID
 	Handle  string
 	Limit   int64
 	StateIn []State

@@ -64,10 +64,10 @@ export enum Hint {
 }
 
 export interface EventRecording {
-    status: RecordingStatus;
+    status: RecordingEventStatus;
 }
 
-export enum RecordingStatus {
+export enum RecordingEventStatus {
     Started = "started",
     Stopped = "stopped",
 }
@@ -313,7 +313,7 @@ const typeMap: any = {
         { json: "id", js: "id", typ: "" },
     ], false),
     "EventRecording": o([
-        { json: "status", js: "status", typ: r("RecordingStatus") },
+        { json: "status", js: "status", typ: r("RecordingEventStatus") },
     ], false),
     "EventTrackRecording": o([
         { json: "id", js: "id", typ: "" },
@@ -366,7 +366,7 @@ const typeMap: any = {
         "screen",
         "user_audio",
     ],
-    "RecordingStatus": [
+    "RecordingEventStatus": [
         "started",
         "stopped",
     ],

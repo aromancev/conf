@@ -5,8 +5,14 @@ service Registry {
     rpc Stop(StopParams) returns (Tracker) {}
 }
 
-enum Role {
-    RECORD = 0;
+message Role {
+    message Record {
+        bytes recording_id = 1;
+    }
+
+    oneof role {
+        Record record = 1;
+    }
 }
 
 message StartParams {

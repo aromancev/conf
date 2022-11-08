@@ -20,7 +20,7 @@ type Tracker interface {
 	Close(context.Context) error
 }
 
-type Info struct {
+type State struct {
 	AlreadyExists bool
 	StartedAt     time.Time
 	ExpiresAt     time.Time
@@ -46,7 +46,7 @@ func NewRuntime() *Runtime {
 // StartTracker returns true if a tracker with the same room and role already exists and live.
 // If tracker creation errored before and was not clean up by GC yet, it will try to initiate it again.
 // Context passed to `newTracker` will be cancelled only when tracker is closed. It is safe to use for background processing.
-func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role string, expireAt time.Time, newTracker NewTracker) (Info, error) {
+func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role string, expireAt time.Time, newTracker NewTracker) (State, error) {
 	key := trackerKey{
 		roomID: roomID,
 		role:   role,
@@ -54,7 +54,7 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 	r.mutex.Lock()
 	if r.shuttingDown {
 		r.mutex.Unlock()
-		return Info{}, ErrClosed
+		return State{}, ErrClosed
 	}
 	entry, ok := r.trackers[key]
 	if ok {
@@ -75,7 +75,7 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 	entry.Lock()
 	defer entry.Unlock()
 	if atomic.LoadUint32(&entry.status) == statusLive {
-		return Info{
+		return State{
 			AlreadyExists: true,
 			StartedAt:     entry.startedAt,
 			ExpiresAt:     entry.expireAt,
@@ -84,19 +84,19 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 	tracker, err := newTracker(entry.ctx, roomID)
 	if err != nil {
 		atomic.StoreUint32(&entry.status, statusError)
-		return Info{}, err
+		return State{}, err
 	}
 	entry.tracker = tracker
 	entry.startedAt = time.Now()
 	atomic.StoreUint32(&entry.status, statusLive)
-	return Info{
+	return State{
 		AlreadyExists: false,
 		StartedAt:     entry.startedAt,
 		ExpiresAt:     entry.expireAt,
 	}, nil
 }
 
-func (r *Runtime) StopTracker(ctx context.Context, roomID uuid.UUID, role string) (Info, error) {
+func (r *Runtime) StopTracker(ctx context.Context, roomID uuid.UUID, role string) (State, error) {
 	key := trackerKey{
 		roomID: roomID,
 		role:   role,
@@ -104,11 +104,11 @@ func (r *Runtime) StopTracker(ctx context.Context, roomID uuid.UUID, role string
 	r.mutex.Lock()
 	if r.shuttingDown {
 		r.mutex.Unlock()
-		return Info{}, ErrClosed
+		return State{}, ErrClosed
 	}
 	entry, ok := r.trackers[key]
 	if !ok {
-		return Info{}, ErrNotFound
+		return State{}, ErrNotFound
 	}
 	r.mutex.Unlock()
 
@@ -117,7 +117,7 @@ func (r *Runtime) StopTracker(ctx context.Context, roomID uuid.UUID, role string
 	})
 	entry.Lock()
 	defer entry.Unlock()
-	return Info{
+	return State{
 		AlreadyExists: true,
 		StartedAt:     entry.startedAt,
 		ExpiresAt:     entry.expireAt,

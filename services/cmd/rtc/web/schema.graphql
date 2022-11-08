@@ -44,9 +44,16 @@ type Events {
 type Recording {
     key: String!
     roomId: String!
+    status: RecordingStatus!
     createdAt: Float!
     startedAt: Float!
     stoppedAt: Float
+}
+
+enum RecordingStatus {
+    RECORDING
+    PROCESSING
+    READY
 }
 
 input RecordingLookup {

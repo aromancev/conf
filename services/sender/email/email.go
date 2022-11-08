@@ -20,14 +20,27 @@ func NewSender(server, port, fromAddress, password string, secure bool) *Sender 
 }
 
 func (s *Sender) Send(ctx context.Context, message *sender.Message, toAddress string) error {
-	switch message := message.Message.(type) { // nolint: gocritic
+	var msg email.Email
+	var err error
+	switch pl := message.Message.(type) { // nolint: gocritic
 	case *sender.Message_LoginViaEmail_:
-		msg, err := newLoginViaEmail(toAddress, message.LoginViaEmail.SecretLoginUrl)
-		if err != nil {
-			return fmt.Errorf("failed to render email: %w", err)
-		}
-		return s.mailer.Send(ctx, msg)
+		msg, err = newLoginViaEmail(
+			toAddress,
+			pl.LoginViaEmail.SecretLoginUrl,
+		)
+	case *sender.Message_TalkRecordingReady_:
+		msg, err = newTalkRecordingReady(
+			toAddress,
+			pl.TalkRecordingReady.ConfaUrl,
+			pl.TalkRecordingReady.ConfaTitle,
+			pl.TalkRecordingReady.TalkUrl,
+			pl.TalkRecordingReady.TalkTitle,
+		)
+	default:
+		return errors.New("unknown email message")
 	}
-
-	return errors.New("unknown message")
+	if err != nil {
+		return fmt.Errorf("failed to render email: %w", err)
+	}
+	return s.mailer.Send(ctx, msg)
 }

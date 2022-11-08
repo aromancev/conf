@@ -17,22 +17,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Tubes struct {
-	ProcessTrack string
-}
-
 type JobHandle func(ctx context.Context, job *beanstalk.Job)
 
 type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(converter *dash.Converter, tubes Tubes) *Handler {
+type TrackEmitter interface {
+	ProcessingStarted(ctx context.Context, recordingID, recordID uuid.UUID) error
+	ProcessingFinished(ctx context.Context, recordingID, recordID uuid.UUID) error
+}
+
+func NewHandler(converter *dash.Converter, tubes Tubes, emitter TrackEmitter) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case tubes.ProcessTrack:
-				return AutoTouch(processTrack(converter))
+				return AutoTouch(processTrack(converter, emitter))
 			default:
 				return nil
 			}
@@ -64,13 +65,14 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	handle := h.route(job)
 	if handle == nil {
 		log.Ctx(ctx).Error().Msg("No handle for job. Burying.")
+		_ = job.Bury(ctx)
 		return
 	}
 
 	handle(ctx, job)
 }
 
-func processTrack(converter *dash.Converter) JobHandle {
+func processTrack(converter *dash.Converter, emitter TrackEmitter) JobHandle {
 	const maxAge = 24 * time.Hour
 	bo := backoff.Backoff{
 		Factor: 1.5,
@@ -87,12 +89,25 @@ func processTrack(converter *dash.Converter) JobHandle {
 			return
 		}
 
-		var roomID, recordID uuid.UUID
+		var roomID, recordingID, recordID uuid.UUID
 		_ = roomID.UnmarshalBinary(payload.RoomId)
+		_ = recordingID.UnmarshalBinary(payload.RecordingId)
 		_ = recordID.UnmarshalBinary(payload.RecordId)
 
-		log.Ctx(ctx).Info().Str("roomId", roomID.String()).Str("recordId", recordID.String()).Str("bucket", payload.Bucket).Str("object", payload.Object).Msg("Started processing track.")
+		log.Ctx(ctx).Info().
+			Str("roomId", roomID.String()).
+			Str("roomId", roomID.String()).
+			Str("recordingId", recordingID.String()).
+			Str("recordId", recordID.String()).
+			Str("bucket", payload.Bucket).
+			Str("object", payload.Object).
+			Msg("Started processing track.")
 
+		err = emitter.ProcessingStarted(ctx, recordingID, recordID)
+		if err != nil {
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
 		record := dash.Record{
 			ID:         recordID,
 			BucketName: payload.Bucket,
@@ -106,6 +121,11 @@ func processTrack(converter *dash.Converter) JobHandle {
 		}
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to process track.")
+			jobRetry(ctx, job, bo, maxAge)
+			return
+		}
+		err = emitter.ProcessingFinished(ctx, recordingID, recordID)
+		if err != nil {
 			jobRetry(ctx, job, bo, maxAge)
 			return
 		}

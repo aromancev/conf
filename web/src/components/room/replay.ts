@@ -1,5 +1,5 @@
 import { reactive, readonly } from "vue"
-import { eventClient, recordingClient } from "@/api"
+import { eventClient, Recording } from "@/api"
 import { EventIterator } from "@/api/event"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
@@ -79,14 +79,13 @@ export class ReplayRoom {
     return this.readState
   }
 
-  async load(talkId: string, roomId: string) {
+  async load(roomId: string, recording: Recording) {
     this._state.isLoading = true
 
     this.roomId = roomId
     try {
-      const recording = await recordingClient.fetchOne({ roomId: roomId, key: talkId })
       if (!recording.stoppedAt) {
-        throw new Error("Recording is not stopped.")
+        throw new Error("Recording is not finished.")
       }
 
       const media = new MediaAggregator(roomId, recording.startedAt)

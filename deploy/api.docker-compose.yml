@@ -45,6 +45,7 @@ services:
       - confa
     environment:
       - LISTEN_WEB_ADDRESS=:80
+      - LISTEN_RPC_ADDRESS=:8080
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - SECRET_KEY=$SECRET_KEY
@@ -72,6 +73,7 @@ services:
       - LISTEN_WEB_ADDRESS=:80
       - RTC_RPC_ADDRESS=rtc:8080
       - LOG_FORMAT=console
+      - BASE_URL=https://confa.io
       - PUBLIC_KEY=$PUBLIC_KEY
       - MONGO_HOSTS=mongo:27017
       - MONGO_USER=confa
@@ -87,6 +89,8 @@ services:
       - BEANSTALK_TUBE_UPDATE_AVATAR=confa/update-avatar
       - BEANSTALK_TUBE_START_RECORDING=confa/start-recording
       - BEANSTALK_TUBE_STOP_RECORDING=confa/stop-recording
+      - BEANSTALK_TUBE_RECORDING_UPDATE=confa/recording-update
+      - BEANSTALK_TUBE_SEND=sender/send
       - LOG_LEVEL=warn
 
   rtc:
@@ -109,6 +113,8 @@ services:
       - SFU_RPC_ADDRESS=sfu.confa.io:8080
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+      - BEANSTALK_TUBE_RECORDING_TRACK=rtc/recording-track
+      - BEANSTALK_TUBE_RECORDING_UPDATE=confa/recording-update
       - LOG_LEVEL=warn
 
   tracker:
@@ -128,6 +134,7 @@ services:
       - STORAGE_BUCKET_TRACK_RECORDS=confa-tracks-internal
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
       - LOG_LEVEL=warn
 
@@ -150,6 +157,7 @@ services:
       - STORAGE_BUCKET_TRACK_PUBLIC=confa-tracks-public
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
+      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
       - LOG_LEVEL=warn
 
   sender:
@@ -161,6 +169,7 @@ services:
       - confa
     environment:
       - LISTEN_RPC_ADDRESS=:8080
+      - IAM_RPC_ADDRESS=iam:8080
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - EMAIL_SERVER=smtp.yandex.com

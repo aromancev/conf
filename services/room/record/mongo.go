@@ -30,9 +30,9 @@ func NewMongo(db *mongo.Database) *Mongo {
 	}
 }
 
-func (m *Mongo) FetchOrStart(ctx context.Context, record Record) (Record, error) {
+func (m *Mongo) FetchOrStart(ctx context.Context, record Recording) (Recording, error) {
 	if err := record.Validate(); err != nil {
-		return Record{}, fmt.Errorf("%w: %s", ErrValidation, err)
+		return Recording{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
 
 	filter := bson.M{
@@ -60,12 +60,12 @@ func (m *Mongo) FetchOrStart(ctx context.Context, record Record) (Record, error)
 	err := res.Err()
 	switch {
 	case mongo.IsDuplicateKeyError(err):
-		return Record{}, ErrDuplicateEntry
+		return Recording{}, ErrDuplicateEntry
 	case err != nil:
-		return Record{}, err
+		return Recording{}, err
 	}
 	if err := res.Decode(&record); err != nil {
-		return Record{}, err
+		return Recording{}, err
 	}
 	return record, nil
 }
@@ -102,7 +102,61 @@ func (m *Mongo) Stop(ctx context.Context, lookup Lookup) (UpdateResult, error) {
 	}, nil
 }
 
-func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Record, error) {
+func (m *Mongo) UpdateRecords(ctx context.Context, lookup Lookup, records Records) (Recording, error) {
+	if lookup.Limit > batchLimit || lookup.Limit == 0 {
+		lookup.Limit = batchLimit
+	}
+
+	if records.IsZero() {
+		return Recording{}, fmt.Errorf("%w: records should not be empty", ErrValidation)
+	}
+
+	addToSet := make(bson.M)
+	if len(records.RecordingStarted) != 0 {
+		addToSet["records.recordingStarted"] = bson.M{
+			"$each": records.RecordingStarted,
+		}
+	}
+	if len(records.RecordingFinished) != 0 {
+		addToSet["records.recordingFinished"] = bson.M{
+			"$each": records.RecordingFinished,
+		}
+	}
+	if len(records.ProcessingStarted) != 0 {
+		addToSet["records.processingStarted"] = bson.M{
+			"$each": records.ProcessingStarted,
+		}
+	}
+	if len(records.ProcessingFinished) != 0 {
+		addToSet["records.processingFinished"] = bson.M{
+			"$each": records.ProcessingFinished,
+		}
+	}
+
+	ret := options.After
+	res := m.db.Collection(collection).FindOneAndUpdate(
+		ctx,
+		mongoFilter(lookup),
+		bson.M{
+			"$addToSet": addToSet,
+		},
+		&options.FindOneAndUpdateOptions{
+			ReturnDocument: &ret,
+		},
+	)
+	err := res.Err()
+	if err != nil {
+		return Recording{}, fmt.Errorf("failed to update recording: %w", err)
+	}
+	var r Recording
+	err = res.Decode(&r)
+	if err != nil {
+		return Recording{}, err
+	}
+	return r, nil
+}
+
+func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Recording, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
@@ -120,9 +174,9 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Record, error) {
 	}
 	defer cur.Close(ctx)
 
-	var records []Record
+	var records []Recording
 	for cur.Next(ctx) {
-		var r Record
+		var r Recording
 		err := cur.Decode(&r)
 		if err != nil {
 			return nil, err
@@ -132,16 +186,16 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Record, error) {
 	return records, nil
 }
 
-func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Record, error) {
+func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Recording, error) {
 	confas, err := m.Fetch(ctx, lookup)
 	if err != nil {
-		return Record{}, err
+		return Recording{}, err
 	}
 	if len(confas) == 0 {
-		return Record{}, ErrNotFound
+		return Recording{}, ErrNotFound
 	}
 	if len(confas) > 1 {
-		return Record{}, ErrAmbigiousLookup
+		return Recording{}, ErrAmbigiousLookup
 	}
 	return confas[0], nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/proto/rtc"
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/profile"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -71,6 +72,7 @@ func main() {
 			config.Beanstalk.TubeUpdateAvatar,
 			config.Beanstalk.TubeStartRecording,
 			config.Beanstalk.TubeStopRecording,
+			config.Beanstalk.TubeRecordingUpdate,
 		},
 		beanstalk.Config{
 			Multiply:         1,
@@ -113,6 +115,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
+	rts := routes.NewRoutes(config.BaseURL)
+
 	rtcClient := rtc.NewRTCProtobufClient("http://"+config.RTCRPCAddress, &http.Client{})
 
 	confaMongo := confa.NewMongo(mongoDB)
@@ -140,16 +144,22 @@ func main() {
 		profileMongo,
 	)
 
+	tubes := queue.Tubes{
+		UpdateAvatar:    config.Beanstalk.TubeUpdateAvatar,
+		StartRecording:  config.Beanstalk.TubeStartRecording,
+		StopRecording:   config.Beanstalk.TubeStopRecording,
+		Send:            config.Beanstalk.TubeSend,
+		RecordingUpdate: config.Beanstalk.TubeRecordingUpdate,
+	}
 	jobHandler := queue.NewHandler(
 		avatarUploader,
 		rtcClient,
+		confaMongo,
 		talkMongo,
 		talkBeanstalk,
-		queue.Tubes{
-			UpdateAvatar:   config.Beanstalk.TubeUpdateAvatar,
-			StartRecording: config.Beanstalk.TubeStartRecording,
-			StopRecording:  config.Beanstalk.TubeStopRecording,
-		},
+		tubes,
+		queue.NewBeanstalk(producer, tubes),
+		rts,
 	)
 
 	webServer := &http.Server{

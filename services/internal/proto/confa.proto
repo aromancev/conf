@@ -28,3 +28,18 @@ message StopRecording {
     bytes talk_id = 1;
     bytes room_id = 2;
 }
+
+message RecordingUpdate {
+    message Update {
+        oneof update {
+            ProcessingFinished processing_finished = 1;
+        }
+    }
+
+    message ProcessingFinished {}
+
+    bytes room_id = 1;
+    bytes recording_id = 2;
+    int64 updated_at = 3;
+    Update update = 4;
+}

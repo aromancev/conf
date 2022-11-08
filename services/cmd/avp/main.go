@@ -40,6 +40,19 @@ func main() {
 	}
 	ctx = log.Logger.WithContext(ctx)
 
+	producer, err := beanstalk.NewProducer(config.Beanstalk.ParsePool(), beanstalk.Config{
+		Multiply:         1,
+		ReconnectTimeout: 3 * time.Second,
+		InfoFunc: func(message string) {
+			log.Info().Msg(message)
+		},
+		ErrorFunc: func(err error, message string) {
+			log.Err(err).Msg(message)
+		},
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
+	}
 	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeProcessTrack}, beanstalk.Config{
 		Multiply:         1,
 		NumGoroutines:    1,
@@ -64,9 +77,15 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	jobHandler := queue.NewHandler(dash.NewConverter(minioClient, config.Storage.BucketTrackPublic), queue.Tubes{
-		ProcessTrack: config.Beanstalk.TubeProcessTrack,
-	})
+	tubes := queue.Tubes{
+		ProcessTrack:         config.Beanstalk.TubeProcessTrack,
+		UpdateRecordingTrack: config.Beanstalk.TubeUpdateRecordingTrack,
+	}
+	jobHandler := queue.NewHandler(
+		dash.NewConverter(minioClient, config.Storage.BucketTrackPublic),
+		tubes,
+		queue.NewBeanstalk(producer, tubes),
+	)
 
 	var servers sync.WaitGroup
 	servers.Add(1)
@@ -86,6 +105,7 @@ func main() {
 	cancel()
 
 	servers.Wait()
+	producer.Stop()
 
 	log.Info().Msg("Shutdown complete")
 }

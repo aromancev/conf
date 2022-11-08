@@ -60,10 +60,10 @@ func (p Platform) Validate() error {
 }
 
 type Ident struct {
-	ID        uuid.UUID `bson:"_id" json:"id"`
-	Platform  Platform  `bson:"platform" json:"platform"`
-	Value     string    `bson:"value" json:"value"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
+	ID        uuid.UUID `bson:"_id"`
+	Platform  Platform  `bson:"platform"`
+	Value     string    `bson:"value"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 func (i Ident) Validate() error {

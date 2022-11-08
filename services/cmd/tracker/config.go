@@ -68,9 +68,10 @@ func (c Config) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool             string `envconfig:"BEANSTALK_POOL"`
-	TubeProcessTrack string `envconfig:"BEANSTALK_TUBE_PROCESS_TRACK"`
-	TubeStoreEvent   string `envconfig:"BEANSTALK_TUBE_STORE_EVENT"`
+	Pool                     string `envconfig:"BEANSTALK_POOL"`
+	TubeProcessTrack         string `envconfig:"BEANSTALK_TUBE_PROCESS_TRACK"`
+	TubeStoreEvent           string `envconfig:"BEANSTALK_TUBE_STORE_EVENT"`
+	TubeUpdateRecordingTrack string `envconfig:"BEANSTALK_TUBE_UPDATE_RECORDING_TRACK"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -82,6 +83,9 @@ func (c BeanstalkConfig) Validate() error {
 	}
 	if c.TubeStoreEvent == "" {
 		return errors.New("BEANSTALK_TUBE_STORE_EVENT not set")
+	}
+	if c.TubeUpdateRecordingTrack == "" {
+		return errors.New("BEANSTALK_TUBE_UPDATE_RECORDING_TRACK not set")
 	}
 	return nil
 }

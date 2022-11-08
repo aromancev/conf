@@ -1,5 +1,13 @@
 <template>
-  <div class="content">
+  <div v-if="!state.isReady" class="loading-content">
+    <PageLoader />
+    <div v-if="!state.isLoading" class="processing-note">
+      <p>Processing talk recording.</p>
+      <p>It might take a while (especially screen sharing) becuase it runs on a very cheap server.</p>
+      <p>You will receive an email when it's done.</p>
+    </div>
+  </div>
+  <div v-if="state.isReady" class="content">
     <div class="room">
       <div class="video-content">
         <div class="videos">
@@ -45,58 +53,57 @@
     <div class="controls">
       <div class="controls-bottom">
         <div
-          v-if="sidePanel !== SidePanel.None"
+          v-if="state.sidePanel !== 'none'"
           class="ctrl-btn btn-switch material-icons"
-          @click="switchSidePanel(SidePanel.None)"
+          @click="switchSidePanel('none')"
         >
           close
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ pressed: sidePanel === SidePanel.Chat }"
-          @click="switchSidePanel(SidePanel.Chat)"
+          :class="{ pressed: state.sidePanel === 'chat' }"
+          @click="switchSidePanel('chat')"
         >
           chat
         </div>
       </div>
     </div>
-    <div v-if="sidePanel !== SidePanel.None" class="side-panel">
+    <div v-if="state.sidePanel !== 'none'" class="side-panel">
       <RoomMessages :user-id="user.id" :messages="room.state.messages" :is-loading="room.state.isLoading" />
     </div>
+    <RoomReplayAudio
+      v-for="source in audios"
+      :key="source.manifestUrl"
+      :media="source"
+      :duration="room.state.duration"
+      :progress="room.state.progress"
+      :is-playing="room.state.isPlaying"
+      :is-buffering="room.state.isBuffering"
+      @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.id || '', bufferMs, durationMs)"
+    ></RoomReplayAudio>
   </div>
-
-  <RoomReplayAudio
-    v-for="source in audios"
-    :key="source.manifestUrl"
-    :media="source"
-    :duration="room.state.duration"
-    :progress="room.state.progress"
-    :is-playing="room.state.isPlaying"
-    :is-buffering="room.state.isBuffering"
-    @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.id || '', bufferMs, durationMs)"
-  ></RoomReplayAudio>
-
   <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from "vue"
-import { Talk, userStore } from "@/api/models"
+import { ref, computed, watch, nextTick, onUnmounted, reactive } from "vue"
+import { recordingClient } from "@/api"
+import { RecordingStatus, Talk, userStore } from "@/api/models"
 import { ReplayRoom } from "@/components/room"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomReplayVideo from "@/components/room/RoomReplayVideo.vue"
 import RoomReplayAudio from "@/components/room/RoomReplayAudio.vue"
+import PageLoader from "@/components/PageLoader.vue"
 import { Media } from "@/components/room/aggregators/media"
 import { Hint } from "@/api/room/schema"
 
+const READY_CHECK_INTERVAL = 10 * 1000
+
 type Modal = "none" | "error"
 
-enum SidePanel {
-  None = "",
-  Chat = "chat",
-}
+type SidePanel = "none" | "chat"
 
 interface Resizer {
   resize(): void
@@ -110,8 +117,20 @@ const props = defineProps<{
   talk: Talk
 }>()
 
+interface State {
+  sidePanel: SidePanel
+  isReady: boolean
+  isLoading: boolean
+}
+
+const state = reactive<State>({
+  sidePanel: (localStorage.getItem(sidePanelKey) as SidePanel) || "none",
+  isReady: false,
+  isLoading: true,
+})
+
+let loadTimerId: ReturnType<typeof setTimeout> = -1
 const modal = ref<Modal>("none")
-const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
 const audience = ref<Resizer>()
 const room = new ReplayRoom()
 const roomId = computed<string>(() => {
@@ -145,17 +164,17 @@ const audios = computed<Media[]>(() => {
 
 watch(
   roomId,
-  async (roomId: string) => {
-    await room.load(props.talk.id, roomId)
+  () => {
+    loadRoom()
   },
   { immediate: true },
 )
 
 function switchSidePanel(panel: SidePanel) {
-  if (sidePanel.value === panel) {
-    panel = SidePanel.None
+  if (state.sidePanel === panel) {
+    state.sidePanel = "none"
   } else {
-    sidePanel.value = panel
+    state.sidePanel = panel
   }
   localStorage.setItem(sidePanelKey, panel)
 
@@ -167,6 +186,27 @@ function switchSidePanel(panel: SidePanel) {
 onUnmounted(() => {
   room.close()
 })
+
+async function loadRoom(): Promise<void> {
+  clearTimeout(loadTimerId)
+  state.isReady = false
+  try {
+    const recording = await recordingClient.fetchOne(
+      { roomId: roomId.value, key: props.talk.id },
+      { policy: "no-cache" },
+    )
+    state.isLoading = false
+    if (recording.status != RecordingStatus.READY) {
+      // If recording isn't finished yet, try again later.
+      loadTimerId = setTimeout(() => loadRoom(), READY_CHECK_INTERVAL)
+      return
+    }
+    state.isReady = true
+    await room.load(roomId.value, recording)
+  } catch (e) {
+    modal.value = "error"
+  }
+}
 </script>
 
 <style scoped lang="sass">
@@ -179,6 +219,20 @@ onUnmounted(() => {
   display: flex
   flex-direction: row
   padding: 30px
+
+.loading-content
+  width: 100%
+  height: 100%
+
+  display: flex
+  flex-direction: column
+  justify-content: center
+  align-items: center
+  text-align: center
+  padding: 30px
+
+.processing-note
+  margin: 30px
 
 .room
   flex: 1
