@@ -1,4 +1,4 @@
-package tracker
+package record
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/proto/avp"
 	"github.com/aromancev/confa/internal/proto/queue"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/prep/beanstalk"
@@ -20,6 +21,7 @@ type BeanstalkProducer interface {
 
 type Tubes struct {
 	ProcessTrack string
+	StoreEvent   string
 }
 
 type Beanstalk struct {
@@ -66,4 +68,33 @@ func (b *Beanstalk) ProcessTrack(ctx context.Context, roomID, recordID uuid.UUID
 		TTR: 5 * time.Minute, // The job handler should touch it periodically to prevent rescheduling.
 	})
 	return err
+}
+
+func (b *Beanstalk) EmitEvent(ctx context.Context, id, roomID uuid.UUID, payload *rtc.Event_Payload) error {
+	idBinary, _ := id.MarshalBinary()
+	roomBinary, _ := roomID.MarshalBinary()
+	jobPayload, err := proto.Marshal(&rtc.StoreEvent{
+		Event: &rtc.Event{
+			Id:      idBinary,
+			RoomId:  roomBinary,
+			Payload: payload,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+	body, err := proto.Marshal(
+		&queue.Job{
+			Payload: jobPayload,
+			TraceId: trace.ID(ctx),
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to marshal job: %w", err)
+	}
+	_, err = b.producer.Put(ctx, b.tubes.StoreEvent, body, beanstalk.PutParams{TTR: 10 * time.Second})
+	if err != nil {
+		return fmt.Errorf("failed to put job: %w", err)
+	}
+	return nil
 }

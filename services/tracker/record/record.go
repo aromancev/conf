@@ -1,4 +1,4 @@
-package tracker
+package record
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/webrtc/webm"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	sdk "github.com/pion/ion-sdk-go"
@@ -25,7 +25,7 @@ type TrackEmitter interface {
 }
 
 type EventEmitter interface {
-	EmitEvent(ctx context.Context, event event.Event) error
+	EmitEvent(ctx context.Context, id, roomID uuid.UUID, event *rtc.Event_Payload) error
 }
 
 type Tracker struct {
@@ -43,12 +43,12 @@ type Tracker struct {
 }
 
 func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Connector, trackEmitter TrackEmitter, eventEmitter EventEmitter, bucket string, roomID uuid.UUID) (*Tracker, error) {
-	rtc, err := sdk.NewRTC(connector)
+	rtcClient, err := sdk.NewRTC(connector)
 	if err != nil {
 		return nil, err
 	}
 	tracker := &Tracker{
-		rtc:          rtc,
+		rtc:          rtcClient,
 		storage:      storage,
 		trackEmitter: trackEmitter,
 		eventEmitter: eventEmitter,
@@ -72,7 +72,7 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 		}()
 	}
 
-	err = rtc.Join(roomID.String(), uuid.NewString())
+	err = rtcClient.Join(roomID.String(), uuid.NewString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to join room: %w", err)
 	}
@@ -190,14 +190,11 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 			// Emitting a track event only after the minimum track duration has beed recorded.
 			// Not emitting immediately to avoid creating an event for invalid track.
 			if !recordingEventEmitted && duration >= minDuration {
-				err := t.eventEmitter.EmitEvent(ctx, event.Event{
-					ID:   uuid.New(),
-					Room: t.roomID,
-					Payload: event.Payload{
-						TrackRecording: &event.PayloadTrackRecording{
-							ID:      recordID,
-							TrackID: track.ID(),
-						},
+				recIDBin, _ := recordID.MarshalBinary()
+				err := t.eventEmitter.EmitEvent(ctx, uuid.New(), t.roomID, &rtc.Event_Payload{
+					TrackRecording: &rtc.Event_Payload_PayloadTrackRecording{
+						Id:      recIDBin,
+						TrackId: track.ID(),
 					},
 				})
 				if err != nil {

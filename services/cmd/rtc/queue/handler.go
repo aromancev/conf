@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/aromancev/confa/event"
@@ -61,7 +62,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeJob panic")
+			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Str("stack", string(debug.Stack())).Msg("ServeJob panic")
 		}
 	}()
 

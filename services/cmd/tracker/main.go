@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aromancev/confa/event"
 	pb "github.com/aromancev/confa/internal/proto/tracker"
+	"github.com/aromancev/confa/tracker/record"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	sdk "github.com/pion/ion-sdk-go"
@@ -20,8 +20,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aromancev/confa/cmd/tracker/rpc"
-	evtrack "github.com/aromancev/confa/event/tracker"
-	"github.com/aromancev/confa/internal/tracker"
+	"github.com/aromancev/confa/tracker"
 )
 
 func main() {
@@ -86,10 +85,10 @@ func main() {
 				connector,
 				runtime,
 				minioClient,
-				evtrack.NewBeanstalk(producer, evtrack.Tubes{
+				record.NewBeanstalk(producer, record.Tubes{
 					ProcessTrack: config.Beanstalk.TubeProcessTrack,
+					StoreEvent:   config.Beanstalk.TubeStoreEvent,
 				}),
-				event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent),
 				rpc.Buckets{
 					TrackRecords: config.Storage.BucketTrackRecords,
 				},
