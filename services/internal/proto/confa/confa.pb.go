@@ -185,6 +185,77 @@ func (x *StopRecording) GetRoomId() []byte {
 	return nil
 }
 
+type RecordingUpdate struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RoomId      []byte                  `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	RecordingId []byte                  `protobuf:"bytes,2,opt,name=recording_id,json=recordingId,proto3" json:"recording_id,omitempty"`
+	UpdatedAt   int64                   `protobuf:"varint,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Update      *RecordingUpdate_Update `protobuf:"bytes,4,opt,name=update,proto3" json:"update,omitempty"`
+}
+
+func (x *RecordingUpdate) Reset() {
+	*x = RecordingUpdate{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_confa_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RecordingUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordingUpdate) ProtoMessage() {}
+
+func (x *RecordingUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_confa_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordingUpdate.ProtoReflect.Descriptor instead.
+func (*RecordingUpdate) Descriptor() ([]byte, []int) {
+	return file_confa_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RecordingUpdate) GetRoomId() []byte {
+	if x != nil {
+		return x.RoomId
+	}
+	return nil
+}
+
+func (x *RecordingUpdate) GetRecordingId() []byte {
+	if x != nil {
+		return x.RecordingId
+	}
+	return nil
+}
+
+func (x *RecordingUpdate) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+func (x *RecordingUpdate) GetUpdate() *RecordingUpdate_Update {
+	if x != nil {
+		return x.Update
+	}
+	return nil
+}
+
 type UpdateProfile_Source struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -197,7 +268,7 @@ type UpdateProfile_Source struct {
 func (x *UpdateProfile_Source) Reset() {
 	*x = UpdateProfile_Source{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_confa_proto_msgTypes[3]
+		mi := &file_confa_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -210,7 +281,7 @@ func (x *UpdateProfile_Source) String() string {
 func (*UpdateProfile_Source) ProtoMessage() {}
 
 func (x *UpdateProfile_Source) ProtoReflect() protoreflect.Message {
-	mi := &file_confa_proto_msgTypes[3]
+	mi := &file_confa_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -252,7 +323,7 @@ type UpdateProfile_Source_Storage struct {
 func (x *UpdateProfile_Source_Storage) Reset() {
 	*x = UpdateProfile_Source_Storage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_confa_proto_msgTypes[4]
+		mi := &file_confa_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -265,7 +336,7 @@ func (x *UpdateProfile_Source_Storage) String() string {
 func (*UpdateProfile_Source_Storage) ProtoMessage() {}
 
 func (x *UpdateProfile_Source_Storage) ProtoReflect() protoreflect.Message {
-	mi := &file_confa_proto_msgTypes[4]
+	mi := &file_confa_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -306,7 +377,7 @@ type UpdateProfile_Source_PublicURL struct {
 func (x *UpdateProfile_Source_PublicURL) Reset() {
 	*x = UpdateProfile_Source_PublicURL{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_confa_proto_msgTypes[5]
+		mi := &file_confa_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -319,7 +390,7 @@ func (x *UpdateProfile_Source_PublicURL) String() string {
 func (*UpdateProfile_Source_PublicURL) ProtoMessage() {}
 
 func (x *UpdateProfile_Source_PublicURL) ProtoReflect() protoreflect.Message {
-	mi := &file_confa_proto_msgTypes[5]
+	mi := &file_confa_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -340,6 +411,110 @@ func (x *UpdateProfile_Source_PublicURL) GetUrl() string {
 		return x.Url
 	}
 	return ""
+}
+
+type RecordingUpdate_Update struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Update:
+	//	*RecordingUpdate_Update_ProcessingFinished
+	Update isRecordingUpdate_Update_Update `protobuf_oneof:"update"`
+}
+
+func (x *RecordingUpdate_Update) Reset() {
+	*x = RecordingUpdate_Update{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_confa_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RecordingUpdate_Update) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordingUpdate_Update) ProtoMessage() {}
+
+func (x *RecordingUpdate_Update) ProtoReflect() protoreflect.Message {
+	mi := &file_confa_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordingUpdate_Update.ProtoReflect.Descriptor instead.
+func (*RecordingUpdate_Update) Descriptor() ([]byte, []int) {
+	return file_confa_proto_rawDescGZIP(), []int{3, 0}
+}
+
+func (m *RecordingUpdate_Update) GetUpdate() isRecordingUpdate_Update_Update {
+	if m != nil {
+		return m.Update
+	}
+	return nil
+}
+
+func (x *RecordingUpdate_Update) GetProcessingFinished() *RecordingUpdate_ProcessingFinished {
+	if x, ok := x.GetUpdate().(*RecordingUpdate_Update_ProcessingFinished); ok {
+		return x.ProcessingFinished
+	}
+	return nil
+}
+
+type isRecordingUpdate_Update_Update interface {
+	isRecordingUpdate_Update_Update()
+}
+
+type RecordingUpdate_Update_ProcessingFinished struct {
+	ProcessingFinished *RecordingUpdate_ProcessingFinished `protobuf:"bytes,1,opt,name=processing_finished,json=processingFinished,proto3,oneof"`
+}
+
+func (*RecordingUpdate_Update_ProcessingFinished) isRecordingUpdate_Update_Update() {}
+
+type RecordingUpdate_ProcessingFinished struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *RecordingUpdate_ProcessingFinished) Reset() {
+	*x = RecordingUpdate_ProcessingFinished{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_confa_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RecordingUpdate_ProcessingFinished) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordingUpdate_ProcessingFinished) ProtoMessage() {}
+
+func (x *RecordingUpdate_ProcessingFinished) ProtoReflect() protoreflect.Message {
+	mi := &file_confa_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordingUpdate_ProcessingFinished.ProtoReflect.Descriptor instead.
+func (*RecordingUpdate_ProcessingFinished) Descriptor() ([]byte, []int) {
+	return file_confa_proto_rawDescGZIP(), []int{3, 1}
 }
 
 var File_confa_proto protoreflect.FileDescriptor
@@ -373,7 +548,26 @@ var file_confa_proto_rawDesc = []byte{
 	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x61, 0x6c, 0x6b, 0x5f, 0x69,
 	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x74, 0x61, 0x6c, 0x6b, 0x49, 0x64, 0x12,
 	0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
-	0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x22, 0x9f, 0x02, 0x0a, 0x0f, 0x52, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x17, 0x0a, 0x07,
+	0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x72,
+	0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69,
+	0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b, 0x72, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x75, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x75, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x2f, 0x0a, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x69, 0x6e, 0x67, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0x52, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x1a, 0x6a, 0x0a, 0x06, 0x55, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x12, 0x56, 0x0a, 0x13, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67,
+	0x5f, 0x66, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x23, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x55, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69,
+	0x73, 0x68, 0x65, 0x64, 0x48, 0x00, 0x52, 0x12, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69,
+	0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x42, 0x08, 0x0a, 0x06, 0x75, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x1a, 0x14, 0x0a, 0x12, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69,
+	0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -388,24 +582,29 @@ func file_confa_proto_rawDescGZIP() []byte {
 	return file_confa_proto_rawDescData
 }
 
-var file_confa_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_confa_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_confa_proto_goTypes = []interface{}{
-	(*UpdateProfile)(nil),                  // 0: UpdateProfile
-	(*StartRecording)(nil),                 // 1: StartRecording
-	(*StopRecording)(nil),                  // 2: StopRecording
-	(*UpdateProfile_Source)(nil),           // 3: UpdateProfile.Source
-	(*UpdateProfile_Source_Storage)(nil),   // 4: UpdateProfile.Source.Storage
-	(*UpdateProfile_Source_PublicURL)(nil), // 5: UpdateProfile.Source.PublicURL
+	(*UpdateProfile)(nil),                      // 0: UpdateProfile
+	(*StartRecording)(nil),                     // 1: StartRecording
+	(*StopRecording)(nil),                      // 2: StopRecording
+	(*RecordingUpdate)(nil),                    // 3: RecordingUpdate
+	(*UpdateProfile_Source)(nil),               // 4: UpdateProfile.Source
+	(*UpdateProfile_Source_Storage)(nil),       // 5: UpdateProfile.Source.Storage
+	(*UpdateProfile_Source_PublicURL)(nil),     // 6: UpdateProfile.Source.PublicURL
+	(*RecordingUpdate_Update)(nil),             // 7: RecordingUpdate.Update
+	(*RecordingUpdate_ProcessingFinished)(nil), // 8: RecordingUpdate.ProcessingFinished
 }
 var file_confa_proto_depIdxs = []int32{
-	3, // 0: UpdateProfile.avatar:type_name -> UpdateProfile.Source
-	4, // 1: UpdateProfile.Source.storage:type_name -> UpdateProfile.Source.Storage
-	5, // 2: UpdateProfile.Source.public_url:type_name -> UpdateProfile.Source.PublicURL
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 0: UpdateProfile.avatar:type_name -> UpdateProfile.Source
+	7, // 1: RecordingUpdate.update:type_name -> RecordingUpdate.Update
+	5, // 2: UpdateProfile.Source.storage:type_name -> UpdateProfile.Source.Storage
+	6, // 3: UpdateProfile.Source.public_url:type_name -> UpdateProfile.Source.PublicURL
+	8, // 4: RecordingUpdate.Update.processing_finished:type_name -> RecordingUpdate.ProcessingFinished
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_confa_proto_init() }
@@ -451,7 +650,7 @@ func file_confa_proto_init() {
 			}
 		}
 		file_confa_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateProfile_Source); i {
+			switch v := v.(*RecordingUpdate); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -463,7 +662,7 @@ func file_confa_proto_init() {
 			}
 		}
 		file_confa_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateProfile_Source_Storage); i {
+			switch v := v.(*UpdateProfile_Source); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -475,6 +674,18 @@ func file_confa_proto_init() {
 			}
 		}
 		file_confa_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateProfile_Source_Storage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_confa_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UpdateProfile_Source_PublicURL); i {
 			case 0:
 				return &v.state
@@ -486,6 +697,33 @@ func file_confa_proto_init() {
 				return nil
 			}
 		}
+		file_confa_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RecordingUpdate_Update); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_confa_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RecordingUpdate_ProcessingFinished); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+	}
+	file_confa_proto_msgTypes[7].OneofWrappers = []interface{}{
+		(*RecordingUpdate_Update_ProcessingFinished)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -493,7 +731,7 @@ func file_confa_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_confa_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

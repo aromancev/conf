@@ -92,10 +92,19 @@ type EventLimit struct {
 type Recording struct {
 	Key       string
 	RoomID    string
+	Status    RecordingStatus
 	CreatedAt float64
 	StartedAt float64
 	StoppedAt *float64
 }
+
+type RecordingStatus string
+
+const (
+	RecordingStatusRecording  = "RECORDING"
+	RecordingStatusProcessing = "PROCESSING"
+	RecordingStatusReady      = "READY"
+)
 
 type Recordings struct {
 	Items    []Recording
@@ -117,7 +126,7 @@ type EventRepo interface {
 }
 
 type RecordRepo interface {
-	Fetch(ctx context.Context, lookup record.Lookup) ([]record.Record, error)
+	Fetch(ctx context.Context, lookup record.Lookup) ([]record.Recording, error)
 }
 
 type Resolver struct {
@@ -266,16 +275,22 @@ func (r *Resolver) Recordings(ctx context.Context, args struct {
 	return res, nil
 }
 
-func newRecording(rec record.Record) Recording {
+func newRecording(rec record.Recording) Recording {
 	api := Recording{
 		Key:       rec.Key,
 		RoomID:    rec.Room.String(),
+		Status:    RecordingStatusRecording,
 		CreatedAt: float64(rec.CreatedAt.UTC().UnixMilli()),
 		StartedAt: float64(rec.StartedAt.UTC().UnixMilli()),
 	}
 	if !rec.StoppedAt.IsZero() {
 		t := float64(rec.StoppedAt.UTC().UnixMilli())
 		api.StoppedAt = &t
+		if rec.IsReady() {
+			api.Status = RecordingStatusReady
+		} else {
+			api.Status = RecordingStatusProcessing
+		}
 	}
 	return api
 }

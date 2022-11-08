@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+service IAM {
+    rpc GetUser(UserLookup) returns (User) {}
+}
+
+message UserLookup {
+    bytes user_id = 1;
+}
+
+enum Platform {
+    UNKNOWN = 0;
+    EMAIL = 1;
+    TWITTER = 2;
+    GITHUB = 3;
+}
+
+message User {
+    message Ident {
+        Platform platform = 1;
+        string value = 2;
+    }
+    bytes id = 1;
+    repeated Ident idents = 2;
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/aromancev/confa/tracker/record"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	ilog "github.com/pion/ion-log"
 	sdk "github.com/pion/ion-sdk-go"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
@@ -45,6 +46,9 @@ func main() {
 	default:
 		log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	}
+	// ION sdk uses ion logger.
+	// We are only interested in errors from sdk.
+	ilog.Init("error")
 	ctx = log.Logger.WithContext(ctx)
 
 	producer, err := beanstalk.NewProducer(config.Beanstalk.ParsePool(), beanstalk.Config{
@@ -86,8 +90,9 @@ func main() {
 				runtime,
 				minioClient,
 				record.NewBeanstalk(producer, record.Tubes{
-					ProcessTrack: config.Beanstalk.TubeProcessTrack,
-					StoreEvent:   config.Beanstalk.TubeStoreEvent,
+					ProcessTrack:         config.Beanstalk.TubeProcessTrack,
+					StoreEvent:           config.Beanstalk.TubeStoreEvent,
+					UpdateRecordingTrack: config.Beanstalk.TubeUpdateRecordingTrack,
 				}),
 				rpc.Buckets{
 					TrackRecords: config.Storage.BucketTrackRecords,

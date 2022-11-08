@@ -66,6 +66,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	handle := h.route(job)
 	if handle == nil {
 		log.Ctx(ctx).Error().Msg("No handle for job. Burying.")
+		_ = job.Bury(ctx)
 		return
 	}
 
@@ -91,11 +92,12 @@ func send(sender Sender) JobHandle {
 
 		err = sender.Send(ctx, &sendJob)
 		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to send message.")
 			jobRetry(ctx, job, bo, maxAge)
 			return
 		}
-		jobDelete(ctx, job)
 		log.Ctx(ctx).Info().Msg("Message sent.")
+		jobDelete(ctx, job)
 	}
 }
 

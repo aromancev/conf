@@ -100,8 +100,10 @@ func (c MongoConfig) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool           string `envconfig:"BEANSTALK_POOL"`
-	TubeStoreEvent string `envconfig:"BEANSTALK_TUBE_STORE_EVENT"`
+	Pool                     string `envconfig:"BEANSTALK_POOL"`
+	TubeStoreEvent           string `envconfig:"BEANSTALK_TUBE_STORE_EVENT"`
+	TubeUpdateRecordingTrack string `envconfig:"BEANSTALK_TUBE_UPDATE_RECORDING_TRACK"`
+	TubeRecordingUpdate      string `envconfig:"BEANSTALK_TUBE_RECORDING_UPDATE"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -110,6 +112,12 @@ func (c BeanstalkConfig) Validate() error {
 	}
 	if c.TubeStoreEvent == "" {
 		return errors.New("BEANSTALK_TUBE_STORE_EVENT not set")
+	}
+	if c.TubeUpdateRecordingTrack == "" {
+		return errors.New("BEANSTALK_TUBE_UPDATE_RECORDING_TRACK not set")
+	}
+	if c.TubeRecordingUpdate == "" {
+		return errors.New("BEANSTALK_TUBE_RECORDING_UPDATE not set")
 	}
 
 	return nil

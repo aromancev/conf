@@ -8,6 +8,13 @@
         },
         "name": "unique_handle",
         "unique": true
+      },
+      {
+        "key": {
+          "roomId": 1
+        },
+        "name": "unique_room",
+        "unique": true
       }
     ]
   }

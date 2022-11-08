@@ -4,18 +4,29 @@ message Message {
     message LoginViaEmail {
         string secret_login_url = 1;
     }
+    message TalkRecordingReady {
+        string talk_url = 1;
+        string confa_url = 2;
+        string confa_title = 3;
+        string talk_title = 4;
+    }
     oneof message {
         LoginViaEmail login_via_email = 1;
+        TalkRecordingReady talk_recording_ready = 2;
     }
 }
 
 message Delivery {
+    message Auto {
+        bytes user_id = 1;    
+    }
     message Email {
         string to_address = 1;
     }
 
     oneof delivery {
-        Email email = 1;
+        Auto auto = 1;
+        Email email = 2;
     }
 }
 
