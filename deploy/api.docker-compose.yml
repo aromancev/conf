@@ -113,11 +113,12 @@ services:
       - SFU_RPC_ADDRESS=sfu.confa.io:8080
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
-      - BEANSTALK_TUBE_RECORDING_TRACK=rtc/recording-track
+      - BEANSTALK_TUBE_UPDATE_RECORDING_TRACK=rtc/update-recording-track
       - BEANSTALK_TUBE_RECORDING_UPDATE=confa/recording-update
       - LOG_LEVEL=warn
 
   tracker:
+    restart: on-failure
     build:
       context: ../services
       dockerfile: ./cmd/tracker/Dockerfile
@@ -135,10 +136,11 @@ services:
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
-      - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+      - BEANSTALK_TUBE_UPDATE_RECORDING_TRACK=rtc/update-recording-track
       - LOG_LEVEL=warn
 
   avp:
+    restart: on-failure
     build:
       context: ../services
       dockerfile: ./cmd/avp/Dockerfile
@@ -158,6 +160,7 @@ services:
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_PROCESS_TRACK=avp/process-track
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
+      - BEANSTALK_TUBE_UPDATE_RECORDING_TRACK=rtc/update-recording-track
       - LOG_LEVEL=warn
 
   sender:
@@ -212,6 +215,7 @@ services:
         exec docker-entrypoint.sh $$@
 
   minio:
+    restart: on-failure
     image: minio/minio:RELEASE.2022-04-16T04-26-02Z
     command: server /data --address=":80"
     environment:
