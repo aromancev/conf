@@ -26,7 +26,7 @@ x-service-env: &service-env
   BEANSTALK_TUBE_STOP_RECORDING: "confa/stop-recording"
   BEANSTALK_TUBE_RECORDING_UPDATE: "confa/recording-update"
   BEANSTALK_TUBE_STORE_EVENT: "rtc/store-event"
-  BEANSTALK_TUBE_UPDATE_RECORDING_TRACK: "rtc/recording-track"
+  BEANSTALK_TUBE_UPDATE_RECORDING_TRACK: "rtc/update-recording-track"
   BEANSTALK_TUBE_PROCESS_TRACK: "avp/process-track"
   STORAGE_HOST: "minio:80"
   STORAGE_ACCESS_KEY: "minio"
