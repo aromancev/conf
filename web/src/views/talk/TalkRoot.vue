@@ -9,7 +9,7 @@
         {{ confaHandle }}
       </router-link>
       /
-      <router-link class="path-link" :to="route.talk(confaHandle, handle, 'overview')">
+      <router-link class="path-link" :to="route.talk(confaHandle, handle, 'watch')">
         {{ talk.handle }}
       </router-link>
     </div>
@@ -46,9 +46,11 @@
       <TalkLive
         v-if="tab === 'watch' && talk.state !== TalkState.ENDED"
         :talk="talk"
+        :confa-handle="confaHandle"
         :join-confirmed="joinConfirmed"
         :invite-link="inviteLink"
         @join="join"
+        @talk_ended="() => talk!.state = TalkState.ENDED"
       />
       <TalkReplay v-if="tab === 'watch' && talk.state === TalkState.ENDED" :talk="talk" />
       <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />

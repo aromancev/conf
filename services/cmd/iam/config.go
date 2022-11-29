@@ -21,6 +21,7 @@ const (
 
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
+	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
 	BaseURL          string `envconfig:"BASE_URL"`

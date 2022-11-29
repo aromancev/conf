@@ -41,7 +41,7 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 	case ev.Payload.Recording != nil:
 		pl := *ev.Payload.Recording
 		payload.Recording = &EventRecording{
-			Status: RecordingStatus(pl.Status),
+			Status: RecordingEventStatus(pl.Status),
 		}
 	case ev.Payload.TrackRecording != nil:
 		pl := *ev.Payload.TrackRecording

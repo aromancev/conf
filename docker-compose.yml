@@ -18,12 +18,15 @@ x-service-env: &service-env
   SECRET_KEY: "LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUI4Zm1WV2hNZEFvL1VrRE5ONFVHbzhQWXdLeHovbE43bmlsbVlhMktFa2JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaTNOeFJ4blhoT3hEV2FBaGQ0TXhkRjE3ZgpBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo="
   PUBLIC_KEY: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFVHJNZDBCcjdHT3BFN1VTMWpKN0xiTDBMOHZJaQozTnhSeG5YaE94RFdhQWhkNE14ZEYxN2ZBWTVPR2pKcFBkV0o4VERNUUg3RXM5OFNBQjlwVlJWWmhnPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
   MONGO_HOSTS: "mongo:27017"
+  BASE_URL: "http://localhost"
   BEANSTALK_POOL: "beanstalk:11300"
   BEANSTALK_TUBE_SEND: "sender/send"
   BEANSTALK_TUBE_UPDATE_AVATAR: "confa/update-avatar"
   BEANSTALK_TUBE_START_RECORDING: "confa/start-recording"
   BEANSTALK_TUBE_STOP_RECORDING: "confa/stop-recording"
+  BEANSTALK_TUBE_RECORDING_UPDATE: "confa/recording-update"
   BEANSTALK_TUBE_STORE_EVENT: "rtc/store-event"
+  BEANSTALK_TUBE_UPDATE_RECORDING_TRACK: "rtc/recording-track"
   BEANSTALK_TUBE_PROCESS_TRACK: "avp/process-track"
   STORAGE_HOST: "minio:80"
   STORAGE_ACCESS_KEY: "minio"
@@ -36,6 +39,7 @@ x-service-env: &service-env
   RTC_RPC_ADDRESS: "rtc:8080"
   TRACKER_RPC_ADDRESS: "tracker:8080"
   SFU_RPC_ADDRESS: "sfu:8080"
+  IAM_RPC_ADDRESS: "iam:8080"
 
 services:
   nginx:
@@ -84,7 +88,6 @@ services:
     command: "go run ./cmd/iam"
     environment:
       <<: *service-env
-      BASE_URL: "http://localhost"
       EMAIL_SERVER: "email-client"
       EMAIL_PORT: "1025"
       EMAIL_ADDRESS: "noreply@confa.io"

@@ -80,18 +80,25 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
-	consumer, err := beanstalk.NewConsumer(config.Beanstalk.ParsePool(), []string{config.Beanstalk.TubeStoreEvent}, beanstalk.Config{
-		Multiply:         1,
-		NumGoroutines:    10,
-		ReserveTimeout:   100 * time.Millisecond,
-		ReconnectTimeout: 3 * time.Second,
-		InfoFunc: func(message string) {
-			log.Info().Msg(message)
+	consumer, err := beanstalk.NewConsumer(
+		config.Beanstalk.ParsePool(),
+		[]string{
+			config.Beanstalk.TubeStoreEvent,
+			config.Beanstalk.TubeUpdateRecordingTrack,
 		},
-		ErrorFunc: func(err error, message string) {
-			log.Err(err).Msg(message)
+		beanstalk.Config{
+			Multiply:         1,
+			NumGoroutines:    10,
+			ReserveTimeout:   100 * time.Millisecond,
+			ReconnectTimeout: 3 * time.Second,
+			InfoFunc: func(message string) {
+				log.Info().Msg(message)
+			},
+			ErrorFunc: func(err error, message string) {
+				log.Err(err).Msg(message)
+			},
 		},
-	})
+	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
@@ -112,9 +119,18 @@ func main() {
 	eventWatcher := event.NewSharedWatcher(eventMongo, 30)
 	eventEmitter := event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent)
 
-	jobHandler := queue.NewHandler(eventMongo, queue.Tubes{
-		StoreEvent: config.Beanstalk.TubeStoreEvent,
-	})
+	tubes := queue.Tubes{
+		StoreEvent:           config.Beanstalk.TubeStoreEvent,
+		UpdateRecordingTrack: config.Beanstalk.TubeUpdateRecordingTrack,
+		RecordingUpdate:      config.Beanstalk.TubeRecordingUpdate,
+	}
+	qBeanstalk := queue.NewBeanstalk(producer, tubes)
+	jobHandler := queue.NewHandler(
+		eventMongo,
+		recordMongo,
+		tubes,
+		qBeanstalk,
+	)
 
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,

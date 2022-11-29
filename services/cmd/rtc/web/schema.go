@@ -63,7 +63,7 @@ type Track struct {
 }
 
 type EventRecording struct {
-	Status RecordingStatus `json:"status"`
+	Status RecordingEventStatus `json:"status"`
 }
 
 type EventTrackRecording struct {
@@ -131,10 +131,10 @@ const (
 	UserAudio Hint = "user_audio"
 )
 
-type RecordingStatus string
+type RecordingEventStatus string
 const (
-	Started RecordingStatus = "started"
-	Stopped RecordingStatus = "stopped"
+	Started RecordingEventStatus = "started"
+	Stopped RecordingEventStatus = "stopped"
 )
 
 type SDPType string

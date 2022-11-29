@@ -8,7 +8,7 @@ service RTC {
 
 message Room {
     bytes id = 1;
-    bytes ownerId = 2;
+    bytes owner_id = 2;
 }
 
 message RecordingParams {
@@ -28,6 +28,27 @@ message Recording {
     bytes recording_id = 2;
     int64 started_at = 3;
     bool already_exists = 4;
+}
+
+message UpdateRecordingTrack {
+    message Update {
+        oneof update {
+            RecordingStarted recording_started = 1;
+            RecordingFinished recording_finished = 2;
+            ProcessingStarted processing_started = 3;
+            ProcessingFinished processing_finished = 4;
+        }
+    }
+
+    message RecordingStarted {}
+    message RecordingFinished {}
+    message ProcessingStarted {}
+    message ProcessingFinished {}
+
+    bytes recording_id = 1;
+    bytes record_id = 2; 
+    int64 updated_at = 3;
+    Update update = 4;
 }
 
 message StoreEvent {

@@ -145,6 +145,9 @@ func mongoFilter(l Lookup) bson.M {
 	if l.Confa != uuid.Nil {
 		filter["confaId"] = l.Confa
 	}
+	if l.Room != uuid.Nil {
+		filter["roomId"] = l.Room
+	}
 	if l.Handle != "" {
 		filter["handle"] = l.Handle
 	}

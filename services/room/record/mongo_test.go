@@ -20,7 +20,7 @@ func TestMongo(t *testing.T) {
 
 			records := NewMongo(dockerMongo(t))
 
-			record := Record{
+			record := Recording{
 				ID:   uuid.New(),
 				Room: uuid.New(),
 			}
@@ -43,13 +43,13 @@ func TestMongo(t *testing.T) {
 			records := NewMongo(dockerMongo(t))
 
 			roomID := uuid.New()
-			first, err := records.FetchOrStart(ctx, Record{
+			first, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 			})
 			require.NoError(t, err)
 
-			second, err := records.FetchOrStart(ctx, Record{
+			second, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 			})
@@ -62,13 +62,13 @@ func TestMongo(t *testing.T) {
 
 			records := NewMongo(dockerMongo(t))
 
-			first, err := records.FetchOrStart(ctx, Record{
+			first, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: uuid.New(),
 			})
 			require.NoError(t, err)
 
-			second, err := records.FetchOrStart(ctx, Record{
+			second, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: uuid.New(),
 			})
@@ -82,7 +82,7 @@ func TestMongo(t *testing.T) {
 			records := NewMongo(dockerMongo(t))
 
 			roomID := uuid.New()
-			first, err := records.FetchOrStart(ctx, Record{
+			first, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 			})
@@ -91,7 +91,7 @@ func TestMongo(t *testing.T) {
 			_, err = records.Stop(ctx, Lookup{ID: first.ID})
 			require.NoError(t, err)
 
-			second, err := records.FetchOrStart(ctx, Record{
+			second, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 			})
@@ -105,14 +105,14 @@ func TestMongo(t *testing.T) {
 			records := NewMongo(dockerMongo(t))
 
 			roomID := uuid.New()
-			first, err := records.FetchOrStart(ctx, Record{
+			first, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 				Key:  "test",
 			})
 			require.NoError(t, err)
 
-			second, err := records.FetchOrStart(ctx, Record{
+			second, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 				Key:  "test",
@@ -127,14 +127,14 @@ func TestMongo(t *testing.T) {
 			records := NewMongo(dockerMongo(t))
 
 			roomID := uuid.New()
-			_, err := records.FetchOrStart(ctx, Record{
+			_, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 				Key:  "rick",
 			})
 			require.NoError(t, err)
 
-			_, err = records.FetchOrStart(ctx, Record{
+			_, err = records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: roomID,
 				Key:  "morty",
@@ -149,7 +149,7 @@ func TestMongo(t *testing.T) {
 
 			records := NewMongo(dockerMongo(t))
 
-			created, err := records.FetchOrStart(ctx, Record{
+			created, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: uuid.New(),
 			})
@@ -170,7 +170,7 @@ func TestMongo(t *testing.T) {
 
 			records := NewMongo(dockerMongo(t))
 
-			created, err := records.FetchOrStart(ctx, Record{
+			created, err := records.FetchOrStart(ctx, Recording{
 				ID:   uuid.New(),
 				Room: uuid.New(),
 			})
@@ -185,12 +185,95 @@ func TestMongo(t *testing.T) {
 		})
 	})
 
+	t.Run("UpdateRecords", func(t *testing.T) {
+		t.Run("Happy", func(t *testing.T) {
+			t.Parallel()
+
+			records := NewMongo(dockerMongo(t))
+
+			created, err := records.FetchOrStart(ctx, Recording{
+				ID:   uuid.New(),
+				Room: uuid.New(),
+			})
+			require.NoError(t, err)
+
+			updates := Records{
+				RecordingStarted: []uuid.UUID{uuid.New()},
+			}
+			updated, err := records.UpdateRecords(ctx, Lookup{ID: created.ID}, updates)
+			require.NoError(t, err)
+			assert.Equal(t, updates, updated.Records)
+
+			fetched, err := records.FetchOne(ctx, Lookup{ID: created.ID})
+			require.NoError(t, err)
+			assert.Equal(t, updates, fetched.Records)
+		})
+		t.Run("Updates existing statuses", func(t *testing.T) {
+			t.Parallel()
+
+			records := NewMongo(dockerMongo(t))
+
+			existingRecord := uuid.New()
+			newRecord := uuid.New()
+			created, err := records.FetchOrStart(ctx, Recording{
+				ID:   uuid.New(),
+				Room: uuid.New(),
+				Records: Records{
+					ProcessingStarted: []uuid.UUID{existingRecord},
+				},
+			})
+			require.NoError(t, err)
+
+			_, err = records.UpdateRecords(ctx, Lookup{ID: created.ID}, Records{ProcessingStarted: []uuid.UUID{newRecord}})
+			require.NoError(t, err)
+
+			fetched, err := records.FetchOne(ctx, Lookup{ID: created.ID})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []uuid.UUID{existingRecord, newRecord}, fetched.Records.ProcessingStarted)
+		})
+		t.Run("Adds new statuses", func(t *testing.T) {
+			t.Parallel()
+
+			records := NewMongo(dockerMongo(t))
+
+			created, err := records.FetchOrStart(ctx, Recording{
+				ID:   uuid.New(),
+				Room: uuid.New(),
+				Records: Records{
+					ProcessingStarted: []uuid.UUID{uuid.New()},
+				},
+			})
+			require.NoError(t, err)
+
+			_, err = records.UpdateRecords(ctx, Lookup{ID: created.ID}, Records{RecordingFinished: []uuid.UUID{uuid.New()}})
+			require.NoError(t, err)
+
+			fetched, err := records.FetchOne(ctx, Lookup{ID: created.ID})
+			require.NoError(t, err)
+			assert.EqualValues(t, 1, len(fetched.Records.RecordingFinished))
+		})
+		t.Run("Zero records returns correct error", func(t *testing.T) {
+			t.Parallel()
+
+			records := NewMongo(dockerMongo(t))
+
+			created, err := records.FetchOrStart(ctx, Recording{
+				ID:   uuid.New(),
+				Room: uuid.New(),
+			})
+			require.NoError(t, err)
+
+			_, err = records.UpdateRecords(ctx, Lookup{ID: created.ID}, Records{})
+			require.ErrorIs(t, err, ErrValidation)
+		})
+	})
+
 	t.Run("Fetch", func(t *testing.T) {
 		t.Parallel()
 
 		records := NewMongo(dockerMongo(t))
 
-		record := Record{
+		record := Recording{
 			ID:   uuid.New(),
 			Room: uuid.New(),
 			Key:  uuid.NewString(),

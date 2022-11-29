@@ -1,5 +1,5 @@
 import { reactive, readonly } from "vue"
-import { RoomEvent, RecordingStatus } from "@/api/room/schema"
+import { RoomEvent, RecordingEventStatus } from "@/api/room/schema"
 
 export interface State {
   isRecording: boolean
@@ -24,10 +24,10 @@ export class RecordingAggregator {
       return
     }
     switch (recording.status) {
-      case RecordingStatus.Started:
+      case RecordingEventStatus.Started:
         this._state.isRecording = true
         break
-      case RecordingStatus.Stopped:
+      case RecordingEventStatus.Stopped:
         this._state.isRecording = false
         break
     }

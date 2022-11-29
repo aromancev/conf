@@ -109,16 +109,29 @@
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
-  <ModalDialog v-if="modal.state.current === 'reconnect'" :ctrl="modal" :buttons="{ reconnect: 'Reconnect' }">
+  <ModalDialog
+    v-if="modal.state.current === 'reconnect'"
+    :ctrl="modal"
+    :buttons="{ reconnect: 'Reconnect', leave: 'Leave' }"
+  >
     <p>Connection lost.</p>
     <p>Please check your internet connection and try to reconnect.</p>
+  </ModalDialog>
+  <ModalDialog
+    v-if="modal.state.current === 'recording_finished'"
+    :ctrl="modal"
+    :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
+  >
+    <p>Recording finished.</p>
+    <p>For demo purposes it is limited to 5 minutes.</p>
   </ModalDialog>
   <InternalError v-if="modal.state.current === 'error'" :ctrl="modal" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted } from "vue"
-import { onBeforeRouteLeave } from "vue-router"
+import { onBeforeRouteLeave, useRouter } from "vue-router"
+import { route } from "@/router"
 import { talkClient } from "@/api"
 import { Talk, TalkState, userStore } from "@/api/models"
 import { LiveRoom } from "@/components/room"
@@ -133,7 +146,7 @@ import CopyField from "@/components/fields/CopyField.vue"
 
 type RecordingStatus = "none" | "pending" | "recording" | "stopped"
 
-const modal = new ModalController<"error" | "confirm_join" | "confirm_leave" | "reconnect">()
+const modal = new ModalController<"error" | "confirm_join" | "confirm_leave" | "reconnect" | "recording_finished">()
 
 enum SidePanel {
   None = "",
@@ -146,14 +159,17 @@ interface Resizer {
 
 const emit = defineEmits<{
   (e: "join", confirmed: boolean): void
+  (e: "talk_ended"): void
 }>()
 
 const sidePanelKey = "roomSidePanel"
 
+const router = useRouter()
 const user = userStore.state()
 
 const props = defineProps<{
   talk: Talk
+  confaHandle: string
   inviteLink?: string
   joinConfirmed?: boolean
 }>()
@@ -213,8 +229,16 @@ watch(
   { immediate: true },
 )
 
-watch(room.state.recording, (r) => {
-  recordingStatus.value = r.isRecording ? "recording" : "stopped"
+watch(room.state.recording, async (r) => {
+  if (r.isRecording) {
+    recordingStatus.value = "recording"
+  } else {
+    recordingStatus.value = "stopped"
+    const answer = await modal.set("recording_finished")
+    if (answer === "leave") {
+      emit("talk_ended")
+    }
+  }
 })
 watch(
   () => room.state.error,
@@ -227,6 +251,8 @@ watch(
     if (answer === "reconnect") {
       await room.joinRTC(roomId.value)
       await room.joinMedia()
+    } else {
+      router.push(route.talk(props.confaHandle, props.talk.handle, "overview"))
     }
   },
 )

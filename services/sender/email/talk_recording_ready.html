@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    Hi there,
+    <br/>
+    {{if .talkTitle}}
+    Your talk "{{ .talkTitle }}" recording is ready! 
+    {{else}}
+    Your talk recording is ready! 
+    {{end}}
+    <br/>
+    <a href="{{ .talkURL }}">Watch recording</a>
+</body>
+</html>

@@ -12,6 +12,7 @@ import (
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/internal/proto/sender"
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
 	"github.com/google/uuid"
@@ -46,7 +47,7 @@ type Tubes struct {
 	Send string
 }
 
-func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubes Tubes) *Handler {
+func NewHandler(rts *routes.Routes, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubes Tubes) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -60,7 +61,7 @@ func NewHandler(baseURL string, secretKey *auth.SecretKey, publicKey *auth.Publi
 	)
 	r.Handle(
 		"/login",
-		login(baseURL, secretKey, producer, tubes),
+		login(rts, secretKey, producer, tubes),
 	)
 	r.Handle(
 		"/logout",
@@ -220,7 +221,7 @@ func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *
 	}
 }
 
-func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubes Tubes) http.HandlerFunc {
+func login(rts *routes.Routes, secretKey *auth.SecretKey, producer Producer, tubes Tubes) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -252,7 +253,7 @@ func login(baseURL string, secretKey *auth.SecretKey, producer Producer, tubes T
 			Message: &sender.Message{
 				Message: &sender.Message_LoginViaEmail_{
 					LoginViaEmail: &sender.Message_LoginViaEmail{
-						SecretLoginUrl: baseURL + "/login?token=" + token,
+						SecretLoginUrl: rts.LoginViaEmail(token),
 					},
 				},
 			},

@@ -1,17 +1,34 @@
 import { gql } from "@apollo/client/core"
-import { Client, APIError, Code } from "./api"
+import { Client, FetchPolicy, APIError, Code } from "./api"
 import { RecordingLookup, RecordingFromInput, recordings, recordingsVariables } from "./schema"
 import { Recording } from "./models"
+
+interface OptionalFetchParams {
+  policy?: FetchPolicy
+}
+
+interface FetchParams {
+  policy: FetchPolicy
+}
+
+const defaultParams: FetchParams = {
+  policy: "cache-first",
+}
 
 class RecordingIterator {
   private api: Client
   private lookup: RecordingLookup
+  private params: FetchParams
   private from: RecordingFromInput | null
 
-  constructor(api: Client, lookup: RecordingLookup) {
+  constructor(api: Client, lookup: RecordingLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
     this.from = null
+    this.params = {
+      ...defaultParams,
+      ...params,
+    }
   }
 
   async next(): Promise<Recording[]> {
@@ -22,6 +39,7 @@ class RecordingIterator {
             items {
               key
               roomId
+              status
               createdAt
               startedAt
               stoppedAt
@@ -37,6 +55,7 @@ class RecordingIterator {
         limit: 100,
         from: this.from,
       },
+      fetchPolicy: this.params.policy,
     })
 
     this.from = resp.data.recordings.nextFrom
@@ -51,8 +70,8 @@ export class RecordingClient {
     this.api = api
   }
 
-  async fetchOne(lookup: RecordingLookup): Promise<Recording> {
-    const iter = this.fetch(lookup)
+  async fetchOne(lookup: RecordingLookup, params?: OptionalFetchParams): Promise<Recording> {
+    const iter = this.fetch(lookup, params)
     const confas = await iter.next()
     if (confas.length === 0) {
       throw new APIError(Code.NotFound, "Confa not found.")
@@ -63,7 +82,7 @@ export class RecordingClient {
     return confas[0]
   }
 
-  fetch(lookup: RecordingLookup): RecordingIterator {
-    return new RecordingIterator(this.api, lookup)
+  fetch(lookup: RecordingLookup, params?: OptionalFetchParams): RecordingIterator {
+    return new RecordingIterator(this.api, lookup, params)
   }
 }

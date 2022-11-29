@@ -25,6 +25,7 @@ type Config struct {
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	BaseURL          string `envconfig:"BASE_URL"`
 	Mongo            MongoConfig
 	Storage          StorageConfig
 	Beanstalk        BeanstalkConfig
@@ -53,6 +54,9 @@ func (c Config) Validate() error {
 	}
 	if c.RTCRPCAddress == "" {
 		return errors.New("RTC_RPC_ADDRESS not set")
+	}
+	if c.BaseURL == "" {
+		return errors.New("BASE_URL not set")
 	}
 	switch c.LogLevel {
 	case LevelDebug, LevelInfo, LevelWarn, LevelError:
@@ -126,10 +130,12 @@ func (c StorageConfig) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool               string `envconfig:"BEANSTALK_POOL"`
-	TubeUpdateAvatar   string `envconfig:"BEANSTALK_TUBE_UPDATE_AVATAR"`
-	TubeStartRecording string `envconfig:"BEANSTALK_TUBE_START_RECORDING"`
-	TubeStopRecording  string `envconfig:"BEANSTALK_TUBE_STOP_RECORDING"`
+	Pool                string `envconfig:"BEANSTALK_POOL"`
+	TubeUpdateAvatar    string `envconfig:"BEANSTALK_TUBE_UPDATE_AVATAR"`
+	TubeStartRecording  string `envconfig:"BEANSTALK_TUBE_START_RECORDING"`
+	TubeStopRecording   string `envconfig:"BEANSTALK_TUBE_STOP_RECORDING"`
+	TubeRecordingUpdate string `envconfig:"BEANSTALK_TUBE_RECORDING_UPDATE"`
+	TubeSend            string `envconfig:"BEANSTALK_TUBE_SEND"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -144,6 +150,12 @@ func (c BeanstalkConfig) Validate() error {
 	}
 	if c.TubeStopRecording == "" {
 		return errors.New("BEANSTALK_TUBE_STOP_RECORDING not set")
+	}
+	if c.TubeRecordingUpdate == "" {
+		return errors.New("BEANSTALK_TUBE_RECORDING_UPDATE not set")
+	}
+	if c.TubeSend == "" {
+		return errors.New("BEANSTALK_TUBE_SEND not set")
 	}
 	return nil
 }

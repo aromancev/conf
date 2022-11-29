@@ -9,6 +9,7 @@ message ProcessTrack {
     string object = 2;
     bytes room_id = 3;
     bytes record_id = 4;
-    Kind kind = 5;
-    float duration_seconds = 6;
+    bytes recording_id = 5;
+    Kind kind = 6;
+    float duration_seconds = 7;
 }

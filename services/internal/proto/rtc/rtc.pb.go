@@ -26,7 +26,7 @@ type Room struct {
 	unknownFields protoimpl.UnknownFields
 
 	Id      []byte `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OwnerId []byte `protobuf:"bytes,2,opt,name=ownerId,proto3" json:"ownerId,omitempty"`
+	OwnerId []byte `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 }
 
 func (x *Room) Reset() {
@@ -272,6 +272,77 @@ func (x *Recording) GetAlreadyExists() bool {
 	return false
 }
 
+type UpdateRecordingTrack struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RecordingId []byte                       `protobuf:"bytes,1,opt,name=recording_id,json=recordingId,proto3" json:"recording_id,omitempty"`
+	RecordId    []byte                       `protobuf:"bytes,2,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
+	UpdatedAt   int64                        `protobuf:"varint,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Update      *UpdateRecordingTrack_Update `protobuf:"bytes,4,opt,name=update,proto3" json:"update,omitempty"`
+}
+
+func (x *UpdateRecordingTrack) Reset() {
+	*x = UpdateRecordingTrack{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UpdateRecordingTrack) GetRecordingId() []byte {
+	if x != nil {
+		return x.RecordingId
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack) GetRecordId() []byte {
+	if x != nil {
+		return x.RecordId
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+func (x *UpdateRecordingTrack) GetUpdate() *UpdateRecordingTrack_Update {
+	if x != nil {
+		return x.Update
+	}
+	return nil
+}
+
 type StoreEvent struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -283,7 +354,7 @@ type StoreEvent struct {
 func (x *StoreEvent) Reset() {
 	*x = StoreEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[4]
+		mi := &file_rtc_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -296,7 +367,7 @@ func (x *StoreEvent) String() string {
 func (*StoreEvent) ProtoMessage() {}
 
 func (x *StoreEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[4]
+	mi := &file_rtc_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,7 +380,7 @@ func (x *StoreEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoreEvent.ProtoReflect.Descriptor instead.
 func (*StoreEvent) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{4}
+	return file_rtc_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StoreEvent) GetEvent() *Event {
@@ -333,7 +404,7 @@ type Event struct {
 func (x *Event) Reset() {
 	*x = Event{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[5]
+		mi := &file_rtc_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -346,7 +417,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[5]
+	mi := &file_rtc_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -359,7 +430,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5}
+	return file_rtc_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Event) GetPayload() *Event_Payload {
@@ -390,6 +461,266 @@ func (x *Event) GetCreatedAt() int64 {
 	return 0
 }
 
+type UpdateRecordingTrack_Update struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Update:
+	//	*UpdateRecordingTrack_Update_RecordingStarted
+	//	*UpdateRecordingTrack_Update_RecordingFinished
+	//	*UpdateRecordingTrack_Update_ProcessingStarted
+	//	*UpdateRecordingTrack_Update_ProcessingFinished
+	Update isUpdateRecordingTrack_Update_Update `protobuf_oneof:"update"`
+}
+
+func (x *UpdateRecordingTrack_Update) Reset() {
+	*x = UpdateRecordingTrack_Update{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack_Update) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack_Update) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack_Update) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack_Update.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack_Update) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4, 0}
+}
+
+func (m *UpdateRecordingTrack_Update) GetUpdate() isUpdateRecordingTrack_Update_Update {
+	if m != nil {
+		return m.Update
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack_Update) GetRecordingStarted() *UpdateRecordingTrack_RecordingStarted {
+	if x, ok := x.GetUpdate().(*UpdateRecordingTrack_Update_RecordingStarted); ok {
+		return x.RecordingStarted
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack_Update) GetRecordingFinished() *UpdateRecordingTrack_RecordingFinished {
+	if x, ok := x.GetUpdate().(*UpdateRecordingTrack_Update_RecordingFinished); ok {
+		return x.RecordingFinished
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack_Update) GetProcessingStarted() *UpdateRecordingTrack_ProcessingStarted {
+	if x, ok := x.GetUpdate().(*UpdateRecordingTrack_Update_ProcessingStarted); ok {
+		return x.ProcessingStarted
+	}
+	return nil
+}
+
+func (x *UpdateRecordingTrack_Update) GetProcessingFinished() *UpdateRecordingTrack_ProcessingFinished {
+	if x, ok := x.GetUpdate().(*UpdateRecordingTrack_Update_ProcessingFinished); ok {
+		return x.ProcessingFinished
+	}
+	return nil
+}
+
+type isUpdateRecordingTrack_Update_Update interface {
+	isUpdateRecordingTrack_Update_Update()
+}
+
+type UpdateRecordingTrack_Update_RecordingStarted struct {
+	RecordingStarted *UpdateRecordingTrack_RecordingStarted `protobuf:"bytes,1,opt,name=recording_started,json=recordingStarted,proto3,oneof"`
+}
+
+type UpdateRecordingTrack_Update_RecordingFinished struct {
+	RecordingFinished *UpdateRecordingTrack_RecordingFinished `protobuf:"bytes,2,opt,name=recording_finished,json=recordingFinished,proto3,oneof"`
+}
+
+type UpdateRecordingTrack_Update_ProcessingStarted struct {
+	ProcessingStarted *UpdateRecordingTrack_ProcessingStarted `protobuf:"bytes,3,opt,name=processing_started,json=processingStarted,proto3,oneof"`
+}
+
+type UpdateRecordingTrack_Update_ProcessingFinished struct {
+	ProcessingFinished *UpdateRecordingTrack_ProcessingFinished `protobuf:"bytes,4,opt,name=processing_finished,json=processingFinished,proto3,oneof"`
+}
+
+func (*UpdateRecordingTrack_Update_RecordingStarted) isUpdateRecordingTrack_Update_Update() {}
+
+func (*UpdateRecordingTrack_Update_RecordingFinished) isUpdateRecordingTrack_Update_Update() {}
+
+func (*UpdateRecordingTrack_Update_ProcessingStarted) isUpdateRecordingTrack_Update_Update() {}
+
+func (*UpdateRecordingTrack_Update_ProcessingFinished) isUpdateRecordingTrack_Update_Update() {}
+
+type UpdateRecordingTrack_RecordingStarted struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRecordingTrack_RecordingStarted) Reset() {
+	*x = UpdateRecordingTrack_RecordingStarted{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack_RecordingStarted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack_RecordingStarted) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack_RecordingStarted) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack_RecordingStarted.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack_RecordingStarted) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4, 1}
+}
+
+type UpdateRecordingTrack_RecordingFinished struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRecordingTrack_RecordingFinished) Reset() {
+	*x = UpdateRecordingTrack_RecordingFinished{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack_RecordingFinished) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack_RecordingFinished) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack_RecordingFinished) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack_RecordingFinished.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack_RecordingFinished) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4, 2}
+}
+
+type UpdateRecordingTrack_ProcessingStarted struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRecordingTrack_ProcessingStarted) Reset() {
+	*x = UpdateRecordingTrack_ProcessingStarted{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack_ProcessingStarted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack_ProcessingStarted) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack_ProcessingStarted) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack_ProcessingStarted.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack_ProcessingStarted) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4, 3}
+}
+
+type UpdateRecordingTrack_ProcessingFinished struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *UpdateRecordingTrack_ProcessingFinished) Reset() {
+	*x = UpdateRecordingTrack_ProcessingFinished{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_rtc_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *UpdateRecordingTrack_ProcessingFinished) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRecordingTrack_ProcessingFinished) ProtoMessage() {}
+
+func (x *UpdateRecordingTrack_ProcessingFinished) ProtoReflect() protoreflect.Message {
+	mi := &file_rtc_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRecordingTrack_ProcessingFinished.ProtoReflect.Descriptor instead.
+func (*UpdateRecordingTrack_ProcessingFinished) Descriptor() ([]byte, []int) {
+	return file_rtc_proto_rawDescGZIP(), []int{4, 4}
+}
+
 type Event_Track struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -402,7 +733,7 @@ type Event_Track struct {
 func (x *Event_Track) Reset() {
 	*x = Event_Track{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[6]
+		mi := &file_rtc_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -415,7 +746,7 @@ func (x *Event_Track) String() string {
 func (*Event_Track) ProtoMessage() {}
 
 func (x *Event_Track) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[6]
+	mi := &file_rtc_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +759,7 @@ func (x *Event_Track) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event_Track.ProtoReflect.Descriptor instead.
 func (*Event_Track) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 0}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 0}
 }
 
 func (x *Event_Track) GetId() string {
@@ -459,7 +790,7 @@ type Event_Payload struct {
 func (x *Event_Payload) Reset() {
 	*x = Event_Payload{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[7]
+		mi := &file_rtc_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -472,7 +803,7 @@ func (x *Event_Payload) String() string {
 func (*Event_Payload) ProtoMessage() {}
 
 func (x *Event_Payload) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[7]
+	mi := &file_rtc_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -485,7 +816,7 @@ func (x *Event_Payload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event_Payload.ProtoReflect.Descriptor instead.
 func (*Event_Payload) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 1}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 1}
 }
 
 func (x *Event_Payload) GetPeerState() *Event_Payload_PayloadPeerState {
@@ -530,7 +861,7 @@ type Event_Payload_PayloadPeerState struct {
 func (x *Event_Payload_PayloadPeerState) Reset() {
 	*x = Event_Payload_PayloadPeerState{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[8]
+		mi := &file_rtc_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -543,7 +874,7 @@ func (x *Event_Payload_PayloadPeerState) String() string {
 func (*Event_Payload_PayloadPeerState) ProtoMessage() {}
 
 func (x *Event_Payload_PayloadPeerState) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[8]
+	mi := &file_rtc_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -556,7 +887,7 @@ func (x *Event_Payload_PayloadPeerState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event_Payload_PayloadPeerState.ProtoReflect.Descriptor instead.
 func (*Event_Payload_PayloadPeerState) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 1, 0}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 1, 0}
 }
 
 func (x *Event_Payload_PayloadPeerState) GetPeerId() []byte {
@@ -599,7 +930,7 @@ type Event_Payload_PayloadMessage struct {
 func (x *Event_Payload_PayloadMessage) Reset() {
 	*x = Event_Payload_PayloadMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[9]
+		mi := &file_rtc_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -612,7 +943,7 @@ func (x *Event_Payload_PayloadMessage) String() string {
 func (*Event_Payload_PayloadMessage) ProtoMessage() {}
 
 func (x *Event_Payload_PayloadMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[9]
+	mi := &file_rtc_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -625,7 +956,7 @@ func (x *Event_Payload_PayloadMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event_Payload_PayloadMessage.ProtoReflect.Descriptor instead.
 func (*Event_Payload_PayloadMessage) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 1, 1}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 1, 1}
 }
 
 func (x *Event_Payload_PayloadMessage) GetFromId() []byte {
@@ -653,7 +984,7 @@ type Event_Payload_PayloadRecording struct {
 func (x *Event_Payload_PayloadRecording) Reset() {
 	*x = Event_Payload_PayloadRecording{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[10]
+		mi := &file_rtc_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -666,7 +997,7 @@ func (x *Event_Payload_PayloadRecording) String() string {
 func (*Event_Payload_PayloadRecording) ProtoMessage() {}
 
 func (x *Event_Payload_PayloadRecording) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[10]
+	mi := &file_rtc_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -679,7 +1010,7 @@ func (x *Event_Payload_PayloadRecording) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event_Payload_PayloadRecording.ProtoReflect.Descriptor instead.
 func (*Event_Payload_PayloadRecording) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 1, 2}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 1, 2}
 }
 
 func (x *Event_Payload_PayloadRecording) GetStatus() string {
@@ -701,7 +1032,7 @@ type Event_Payload_PayloadTrackRecording struct {
 func (x *Event_Payload_PayloadTrackRecording) Reset() {
 	*x = Event_Payload_PayloadTrackRecording{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_rtc_proto_msgTypes[11]
+		mi := &file_rtc_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -714,7 +1045,7 @@ func (x *Event_Payload_PayloadTrackRecording) String() string {
 func (*Event_Payload_PayloadTrackRecording) ProtoMessage() {}
 
 func (x *Event_Payload_PayloadTrackRecording) ProtoReflect() protoreflect.Message {
-	mi := &file_rtc_proto_msgTypes[11]
+	mi := &file_rtc_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -727,7 +1058,7 @@ func (x *Event_Payload_PayloadTrackRecording) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use Event_Payload_PayloadTrackRecording.ProtoReflect.Descriptor instead.
 func (*Event_Payload_PayloadTrackRecording) Descriptor() ([]byte, []int) {
-	return file_rtc_proto_rawDescGZIP(), []int{5, 1, 3}
+	return file_rtc_proto_rawDescGZIP(), []int{6, 1, 3}
 }
 
 func (x *Event_Payload_PayloadTrackRecording) GetId() []byte {
@@ -747,31 +1078,71 @@ func (x *Event_Payload_PayloadTrackRecording) GetTrackId() string {
 var File_rtc_proto protoreflect.FileDescriptor
 
 var file_rtc_proto_rawDesc = []byte{
-	0x0a, 0x09, 0x72, 0x74, 0x63, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x30, 0x0a, 0x04, 0x52,
+	0x0a, 0x09, 0x72, 0x74, 0x63, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x31, 0x0a, 0x04, 0x52,
 	0x6f, 0x6f, 0x6d, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x02, 0x69, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x5e, 0x0a,
-	0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x50, 0x61, 0x72, 0x61, 0x6d, 0x73,
-	0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x65,
-	0x78, 0x70, 0x69, 0x72, 0x65, 0x5f, 0x69, 0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0a, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x49, 0x6e, 0x4d, 0x73, 0x22, 0x5f, 0x0a,
-	0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x4c, 0x6f, 0x6f, 0x6b, 0x75, 0x70,
-	0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x63,
-	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x0b, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03,
-	0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x8d,
-	0x01, 0x0a, 0x09, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x12, 0x17, 0x0a, 0x07,
-	0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x72,
-	0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69,
-	0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b, 0x72, 0x65, 0x63,
-	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x74, 0x61, 0x72,
-	0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73, 0x74,
-	0x61, 0x72, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x61, 0x6c, 0x72, 0x65, 0x61,
-	0x64, 0x79, 0x5f, 0x65, 0x78, 0x69, 0x73, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52,
-	0x0d, 0x61, 0x6c, 0x72, 0x65, 0x61, 0x64, 0x79, 0x45, 0x78, 0x69, 0x73, 0x74, 0x73, 0x22, 0x2a,
+	0x02, 0x69, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x5e,
+	0x0a, 0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x50, 0x61, 0x72, 0x61, 0x6d,
+	0x73, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65,
+	0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c,
+	0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x5f, 0x69, 0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0a, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x49, 0x6e, 0x4d, 0x73, 0x22, 0x5f,
+	0x0a, 0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x4c, 0x6f, 0x6f, 0x6b, 0x75,
+	0x70, 0x12, 0x17, 0x0a, 0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0c, 0x52, 0x06, 0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x0b, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x10, 0x0a,
+	0x03, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22,
+	0x8d, 0x01, 0x0a, 0x09, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x12, 0x17, 0x0a,
+	0x07, 0x72, 0x6f, 0x6f, 0x6d, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06,
+	0x72, 0x6f, 0x6f, 0x6d, 0x49, 0x64, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x69, 0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b, 0x72, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x74, 0x61,
+	0x72, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x73,
+	0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x61, 0x6c, 0x72, 0x65,
+	0x61, 0x64, 0x79, 0x5f, 0x65, 0x78, 0x69, 0x73, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08,
+	0x52, 0x0d, 0x61, 0x6c, 0x72, 0x65, 0x61, 0x64, 0x79, 0x45, 0x78, 0x69, 0x73, 0x74, 0x73, 0x22,
+	0xfc, 0x04, 0x0a, 0x14, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x69, 0x6e, 0x67, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b,
+	0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x72,
+	0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x08,
+	0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x75, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x75, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x34, 0x0a, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x2e, 0x55,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x1a, 0xfa, 0x02,
+	0x0a, 0x06, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x55, 0x0a, 0x11, 0x72, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x26, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x69, 0x6e, 0x67, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72,
+	0x64, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x48, 0x00, 0x52, 0x10, 0x72,
+	0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x12,
+	0x58, 0x0a, 0x12, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x69, 0x6e,
+	0x69, 0x73, 0x68, 0x65, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x55, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x54, 0x72, 0x61,
+	0x63, 0x6b, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69,
+	0x73, 0x68, 0x65, 0x64, 0x48, 0x00, 0x52, 0x11, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e,
+	0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x12, 0x58, 0x0a, 0x12, 0x70, 0x72, 0x6f,
+	0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x2e, 0x50, 0x72, 0x6f,
+	0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x48, 0x00,
+	0x52, 0x11, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x72,
+	0x74, 0x65, 0x64, 0x12, 0x5b, 0x0a, 0x13, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e,
+	0x67, 0x5f, 0x66, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x28, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69,
+	0x6e, 0x67, 0x54, 0x72, 0x61, 0x63, 0x6b, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69,
+	0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x48, 0x00, 0x52, 0x12, 0x70, 0x72,
+	0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64,
+	0x42, 0x08, 0x0a, 0x06, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x1a, 0x12, 0x0a, 0x10, 0x52, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x1a, 0x13,
+	0x0a, 0x11, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73,
+	0x68, 0x65, 0x64, 0x1a, 0x13, 0x0a, 0x11, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x69, 0x6e,
+	0x67, 0x53, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64, 0x1a, 0x14, 0x0a, 0x12, 0x50, 0x72, 0x6f, 0x63,
+	0x65, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x22, 0x2a,
 	0x0a, 0x0a, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x1c, 0x0a, 0x05,
 	0x65, 0x76, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x06, 0x2e, 0x45, 0x76,
 	0x65, 0x6e, 0x74, 0x52, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x22, 0xf3, 0x05, 0x0a, 0x05, 0x45,
@@ -846,40 +1217,51 @@ func file_rtc_proto_rawDescGZIP() []byte {
 	return file_rtc_proto_rawDescData
 }
 
-var file_rtc_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_rtc_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_rtc_proto_goTypes = []interface{}{
-	(*Room)(nil),                                // 0: Room
-	(*RecordingParams)(nil),                     // 1: RecordingParams
-	(*RecordingLookup)(nil),                     // 2: RecordingLookup
-	(*Recording)(nil),                           // 3: Recording
-	(*StoreEvent)(nil),                          // 4: StoreEvent
-	(*Event)(nil),                               // 5: Event
-	(*Event_Track)(nil),                         // 6: Event.Track
-	(*Event_Payload)(nil),                       // 7: Event.Payload
-	(*Event_Payload_PayloadPeerState)(nil),      // 8: Event.Payload.PayloadPeerState
-	(*Event_Payload_PayloadMessage)(nil),        // 9: Event.Payload.PayloadMessage
-	(*Event_Payload_PayloadRecording)(nil),      // 10: Event.Payload.PayloadRecording
-	(*Event_Payload_PayloadTrackRecording)(nil), // 11: Event.Payload.PayloadTrackRecording
+	(*Room)(nil),                                    // 0: Room
+	(*RecordingParams)(nil),                         // 1: RecordingParams
+	(*RecordingLookup)(nil),                         // 2: RecordingLookup
+	(*Recording)(nil),                               // 3: Recording
+	(*UpdateRecordingTrack)(nil),                    // 4: UpdateRecordingTrack
+	(*StoreEvent)(nil),                              // 5: StoreEvent
+	(*Event)(nil),                                   // 6: Event
+	(*UpdateRecordingTrack_Update)(nil),             // 7: UpdateRecordingTrack.Update
+	(*UpdateRecordingTrack_RecordingStarted)(nil),   // 8: UpdateRecordingTrack.RecordingStarted
+	(*UpdateRecordingTrack_RecordingFinished)(nil),  // 9: UpdateRecordingTrack.RecordingFinished
+	(*UpdateRecordingTrack_ProcessingStarted)(nil),  // 10: UpdateRecordingTrack.ProcessingStarted
+	(*UpdateRecordingTrack_ProcessingFinished)(nil), // 11: UpdateRecordingTrack.ProcessingFinished
+	(*Event_Track)(nil),                             // 12: Event.Track
+	(*Event_Payload)(nil),                           // 13: Event.Payload
+	(*Event_Payload_PayloadPeerState)(nil),          // 14: Event.Payload.PayloadPeerState
+	(*Event_Payload_PayloadMessage)(nil),            // 15: Event.Payload.PayloadMessage
+	(*Event_Payload_PayloadRecording)(nil),          // 16: Event.Payload.PayloadRecording
+	(*Event_Payload_PayloadTrackRecording)(nil),     // 17: Event.Payload.PayloadTrackRecording
 }
 var file_rtc_proto_depIdxs = []int32{
-	5,  // 0: StoreEvent.event:type_name -> Event
-	7,  // 1: Event.payload:type_name -> Event.Payload
-	8,  // 2: Event.Payload.peer_state:type_name -> Event.Payload.PayloadPeerState
-	9,  // 3: Event.Payload.message:type_name -> Event.Payload.PayloadMessage
-	10, // 4: Event.Payload.recording:type_name -> Event.Payload.PayloadRecording
-	11, // 5: Event.Payload.track_recording:type_name -> Event.Payload.PayloadTrackRecording
-	6,  // 6: Event.Payload.PayloadPeerState.tracks:type_name -> Event.Track
-	0,  // 7: RTC.CreateRoom:input_type -> Room
-	1,  // 8: RTC.StartRecording:input_type -> RecordingParams
-	2,  // 9: RTC.StopRecording:input_type -> RecordingLookup
-	0,  // 10: RTC.CreateRoom:output_type -> Room
-	3,  // 11: RTC.StartRecording:output_type -> Recording
-	3,  // 12: RTC.StopRecording:output_type -> Recording
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	7,  // 0: UpdateRecordingTrack.update:type_name -> UpdateRecordingTrack.Update
+	6,  // 1: StoreEvent.event:type_name -> Event
+	13, // 2: Event.payload:type_name -> Event.Payload
+	8,  // 3: UpdateRecordingTrack.Update.recording_started:type_name -> UpdateRecordingTrack.RecordingStarted
+	9,  // 4: UpdateRecordingTrack.Update.recording_finished:type_name -> UpdateRecordingTrack.RecordingFinished
+	10, // 5: UpdateRecordingTrack.Update.processing_started:type_name -> UpdateRecordingTrack.ProcessingStarted
+	11, // 6: UpdateRecordingTrack.Update.processing_finished:type_name -> UpdateRecordingTrack.ProcessingFinished
+	14, // 7: Event.Payload.peer_state:type_name -> Event.Payload.PayloadPeerState
+	15, // 8: Event.Payload.message:type_name -> Event.Payload.PayloadMessage
+	16, // 9: Event.Payload.recording:type_name -> Event.Payload.PayloadRecording
+	17, // 10: Event.Payload.track_recording:type_name -> Event.Payload.PayloadTrackRecording
+	12, // 11: Event.Payload.PayloadPeerState.tracks:type_name -> Event.Track
+	0,  // 12: RTC.CreateRoom:input_type -> Room
+	1,  // 13: RTC.StartRecording:input_type -> RecordingParams
+	2,  // 14: RTC.StopRecording:input_type -> RecordingLookup
+	0,  // 15: RTC.CreateRoom:output_type -> Room
+	3,  // 16: RTC.StartRecording:output_type -> Recording
+	3,  // 17: RTC.StopRecording:output_type -> Recording
+	15, // [15:18] is the sub-list for method output_type
+	12, // [12:15] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_rtc_proto_init() }
@@ -937,7 +1319,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StoreEvent); i {
+			switch v := v.(*UpdateRecordingTrack); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -949,7 +1331,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event); i {
+			switch v := v.(*StoreEvent); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -961,7 +1343,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event_Track); i {
+			switch v := v.(*Event); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -973,7 +1355,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event_Payload); i {
+			switch v := v.(*UpdateRecordingTrack_Update); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -985,7 +1367,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event_Payload_PayloadPeerState); i {
+			switch v := v.(*UpdateRecordingTrack_RecordingStarted); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -997,7 +1379,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event_Payload_PayloadMessage); i {
+			switch v := v.(*UpdateRecordingTrack_RecordingFinished); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1009,7 +1391,7 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Event_Payload_PayloadRecording); i {
+			switch v := v.(*UpdateRecordingTrack_ProcessingStarted); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1021,6 +1403,78 @@ func file_rtc_proto_init() {
 			}
 		}
 		file_rtc_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateRecordingTrack_ProcessingFinished); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Track); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload_PayloadPeerState); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload_PayloadMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Event_Payload_PayloadRecording); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_rtc_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Event_Payload_PayloadTrackRecording); i {
 			case 0:
 				return &v.state
@@ -1033,13 +1487,19 @@ func file_rtc_proto_init() {
 			}
 		}
 	}
+	file_rtc_proto_msgTypes[7].OneofWrappers = []interface{}{
+		(*UpdateRecordingTrack_Update_RecordingStarted)(nil),
+		(*UpdateRecordingTrack_Update_RecordingFinished)(nil),
+		(*UpdateRecordingTrack_Update_ProcessingStarted)(nil),
+		(*UpdateRecordingTrack_Update_ProcessingFinished)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_rtc_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

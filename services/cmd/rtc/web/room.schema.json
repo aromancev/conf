@@ -231,7 +231,7 @@
               "properties": {
                 "status": {
                   "type": "string",
-                  "title": "RecordingStatus",
+                  "title": "RecordingEventStatus",
                   "enum": ["started", "stopped"]
                 }
               }

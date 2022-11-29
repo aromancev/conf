@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	"github.com/aromancev/confa/cmd/iam/rpc"
 	"github.com/aromancev/confa/cmd/iam/web"
 	"github.com/aromancev/confa/internal/auth"
+	"github.com/aromancev/confa/internal/proto/iam"
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/user"
 	"github.com/aromancev/confa/user/session"
 
@@ -81,6 +85,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
+	rts := routes.NewRoutes(config.BaseURL)
+
 	userMongo := user.NewMongo(mongoDB)
 	userCRUD := user.NewCRUD(userMongo)
 	sessionMongo := session.NewMongo(mongoDB)
@@ -91,9 +97,22 @@ func main() {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: web.NewHandler(config.BaseURL, secretKey, publicKey, sessionCRUD, userCRUD, producer, web.Tubes{
+		Handler: web.NewHandler(rts, secretKey, publicKey, sessionCRUD, userCRUD, producer, web.Tubes{
 			Send: config.Beanstalk.TubeSend,
 		}),
+	}
+
+	rpcServer := &http.Server{
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
+		Addr:         config.ListenRPCAddress,
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler: iam.NewIAMServer(
+			rpc.NewHandler(userMongo),
+		),
 	}
 
 	go func() {
@@ -106,7 +125,15 @@ func main() {
 		}
 	}()
 
-	log.Info().Msg("Listening on " + config.ListenWebAddress)
+	go func() {
+		log.Info().Msg("RPC listening on " + config.ListenRPCAddress)
+		if err := rpcServer.ListenAndServe(); err != nil {
+			if errors.Is(err, http.ErrServerClosed) {
+				return
+			}
+			log.Fatal().Err(err).Msg("RPC server failed.")
+		}
+	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -119,5 +146,6 @@ func main() {
 	cancel()
 
 	_ = webServer.Shutdown(ctx)
+	_ = rpcServer.Shutdown(ctx)
 	producer.Stop()
 }

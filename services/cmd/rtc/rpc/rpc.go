@@ -74,7 +74,7 @@ func (h *Handler) StartRecording(ctx context.Context, request *rtc.RecordingPara
 		return nil, fmt.Errorf("failed to fetch room: %w", err)
 	}
 
-	newRecord := record.Record{
+	newRecord := record.Recording{
 		ID:   uuid.New(),
 		Room: roomID,
 		Key:  request.Key,
@@ -84,10 +84,17 @@ func (h *Handler) StartRecording(ctx context.Context, request *rtc.RecordingPara
 		return nil, fmt.Errorf("failed to start recording: %w", err)
 	}
 	alreadyExists := newRecord.ID != upsertedRecord.ID
+	recordIDBin, _ := upsertedRecord.ID.MarshalBinary()
 
 	_, err = h.tracker.Start(ctx, &tracker.StartParams{
-		RoomId:     request.RoomId,
-		Role:       tracker.Role_RECORD,
+		RoomId: request.RoomId,
+		Role: &tracker.Role{
+			Role: &tracker.Role_Record_{
+				Record: &tracker.Role_Record{
+					RecordingId: recordIDBin,
+				},
+			},
+		},
 		ExpireInMs: request.ExpireInMs,
 	})
 	if err != nil {
@@ -108,8 +115,6 @@ func (h *Handler) StartRecording(ctx context.Context, request *rtc.RecordingPara
 			return nil, fmt.Errorf("failed to emit recording event: %w", err)
 		}
 	}
-
-	recordIDBin, _ := upsertedRecord.ID.MarshalBinary()
 
 	log.Ctx(ctx).Info().Str("roomId", roomID.String()).Msg("Recording started.")
 	return &rtc.Recording{
@@ -151,7 +156,11 @@ func (h *Handler) StopRecording(ctx context.Context, request *rtc.RecordingLooku
 
 	_, err = h.tracker.Stop(ctx, &tracker.StopParams{
 		RoomId: request.RoomId,
-		Role:   tracker.Role_RECORD,
+		Role: &tracker.Role{
+			Role: &tracker.Role_Record_{
+				Record: &tracker.Role_Record{},
+			},
+		},
 	})
 	var twerr twirp.Error
 	switch {

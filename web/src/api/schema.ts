@@ -222,6 +222,7 @@ export interface recordings_recordings_items {
   __typename: "Recording";
   key: string;
   roomId: string;
+  status: RecordingStatus;
   createdAt: number;
   startedAt: number;
   stoppedAt: number | null;
@@ -442,6 +443,12 @@ export interface stopTalkRecordingVariables {
 export enum EventOrder {
   ASC = "ASC",
   DESC = "DESC",
+}
+
+export enum RecordingStatus {
+  PROCESSING = "PROCESSING",
+  READY = "READY",
+  RECORDING = "RECORDING",
 }
 
 export enum TalkState {
