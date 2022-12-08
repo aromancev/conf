@@ -4,7 +4,7 @@
     <div v-if="!state.isLoading" class="processing-note">
       <p>Processing talk recording.</p>
       <p>It might take a while (especially screen sharing) becuase it runs on a very cheap server.</p>
-      <p>You will receive an email when it's done.</p>
+      <p v-if="user.id === talk.ownerId">You will receive an email when it's done.</p>
     </div>
   </div>
   <div v-if="state.isReady" class="content">
