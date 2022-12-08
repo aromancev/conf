@@ -50,7 +50,7 @@
         :join-confirmed="joinConfirmed"
         :invite-link="inviteLink"
         @join="join"
-        @talk_ended="() => talk!.state = TalkState.ENDED"
+        @update="update"
       />
       <TalkReplay v-if="tab === 'watch' && talk.state === TalkState.ENDED" :talk="talk" />
       <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />

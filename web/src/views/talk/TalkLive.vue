@@ -54,7 +54,7 @@
           {{ room.state.local.mic ? "mic" : "mic_off" }}
         </div>
         <div
-          v-if="recordingStatus !== 'stopped'"
+          v-if="recordingStatus !== 'stopped' && user.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons record-icon"
           :disabled="recordingStatus === 'pending' ? true : null"
           @click="handleRecording"
@@ -159,7 +159,7 @@ interface Resizer {
 
 const emit = defineEmits<{
   (e: "join", confirmed: boolean): void
-  (e: "talk_ended"): void
+  (e: "update", talk: Talk): void
 }>()
 
 const sidePanelKey = "roomSidePanel"
@@ -236,7 +236,9 @@ watch(room.state.recording, async (r) => {
     recordingStatus.value = "stopped"
     const answer = await modal.set("recording_finished")
     if (answer === "leave") {
-      emit("talk_ended")
+      const talk = Object.assign({}, props.talk)
+      talk.state = TalkState.ENDED
+      emit("update", talk)
     }
   }
 })
