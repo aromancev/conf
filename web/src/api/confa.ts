@@ -12,7 +12,7 @@ import {
 } from "./schema"
 import { Confa } from "./models"
 
-class ConfaIterator {
+export class ConfaIterator {
   private api: Client
   private lookup: ConfaLookup
   private from: string | null

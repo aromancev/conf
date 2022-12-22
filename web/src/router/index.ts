@@ -19,6 +19,12 @@ export const route = {
     }
   },
 
+  contentHub(): RouteLocationRaw {
+    return {
+      name: "content.hub",
+    }
+  },
+
   profile(profile: string, tab: ProfileTab): RouteLocationRaw {
     return {
       name: "profile." + tab,
@@ -65,9 +71,9 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/LoginPage.vue"),
   },
   {
-    path: "/test",
-    name: "test",
-    component: () => import("@/views/talk/TalkReplay.vue"),
+    path: "/hub",
+    name: "content.hub",
+    component: () => import("@/views/ContentHub.vue"),
   },
   {
     path: "/pro/:profile",
