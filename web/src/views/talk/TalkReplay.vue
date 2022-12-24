@@ -69,7 +69,12 @@
       </div>
     </div>
     <div v-if="state.sidePanel !== 'none'" class="side-panel">
-      <RoomMessages :user-id="user.id" :messages="room.state.messages" :is-loading="room.state.isLoading" />
+      <RoomMessages
+        :user-id="user.id"
+        :messages="room.state.messages"
+        :is-loading="room.state.isLoading"
+        :is-readonly="true"
+      />
     </div>
     <RoomReplayAudio
       v-for="source in audios"

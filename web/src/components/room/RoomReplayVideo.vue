@@ -20,16 +20,21 @@
           @click="onRewind"
           @mousemove="updateHighlight"
           @mouseenter="updateHighlight"
+          @mouseleave="state.timePointerVisible = false"
         >
           <div class="buffer" :style="{ width: `${((props.buffer || 0) / props.duration) * 100}%` }"></div>
           <div class="highlight" :style="{ width: `${state.highlight * 100}%` }"></div>
           <div class="progress" :style="{ width: `${(state.progress / props.duration) * 100}%` }"></div>
+          <div v-if="state.timePointerVisible" class="timeline-pointer" :style="{ left: `${state.highlight * 100}%` }">
+            {{ formatTime(props.duration * state.highlight) }}
+          </div>
         </div>
         <div class="bottom-tools">
           <div class="bottom-left-panel">
             <div class="material-icons panel-btn" @click="emit('togglePlay')">
               {{ isPlaying ? "pause" : state.progress < duration ? "play_arrow" : "replay" }}
             </div>
+            <div class="time">{{ formatTime(state.progress) }} / {{ formatTime(props.duration) }}</div>
           </div>
           <div class="bottom-right-panel">
             <div class="material-icons panel-btn" @click="toggleFullscreen">
@@ -76,6 +81,7 @@ const state = reactive({
   isInterfaceVisible: !props.disableControlls,
   progress: 0,
   highlight: 0,
+  timePointerVisible: false,
 })
 const container = ref<HTMLElement>()
 const timeline = ref<HTMLElement>()
@@ -163,6 +169,7 @@ function updateHighlight(event: MouseEvent) {
   if (!timeline.value) {
     throw new Error("Timeline element not found.")
   }
+  state.timePointerVisible = true
   const rect = timeline.value.getBoundingClientRect()
   state.highlight = (event.clientX - rect.left) / rect.width
 }
@@ -172,6 +179,13 @@ function progressForNow(progress: Progress): number {
     return progress.value
   }
   return Date.now() - progress.increasingSince + progress.value
+}
+
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
 }
 </script>
 
@@ -236,6 +250,27 @@ function progressForNow(progress: Progress): number {
   background-color: grey
   transition: width 100ms linear
 
+.timeline-pointer
+  top: -35px
+  left: 0
+  transform: translateX(-50%)
+  position: absolute
+  padding: 5px 7px
+  background-color: black
+  color: white
+  border-radius: 5px
+  font-size: 12px
+
+.timeline-pointer::before
+  content: ""
+  position: absolute
+  bottom: -5px
+  left: 50%
+  transform: translateX(-50%)
+  border-width: 5px 5px 0
+  border-style: solid
+  border-color: black transparent transparent
+
 .bottom-tools
   width: 100%
   display: flex
@@ -245,6 +280,14 @@ function progressForNow(progress: Progress): number {
 
 .bottom-right-panel
   margin-left: auto
+
+.bottom-left-panel
+  display: flex
+  flex-direction: row
+  align-items: center
+
+.time
+  font-size: 13px
 
 .panel-btn
   @include theme.clickable
@@ -257,8 +300,8 @@ function progressForNow(progress: Progress): number {
   height: 100%
 
 .loader-box
-  border-radius: 15px
+  border-radius: 50%
   position: absolute
-  padding: 10px
-  background: #000B
+  padding: 50px
+  background: radial-gradient(#000B 10%, transparent 60%)
 </style>

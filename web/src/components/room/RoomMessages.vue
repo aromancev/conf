@@ -32,6 +32,7 @@
       </div>
     </div>
     <Textarea
+      v-if="!props.isReadonly"
       v-model="message"
       class="message-input"
       :spellcheck="false"
@@ -65,6 +66,7 @@ const props = defineProps<{
   userId: string
   messages: Message[]
   isLoading?: boolean
+  isReadonly?: boolean
 }>()
 
 const browser = ref<HTMLElement>()
@@ -124,6 +126,9 @@ function keySend(ev: KeyboardEvent) {
 }
 
 async function send() {
+  if (props.isReadonly) {
+    return
+  }
   emit("message", message.value)
   message.value = ""
   autoScroll = true
