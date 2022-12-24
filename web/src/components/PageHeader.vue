@@ -11,18 +11,13 @@
     </div>
 
     <div v-if="modal === 'sidebar'" class="sidebar" @click="modal = 'none'">
-      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/">
+      <router-link v-if="currentUser.allowedWrite" class="control-item" :to="route.contentHub()">
         <span class="icon material-icons">hub</span>
-        My content
+        Content hub
       </router-link>
-      <router-link class="control-item" :to="route.home()">
-        <span class="icon material-icons">explore</span>
-        Explore
-      </router-link>
-      <div v-if="currentUser.allowedWrite" class="control-divider"></div>
       <router-link v-if="currentUser.allowedWrite" class="control-item" to="/new">
         <span class="icon material-icons">add</span>
-        Create confa
+        Create conference
       </router-link>
       <div class="control-divider"></div>
       <div class="control-item" @click="toggleTheme">
