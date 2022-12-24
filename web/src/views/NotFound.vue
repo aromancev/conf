@@ -1,10 +1,13 @@
 <template>
   <div class="centered">
     <h1>PAGE NOT FOUND</h1>
+    <PageLoader></PageLoader>
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import PageLoader from "@/components/PageLoader.vue"
+</script>
 
 <style scoped lang="sass">
 .centered
