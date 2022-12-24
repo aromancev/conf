@@ -3,8 +3,14 @@
   <div class="header">
     <div class="start">
       <div class="menu material-icons" @click="switchModal('sidebar')">menu</div>
-      <router-link :to="route.home()"><ConfaLogo></ConfaLogo></router-link>
+      <router-link :to="route.home()">
+        <ConfaLogo></ConfaLogo>
+      </router-link>
     </div>
+    <router-link class="disclaimer" :to="route.disclaimer()">
+      <span class="material-icons disclaimer-icon">warning</span>
+      NOT A COMMERCIAL PRODUCT
+    </router-link>
     <div class="end">
       <img v-if="currentUser.allowedWrite" class="avatar" :src="profile.avatar" @click="switchModal('profile')" />
       <router-link v-if="!currentUser.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
@@ -148,13 +154,21 @@ $height: 100%
   z-index: 60
   padding: 0 30px
   height: 100%
-  width: 300px
   background: var(--color-background)
 
 .logo
   font-size: 1.5rem
   margin: 20px
   cursor: pointer
+
+.disclaimer
+  font-size: 14px
+  color: #ffcc00
+  display: flex
+  align-items: center
+
+.disclaimer-icon
+  margin-right: 5px
 
 .end
   display: flex

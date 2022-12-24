@@ -25,6 +25,12 @@ export const route = {
     }
   },
 
+  disclaimer(): RouteLocationRaw {
+    return {
+      name: "disclaimer",
+    }
+  },
+
   profile(profile: string, tab: ProfileTab): RouteLocationRaw {
     return {
       name: "profile." + tab,
@@ -74,6 +80,11 @@ const routes: Array<RouteRecordRaw> = [
     path: "/hub",
     name: "content.hub",
     component: () => import("@/views/ContentHub.vue"),
+  },
+  {
+    path: "/dis",
+    name: "disclaimer",
+    component: () => import("@/views/DisclaimerPage.vue"),
   },
   {
     path: "/pro/:profile",
