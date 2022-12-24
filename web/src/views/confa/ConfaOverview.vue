@@ -11,12 +11,12 @@
           <span class="material-icons">add</span> New
         </router-link>
       </div>
-      <div class="talks-list">
-        <div v-if="talksLoading" class="talks-loader">
+      <div ref="talksList" class="talks-list" @scroll="onTalksScroll">
+        <div v-if="state.isTalksLoading" class="talks-loader">
           <PageLoader />
         </div>
-        <div v-if="!talksLoading" class="talks-items">
-          <div v-for="talk in talks" :key="talk.id" class="talks-item">
+        <div v-if="!state.isTalksLoading" class="talks-items">
+          <div v-for="talk in state.talks" :key="talk.id" class="talks-item">
             /
             <router-link class="talks-link" :to="route.talk(confa.handle, talk.handle, 'watch')">{{
               talk.handle
@@ -28,47 +28,83 @@
     <div class="description">{{ confa.description }}</div>
   </div>
 
-  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
+  <InternalError v-if="state.modal === 'error'" @click="state.modal = 'none'" />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue"
+import { ref, onMounted, reactive } from "vue"
 import { currentUser, Confa, Talk } from "@/api/models"
 import { talkClient } from "@/api"
+import { TalkIterator } from "@/api/talk"
 import { route, handleNew } from "@/router"
 import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
-
-enum Modal {
-  None = "",
-  Error = "error",
-}
 
 const props = defineProps<{
   confa: Confa
 }>()
 
-const talks = ref<Talk[]>([])
-const talksLoading = ref(false)
-const modal = ref(Modal.None)
+type Modal = "none" | "error"
+
+interface State {
+  modal: Modal
+  isTalksLoading: boolean
+  isTalksFetchedAll: boolean
+  talks: Talk[]
+}
+
+const state = reactive<State>({
+  modal: "none",
+  isTalksLoading: true,
+  isTalksFetchedAll: false,
+  talks: [],
+})
+
+const talksList = ref<HTMLElement>()
+
+let talkIterator: TalkIterator | undefined
 
 onMounted(() => {
   loadTalks()
 })
 
+async function onTalksScroll() {
+  if (!talksList.value) {
+    return
+  }
+  const scroll = talksList.value.scrollTop / (talksList.value.scrollHeight - talksList.value.clientHeight)
+  if (scroll < 0.7) {
+    return
+  }
+  loadTalks()
+}
+
 async function loadTalks() {
   if (!props.confa) {
     return
   }
-  talksLoading.value = true
-  const iter = talkClient.fetch(
-    { confaId: props.confa.id },
-    {
-      hydrated: false,
-    },
-  )
-  talks.value = await iter.next()
-  talksLoading.value = false
+
+  try {
+    if (!talkIterator) {
+      talkIterator = talkClient.fetch(
+        { confaId: props.confa.id },
+        {
+          hydrated: false,
+        },
+      )
+    }
+
+    const fetched = await talkIterator.next()
+    if (!fetched.length) {
+      state.isTalksFetchedAll = true
+    } else {
+      state.talks = state.talks.concat(fetched)
+    }
+  } catch (e) {
+    state.modal = "error"
+  } finally {
+    state.isTalksLoading = false
+  }
 }
 </script>
 
@@ -77,6 +113,7 @@ async function loadTalks() {
 
 .layout
   width: 100%
+  height: 100%
   display: flex
   flex-direction: row
   justify-content: center
@@ -84,10 +121,11 @@ async function loadTalks() {
 
 .talks
   width: 300px
-  min-width: 300px
   margin: 10px
   border-radius: 4px
   text-align: center
+  display: flex
+  flex-direction: column
 
 .talks-header
   width: 100%
@@ -107,9 +145,11 @@ async function loadTalks() {
 .talks-list
   @include theme.shadow-inset-xs
 
-  position: relative
-  min-height: 300px
   width: 100%
+  height: 100%
+  min-height: 300px
+  position: relative
+  overflow-y: scroll
 
 .talks-loader
   position: absolute
@@ -122,11 +162,11 @@ async function loadTalks() {
 
 .talks-items
   padding: 15px
+  position: absolute
 
 .talks-item
   @include theme.clickable
 
-  display: inline-block
   width: 100%
   padding: 5px 0
   text-align: left

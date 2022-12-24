@@ -34,7 +34,7 @@ const defaultParams: FetchParams = {
   hydrated: false,
 }
 
-class TalkIterator {
+export class TalkIterator {
   private api: Client
   private lookup: TalkLookup
   private from: string | null
