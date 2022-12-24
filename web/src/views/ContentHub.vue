@@ -30,14 +30,14 @@ type Modal = "none" | "error"
 
 interface State {
   isLoading: boolean
-  hasFetchedAll: boolean
+  isFetchedAll: boolean
   modal: Modal
   confas: Confa[]
 }
 
 const state = reactive<State>({
   isLoading: true,
-  hasFetchedAll: false,
+  isFetchedAll: false,
   modal: "none",
   confas: [],
 })
@@ -54,14 +54,14 @@ async function onScroll() {
     return
   }
   const scroll = list.value.scrollTop / (list.value.scrollHeight - list.value.clientHeight)
-  if (scroll < 0.8) {
+  if (scroll < 0.7) {
     return
   }
   loadConfas()
 }
 
 async function loadConfas() {
-  if (state.hasFetchedAll) {
+  if (state.isFetchedAll) {
     return
   }
 
@@ -71,7 +71,7 @@ async function loadConfas() {
     }
     const fetched = await iterator.next()
     if (!fetched.length) {
-      state.hasFetchedAll = true
+      state.isFetchedAll = true
     } else {
       state.confas = state.confas.concat(fetched)
     }
