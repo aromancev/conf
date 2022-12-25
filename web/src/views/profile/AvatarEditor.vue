@@ -1,5 +1,10 @@
 <template>
-  <ModalDialog :buttons="{ upload: 'Upload', cancel: 'Cancel' }" :disabled="loading" @click="onClick">
+  <ModalDialog
+    :is-visible="props.isVisible"
+    :buttons="{ upload: 'Upload', cancel: 'Cancel' }"
+    :disabled="loading"
+    @click="onClick"
+  >
     <div class="avatar-box">
       <img class="avatar" :src="avatar" />
       <div v-if="loading" class="loader-box">
@@ -22,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{
+  isVisible: boolean
   avatar: string
   loading?: boolean
 }>()

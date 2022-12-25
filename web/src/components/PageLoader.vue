@@ -12,8 +12,7 @@
     xml:space="preserve"
   >
     <circle fill="none" stroke="var(--color-highlight-background)" stroke-width="4" cx="50" cy="50" r="44" />
-    <circle fill="var(--color-red)" cx="48" cy="94" r="6">
-    </circle>
+    <circle fill="var(--color-red)" cx="50" cy="6" r="6"></circle>
   </svg>
 </template>
 
@@ -22,7 +21,7 @@
 @keyframes spin
   0%
     transform: rotate(0deg)
-  
+
   100%
     transform: rotate(360deg)
 
@@ -31,5 +30,5 @@ svg
   height: 70px
   max-width: 100%
   max-height: 100%
-  animation: spin 5s cubic-bezier(0, 1, 1, 1) infinite
+  animation: spin 1s ease-in-out infinite
 </style>

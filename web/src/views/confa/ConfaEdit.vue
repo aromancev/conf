@@ -47,15 +47,15 @@
     </div>
   </div>
 
-  <ModalDialog v-if="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Confa with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog v-if="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Confa no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
-  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
+  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script lang="ts">

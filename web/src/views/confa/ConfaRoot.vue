@@ -31,7 +31,7 @@
 
   <NotFound v-if="!loading && !confa" />
 
-  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
+  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">

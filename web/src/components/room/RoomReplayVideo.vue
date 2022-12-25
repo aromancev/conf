@@ -251,7 +251,7 @@ function formatTime(ms: number): string {
   transition: width 100ms linear
 
 .timeline-pointer
-  top: -35px
+  top: -25px
   left: 0
   transform: translateX(-50%)
   position: absolute
@@ -300,8 +300,5 @@ function formatTime(ms: number): string {
   height: 100%
 
 .loader-box
-  border-radius: 50%
   position: absolute
-  padding: 50px
-  background: radial-gradient(#000B 10%, transparent 60%)
 </style>
