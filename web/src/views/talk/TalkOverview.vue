@@ -3,7 +3,7 @@
     <div class="description">{{ talk.description }}</div>
   </div>
 
-  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
+  <InternalError :is-visible="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">

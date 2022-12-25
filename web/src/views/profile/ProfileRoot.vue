@@ -30,7 +30,7 @@
 
   <NotFound v-if="!loading && !profile" />
 
-  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
+  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">

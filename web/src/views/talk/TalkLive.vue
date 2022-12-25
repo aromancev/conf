@@ -94,7 +94,7 @@
   </div>
 
   <ModalDialog
-    v-if="modal.state.current === 'confirm_join'"
+    :is-visible="modal.state.current === 'confirm_join'"
     :ctrl="modal"
     :buttons="{ join: 'Join', leave: 'Leave' }"
     @click="confirmJoin"
@@ -105,12 +105,16 @@
       <CopyField :value="inviteLink"></CopyField>
     </p>
   </ModalDialog>
-  <ModalDialog v-if="modal.state.current === 'confirm_leave'" :ctrl="modal" :buttons="{ leave: 'Leave', stay: 'Stay' }">
+  <ModalDialog
+    :is-visible="modal.state.current === 'confirm_leave'"
+    :ctrl="modal"
+    :buttons="{ leave: 'Leave', stay: 'Stay' }"
+  >
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
   <ModalDialog
-    v-if="modal.state.current === 'reconnect'"
+    :is-visible="modal.state.current === 'reconnect'"
     :ctrl="modal"
     :buttons="{ reconnect: 'Reconnect', leave: 'Leave' }"
   >
@@ -118,14 +122,14 @@
     <p>Please check your internet connection and try to reconnect.</p>
   </ModalDialog>
   <ModalDialog
-    v-if="modal.state.current === 'recording_finished'"
+    :is-visible="modal.state.current === 'recording_finished'"
     :ctrl="modal"
     :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
   >
     <p>Recording finished.</p>
     <p>For demo purposes it is limited to 5 minutes.</p>
   </ModalDialog>
-  <InternalError v-if="modal.state.current === 'error'" :ctrl="modal" />
+  <InternalError :is-visible="modal.state.current === 'error'" :ctrl="modal" />
 </template>
 
 <script setup lang="ts">

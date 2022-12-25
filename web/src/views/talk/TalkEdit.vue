@@ -47,15 +47,15 @@
     </div>
   </div>
 
-  <ModalDialog v-if="modal === Modal.DuplicateEntry" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal === Modal.DuplicateEntry" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
     <p>Talk with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog v-if="modal === Modal.NotFound" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal === Modal.NotFound" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
     <p>Talk no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
-  <InternalError v-if="modal === Modal.Error" @click="modal = Modal.None" />
+  <InternalError :is-visible="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script lang="ts">

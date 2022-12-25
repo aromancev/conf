@@ -1,25 +1,30 @@
 <template>
-  <div class="background"></div>
-  <div class="content">
-    <div class="wrapper">
-      <slot></slot>
-    </div>
-    <table v-if="buttons">
-      <tr>
-        <td v-for="(text, id) in buttons" :key="id" class="cell" :class="{ disabled: disabled }" @click="click(id)">
-          {{ text }}
-        </td>
-      </tr>
-    </table>
+  <div v-if="isVisible" class="background"></div>
+  <div class="container">
+    <Transition name="fade">
+      <div v-if="isVisible" class="content">
+        <div class="wrapper">
+          <slot></slot>
+        </div>
+        <table v-if="buttons">
+          <tr>
+            <td v-for="(text, id) in buttons" :key="id" class="cell" :class="{ disabled: disabled }" @click="click(id)">
+              {{ text }}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-interface Controller {
+export interface Controller {
   submit(id: string): void
 }
 
 const props = defineProps<{
+  isVisible: boolean
   buttons: Record<string, string>
   disabled?: boolean
   ctrl?: Controller
@@ -43,6 +48,17 @@ function click(id: string) {
 <style scoped lang="sass">
 @use '@/css/theme'
 
+.fade-enter-active, .fade-leave-active
+  transition: all 200ms linear
+
+.fade-enter-from
+  opacity: 0
+  transform: scale(.95)
+
+.fade-leave-to
+  opacity: 0
+  transform: scale(1.05)
+
 .background
   position: fixed
   left: 0
@@ -54,24 +70,27 @@ function click(id: string) {
   opacity: 0.6
   z-index: 200
 
+.container
+  position: fixed
+  z-index: 250
+  top: 50%
+  left: 50%
+  transform: translate(-50%, -50%)
+
+.content
+  @include theme.shadow-l
+
+  border-radius: 5px
+  background-color: var(--color-background)
+  text-align: center
+  max-width: 500px
+
 .aligner
   position: fixed
   top: 0
   left: 0
   height: 100vh
   width: 100vw
-
-.content
-  @include theme.shadow-l
-  position: fixed
-  top: 50%
-  left: 50%
-  transform: translate(-50%, -50%)
-  border-radius: 5px
-  background-color: var(--color-background)
-  text-align: center
-  max-width: 500px
-  z-index: 250
 
 .wrapper
   padding: 1rem 3rem

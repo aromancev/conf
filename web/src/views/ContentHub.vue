@@ -14,7 +14,7 @@
       </div>
     </div>
   </div>
-  <InternalError v-if="state.modal === 'error'" @click="state.modal = 'none'" />
+  <InternalError :is-visible="state.modal === 'error'" @click="state.modal = 'none'" />
 </template>
 
 <script setup lang="ts">

@@ -17,14 +17,14 @@
     </div>
   </div>
 
-  <ModalDialog v-if="modal == Modal.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
+  <ModalDialog :is-visible="modal == Modal.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </ModalDialog>
-  <ModalDialog v-if="modal == Modal.BadRequest" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal == Modal.BadRequest" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
     <p>Incorrect email.</p>
   </ModalDialog>
-  <InternalError v-if="modal == Modal.Error" @click="modal = Modal.None" />
+  <InternalError :is-visible="modal == Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">

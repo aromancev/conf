@@ -51,17 +51,17 @@
   </div>
 
   <AvatarEditor
-    v-if="modal === 'avatar_edit'"
+    :is-visible="modal === 'avatar_edit'"
     :avatar="uploadedAvatar"
     :loading="saving"
     @close="modal = 'none'"
     @update="uploadAvatar"
   ></AvatarEditor>
-  <ModalDialog v-if="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Profile with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <InternalError v-if="modal === 'error'" @click="modal = 'none'" />
+  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script lang="ts">
