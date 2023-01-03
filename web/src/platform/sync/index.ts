@@ -1,41 +1,3 @@
-export class WaitGroup {
-  private promise: Promise<void>
-  private resolve: (() => void) | null
-  private counter: number
-  private joined: boolean
-
-  constructor() {
-    this.joined = false
-    this.counter = 0
-    this.resolve = null
-    this.promise = new Promise<void>((resolve) => {
-      this.resolve = resolve
-    })
-  }
-
-  add(val: number): void {
-    if (this.joined) {
-      throw new Error("Waitgroup trying to add after join")
-    }
-    this.counter += val
-  }
-
-  done(): void {
-    this.counter--
-    if (this.joined && this.counter <= 0) {
-      if (this.resolve) this.resolve()
-    }
-  }
-
-  async join(): Promise<void> {
-    if (this.counter <= 0) {
-      return
-    }
-    this.joined = true
-    return this.promise
-  }
-}
-
 export function debounce(fn: () => void, ms: number): () => void {
   let timeoutId: ReturnType<typeof setTimeout>
   return () => {
@@ -97,5 +59,66 @@ export class Throttler<T> {
     }, this.params.delayMs)
 
     return t
+  }
+}
+
+export function sleep(sig: AbortSignal, ms: number): Promise<void> {
+  sig.throwIfAborted()
+  return new Promise((res, rej) => {
+    const t = setTimeout(res, ms)
+    sig.addEventListener("abort", () => {
+      rej(sig.reason)
+      clearTimeout(t)
+    })
+  })
+}
+
+export function repeat(sig: AbortSignal, ms: number, f: () => void): void {
+  sig.throwIfAborted()
+
+  const i = setInterval(f, ms)
+  sig.addEventListener("abort", () => {
+    clearInterval(i)
+  })
+}
+
+export class Semaphor {
+  private count: number
+  private waiting: Set<() => void>
+
+  constructor(cap: number) {
+    this.count = cap
+    this.waiting = new Set()
+  }
+
+  async acquire(sig: AbortSignal): Promise<void> {
+    sig.throwIfAborted()
+
+    if (this.count > 0) {
+      this.count--
+      // Aborted after acquired. Resolve the first waiter.
+      // Note even if the resolved waiter calls abort after,
+      // nothing will happen because the promise will be permanently in resolved state at this point.
+      sig.addEventListener("abort", () => this.releaseFirstInQueue())
+      return
+    }
+    return new Promise((res, rej) => {
+      this.waiting.add(res)
+      // Aborted while waiting. Just remove it from the waiting list and reject the promise.
+      sig.addEventListener("abort", () => {
+        this.waiting.delete(res)
+        rej(sig.reason)
+      })
+    })
+  }
+
+  private releaseFirstInQueue(): void {
+    if (!this.waiting.size) {
+      this.count++
+      return
+    }
+    const res = this.waiting.keys().next().value
+    this.waiting.delete(res)
+    res()
   }
 }

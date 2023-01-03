@@ -195,6 +195,24 @@ func (p *PeerProxy) receiveWebsocket(ctx context.Context) error {
 				Event: NewRoomEvent(ev),
 			},
 		})
+	case msg.Payload.Reaction != nil:
+		pl := *msg.Payload.Reaction
+		var react event.Reaction
+		if pl.Clap != nil {
+			react.Clap = &event.ReactionClap{
+				IsStarting: pl.Clap.IsStarting,
+			}
+		}
+		ev, err := p.proxy.SendReaction(ctx, react)
+		if err != nil {
+			return err
+		}
+		return wsjson.Write(ctx, p.conn, Message{
+			ResponseID: msg.RequestID,
+			Payload: MessagePayload{
+				Event: NewRoomEvent(ev),
+			},
+		})
 	}
 	log.Ctx(ctx).Debug().Msg("Skipping unknown message.")
 	return nil

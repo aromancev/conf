@@ -63,6 +63,7 @@ type Payload struct {
 	Message        *PayloadMessage        `bson:"message"`
 	Recording      *PayloadRecording      `bson:"recording"`
 	TrackRecording *PayloadTrackRecording `bson:"trackRecording"`
+	Reaction       *PayloadReaction       `bson:"reaction"`
 }
 
 func (p Payload) Validate() error {
@@ -87,6 +88,12 @@ func (p Payload) Validate() error {
 	}
 	if p.TrackRecording != nil {
 		if err := p.TrackRecording.Validate(); err != nil {
+			return err
+		}
+		hasPayload = true
+	}
+	if p.Reaction != nil {
+		if err := p.Reaction.Validate(); err != nil {
 			return err
 		}
 		hasPayload = true
@@ -208,4 +215,35 @@ func (p PayloadTrackRecording) Validate() error {
 		return errors.New("track id should not be zero")
 	}
 	return nil
+}
+
+type PayloadReaction struct {
+	From     uuid.UUID `bson:"fromId"`
+	Reaction Reaction  `bson:"reaction"`
+}
+
+func (p PayloadReaction) Validate() error {
+	if p.From == uuid.Nil {
+		return errors.New("fromId should not be zero")
+	}
+	var hasReaction bool
+	if p.Reaction.Clap != nil {
+		hasReaction = true
+	}
+	if !hasReaction {
+		return errors.New("reaction must not be empty")
+	}
+	return nil
+}
+
+type Reaction struct {
+	Clap *ReactionClap `bson:"clap,omitempty"`
+}
+
+func (r Reaction) Validate() error {
+	return nil
+}
+
+type ReactionClap struct {
+	IsStarting bool `bson:"isStarting"`
 }

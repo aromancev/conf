@@ -11,7 +11,7 @@ export interface Talk {
   confaId: string
   roomId: string
   handle: string
+  state: TalkState
   title?: string
   description?: string
-  state?: TalkState
 }

@@ -22,6 +22,7 @@
           @mouseenter="updateHighlight"
           @mouseleave="state.timePointerVisible = false"
         >
+          <div class="outline"></div>
           <div class="buffer" :style="{ width: `${((props.buffer || 0) / props.duration) * 100}%` }"></div>
           <div class="highlight" :style="{ width: `${state.highlight * 100}%` }"></div>
           <div class="progress" :style="{ width: `${(state.progress / props.duration) * 100}%` }"></div>
@@ -205,7 +206,6 @@ function formatTime(ms: number): string {
   left: 0
   height: 100%
   width: 100%
-  background-image: linear-gradient(0, black 0, transparent 50px)
 
 .free-screen
   position: absolute
@@ -217,11 +217,11 @@ function formatTime(ms: number): string {
   bottom: 0
   left: 0
   width: 100%
+  padding: 0 15px
 
 .timeline
   position: relative
   cursor: pointer
-  width: 100%
   height: 10px
   &:hover > .progress, &:hover > .highlight
     height: 5px
@@ -245,10 +245,20 @@ function formatTime(ms: number): string {
 .buffer
   bottom: 0
   left: 0
+  max-width: 100%
   position: absolute
   height: 2px
   background-color: grey
   transition: width 100ms linear
+
+.outline
+  bottom: 0
+  left: 0
+  position: absolute
+  width: 100%
+  height: 2px
+  background-color: white
+  opacity: 0.15
 
 .timeline-pointer
   top: -25px

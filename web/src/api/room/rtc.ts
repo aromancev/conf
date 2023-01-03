@@ -7,7 +7,7 @@ import {
 import { currentUser } from "../models"
 import { client } from "@/api"
 import { config } from "@/config"
-import { PeerMessage, PeerState, Message, MessagePayload, RoomEvent, SDPType } from "./schema"
+import { PeerMessage, PeerState, Message, Reaction, MessagePayload, RoomEvent, SDPType } from "./schema"
 
 export type RemoteStream = IonRemoteStream
 export type LocalStream = IonLocalStream
@@ -40,6 +40,10 @@ export class RTCPeer {
     return this.socket.state(state)
   }
 
+  async reaction(reaction: Reaction): Promise<RoomEvent> {
+    return this.socket.reaction(reaction)
+  }
+
   async joinRTC(roomId: string): Promise<void> {
     this.roomId = roomId
     const token = await client.token()
@@ -57,7 +61,6 @@ export class RTCPeer {
     if (config.sfu.turnURLs.length !== 0) {
       iceServers.push({
         urls: config.sfu.turnURLs,
-        credentialType: "password",
         username: token,
         credential: "confa.io",
       })
@@ -249,6 +252,16 @@ class RoomWebSocket {
     }
 
     return resp.payload.state
+  }
+
+  async reaction(reaction: Reaction): Promise<RoomEvent> {
+    const resp = await this.send({
+      reaction: reaction,
+    })
+    if (!resp.payload.event) {
+      throw new Error("Unexpected response from RTC.")
+    }
+    return resp.payload.event
   }
 
   close(): void {

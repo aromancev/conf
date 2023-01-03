@@ -90,6 +90,7 @@ export class TalkIterator {
               confaId
               roomId
               handle
+              state
             }
             nextFrom
           }
@@ -156,6 +157,7 @@ export class TalkClient {
             handle
             title
             description
+            state
           }
         }
       `,
@@ -180,6 +182,7 @@ export class TalkClient {
             confaId
             roomId
             handle
+            state
           }
         }
       `,
@@ -203,6 +206,7 @@ export class TalkClient {
             confaId
             roomId
             handle
+            state
           }
         }
       `,

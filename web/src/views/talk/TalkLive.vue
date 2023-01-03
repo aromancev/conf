@@ -24,11 +24,18 @@
           </div>
         </div>
       </div>
-
-      <RoomAudience ref="audience" :loading="room.state.isLoading" :peers="room.state.peers" />
+      <RoomAudience
+        ref="audience"
+        :user-id="user.id"
+        :is-loading="room.state.isLoading"
+        :is-playing="true"
+        :peers="room.state.peers"
+        :statuses="room.state.statuses"
+      />
     </div>
     <div class="controls">
       <div class="controls-top">
+        <RoomReactions @reaction="sendReaction"></RoomReactions>
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.screen }"
@@ -139,12 +146,13 @@ import { route } from "@/router"
 import { talkClient } from "@/api"
 import { Talk, TalkState, userStore } from "@/api/models"
 import { LiveRoom } from "@/components/room"
-import { Hint } from "@/api/room/schema"
+import { Hint, Reaction } from "@/api/room/schema"
 import { ModalController } from "@/components/modals/controller"
 import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
+import RoomReactions from "@/components/room/RoomReactions.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
 
@@ -302,6 +310,10 @@ function sendMessage(message: string) {
   room.send(user.id, message)
 }
 
+function sendReaction(reaction: Reaction) {
+  room.reaction(reaction)
+}
+
 function switchSidePanel(panel: SidePanel) {
   if (sidePanel.value === panel) {
     panel = SidePanel.None
@@ -358,7 +370,7 @@ async function handleRecording() {
   flex-direction: row
   justify-content: center
   align-items: flex-start
-  max-width: min(90%, 800px)
+  max-width: min(90%, 700px)
   width: 100%
 
 .video-container
@@ -369,6 +381,7 @@ async function handleRecording() {
   display: flex
   flex-direction: row
   justify-content: center
+  margin-bottom: 20px
 
 .video
   position: absolute
@@ -439,12 +452,19 @@ async function handleRecording() {
   width: 60px
   margin: 0 20px
 
+.controls-top
+  display: flex
+  flex-direction: column
+  align-items: center
+
 .controls-bottom
   margin-top: auto
 
 .ctrl-btn
   border-radius: 50%
-  margin: 11px
+  margin: 5px
+  width: 55px
+  height: 55px
   padding: 0.6em
   &.active
     margin: 10px

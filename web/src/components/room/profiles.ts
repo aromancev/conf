@@ -4,7 +4,7 @@ import { profileClient } from "@/api"
 import { genName, genAvatar } from "@/platform/gen"
 import { LRUMap } from "@/platform/cache"
 
-const avatarSise = 128
+const AVATAR_SIZE = 128
 
 interface Profile {
   userId: string
@@ -43,11 +43,10 @@ export class ProfileRepository {
       }),
       fetched: false,
     }
-    genAvatar(id, avatarSise).then((src: string) => {
+    genAvatar(id, AVATAR_SIZE).then((src: string) => {
       entry.profile.avatar = src
     })
     this.cache.set(id, entry)
-    // this.fetchThrottled()
     this.fetchThrottle.do()
 
     return entry.profile

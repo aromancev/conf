@@ -28,7 +28,7 @@
       <div class="control-divider"></div>
       <div class="control-item" @click="toggleTheme">
         <span class="icon material-icons">{{ theme === Theme.Dark ? "light_mode" : "dark_mode" }}</span>
-        Switch theme
+        {{ theme === Theme.Dark ? "Light mode" : "Dark mode" }}
       </div>
     </div>
 
@@ -85,7 +85,7 @@ watch(
   async () => {
     profile.handle = currentProfile.handle || handleNew
     profile.displayName = currentProfile.displayName || genName(currentUser.id)
-    profile.avatar = currentProfile.avatarThumbnail || (await genAvatar(currentUser.id, 64))
+    profile.avatar = currentProfile.avatarThumbnail || (await genAvatar(currentUser.id, 128))
   },
   { immediate: true },
 )
@@ -163,9 +163,11 @@ $height: 100%
 
 .disclaimer
   font-size: 14px
-  color: #ffcc00
+  color: var(--color-font)
   display: flex
   align-items: center
+  padding: 5px
+  border: 2px solid #fb8c00
 
 .disclaimer-icon
   margin-right: 5px

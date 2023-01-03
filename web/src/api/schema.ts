@@ -302,6 +302,7 @@ export interface talks_talks_items {
   confaId: string;
   roomId: string;
   handle: string;
+  state: TalkState;
 }
 
 export interface talks_talks {
@@ -368,6 +369,7 @@ export interface updateTalk_updateTalk {
   handle: string;
   title: string;
   description: string;
+  state: TalkState;
 }
 
 export interface updateTalk {
@@ -395,6 +397,7 @@ export interface startTalkRecording_startTalkRecording {
   confaId: string;
   roomId: string;
   handle: string;
+  state: TalkState;
 }
 
 export interface startTalkRecording {
@@ -421,6 +424,7 @@ export interface stopTalkRecording_stopTalkRecording {
   confaId: string;
   roomId: string;
   handle: string;
+  state: TalkState;
 }
 
 export interface stopTalkRecording {

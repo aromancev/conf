@@ -116,11 +116,16 @@ func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Messag
 }
 
 func (p *Proxy) SendMessage(ctx context.Context, text string) (event.Event, error) {
+	msg := event.PayloadMessage{
+		From: p.userID,
+		Text: text,
+	}
+	if err := msg.Validate(); err != nil {
+		return event.Event{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+
 	return p.emit(ctx, event.Payload{
-		Message: &event.PayloadMessage{
-			From: p.userID,
-			Text: text,
-		},
+		Message: &msg,
 	})
 }
 
@@ -130,6 +135,18 @@ func (p *Proxy) SendState(ctx context.Context, state State) (State, error) {
 	}
 	p.state = state
 	return state, nil
+}
+
+func (p *Proxy) SendReaction(ctx context.Context, reaction event.Reaction) (event.Event, error) {
+	if err := reaction.Validate(); err != nil {
+		return event.Event{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	return p.emit(ctx, event.Payload{
+		Reaction: &event.PayloadReaction{
+			From:     p.userID,
+			Reaction: reaction,
+		},
+	})
 }
 
 func (p *Proxy) RecieveEvent(ctx context.Context) (event.Event, error) {
