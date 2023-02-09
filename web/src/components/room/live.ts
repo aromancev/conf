@@ -4,14 +4,18 @@ import { RTCPeer, eventClient } from "@/api"
 import { BufferedAggregator } from "./aggregators/buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
-import { Peer, PeerAggregator } from "./aggregators/peers"
+import { Peer, Status, PeerAggregator } from "./aggregators/peers"
 import { Stream, StreamAggregator } from "./aggregators/streams"
 import { RecordingAggregator } from "./aggregators/recording"
-import { RoomEvent, Hint, Track } from "@/api/room/schema"
+import { RoomEvent, Hint, Track, Reaction } from "@/api/room/schema"
 import { EventOrder } from "@/api/schema"
+
+const UPDATE_TIME_INTERVAL_MS = 300
+const PROFILE_CACHE_SIZE = 500
 
 interface State {
   peers: Map<string, Peer>
+  statuses: Map<string, Status>
   messages: Message[]
   isPublishing: boolean
   isLoading: boolean
@@ -37,10 +41,12 @@ export class LiveRoom {
   private peerState: PeerState
   private profileRepo: ProfileRepository
   private messageAggregator?: MessageAggregator
+  private setTimeIntervalId: ReturnType<typeof setInterval>
 
   constructor() {
     this._state = reactive<State>({
       peers: new Map(),
+      statuses: new Map(),
       messages: [],
       isLoading: false,
       isPublishing: false,
@@ -52,13 +58,14 @@ export class LiveRoom {
       local: {},
     }) as State
     this.readState = readonly(this._state) as State
-    this.profileRepo = new ProfileRepository(100, 3000)
+    this.profileRepo = new ProfileRepository(PROFILE_CACHE_SIZE, 3000)
     this.peerState = { tracks: new Map() }
     this.rtc = new RTCPeer()
     this.rtc.onclose = () => {
       this.close()
       this._state.error = "UNKNOWN"
     }
+    this.setTimeIntervalId = 0
   }
 
   get state(): State {
@@ -72,6 +79,7 @@ export class LiveRoom {
     this.rtc.close()
     this.peerState = { tracks: new Map() }
     this._state.joinedMedia = false
+    clearInterval(this.setTimeIntervalId)
   }
 
   async joinRTC(roomId: string): Promise<void> {
@@ -88,10 +96,15 @@ export class LiveRoom {
       this._state.error = undefined
       this._state.remote = streams.state().streams
       this._state.peers = peers.state().peers
+      this._state.statuses = peers.state().statuses
       this._state.recording = recording.state()
       this._state.messages = this.messageAggregator.state().messages
 
+      let serverNow = 0
+      let serverNowAt = 0
       this.rtc.onevent = (event: RoomEvent): void => {
+        serverNow = event.createdAt
+        serverNowAt = Date.now()
         aggregators.put(event)
       }
       this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
@@ -99,10 +112,20 @@ export class LiveRoom {
 
       const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
       const events = await iter.next({ count: 3000, seconds: 2 * 60 * 60 })
+
       // Sorting events to always be in chronological order.
       events.reverse()
       aggregators.prepend(...events)
       aggregators.flush()
+
+      // Update aggregators about current time on the server which is taken from received events.
+      this.setTimeIntervalId = setInterval(() => {
+        if (!serverNow) {
+          return
+        }
+        const elapsed = Date.now() - serverNowAt
+        aggregators.setTime(serverNow + elapsed)
+      }, UPDATE_TIME_INTERVAL_MS)
     } finally {
       this._state.isLoading = false
     }
@@ -122,6 +145,13 @@ export class LiveRoom {
     const setId = this.messageAggregator.addMessage(userId, message)
     const event = await this.rtc.message({ text: message })
     setId(event.id)
+  }
+
+  async reaction(reaction: Reaction): Promise<void> {
+    if (!this.rtc) {
+      throw new Error("Must join room before sending a reaction.")
+    }
+    await this.rtc.reaction(reaction)
   }
 
   switchCamera() {

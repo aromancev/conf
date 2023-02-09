@@ -45,10 +45,10 @@ message UpdateRecordingTrack {
     message ProcessingStarted {}
     message ProcessingFinished {}
 
-    bytes recording_id = 1;
-    bytes record_id = 2; 
-    int64 updated_at = 3;
-    Update update = 4;
+    Update update = 1;
+    bytes recording_id = 2;
+    bytes record_id = 3; 
+    int64 updated_at = 4;
 }
 
 message StoreEvent {
@@ -62,28 +62,45 @@ message Event {
     }
 
     message Payload {
-        message PayloadPeerState {
+        message PeerState {
             bytes peer_id = 1;
             bytes session_id = 2;
             string status = 3;  
             repeated Track tracks = 4;        
         }
-        message PayloadMessage {
+        message Message {
             bytes from_id = 1;
             string text = 2;
         }
-        message PayloadRecording {
+        message Recording {
             string status = 1;
         }
-        message PayloadTrackRecording {
+        message TrackRecording {
             bytes id = 1;
             string track_id = 2;
         }
+        message Reaction {
+            message Reaction {
+                message Clap {
+                    bool is_starting = 1;
+                }
 
-        PayloadPeerState peer_state = 1;
-        PayloadMessage message = 2;
-        PayloadRecording recording = 3;
-        PayloadTrackRecording track_recording = 4;
+                oneof reaction {
+                    Clap clap = 1;
+                }
+            }
+
+            bytes from_id = 1;
+            Reaction reaction = 2;
+        }
+
+        oneof payload {
+            PeerState peer_state = 1;
+            Message message = 2;
+            Recording recording = 3;
+            TrackRecording track_recording = 4;
+            Reaction reaction = 5;
+        }
     }
 
     Payload payload = 1;

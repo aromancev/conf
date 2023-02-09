@@ -23,8 +23,8 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
-    "src/**/*.vue"
-, "src/platform/gen/identicon.js"  ],
+    "src/**/*.vue" 
+  ],
   "exclude": [
     "node_modules"
   ]

@@ -49,6 +49,19 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 			ID:      pl.ID.String(),
 			TrackID: pl.TrackID,
 		}
+	case ev.Payload.Reaction != nil:
+		pl := *ev.Payload.Reaction
+		var reaction Reaction
+		if pl.Reaction.Clap != nil {
+			react := pl.Reaction.Clap
+			reaction.Clap = &ReactionClap{
+				IsStarting: react.IsStarting,
+			}
+		}
+		payload.Reaction = &EventReaction{
+			FromID:   pl.From.String(),
+			Reaction: reaction,
+		}
 	}
 	sev.Payload = payload
 	return &sev

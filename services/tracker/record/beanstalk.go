@@ -47,9 +47,11 @@ func (b *Beanstalk) RecordStarted(ctx context.Context, record Record) error {
 			Id:     id,
 			RoomId: roomID,
 			Payload: &rtc.Event_Payload{
-				TrackRecording: &rtc.Event_Payload_PayloadTrackRecording{
-					Id:      recordID,
-					TrackId: record.TrackID,
+				Payload: &rtc.Event_Payload_TrackRecording_{
+					TrackRecording: &rtc.Event_Payload_TrackRecording{
+						Id:      recordID,
+						TrackId: record.TrackID,
+					},
 				},
 			},
 		},

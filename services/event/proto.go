@@ -15,43 +15,72 @@ func ToProto(event Event) *rtc.Event {
 		pl := *event.Payload.PeerState
 		peer, _ := pl.Peer.MarshalBinary()
 		session, _ := pl.SessionID.MarshalBinary()
-		payload.PeerState = &rtc.Event_Payload_PayloadPeerState{
+		peerState := rtc.Event_Payload_PeerState{
 			PeerId:    peer,
 			SessionId: session,
 		}
 		if pl.Status != "" {
-			payload.PeerState.Status = string(pl.Status)
+			peerState.Status = string(pl.Status)
 		}
 		if len(pl.Tracks) != 0 {
-			payload.PeerState.Tracks = make([]*rtc.Event_Track, len(pl.Tracks))
+			peerState.Tracks = make([]*rtc.Event_Track, len(pl.Tracks))
 			for i, t := range pl.Tracks {
-				payload.PeerState.Tracks[i] = &rtc.Event_Track{
+				peerState.Tracks[i] = &rtc.Event_Track{
 					Id:   t.ID,
 					Hint: string(t.Hint),
 				}
 			}
 		}
+		payload.Payload = &rtc.Event_Payload_PeerState_{
+			PeerState: &peerState,
+		}
 	}
 	if event.Payload.Message != nil {
 		pl := *event.Payload.Message
 		from, _ := pl.From.MarshalBinary()
-		payload.Message = &rtc.Event_Payload_PayloadMessage{
-			FromId: from,
-			Text:   pl.Text,
+		payload.Payload = &rtc.Event_Payload_Message_{
+			Message: &rtc.Event_Payload_Message{
+				FromId: from,
+				Text:   pl.Text,
+			},
 		}
 	}
 	if event.Payload.Recording != nil {
 		pl := *event.Payload.Recording
-		payload.Recording = &rtc.Event_Payload_PayloadRecording{
-			Status: string(pl.Status),
+		payload.Payload = &rtc.Event_Payload_Recording_{
+			Recording: &rtc.Event_Payload_Recording{
+				Status: string(pl.Status),
+			},
 		}
 	}
 	if event.Payload.TrackRecording != nil {
 		pl := *event.Payload.TrackRecording
 		binID, _ := pl.ID.MarshalBinary()
-		payload.TrackRecording = &rtc.Event_Payload_PayloadTrackRecording{
-			Id:      binID,
-			TrackId: pl.TrackID,
+		payload.Payload = &rtc.Event_Payload_TrackRecording_{
+			TrackRecording: &rtc.Event_Payload_TrackRecording{
+				Id:      binID,
+				TrackId: pl.TrackID,
+			},
+		}
+	}
+	if event.Payload.Reaction != nil {
+		pl := *event.Payload.Reaction
+		from, _ := pl.From.MarshalBinary()
+		reaction := rtc.Event_Payload_Reaction{
+			FromId: from,
+		}
+		if pl.Reaction.Clap != nil {
+			react := pl.Reaction.Clap
+			reaction.Reaction = &rtc.Event_Payload_Reaction_Reaction{
+				Reaction: &rtc.Event_Payload_Reaction_Reaction_Clap_{
+					Clap: &rtc.Event_Payload_Reaction_Reaction_Clap{
+						IsStarting: react.IsStarting,
+					},
+				},
+			}
+		}
+		payload.Payload = &rtc.Event_Payload_Reaction_{
+			Reaction: &reaction,
 		}
 	}
 	return &rtc.Event{
@@ -67,50 +96,55 @@ func FromProto(event *rtc.Event) Event {
 	_ = id.UnmarshalBinary(event.Id)
 	_ = room.UnmarshalBinary(event.RoomId)
 	var payload Payload
-	if event.Payload.PeerState != nil {
-		pl := event.Payload.PeerState
+	switch pl := event.Payload.Payload.(type) {
+	case *rtc.Event_Payload_PeerState_:
 		var peer, session uuid.UUID
-		_ = peer.UnmarshalBinary(pl.PeerId)
-		_ = session.UnmarshalBinary(pl.SessionId)
+		_ = peer.UnmarshalBinary(pl.PeerState.PeerId)
+		_ = session.UnmarshalBinary(pl.PeerState.SessionId)
 		payload.PeerState = &PayloadPeerState{
 			Peer:      peer,
 			SessionID: session,
 		}
-		if pl.Status != "" {
-			payload.PeerState.Status = PeerStatus(pl.Status)
+		if pl.PeerState.Status != "" {
+			payload.PeerState.Status = PeerStatus(pl.PeerState.Status)
 		}
-		if len(pl.Tracks) != 0 {
-			payload.PeerState.Tracks = make([]Track, len(pl.Tracks))
-			for i, t := range pl.Tracks {
+		if len(pl.PeerState.Tracks) != 0 {
+			payload.PeerState.Tracks = make([]Track, len(pl.PeerState.Tracks))
+			for i, t := range pl.PeerState.Tracks {
 				payload.PeerState.Tracks[i] = Track{
 					ID:   t.Id,
 					Hint: TrackHint(t.Hint),
 				}
 			}
 		}
-	}
-	if event.Payload.Message != nil {
-		pl := event.Payload.Message
+	case *rtc.Event_Payload_Message_:
 		var from uuid.UUID
-		_ = from.UnmarshalBinary(pl.FromId)
+		_ = from.UnmarshalBinary(pl.Message.FromId)
 		payload.Message = &PayloadMessage{
 			From: from,
-			Text: pl.Text,
+			Text: pl.Message.Text,
 		}
-	}
-	if event.Payload.Recording != nil {
-		pl := event.Payload.Recording
+	case *rtc.Event_Payload_Recording_:
 		payload.Recording = &PayloadRecording{
-			Status: RecordStatus(pl.Status),
+			Status: RecordStatus(pl.Recording.Status),
 		}
-	}
-	if event.Payload.TrackRecording != nil {
-		pl := event.Payload.TrackRecording
+	case *rtc.Event_Payload_TrackRecording_:
 		var id uuid.UUID
-		_ = id.UnmarshalBinary(pl.Id)
+		_ = id.UnmarshalBinary(pl.TrackRecording.Id)
 		payload.TrackRecording = &PayloadTrackRecording{
 			ID:      id,
-			TrackID: pl.TrackId,
+			TrackID: pl.TrackRecording.TrackId,
+		}
+	case *rtc.Event_Payload_Reaction_:
+		var from uuid.UUID
+		_ = from.UnmarshalBinary(pl.Reaction.FromId)
+		payload.Reaction = &PayloadReaction{
+			From: from,
+		}
+		if reaction, ok := pl.Reaction.Reaction.Reaction.(*rtc.Event_Payload_Reaction_Reaction_Clap_); ok {
+			payload.Reaction.Reaction.Clap = &ReactionClap{
+				IsStarting: reaction.Clap.IsStarting,
+			}
 		}
 	}
 	return Event{

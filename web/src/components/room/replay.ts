@@ -3,11 +3,13 @@ import { eventClient, Recording } from "@/api"
 import { EventIterator } from "@/api/event"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
-import { Peer, PeerAggregator } from "./aggregators/peers"
+import { Peer, Status, PeerAggregator } from "./aggregators/peers"
 import { Media, MediaAggregator } from "./aggregators/media"
 import { RoomEvent } from "@/api/room/schema"
 import { duration } from "@/platform/time"
 import { Throttler } from "@/platform/sync"
+
+const PROFILE_CACHE_SIZE = 500
 
 interface State {
   isLoading: boolean
@@ -18,6 +20,7 @@ interface State {
   progress: Progress
   messages: Message[]
   peers: Map<string, Peer>
+  statuses: Map<string, Status>
   medias: Map<string, Media>
 }
 
@@ -56,10 +59,11 @@ export class ReplayRoom {
         increasingSince: 0,
       },
       peers: new Map(),
+      statuses: new Map(),
       medias: new Map(),
     })
     this.readState = readonly(this._state) as State
-    this.profileRepo = new ProfileRepository(100, 3 * 1000)
+    this.profileRepo = new ProfileRepository(PROFILE_CACHE_SIZE, 3 * 1000)
     this.recordingStartedAt = 0
     this.putFromIndex = 0
     this.eventBatch = []
@@ -95,6 +99,7 @@ export class ReplayRoom {
 
       this._state.medias = media.state().medias
       this._state.peers = peers.state().peers
+      this._state.statuses = peers.state().statuses
       this._state.messages = messages.state().messages
 
       this.resetState()
@@ -212,6 +217,10 @@ export class ReplayRoom {
 
     // Put due events.
     const nextEventAt = this.putEventsUntil(this.recordingStartedAt + progress)
+
+    // Update time for aggregators.
+    this.setAggregatorsTime(this.recordingStartedAt + progress)
+
     // Only stop AFTER the events were consumed.
     if (progress >= this._state.duration) {
       this.stop()
@@ -309,6 +318,15 @@ export class ReplayRoom {
     return 0
   }
 
+  private setAggregatorsTime(time: number): void {
+    for (const agg of this.aggregators) {
+      if (!agg.setTime) {
+        continue
+      }
+      agg.setTime(time)
+    }
+  }
+
   private resetState(): void {
     for (const agg of this.aggregators) {
       if (agg.reset) {
@@ -355,13 +373,14 @@ export class ReplayRoom {
 
 const EVENT_BATCH = 3000
 const FETCH_ADVANCE_MS = 60 * 1000
-const MIN_EVENT_DELAY_MS = 100
-const MAX_EVENT_DELAY_MS = 1 * 1000
+const MIN_EVENT_DELAY_MS = 200
+const MAX_EVENT_DELAY_MS = 1 * 500
 const MIN_FETCH_DELAY_MS = 1 * 1000
 const EVENTS_BUFFER_ID = "events"
 
 interface Aggregator {
   put(event: RoomEvent): void
+  setTime?(time: number): void
   prepare?(events: RoomEvent[]): void
   reset?(): void
 }

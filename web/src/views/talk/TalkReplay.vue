@@ -48,7 +48,15 @@
         </div>
       </div>
 
-      <RoomAudience ref="audience" :is-loading="room.state.isLoading" :peers="room.state.peers" />
+      <RoomAudience
+        ref="audience"
+        :user-id="user.id"
+        :is-loading="room.state.isLoading"
+        :is-playing="room.state.isPlaying"
+        :peers="room.state.peers"
+        :statuses="room.state.statuses"
+        :self-reactions="true"
+      />
     </div>
     <div class="controls">
       <div class="controls-bottom">

@@ -16,6 +16,7 @@ export interface Message {
 export interface MessagePayload {
     event?:       RoomEvent;
     peerMessage?: PeerMessage;
+    reaction?:    Reaction;
     signal?:      Signal;
     state?:       PeerState;
 }
@@ -30,6 +31,7 @@ export interface RoomEvent {
 export interface EventPayload {
     message?:        EventMessage;
     peerState?:      EventPeerState;
+    reaction?:       EventReaction;
     recording?:      EventRecording;
     trackRecording?: EventTrackRecording;
 }
@@ -61,6 +63,19 @@ export enum Hint {
     DeviceAudio = "device_audio",
     Screen = "screen",
     UserAudio = "user_audio",
+}
+
+export interface EventReaction {
+    fromId:   string;
+    reaction: Reaction;
+}
+
+export interface Reaction {
+    clap?: ReactionClap;
+}
+
+export interface ReactionClap {
+    isStarting: boolean;
 }
 
 export interface EventRecording {
@@ -283,6 +298,7 @@ const typeMap: any = {
     "MessagePayload": o([
         { json: "event", js: "event", typ: u(undefined, r("RoomEvent")) },
         { json: "peerMessage", js: "peerMessage", typ: u(undefined, r("PeerMessage")) },
+        { json: "reaction", js: "reaction", typ: u(undefined, r("Reaction")) },
         { json: "signal", js: "signal", typ: u(undefined, r("Signal")) },
         { json: "state", js: "state", typ: u(undefined, r("PeerState")) },
     ], false),
@@ -295,6 +311,7 @@ const typeMap: any = {
     "EventPayload": o([
         { json: "message", js: "message", typ: u(undefined, r("EventMessage")) },
         { json: "peerState", js: "peerState", typ: u(undefined, r("EventPeerState")) },
+        { json: "reaction", js: "reaction", typ: u(undefined, r("EventReaction")) },
         { json: "recording", js: "recording", typ: u(undefined, r("EventRecording")) },
         { json: "trackRecording", js: "trackRecording", typ: u(undefined, r("EventTrackRecording")) },
     ], false),
@@ -311,6 +328,16 @@ const typeMap: any = {
     "Track": o([
         { json: "hint", js: "hint", typ: r("Hint") },
         { json: "id", js: "id", typ: "" },
+    ], false),
+    "EventReaction": o([
+        { json: "fromId", js: "fromId", typ: "" },
+        { json: "reaction", js: "reaction", typ: r("Reaction") },
+    ], false),
+    "Reaction": o([
+        { json: "clap", js: "clap", typ: u(undefined, r("ReactionClap")) },
+    ], false),
+    "ReactionClap": o([
+        { json: "isStarting", js: "isStarting", typ: true },
     ], false),
     "EventRecording": o([
         { json: "status", js: "status", typ: r("RecordingEventStatus") },

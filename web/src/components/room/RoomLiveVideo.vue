@@ -77,7 +77,6 @@ function toggleFullscreen() {
   left: 0
   height: 100%
   width: 100%
-  background-image: linear-gradient(0, black 0, transparent 50px)
 
 .bottom-panel
   position: absolute

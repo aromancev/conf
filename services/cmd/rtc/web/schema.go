@@ -27,6 +27,7 @@ type Message struct {
 type MessagePayload struct {
 	Event       *RoomEvent   `json:"event,omitempty"`      
 	PeerMessage *PeerMessage `json:"peerMessage,omitempty"`
+	Reaction    *Reaction    `json:"reaction,omitempty"`   
 	Signal      *Signal      `json:"signal,omitempty"`     
 	State       *PeerState   `json:"state,omitempty"`      
 }
@@ -41,6 +42,7 @@ type RoomEvent struct {
 type EventPayload struct {
 	Message        *EventMessage        `json:"message,omitempty"`       
 	PeerState      *EventPeerState      `json:"peerState,omitempty"`     
+	Reaction       *EventReaction       `json:"reaction,omitempty"`      
 	Recording      *EventRecording      `json:"recording,omitempty"`     
 	TrackRecording *EventTrackRecording `json:"trackRecording,omitempty"`
 }
@@ -60,6 +62,19 @@ type EventPeerState struct {
 type Track struct {
 	Hint Hint   `json:"hint"`
 	ID   string `json:"id"`  
+}
+
+type EventReaction struct {
+	FromID   string   `json:"fromId"`  
+	Reaction Reaction `json:"reaction"`
+}
+
+type Reaction struct {
+	Clap *ReactionClap `json:"clap,omitempty"`
+}
+
+type ReactionClap struct {
+	IsStarting bool `json:"isStarting"`
 }
 
 type EventRecording struct {

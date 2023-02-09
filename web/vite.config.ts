@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '/static': path.resolve(__dirname, './public/static'),
       // Only including mediaplayer to reduce bundle size.
       'dashjs': require.resolve('dashjs/dist/dash.mediaplayer.min.js')
     },
@@ -24,6 +25,6 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 700,
+    chunkSizeWarningLimit: 800,
   }
 })
