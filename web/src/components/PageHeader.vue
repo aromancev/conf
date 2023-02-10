@@ -16,12 +16,17 @@
       <router-link v-if="!currentUser.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
-    <div v-if="modal === 'sidebar'" class="sidebar" @click="modal = 'none'">
-      <router-link v-if="currentUser.allowedWrite" class="control-item" :to="route.contentHub()">
+    <div v-if="modal === 'sidebar'" class="sidebar">
+      <router-link
+        v-if="currentUser.allowedWrite"
+        class="control-item"
+        :to="route.contentHub()"
+        @click="switchModal('none')"
+      >
         <span class="icon material-icons">hub</span>
         Content hub
       </router-link>
-      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/new">
+      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
         <span class="icon material-icons">add</span>
         Create conference
       </router-link>
@@ -30,6 +35,7 @@
         <span class="icon material-icons">{{ theme === Theme.Dark ? "light_mode" : "dark_mode" }}</span>
         {{ theme === Theme.Dark ? "Light mode" : "Dark mode" }}
       </div>
+      <CopyText class="sidebar-end info" :value="'info@confa.io'"></CopyText>
     </div>
 
     <div
@@ -58,6 +64,7 @@ import { genAvatar, genName } from "@/platform/gen"
 import { route, handleNew } from "@/router"
 import { Theme } from "@/platform/theme"
 import ConfaLogo from "@/components/ConfaLogo.vue"
+import CopyText from "@/components/fields/CopyText.vue"
 
 interface Profile {
   avatar: string
@@ -112,6 +119,7 @@ function switchModal(val: Modal) {
 }
 function toggleTheme() {
   theme.value = theme.value === Theme.Light ? Theme.Dark : Theme.Light
+  switchModal("none")
 }
 </script>
 
@@ -187,18 +195,26 @@ $height: 100%
 .sidebar
   @include theme.shadow-m
 
-  display: inline-block
   position: absolute
   top: $height
   left: 0
   text-align: left
-  height: 100vh
+  height: calc(100vh - $height)
   width: 200px
   overflow: hidden
   background: var(--color-background)
 
   border-radius: 0 0 4px 4px
   z-index: 50
+
+.sidebar-end
+  position: absolute
+  bottom: 0
+  width: 100%
+
+.info
+  text-align: center
+  padding: 10px
 
 .control
   @include theme.shadow-m
