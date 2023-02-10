@@ -9,6 +9,9 @@
     >
       <div class="clap-animation" :class="{ active: state.isClapping }"></div>
       <div v-if="state.isClapWaveDisplayed" class="clap-wave"></div>
+      <transition name="bubble">
+        <div v-if="state.isClapTooltipDisplayed" class="clap-tooltip">hold to clap</div>
+      </transition>
     </HoldableButton>
   </div>
 </template>
@@ -28,6 +31,7 @@ const emit = defineEmits<{
 interface State {
   isClapping: boolean
   isClapWaveDisplayed: boolean
+  isClapTooltipDisplayed: boolean
 }
 
 const CLAP_SOUND_DELAY_MS = 250
@@ -36,6 +40,7 @@ const CLAP_SINGLE_DURATION_MS = 1000
 const state = reactive<State>({
   isClapping: false,
   isClapWaveDisplayed: false,
+  isClapTooltipDisplayed: false,
 })
 const sounds = new Sound(reactionsSoundURL, {
   clap: [
@@ -95,6 +100,8 @@ async function clapSingle() {
   } catch (e) {
     state.isClapping = false
   }
+  state.isClapTooltipDisplayed = true
+  setTimeout(() => (state.isClapTooltipDisplayed = false), 2000)
 
   emit("reaction", {
     clap: {
@@ -159,7 +166,7 @@ onUnmounted(() => sounds.close())
 
 @keyframes wave
   0%
-    transform: scale(0.3)
+    transform: scale(0.5)
     opacity: 0.5
 
   100%
@@ -173,4 +180,25 @@ onUnmounted(() => sounds.close())
   height: 100%
   border-radius: 50%
   border: 1px solid white
+
+.clap-tooltip
+  font-size: 12px
+  width: 100px
+  text-align: center
+  cursor: default
+  position: absolute
+  left: 50%
+  bottom: 75px
+  transform: translateX(-50%)
+
+.bubble-enter-active,
+.bubble-leave-active
+  transition: opacity .2s, bottom .2s
+
+.bubble-enter-from,
+.bubble-leave-to
+  opacity: 0
+
+.bubble-enter-from
+  bottom: 10px
 </style>
