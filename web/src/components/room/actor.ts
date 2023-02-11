@@ -1,5 +1,7 @@
 import { sleep, repeat, Semaphor } from "@/platform/sync"
 
+const SOUND_GAIN = 0.5
+
 export class Sprite {
   private readonly frames: number
   private readonly fragments: Record<string, number[]>
@@ -56,6 +58,7 @@ export class Sprite {
 export class Sound {
   private readonly fragments: Record<string, number[][]>
   private context?: AudioContext
+  private gain?: GainNode
   private buffer?: Promise<AudioBuffer>
   private sourcePayload: Promise<ArrayBuffer | undefined>
 
@@ -121,15 +124,18 @@ export class Sound {
       this.buffer = new Promise((res) => {
         this.context = new AudioContext()
         this.context.decodeAudioData(payload).then((buff) => res(buff))
+        this.gain = this.context.createGain()
+        this.gain.connect(this.context.destination)
+        this.gain.gain.value = SOUND_GAIN
       })
     }
-    if (!this.context) {
+    if (!this.context || !this.gain) {
       return undefined
     }
     const buff = cloneAudioBuffer(await this.buffer)
     const src = this.context.createBufferSource()
     src.buffer = buff
-    src.connect(this.context.destination)
+    src.connect(this.gain)
     return src
   }
 
