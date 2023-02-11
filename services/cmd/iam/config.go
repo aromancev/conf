@@ -27,7 +27,6 @@ type Config struct {
 	BaseURL          string `envconfig:"BASE_URL"`
 	SecretKey        string `envconfig:"SECRET_KEY"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	Email            EmailConfig
 	Mongo            MongoConfig
 	Beanstalk        BeanstalkConfig
 }
@@ -48,8 +47,6 @@ func (c Config) WithEnv() Config {
 		log.Fatal().Err(err).Msg("Failed to decode PUBLIC_KEY (expected base64)")
 	}
 	c.PublicKey = string(pk)
-
-	c.Email = c.Email.WithEnv()
 	return c
 }
 
@@ -70,9 +67,6 @@ func (c Config) Validate() error {
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
-	}
-	if err := c.Email.Validate(); err != nil {
-		return fmt.Errorf("invalid email config: %w", err)
 	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)
@@ -105,39 +99,6 @@ func (c MongoConfig) Validate() error {
 		return errors.New("MONGO_DATABASE not set")
 	}
 	return nil
-}
-
-type EmailConfig struct {
-	Server   string `envconfig:"EMAIL_SERVER"`
-	Port     string `envconfig:"EMAIL_PORT"`
-	Address  string `envconfig:"EMAIL_ADDRESS"`
-	Password string `envconfig:"EMAIL_PASSWORD"`
-	Secure   string `envconfig:"EMAIL_SECURE"`
-}
-
-func (c EmailConfig) Validate() error {
-	if c.Server == "" {
-		return errors.New("EMAIL_SERVER not set")
-	}
-	if c.Port == "" {
-		return errors.New("EMAIL_PORT not set")
-	}
-	if c.Address == "" {
-		return errors.New("EMAIL_ADDRESS not set")
-	}
-	if c.Password == "" {
-		return errors.New("EMAIL_PASSWORD not set")
-	}
-	return nil
-}
-
-func (c EmailConfig) WithEnv() EmailConfig {
-	pass, err := base64.StdEncoding.DecodeString(c.Password)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to decode email password")
-	}
-	c.Password = string(pass)
-	return c
 }
 
 type BeanstalkConfig struct {

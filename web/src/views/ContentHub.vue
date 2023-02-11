@@ -1,6 +1,6 @@
 <template>
   <div class="content">
-    <div class="title">Content Hub</div>
+    <div class="title">Created Conferences</div>
     <div ref="list" class="confas-list" @scroll="onScroll">
       <div v-if="state.isLoading" class="confas-loader">
         <PageLoader />

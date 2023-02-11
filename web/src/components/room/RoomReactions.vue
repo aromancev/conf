@@ -170,7 +170,7 @@ onUnmounted(() => sounds.close())
     opacity: 0.5
 
   100%
-    transform: scale(1.2)
+    transform: scale(1.3)
     opacity: 0
 
 .clap-wave
