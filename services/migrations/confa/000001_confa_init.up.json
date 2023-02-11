@@ -6,8 +6,16 @@
         "key": {
           "handle": 1
         },
-        "name": "unique_handle",
+        "name": "uniqueHandle",
         "unique": true
+      },
+      {
+        "key": {
+          "ownerId": 1,
+          "createdAt": 1
+        },
+        "name": "ownerIdCreatedAt",
+        "unique": false
       }
     ]
   }

@@ -12,7 +12,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="profile.ownerId === currentUser.id"
+        v-if="profile.ownerId === userStore.state.id"
         :to="route.profile(handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -23,29 +23,27 @@
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <ProfileOverview v-if="tab === 'overview'" :avatar="avatar" />
+      <ProfileOverview v-if="tab === 'overview'" :avatar="avatar" :name="profile.displayName" />
       <ProfileEdit v-if="tab === 'edit'" :profile="profile" :avatar="avatar" @update="update" @avatar="updateAvatar" />
     </div>
   </div>
 
   <NotFound v-if="!loading && !profile" />
-
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
-import { profileClient, Profile, profileStore, currentUser, errorCode, Code } from "@/api"
+import { profileClient, errorCode, Code } from "@/api"
+import { userStore } from "@/api/models/user"
+import { Profile, profileStore } from "@/api/models/profile"
 import { route, ProfileTab, handleNew } from "@/router"
 import { genAvatar, genName } from "@/platform/gen"
-import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
 import ProfileEdit from "./ProfileEdit.vue"
 import ProfileOverview from "./ProfileOverview.vue"
-
-type Modal = "none" | "error"
+import { notificationStore } from "@/api/models/notifications"
 
 const props = defineProps<{
   tab: ProfileTab
@@ -56,13 +54,12 @@ const router = useRouter()
 
 const profile = ref<Profile | null>()
 const loading = ref(false)
-const modal = ref<Modal>("none")
 const avatar = ref<string>("")
 
 watch(
   () => props.handle,
   async (handle) => {
-    if (!currentUser.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+    if (!userStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -93,7 +90,7 @@ watch(
         case Code.NotFound:
           break
         default:
-          modal.value = "error"
+          notificationStore.error("failed to load profile")
           break
       }
     } finally {

@@ -1,12 +1,15 @@
 <template>
-  <div class="field">
+  <div class="field" tabindex="0" @focus="focusInput">
     <input
+      ref="input"
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
       :spellcheck="spellcheck"
       :disabled="disabled"
-      @input="input"
+      tabindex="-1"
+      @input="change"
+      @keydown="keySend"
     />
     <div v-if="error && errExpanded" class="error">{{ error }}</div>
     <div
@@ -37,8 +40,21 @@ defineProps<{
 }>()
 
 const errExpanded = ref(false)
+const input = ref<HTMLElement>()
 
-function input(event: Event) {
+function focusInput() {
+  input.value?.focus()
+}
+
+function keySend(ev: KeyboardEvent) {
+  if (ev.code !== "Enter" && ev.code !== "Escape") {
+    return
+  }
+  ev.preventDefault()
+  input.value?.blur()
+}
+
+function change(event: Event) {
   emit("update:modelValue", (event.target as HTMLInputElement).value)
 }
 </script>
@@ -85,4 +101,5 @@ input:disabled
   border-top-right-radius: 10px
   white-space: pre-wrap
   z-index: 100
+  font-size: 12px
 </style>

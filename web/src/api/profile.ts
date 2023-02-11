@@ -1,15 +1,17 @@
 import { gql } from "@apollo/client/core"
 import { Client, APIError, Code, errorCode, FetchPolicy } from "./api"
 import {
-  ProfileMask,
+  ProfileUpdate,
   ProfileLookup,
+  ProfileCursorInput,
   profiles,
   profilesVariables,
   updateProfile,
   updateProfileVariables,
   requestAvatarUpload,
 } from "./schema"
-import { Profile, currentUser, profileStore } from "./models"
+import { Profile, profileStore } from "./models/profile"
+import { userStore } from "./models/user"
 import { config } from "@/config"
 
 interface OptionalFetchParams {
@@ -27,7 +29,7 @@ const defaultParams: FetchParams = {
 class ProfileIterator {
   private api: Client
   private lookup: ProfileLookup
-  private from: string | null
+  private cursor?: ProfileCursorInput
   private params: FetchParams
 
   constructor(api: Client, lookup: ProfileLookup, params?: OptionalFetchParams) {
@@ -37,14 +39,13 @@ class ProfileIterator {
       ...defaultParams,
       ...params,
     }
-    this.from = null
   }
 
   async next(): Promise<Profile[]> {
     const resp = await this.api.query<profiles, profilesVariables>({
       query: gql`
-        query profiles($where: ProfileLookup!, $limit: Int!, $from: String) {
-          profiles(where: $where, limit: $limit, from: $from) {
+        query profiles($where: ProfileLookup!, $limit: Int!, $cursor: ProfileCursorInput) {
+          profiles(where: $where, limit: $limit, cursor: $cursor) {
             items {
               id
               ownerId
@@ -55,19 +56,21 @@ class ProfileIterator {
                 data
               }
             }
-            nextFrom
+            next {
+              id
+            }
           }
         }
       `,
       variables: {
         where: this.lookup,
         limit: 100,
-        from: this.from,
+        cursor: this.cursor,
       },
       fetchPolicy: this.params.policy,
     })
 
-    this.from = resp.data.profiles.nextFrom
+    this.cursor = resp.data.profiles.next || undefined
     const profs: Profile[] = []
     for (const p of resp.data.profiles.items) {
       profs.push({
@@ -91,10 +94,10 @@ export class ProfileClient {
     this.api = api
   }
 
-  async update(request: ProfileMask = {}): Promise<Profile> {
+  async update(request: ProfileUpdate = {}): Promise<Profile> {
     const resp = await this.api.mutate<updateProfile, updateProfileVariables>({
       mutation: gql`
-        mutation updateProfile($request: ProfileMask!) {
+        mutation updateProfile($request: ProfileUpdate!) {
           updateProfile(request: $request) {
             id
             ownerId
@@ -182,17 +185,17 @@ export class ProfileClient {
 
   async refreshProfile(): Promise<void> {
     try {
-      if (currentUser.id === "") {
+      if (userStore.state.id === "") {
         throw new APIError(Code.NotFound, "failed to fetch user")
       }
-      const profile = await this.fetchOne({ ownerIds: [currentUser.id] })
+      const profile = await this.fetchOne({ ownerIds: [userStore.state.id] })
       profileStore.update(profile)
     } catch (e) {
       switch (errorCode(e)) {
         case Code.NotFound:
           profileStore.update({
             id: "",
-            ownerId: currentUser.id,
+            ownerId: userStore.state.id,
             handle: "",
             displayName: "",
             avatarThumbnail: "",

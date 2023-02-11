@@ -61,35 +61,23 @@
     <p>Profile with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
-
-<script lang="ts">
-import { RegexValidator } from "@/platform/validator"
-
-const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
-  "Must be from 4 to 64 characters long",
-  "Can only contain lower case letters, numbers, and '-'",
-])
-const displayNameValidator = new RegexValidator("^[a-zA-Z ]{0,64}$", [
-  "Must be from 0 to 64 characters long",
-  "Can only contain letters and spaces",
-])
-</script>
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { profileClient, Profile, errorCode, Code, currentUser } from "@/api"
-import { ProfileMask } from "@/api/schema"
+import { profileClient, errorCode, Code } from "@/api"
+import { Profile, handleValidator, displayNameValidator } from "@/api/models/profile"
+import { userStore } from "@/api/models/user"
+import { ProfileUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
 import AvatarEditor from "./AvatarEditor.vue"
+import { notificationStore } from "@/api/models/notifications"
 
-type Modal = "none" | "avatar_edit" | "error" | "duplicate_entry"
+type Modal = "none" | "avatar_edit" | "duplicate_entry"
 
 const emit = defineEmits<{
   (e: "update", input: Profile): void
@@ -106,12 +94,12 @@ const router = useRouter()
 const modal = ref<Modal>("none")
 const handle = ref(props.profile.handle)
 const displayName = ref<string>(props.profile.displayName || "")
-const update = ref<ProfileMask>({})
+const update = ref<ProfileUpdate>({})
 const saving = ref<boolean>(false)
 const uploadedAvatar = ref<string>("")
 
-const handleError = handleValidator.reactive(handle)
-const displayNameError = displayNameValidator.reactive(displayName)
+const handleError = computed(() => handleValidator.validate(handle.value))
+const displayNameError = computed(() => displayNameValidator.validate(displayName.value))
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
@@ -139,7 +127,7 @@ watch(displayName, (value) => {
 watch(
   () => props.profile,
   (profile) => {
-    if (profile.ownerId !== currentUser.id) {
+    if (profile.ownerId !== userStore.state.id) {
       router.replace(route.profile(profile.handle, "overview"))
     }
   },
@@ -162,7 +150,7 @@ async function save() {
         modal.value = "duplicate_entry"
         break
       default:
-        modal.value = "error"
+        notificationStore.error("failed to update profile")
         break
     }
   } finally {

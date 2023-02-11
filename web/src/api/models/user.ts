@@ -6,24 +6,22 @@ export enum Account {
   Admin = 2,
 }
 
-export interface User extends Object {
+export interface User {
   id: string
   account: Account
   allowedWrite: boolean
 }
 
 export class UserStore extends Store<User> {
-  protected data(): User {
-    return {
-      id: "",
-      account: Account.Guest,
-      allowedWrite: false,
-    }
-  }
-
   login(id: string, acc: Account): void {
     this._state.id = id
     this._state.account = acc
     this._state.allowedWrite = acc === Account.User || acc === Account.Admin
   }
 }
+
+export const userStore = new UserStore({
+  id: "",
+  account: Account.Guest,
+  allowedWrite: false,
+})

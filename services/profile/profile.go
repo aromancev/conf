@@ -78,7 +78,11 @@ type Lookup struct {
 	Owners []uuid.UUID
 	Handle string
 	Limit  int64
-	From   uuid.UUID
+	From   Cursor
+}
+
+type Cursor struct {
+	ID uuid.UUID
 }
 
 func (l Lookup) Validate() error {

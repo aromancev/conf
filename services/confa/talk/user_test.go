@@ -36,7 +36,7 @@ func TestUserService(t *testing.T) {
 			db := dockerMongo(t)
 			confaMongo := confa.NewMongo(db)
 			rooms := double.NewMemory()
-			service := NewUserService(NewMongo(db), confaMongo, &emitterStub{}, rooms)
+			service := NewUser(NewMongo(db), confaMongo, &emitterStub{}, rooms)
 
 			conf := confa.Confa{
 				ID:     uuid.New(),
@@ -68,7 +68,7 @@ func TestUserService(t *testing.T) {
 		t.Run("Only the owner can create", func(t *testing.T) {
 			db := dockerMongo(t)
 			confaMongo := confa.NewMongo(db)
-			service := NewUserService(NewMongo(db), confaMongo, &emitterStub{}, nil)
+			service := NewUser(NewMongo(db), confaMongo, &emitterStub{}, nil)
 
 			conf := confa.Confa{
 				ID:     uuid.New(),

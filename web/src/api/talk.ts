@@ -2,7 +2,8 @@ import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy, APIError, Code } from "./api"
 import {
   TalkLookup,
-  TalkMask,
+  TalkUpdate,
+  TalkCursorInput,
   ConfaLookup,
   createTalk,
   createTalkVariables,
@@ -17,7 +18,7 @@ import {
   stopTalkRecording,
   stopTalkRecordingVariables,
 } from "./schema"
-import { Talk } from "./models"
+import { Talk } from "./models/talk"
 
 interface FetchParams {
   policy: FetchPolicy
@@ -37,13 +38,12 @@ const defaultParams: FetchParams = {
 export class TalkIterator {
   private api: Client
   private lookup: TalkLookup
-  private from: string | null
+  private cursor?: TalkCursorInput
   private params: FetchParams
 
   constructor(api: Client, lookup: TalkLookup, params?: OptionalFetchParams) {
     this.api = api
     this.lookup = lookup
-    this.from = null
     this.params = {
       ...defaultParams,
       ...params,
@@ -54,8 +54,8 @@ export class TalkIterator {
     if (this.params.hydrated) {
       const resp = await this.api.query<talksHydrated, talksHydratedVariables>({
         query: gql`
-          query talksHydrated($where: TalkLookup!, $limit: Int!, $from: String) {
-            talks(where: $where, limit: $limit, from: $from) {
+          query talksHydrated($where: TalkLookup!, $limit: Int!, $cursor: TalkCursorInput) {
+            talks(where: $where, limit: $limit, cursor: $cursor) {
               items {
                 id
                 ownerId
@@ -66,44 +66,51 @@ export class TalkIterator {
                 description
                 state
               }
-              nextFrom
+              next {
+                id
+                createdAt
+              }
             }
           }
         `,
         variables: {
           where: this.lookup,
-          from: this.from,
+          cursor: this.cursor,
           limit: 100,
         },
         fetchPolicy: this.params.policy,
       })
-      this.from = resp.data.talks.nextFrom
+      this.cursor = resp.data.talks.next || undefined
       return resp.data.talks.items
     }
     const resp = await this.api.query<talks, talksVariables>({
       query: gql`
-        query talks($where: TalkLookup!, $limit: Int!, $from: String) {
-          talks(where: $where, limit: $limit, from: $from) {
+        query talks($where: TalkLookup!, $limit: Int!, $cursor: TalkCursorInput) {
+          talks(where: $where, limit: $limit, cursor: $cursor) {
             items {
               id
               ownerId
               confaId
               roomId
               handle
+              title
               state
             }
-            nextFrom
+            next {
+              id
+              createdAt
+            }
           }
         }
       `,
       variables: {
         where: this.lookup,
-        from: this.from,
+        cursor: this.cursor,
         limit: 100,
       },
       fetchPolicy: this.params.policy,
     })
-    this.from = resp.data.talks.nextFrom
+    this.cursor = resp.data.talks.next || undefined
     return resp.data.talks.items
   }
 }
@@ -115,10 +122,10 @@ export class TalkClient {
     this.api = api
   }
 
-  async create(where: ConfaLookup, request: TalkMask): Promise<Talk> {
+  async create(where: ConfaLookup, request: TalkUpdate): Promise<Talk> {
     const resp = await this.api.mutate<createTalk, createTalkVariables>({
       mutation: gql`
-        mutation createTalk($where: ConfaLookup!, $request: TalkMask!) {
+        mutation createTalk($where: ConfaLookup!, $request: TalkUpdate!) {
           createTalk(where: $where, request: $request) {
             id
             ownerId
@@ -145,10 +152,10 @@ export class TalkClient {
     return resp.data.createTalk
   }
 
-  async update(where: TalkLookup, request: TalkMask = {}): Promise<Talk> {
+  async update(where: TalkLookup, request: TalkUpdate = {}): Promise<Talk> {
     const resp = await this.api.mutate<updateTalk, updateTalkVariables>({
       mutation: gql`
-        mutation updateTalk($where: TalkLookup!, $request: TalkMask!) {
+        mutation updateTalk($where: TalkLookup!, $request: TalkUpdate!) {
           updateTalk(where: $where, request: $request) {
             id
             confaId
@@ -182,6 +189,7 @@ export class TalkClient {
             confaId
             roomId
             handle
+            title
             state
           }
         }
@@ -206,6 +214,7 @@ export class TalkClient {
             confaId
             roomId
             handle
+            title
             state
           }
         }
@@ -220,7 +229,7 @@ export class TalkClient {
     return resp.data.stopTalkRecording
   }
 
-  async fetchOne(input: TalkLookup, params?: OptionalFetchParams): Promise<Talk | null> {
+  async fetchOne(input: TalkLookup, params?: OptionalFetchParams): Promise<Talk> {
     const iter = this.fetch(input, params)
     const talks = await iter.next()
     if (talks.length === 0) {

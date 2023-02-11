@@ -1,8 +1,6 @@
-import { computed, ComputedRef, Ref } from "vue"
-
 export class RegexValidator {
-  regex: RegExp
-  error: string
+  readonly regex: RegExp
+  readonly error: string
 
   constructor(regex: string, errors: string[]) {
     this.regex = new RegExp(regex)
@@ -14,14 +12,5 @@ export class RegexValidator {
       return ""
     }
     return this.error
-  }
-
-  reactive(ref: Ref<string | null>): ComputedRef<string> {
-    return computed(() => {
-      if (ref.value === null) {
-        return ""
-      }
-      return this.validate(ref.value)
-    })
   }
 }

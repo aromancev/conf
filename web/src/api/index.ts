@@ -5,7 +5,6 @@ import { TalkClient } from "./talk"
 import { EventClient } from "./event"
 import { RecordingClient } from "./recording"
 
-export * from "./models"
 export * from "./room"
 export * from "./api"
 

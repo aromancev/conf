@@ -74,7 +74,7 @@ func TestEventMongo(t *testing.T) {
 		created, err := events.Create(
 			ctx,
 			Event{
-				ID:   uuid.UUID{10},
+				ID:   uuid.UUID{1},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -85,7 +85,7 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.UUID{11},
+				ID:   uuid.UUID{2},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -96,7 +96,7 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.UUID{12},
+				ID:   uuid.UUID{3},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -113,7 +113,7 @@ func TestEventMongo(t *testing.T) {
 		createdLater, err := events.Create(
 			ctx,
 			Event{
-				ID:   uuid.UUID{1},
+				ID:   uuid.UUID{4},
 				Room: roomID,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
@@ -126,7 +126,7 @@ func TestEventMongo(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		t.Run("by id", func(t *testing.T) {
+		t.Run("By id", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
 				ID: created[0].ID,
 			})
@@ -134,7 +134,7 @@ func TestEventMongo(t *testing.T) {
 			assert.Equal(t, []Event{created[0]}, fetched)
 		})
 
-		t.Run("by room", func(t *testing.T) {
+		t.Run("By room", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
 				Room: roomID,
 			})
@@ -142,7 +142,29 @@ func TestEventMongo(t *testing.T) {
 			assert.ElementsMatch(t, append(created, createdLater...), fetched)
 		})
 
-		t.Run("with limit and offset", func(t *testing.T) {
+		t.Run("Pagination works in both directions", func(t *testing.T) {
+			fetched, err := events.Fetch(ctx, Lookup{
+				From: From{
+					ID: created[1].ID,
+				},
+				Limit: 1,
+				Asc:   true,
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []Event{created[2]}, fetched)
+
+			fetched, err = events.Fetch(ctx, Lookup{
+				From: From{
+					ID: created[1].ID,
+				},
+				Limit: 1,
+				Asc:   false,
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []Event{created[0]}, fetched)
+		})
+
+		t.Run("Pagination with createdAt works", func(t *testing.T) {
 			fetched, err := events.Fetch(ctx, Lookup{
 				From: From{
 					ID:        created[2].ID,

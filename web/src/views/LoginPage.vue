@@ -24,24 +24,22 @@
   <ModalDialog :is-visible="modal == Modal.BadRequest" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
     <p>Incorrect email.</p>
   </ModalDialog>
-  <InternalError :is-visible="modal == Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { client, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models"
+import { userStore } from "@/api/models/user"
 import { isValid } from "@/platform/email"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import InputField from "@/components/fields/InputField.vue"
-import InternalError from "@/components/modals/InternalError.vue"
+import { notificationStore } from "@/api/models/notifications"
 
 enum Modal {
   None = "",
   EmailSent = "sent",
   BadRequest = "bad_request",
-  Error = "error",
 }
 
 const emailError = "• Must be a valid email"
@@ -52,16 +50,15 @@ const valid = ref(false)
 const modal = ref(Modal.None)
 
 const router = useRouter()
-const user = userStore.state()
 
 const props = defineProps<{
   token?: string
 }>()
 
 watch(
-  user,
+  userStore.state,
   () => {
-    if (user.allowedWrite) {
+    if (userStore.state.allowedWrite) {
       router.replace({ name: "home" })
     }
   },
@@ -77,7 +74,7 @@ watch(
     try {
       await client.createSession(value)
     } catch (e) {
-      modal.value = Modal.Error
+      notificationStore.error("failed to verify email")
     }
   },
   { immediate: true },
@@ -99,7 +96,7 @@ async function login() {
     if (errorCode(e) === Code.BadRequest) {
       modal.value = Modal.BadRequest
     } else {
-      modal.value = Modal.Error
+      notificationStore.error("failed to login")
     }
     submitted.value = false
   }

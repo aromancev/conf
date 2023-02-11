@@ -11,18 +11,18 @@ import (
 type Repo interface {
 	Create(ctx context.Context, requests ...Confa) ([]Confa, error)
 	Fetch(ctx context.Context, lookup Lookup) ([]Confa, error)
-	UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Confa, error)
+	UpdateOne(ctx context.Context, lookup Lookup, request Update) (Confa, error)
 }
 
-type CRUD struct {
+type User struct {
 	repo Repo
 }
 
-func NewCRUD(repo Repo) *CRUD {
-	return &CRUD{repo: repo}
+func NewUser(repo Repo) *User {
+	return &User{repo: repo}
 }
 
-func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Confa, error) {
+func (c *User) Create(ctx context.Context, userID uuid.UUID, request Confa) (Confa, error) {
 	request.ID = uuid.New()
 	request.Owner = userID
 	if request.Handle == "" {
@@ -35,11 +35,11 @@ func (c *CRUD) Create(ctx context.Context, userID uuid.UUID, request Confa) (Con
 	return created[0], nil
 }
 
-func (c *CRUD) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Mask) (Confa, error) {
+func (c *User) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Update) (Confa, error) {
 	lookup.Owner = userID
 	return c.repo.UpdateOne(ctx, lookup, request)
 }
 
-func (c *CRUD) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
+func (c *User) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 	return c.repo.Fetch(ctx, lookup)
 }

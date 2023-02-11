@@ -14,7 +14,7 @@ import (
 
 type UserRepo interface {
 	Create(ctx context.Context, requests ...Talk) ([]Talk, error)
-	UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Talk, error)
+	UpdateOne(ctx context.Context, lookup Lookup, request Update) (Talk, error)
 	Fetch(ctx context.Context, lookup Lookup) ([]Talk, error)
 	FetchOne(ctx context.Context, lookup Lookup) (Talk, error)
 }
@@ -28,15 +28,15 @@ type ConfaRepo interface {
 	FetchOne(ctx context.Context, lookup confa.Lookup) (confa.Confa, error)
 }
 
-type UserService struct {
+type User struct {
 	repo    UserRepo
 	emitter Emitter
 	confas  ConfaRepo
 	rtc     rtc.RTC
 }
 
-func NewUserService(repo UserRepo, confas ConfaRepo, emitter Emitter, r rtc.RTC) *UserService {
-	return &UserService{
+func NewUser(repo UserRepo, confas ConfaRepo, emitter Emitter, r rtc.RTC) *User {
+	return &User{
 		repo:    repo,
 		emitter: emitter,
 		confas:  confas,
@@ -44,7 +44,7 @@ func NewUserService(repo UserRepo, confas ConfaRepo, emitter Emitter, r rtc.RTC)
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, userID uuid.UUID, confaLookup confa.Lookup, request Talk) (Talk, error) {
+func (s *User) Create(ctx context.Context, userID uuid.UUID, confaLookup confa.Lookup, request Talk) (Talk, error) {
 	request.ID = uuid.New()
 	request.Owner = userID
 	request.Speaker = userID
@@ -84,16 +84,16 @@ func (s *UserService) Create(ctx context.Context, userID uuid.UUID, confaLookup 
 	return created[0], nil
 }
 
-func (s *UserService) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Mask) (Talk, error) {
+func (s *User) Update(ctx context.Context, userID uuid.UUID, lookup Lookup, request Update) (Talk, error) {
 	lookup.Owner = userID
 	return s.repo.UpdateOne(ctx, lookup, request)
 }
 
-func (s *UserService) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
+func (s *User) Fetch(ctx context.Context, lookup Lookup) ([]Talk, error) {
 	return s.repo.Fetch(ctx, lookup)
 }
 
-func (s *UserService) StartRecording(ctx context.Context, userID uuid.UUID, lookup Lookup) (Talk, error) {
+func (s *User) StartRecording(ctx context.Context, userID uuid.UUID, lookup Lookup) (Talk, error) {
 	lookup.Owner = userID
 	talk, err := s.repo.FetchOne(ctx, lookup)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *UserService) StartRecording(ctx context.Context, userID uuid.UUID, look
 	return talk, nil
 }
 
-func (s *UserService) StopRecording(ctx context.Context, userID uuid.UUID, lookup Lookup) (Talk, error) {
+func (s *User) StopRecording(ctx context.Context, userID uuid.UUID, lookup Lookup) (Talk, error) {
 	lookup.Owner = userID
 	talk, err := s.repo.FetchOne(ctx, lookup)
 	if err != nil {

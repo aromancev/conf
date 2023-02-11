@@ -122,3 +122,38 @@ export class Semaphor {
     res()
   }
 }
+
+export class Backoff {
+  private readonly min: number
+  private readonly max: number
+  private readonly factor: number
+  private readonly jitter: number
+  private counter: number
+
+  constructor(factor: number, min: number, max: number, jitter?: number) {
+    this.factor = factor
+    this.min = min
+    this.max = max
+    this.jitter = jitter || 0
+    this.counter = 0
+  }
+
+  get retries(): number {
+    return this.counter
+  }
+
+  reset(): void {
+    this.counter = 0
+  }
+
+  next(): number {
+    let delay = this.min * Math.pow(this.factor, this.counter)
+    if (delay > this.max) {
+      delay = this.max
+    }
+    const absJitter = delay * this.jitter
+    this.counter++
+    // From -absJitter to absJitter.
+    return delay + absJitter - absJitter * 2 * Math.random()
+  }
+}

@@ -27,6 +27,10 @@ type Confa struct {
 var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
 var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,64}$")
 
+const (
+	maxDescription = 5000
+)
+
 func (c Confa) Validate() error {
 	if c.ID == uuid.Nil {
 		return errors.New("id should not be empty")
@@ -46,13 +50,13 @@ func (c Confa) Validate() error {
 	return nil
 }
 
-type Mask struct {
+type Update struct {
 	Handle      *string `bson:"handle,omitempty"`
 	Title       *string `bson:"title,omitempty"`
 	Description *string `bson:"description,omitempty"`
 }
 
-func (m Mask) Validate() error {
+func (m Update) Validate() error {
 	if m.Handle == nil && m.Title == nil && m.Description == nil {
 		return errors.New("no fields provided")
 	}
@@ -68,18 +72,20 @@ func (m Mask) Validate() error {
 	return nil
 }
 
+type UpdateResult struct {
+	Updated int64
+}
+
 type Lookup struct {
 	ID     uuid.UUID
 	Owner  uuid.UUID
 	Handle string
 	Limit  int64
-	From   uuid.UUID
+	From   From
+	Asc    bool
 }
 
-type UpdateResult struct {
-	Updated int64
+type From struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
 }
-
-const (
-	maxDescription = 5000
-)

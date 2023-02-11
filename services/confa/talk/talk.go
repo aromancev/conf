@@ -52,6 +52,10 @@ type Talk struct {
 var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
 var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,64}$")
 
+const (
+	maxDescription = 5000
+)
+
 func (t Talk) Validate() error {
 	if !validHandle.MatchString(t.Handle) {
 		return errors.New("invalid handle")
@@ -87,14 +91,14 @@ func (t Talk) ValidateAtRest() error {
 	return nil
 }
 
-type Mask struct {
+type Update struct {
 	Handle      *string `bson:"handle,omitempty"`
 	Title       *string `bson:"title,omitempty"`
 	Description *string `bson:"description,omitempty"`
 	State       *State  `bson:"state,omitempty"`
 }
 
-func (m Mask) Validate() error {
+func (m Update) Validate() error {
 	if m.Handle == nil && m.Title == nil && m.Description == nil {
 		return errors.New("no fields provided")
 	}
@@ -124,9 +128,11 @@ type Lookup struct {
 	Handle  string
 	Limit   int64
 	StateIn []State
-	From    uuid.UUID
+	From    From
+	Asc     bool
 }
 
-const (
-	maxDescription = 5000
-)
+type From struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}

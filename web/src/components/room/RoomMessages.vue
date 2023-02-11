@@ -59,7 +59,7 @@ interface RenderMessage {
 }
 
 const emit = defineEmits<{
-  (e: "message", value: string): void
+  (e: "sent", value: string): void
 }>()
 
 const props = defineProps<{
@@ -129,7 +129,7 @@ async function send() {
   if (props.isReadonly) {
     return
   }
-  emit("message", message.value)
+  emit("sent", message.value)
   message.value = ""
   autoScroll = true
   alignScroll()

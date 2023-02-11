@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy, APIError, Code } from "./api"
 import { RecordingLookup, RecordingFromInput, recordings, recordingsVariables } from "./schema"
-import { Recording } from "./models"
+import { Recording } from "./models/recording"
 
 interface OptionalFetchParams {
   policy?: FetchPolicy

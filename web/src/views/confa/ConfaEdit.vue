@@ -4,7 +4,7 @@
       <div class="form-cell label">Handle</div>
       <div class="form-cell">
         <Input
-          v-model="handle"
+          v-model="state.handle"
           :spellcheck="false"
           class="form-input"
           type="text"
@@ -17,7 +17,7 @@
       <div class="form-cell label">Title</div>
       <div class="form-cell">
         <Input
-          v-model="title"
+          v-model="state.title"
           :spellcheck="false"
           class="form-input"
           type="text"
@@ -29,61 +29,50 @@
     <div class="form-row">
       <div class="form-cell label align-top">Description</div>
       <div class="form-cell">
-        <Textarea v-model="description" class="form-input description" placeholder="description"></Textarea>
+        <Textarea v-model="state.description" class="form-input description" placeholder="description"></Textarea>
       </div>
     </div>
     <div class="form-row">
       <div class="form-cell"></div>
       <div class="form-cell controls">
         <div class="save-indicator"></div>
-        <div class="btn save" :disabled="!hasUpdate || saving || !formValid ? true : null" @click="save">
-          <div v-if="saving" class="save-loader">
+        <div class="btn save" :disabled="!hasUpdate || state.isSaving || !formValid ? true : null" @click="save">
+          <div v-if="state.isSaving" class="save-loader">
             <PageLoader />
           </div>
 
-          <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
+          <span v-if="!state.isSaving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
         </div>
       </div>
     </div>
   </div>
 
-  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="state.modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="state.modal = 'none'">
     <p>Confa with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="state.modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="state.modal = 'none'">
     <p>Confa no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
-<script lang="ts">
-import { RegexValidator } from "@/platform/validator"
-
-const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
-  "Must be from 4 to 64 characters long",
-  "Can only contain lower case letters, numbers, and '-'",
-])
-const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
-  "Must be from 0 to 64 characters long",
-  "Can only contain letters, numbers, spaces, and '-'",
-])
-</script>
-
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
-import { confaClient, Confa, errorCode, Code, userStore } from "@/api"
-import { ConfaMask } from "@/api/schema"
+import { computed, watch, reactive } from "vue"
+import { confaClient, errorCode, Code } from "@/api"
+import { Confa } from "@/api/models/confa"
+import { userStore } from "@/api/models/user"
+import { ConfaUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
+import { titleValidator, handleValidator } from "@/api/models/confa"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
 import Textarea from "@/components/fields/TextareaField.vue"
+import { notificationStore } from "@/api/models/notifications"
 
-type Modal = "none" | "error" | "duplicate_entry" | "not_found"
+type Modal = "none" | "duplicate_entry" | "not_found"
 
 const emit = defineEmits<{
   (e: "update", input: Confa): void
@@ -93,53 +82,83 @@ const props = defineProps<{
   confa: Confa
 }>()
 
+type State = {
+  handle: string
+  title: string
+  description: string
+  update: ConfaUpdate
+  isSaving: boolean
+  modal: Modal
+}
+
+const state = reactive<State>({
+  handle: props.confa.handle,
+  title: props.confa.title,
+  description: props.confa.description,
+  update: {},
+  isSaving: false,
+  modal: "none",
+})
+
 const router = useRouter()
-const user = userStore.state()
 
-const modal = ref<Modal>("none")
-const handle = ref(props.confa.handle)
-const title = ref(props.confa.title)
-const description = ref(props.confa.description)
-const update = ref<ConfaMask>({})
-const saving = ref(false)
-
-const handleError = handleValidator.reactive(handle)
-const titleError = titleValidator.reactive(title)
+const handleError = computed(() => handleValidator.validate(state.handle))
+const titleError = computed(() => titleValidator.validate(state.title))
 const hasUpdate = computed(() => {
-  if (!update.value) {
+  if (!state.update) {
     return 0
   }
-  return Object.keys(update.value).length !== 0
+  return Object.keys(state.update).length !== 0
 })
 const formValid = computed(() => {
   return !titleError.value && !handleError.value
 })
 
-watch(handle, (value) => {
-  if (value === props.confa.handle) {
-    delete update.value.handle
-  } else {
-    update.value.handle = value
-  }
-})
-watch(title, (value) => {
-  if (value === props.confa.title) {
-    delete update.value.title
-  } else {
-    update.value.title = value
-  }
-})
-watch(description, (value) => {
-  if (value === props.confa.description) {
-    delete update.value.description
-  } else {
-    update.value.description = value
-  }
-})
+watch(
+  () => props.confa,
+  (c) => {
+    state.title = c.title
+    state.handle = c.handle
+    state.description = c.description
+  },
+  {
+    deep: true,
+  },
+)
+watch(
+  () => state.handle,
+  (value) => {
+    if (value === props.confa.handle) {
+      delete state.update.handle
+    } else {
+      state.update.handle = value
+    }
+  },
+)
+watch(
+  () => state.title,
+  (value) => {
+    if (value === props.confa.title) {
+      delete state.update.title
+    } else {
+      state.update.title = value
+    }
+  },
+)
+watch(
+  () => state.description,
+  (value) => {
+    if (value === props.confa.description) {
+      delete state.update.description
+    } else {
+      state.update.description = value
+    }
+  },
+)
 watch(
   () => props.confa,
   (confa) => {
-    if (confa.ownerId !== user.id) {
+    if (confa.ownerId !== userStore.state.id) {
       router.replace(route.confa(confa.handle, "overview"))
     }
   },
@@ -147,29 +166,29 @@ watch(
 )
 
 async function save() {
-  if (saving.value || !hasUpdate.value || !formValid.value) {
+  if (state.isSaving || !hasUpdate.value || !formValid.value) {
     return
   }
-  saving.value = true
+  state.isSaving = true
   try {
-    const currentUpdate = Object.assign({}, update.value)
+    const currentUpdate = Object.assign({}, state.update)
     const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
-    update.value = {}
+    state.update = {}
     emit("update", updated)
   } catch (e) {
     switch (errorCode(e)) {
       case Code.DuplicateEntry:
-        modal.value = "duplicate_entry"
+        state.modal = "duplicate_entry"
         break
       case Code.NotFound:
-        modal.value = "not_found"
+        state.modal = "not_found"
         break
       default:
-        modal.value = "error"
+        notificationStore.error("failed to update conference")
         break
     }
   } finally {
-    saving.value = false
+    state.isSaving = false
   }
 }
 </script>

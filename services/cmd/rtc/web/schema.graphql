@@ -8,37 +8,29 @@ type Event {
     id: String!
     roomId: String!
     payload: String!
-    createdAt: Float!
+    createdAt: String!
 }
 
 input EventLookup {
     roomId: String!
 }
 
-type EventFrom {
-    id: String!
-    createdAt: String!
+type EventCursor {
+    id: String
+    createdAt: String
+    Asc: Boolean
 }
 
-input EventFromInput {
-    createdAt: String!
-    id: String!
-}
-
-input EventLimit {
-    count: Int! = 100
-    seconds: Int
-}
-
-enum EventOrder {
-    ASC
-    DESC
+input EventCursorInput {
+    id: String
+    createdAt: String
+    Asc: Boolean
 }
 
 type Events {
     items: [Event!]!
     limit: Int!
-    nextFrom: EventFrom
+    next: EventCursor
 }
 
 type Recording {
@@ -78,6 +70,6 @@ type Recordings {
 type Query {
     service: Service!
 
-    events(where: EventLookup! = {}, limit: EventLimit!, from: EventFromInput, order: EventOrder): Events!
+    events(where: EventLookup! = {}, limit: Int! = 100, cursor: EventCursorInput): Events!
     recordings(where: RecordingLookup!, limit: Int! = 100, from: RecordingFromInput): Recordings!
 }

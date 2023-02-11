@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -63,15 +64,15 @@ type Service struct {
 }
 
 type Events struct {
-	Items    []GraphEvent
-	Limit    int32
-	NextFrom *EventFrom
+	Items []GraphEvent
+	Limit int32
+	Next  *EventCursor
 }
 
 type GraphEvent struct {
 	ID        string
 	RoomID    string
-	CreatedAt float64
+	CreatedAt string
 	Payload   string
 }
 
@@ -79,14 +80,10 @@ type EventLookup struct {
 	RoomID string
 }
 
-type EventFrom struct {
-	ID        string
-	CreatedAt string
-}
-
-type EventLimit struct {
-	Count   int32
-	Seconds *int32
+type EventCursor struct {
+	ID        *string
+	CreatedAt *string
+	Asc       *bool
 }
 
 type Recording struct {
@@ -152,10 +149,9 @@ func (r *Resolver) Service(_ context.Context) Service {
 }
 
 func (r *Resolver) Events(ctx context.Context, args struct {
-	Where EventLookup
-	Limit EventLimit
-	From  *EventFrom
-	Order *string
+	Where  EventLookup
+	Limit  int32
+	Cursor *EventCursor
 }) (Events, error) {
 	const batchLimit = 3000
 
@@ -164,40 +160,34 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		return Events{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	if args.Limit.Count < 0 || args.Limit.Count > batchLimit {
-		args.Limit.Count = batchLimit
+	if args.Limit < 0 || args.Limit > batchLimit {
+		args.Limit = batchLimit
 	}
 
 	lookup := event.Lookup{
-		Limit: int64(args.Limit.Count),
-		Asc:   args.Order != nil && *args.Order == OrderAsc,
-	}
-	if args.Limit.Seconds != nil {
-		delta := time.Second * time.Duration(*args.Limit.Seconds)
-		if lookup.Asc {
-			lookup.From.CreatedAt = time.Now().UTC().Add(delta)
-		} else {
-			lookup.From.CreatedAt = time.Now().UTC().Add(-delta)
-		}
+		Limit: int64(args.Limit),
 	}
 	var err error
 	lookup.Room, err = uuid.Parse(args.Where.RoomID)
 	if err != nil {
 		return Events{}, nil
 	}
-	if args.From != nil {
-		createdAt, err := strconv.ParseInt(args.From.CreatedAt, 10, 64)
-		if err != nil {
-			return Events{}, NewResolverError(CodeBadRequest, "Invalid from.createdAt")
+	if args.Cursor != nil {
+		if args.Cursor.CreatedAt != nil {
+			createdAt, err := strconv.ParseInt(*args.Cursor.CreatedAt, 10, 64)
+			if err != nil {
+				return Events{}, NewResolverError(CodeBadRequest, "Invalid filter params.")
+			}
+			lookup.From.CreatedAt = time.UnixMilli(createdAt)
 		}
-		lookup.From = event.From{
-			CreatedAt: time.UnixMilli(createdAt),
-		}
-		if args.From.ID != "" {
-			id, err := uuid.Parse(args.From.ID)
+		if args.Cursor.ID != nil {
+			id, err := uuid.Parse(*args.Cursor.ID)
 			if err == nil {
 				lookup.From.ID = id
 			}
+		}
+		if args.Cursor.Asc != nil && *args.Cursor.Asc {
+			lookup.Asc = true
 		}
 	}
 
@@ -210,15 +200,15 @@ func (r *Resolver) Events(ctx context.Context, args struct {
 		Items: make([]GraphEvent, len(events)),
 		Limit: int32(lookup.Limit),
 	}
-	if len(events) != 0 {
-		lastEvent := events[len(events)-1]
-		res.NextFrom = &EventFrom{
-			ID:        lastEvent.ID.String(),
-			CreatedAt: strconv.FormatInt(lastEvent.CreatedAt.UnixMilli(), 10),
-		}
-	}
 	for i, e := range events {
 		res.Items[i] = *newGraphEvent(e)
+	}
+	if len(res.Items) != 0 {
+		last := res.Items[len(res.Items)-1]
+		res.Next = &EventCursor{
+			ID:        &last.ID,
+			CreatedAt: &last.CreatedAt,
+		}
 	}
 	return res, nil
 }
@@ -296,12 +286,12 @@ func newRecording(rec record.Recording) Recording {
 }
 
 func newGraphEvent(ev event.Event) *GraphEvent {
-	room := NewRoomEvent(ev)
-	pl, _ := json.Marshal(room.Payload)
+	roomEvent := NewRoomEvent(ev)
+	pl, _ := json.Marshal(roomEvent.Payload)
 	return &GraphEvent{
-		ID:        room.ID,
-		RoomID:    room.RoomID,
-		CreatedAt: room.CreatedAt,
+		ID:        roomEvent.ID,
+		RoomID:    roomEvent.RoomID,
+		CreatedAt: fmt.Sprint(ev.CreatedAt.UnixMilli()),
 		Payload:   string(pl),
 	}
 }

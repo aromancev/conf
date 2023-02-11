@@ -4,7 +4,7 @@
     <div v-if="!state.isLoading" class="processing-note">
       <p>Processing talk recording.</p>
       <p>It might take a while (especially screen sharing) becuase it runs on a very cheap server.</p>
-      <p v-if="user.id === talk.ownerId">You will receive an email when it's done.</p>
+      <p v-if="userStore.state.id === talk.ownerId">You will receive an email when it's done.</p>
     </div>
   </div>
   <div v-if="state.isReady" class="content">
@@ -50,7 +50,7 @@
 
       <RoomAudience
         ref="audience"
-        :user-id="user.id"
+        :user-id="userStore.state.id"
         :is-loading="room.state.isLoading"
         :is-playing="room.state.isPlaying"
         :peers="room.state.peers"
@@ -78,7 +78,7 @@
     </div>
     <div v-if="state.sidePanel !== 'none'" class="side-panel">
       <RoomMessages
-        :user-id="user.id"
+        :user-id="userStore.state.id"
         :messages="room.state.messages"
         :is-loading="room.state.isLoading"
         :is-readonly="true"
@@ -95,15 +95,15 @@
       @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.id || '', bufferMs, durationMs)"
     ></RoomReplayAudio>
   </div>
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted, reactive } from "vue"
 import { recordingClient } from "@/api"
-import { RecordingStatus, Talk, userStore } from "@/api/models"
+import { Talk } from "@/api/models/talk"
+import { RecordingStatus } from "@/api/models/recording"
+import { userStore } from "@/api/models/user"
 import { ReplayRoom } from "@/components/room"
-import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomReplayVideo from "@/components/room/RoomReplayVideo.vue"
@@ -111,10 +111,9 @@ import RoomReplayAudio from "@/components/room/RoomReplayAudio.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import { Media } from "@/components/room/aggregators/media"
 import { Hint } from "@/api/room/schema"
+import { notificationStore } from "@/api/models/notifications"
 
 const READY_CHECK_INTERVAL = 10 * 1000
-
-type Modal = "none" | "error"
 
 type SidePanel = "none" | "chat"
 
@@ -123,8 +122,6 @@ interface Resizer {
 }
 
 const sidePanelKey = "roomSidePanel"
-
-const user = userStore.state()
 
 const props = defineProps<{
   talk: Talk
@@ -143,7 +140,6 @@ const state = reactive<State>({
 })
 
 let loadTimerId: ReturnType<typeof setTimeout> = -1
-const modal = ref<Modal>("none")
 const audience = ref<Resizer>()
 const room = new ReplayRoom()
 const roomId = computed<string>(() => {
@@ -217,7 +213,7 @@ async function loadRoom(): Promise<void> {
     state.isReady = true
     await room.load(roomId.value, recording)
   } catch (e) {
-    modal.value = "error"
+    notificationStore.error("failed to load recording")
   }
 }
 </script>

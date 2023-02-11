@@ -8,6 +8,7 @@
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
+            <div v-if="recordingStatus === 'recording'" class="rec-indicator"></div>
           </div>
           <div class="camera video-container">
             <video
@@ -26,8 +27,8 @@
       </div>
       <RoomAudience
         ref="audience"
-        :user-id="user.id"
-        :is-loading="room.state.isLoading"
+        :user-id="userStore.state.id"
+        :is-loading="!isRoomReady"
         :is-playing="true"
         :peers="room.state.peers"
         :statuses="room.state.statuses"
@@ -37,17 +38,19 @@
       <div class="controls-top">
         <RoomReactions @reaction="sendReaction"></RoomReactions>
         <div
+          v-if="userStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.screen }"
-          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
+          :disabled="!isMediaReady ? true : null"
           @click="room.switchScreen"
         >
           {{ room.state.local.screen ? "desktop_windows" : "desktop_access_disabled" }}
         </div>
         <div
+          v-if="userStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.camera }"
-          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
+          :disabled="!isMediaReady ? true : null"
           @click="room.switchCamera"
         >
           {{ room.state.local.camera ? "videocam" : "videocam_off" }}
@@ -55,13 +58,13 @@
         <div
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.mic }"
-          :disabled="room.state.isLoading || room.state.isPublishing || !room.state.joinedMedia ? true : null"
+          :disabled="!isMediaReady ? true : null"
           @click="room.switchMic"
         >
           {{ room.state.local.mic ? "mic" : "mic_off" }}
         </div>
         <div
-          v-if="recordingStatus !== 'stopped' && user.id === talk.ownerId"
+          v-if="recordingStatus !== 'stopped' && userStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons record-icon"
           :disabled="recordingStatus === 'pending' ? true : null"
           @click="handleRecording"
@@ -70,28 +73,28 @@
         </div>
       </div>
       <div class="controls-bottom">
-        <div
-          v-if="sidePanel !== SidePanel.None"
-          class="ctrl-btn btn-switch material-icons"
-          @click="switchSidePanel(SidePanel.None)"
-        >
+        <div v-if="sidePanel !== 'none'" class="ctrl-btn btn-switch material-icons" @click="switchSidePanel('none')">
           close
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ pressed: sidePanel === SidePanel.Chat }"
-          @click="switchSidePanel(SidePanel.Chat)"
+          :class="{ pressed: sidePanel === 'chat' }"
+          @click="switchSidePanel('chat')"
         >
           chat
+          <div
+            v-if="room.state.messages.length && lastReadMessageId !== room.state.messages.at(-1)?.id"
+            class="new-content-marker"
+          ></div>
         </div>
       </div>
     </div>
-    <div v-if="sidePanel !== SidePanel.None" class="side-panel">
+    <div v-if="sidePanel !== 'none'" class="side-panel">
       <RoomMessages
-        :user-id="user.id"
+        :user-id="userStore.state.id"
         :messages="room.state.messages"
-        :is-loading="room.state.isLoading"
-        @message="sendMessage"
+        :is-loading="!isRoomReady"
+        @sent="sendMessage"
       />
     </div>
   </div>
@@ -121,14 +124,6 @@
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
   <ModalDialog
-    :is-visible="modal.state.current === 'reconnect'"
-    :ctrl="modal"
-    :buttons="{ reconnect: 'Reconnect', leave: 'Leave' }"
-  >
-    <p>Connection lost.</p>
-    <p>Please check your internet connection and try to reconnect.</p>
-  </ModalDialog>
-  <ModalDialog
     :is-visible="modal.state.current === 'recording_finished'"
     :ctrl="modal"
     :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
@@ -136,34 +131,31 @@
     <p>Recording finished.</p>
     <p>For demo purposes it is limited to 5 minutes.</p>
   </ModalDialog>
-  <InternalError :is-visible="modal.state.current === 'error'" :ctrl="modal" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted } from "vue"
-import { onBeforeRouteLeave, useRouter } from "vue-router"
-import { route } from "@/router"
+import { onBeforeRouteLeave } from "vue-router"
 import { talkClient } from "@/api"
-import { Talk, TalkState, userStore } from "@/api/models"
+import { Talk, TalkState } from "@/api/models/talk"
+import { userStore } from "@/api/models/user"
 import { LiveRoom } from "@/components/room"
 import { Hint, Reaction } from "@/api/room/schema"
 import { ModalController } from "@/components/modals/controller"
-import InternalError from "@/components/modals/InternalError.vue"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
 import RoomReactions from "@/components/room/RoomReactions.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
+import { Backoff } from "@/platform/sync"
+import { notificationStore } from "@/api/models/notifications"
 
 type RecordingStatus = "none" | "pending" | "recording" | "stopped"
 
-const modal = new ModalController<"error" | "confirm_join" | "confirm_leave" | "reconnect" | "recording_finished">()
+const modal = new ModalController<"confirm_join" | "confirm_leave" | "recording_finished">()
 
-enum SidePanel {
-  None = "",
-  Chat = "chat",
-}
+type SidePanel = "none" | "chat"
 
 interface Resizer {
   resize(): void
@@ -174,11 +166,6 @@ const emit = defineEmits<{
   (e: "update", talk: Talk): void
 }>()
 
-const sidePanelKey = "roomSidePanel"
-
-const router = useRouter()
-const user = userStore.state()
-
 const props = defineProps<{
   talk: Talk
   confaHandle: string
@@ -186,13 +173,17 @@ const props = defineProps<{
   joinConfirmed?: boolean
 }>()
 
-const sidePanel = ref(localStorage.getItem(sidePanelKey) || SidePanel.None)
+const sidePanelKey = "roomSidePanel"
+const sidePanel = ref<SidePanel>((localStorage.getItem(sidePanelKey) as SidePanel) || "none")
 const audience = ref<Resizer>()
 const room = new LiveRoom()
 const recordingStatus = ref<RecordingStatus>("none")
 const roomId = computed<string>(() => {
   return props.talk.roomId
 })
+const lastReadMessageId = ref<string>("")
+const connectBackoff = new Backoff(1.5, 1000, 60 * 1000, 0.2)
+let connectTimeoutId: ReturnType<typeof setTimeout> = 0
 
 const screen = computed<MediaStream | undefined>(() => {
   if (room.state.local.screen) {
@@ -227,19 +218,14 @@ const audios = computed<MediaStream[]>(() => {
   }
   return auds
 })
+const isRoomReady = computed<boolean>(() => {
+  return !room.state.isLoading && !room.state.error
+})
+const isMediaReady = computed<boolean>(() => {
+  return !room.state.isLoading && !room.state.error && !room.state.isPublishing && room.state.joinedMedia
+})
 
-watch(
-  roomId,
-  async (roomId: string) => {
-    room.close()
-    await room.joinRTC(roomId)
-    if (!props.joinConfirmed) {
-      await modal.set("confirm_join")
-    }
-    await room.joinMedia()
-  },
-  { immediate: true },
-)
+watch(roomId, async () => connect(), { immediate: true })
 
 watch(room.state.recording, async (r) => {
   if (r.isRecording) {
@@ -260,14 +246,7 @@ watch(
     if (!err) {
       return
     }
-
-    const answer = await modal.set("reconnect")
-    if (answer === "reconnect") {
-      await room.joinRTC(roomId.value)
-      await room.joinMedia()
-    } else {
-      router.push(route.talk(props.confaHandle, props.talk.handle, "overview"))
-    }
+    connect()
   },
 )
 watch(
@@ -288,8 +267,14 @@ watch(
   },
   { immediate: true },
 )
+watch([room.state.messages, sidePanel], () => {
+  if (sidePanel.value === "chat") {
+    lastReadMessageId.value = room.state.messages.at(-1)?.id || ""
+  }
+})
 
 onUnmounted(() => {
+  clearTimeout(connectTimeoutId)
   room.close()
 })
 
@@ -302,12 +287,33 @@ onBeforeRouteLeave(async (to, from, next) => {
   next(btn === "leave")
 })
 
+async function connect(): Promise<void> {
+  clearTimeout(connectTimeoutId)
+  try {
+    room.close()
+    await room.joinRTC(roomId.value)
+    if (!props.joinConfirmed) {
+      await modal.set("confirm_join")
+    }
+    await room.joinMedia()
+    if (connectBackoff.retries > 0) {
+      notificationStore.info("connection restored")
+      connectBackoff.reset()
+    }
+  } catch (e) {
+    if (connectBackoff.retries === 0) {
+      notificationStore.error("connection lost")
+    }
+    connectTimeoutId = setTimeout(() => connect(), connectBackoff.next())
+  }
+}
+
 function confirmJoin(value: string) {
   emit("join", value === "join")
 }
 
 function sendMessage(message: string) {
-  room.send(user.id, message)
+  room.send(userStore.state.id, message)
 }
 
 function sendReaction(reaction: Reaction) {
@@ -316,7 +322,7 @@ function sendReaction(reaction: Reaction) {
 
 function switchSidePanel(panel: SidePanel) {
   if (sidePanel.value === panel) {
-    panel = SidePanel.None
+    panel = "none"
   } else {
     sidePanel.value = panel
   }
@@ -334,7 +340,7 @@ async function handleRecording() {
       try {
         await talkClient.startRecording({ id: props.talk.id })
       } catch (e) {
-        modal.set("error")
+        notificationStore.error("failed to start recording")
       }
       break
     case "recording":
@@ -342,7 +348,7 @@ async function handleRecording() {
       try {
         await talkClient.stopRecording({ id: props.talk.id })
       } catch (e) {
-        modal.set("error")
+        notificationStore.error("failed to stop recording")
       }
       break
   }
@@ -376,6 +382,16 @@ async function handleRecording() {
 .video-container
   overflow: hidden
   position: relative
+
+.rec-indicator
+  position: absolute
+  right: 0
+  top: 0
+  width: 10px
+  height: 10px
+  background: var(--color-red)
+  border-radius: 50%
+  margin: 10px
 
 .video-content
   display: flex
@@ -463,12 +479,21 @@ async function handleRecording() {
 .ctrl-btn
   border-radius: 50%
   margin: 5px
-  width: 55px
-  height: 55px
-  padding: 0.6em
+  padding: 15px
+  font-size: 25px
+  position: relative
   &.active
     margin: 10px
     border: 1px solid var(--color-highlight-background)
+
+.new-content-marker
+  position: absolute
+  right: 20%
+  top: 20%
+  width: 12px
+  height: 12px
+  border-radius: 50%
+  background: var(--color-highlight-background)
 
 .record-icon
   color: var(--color-red)

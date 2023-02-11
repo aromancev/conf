@@ -240,7 +240,7 @@ func TestMongo(t *testing.T) {
 
 			// 3 in total, skipped one.
 			fetched, err = profiles.Fetch(ctx, Lookup{
-				From: fetched[0].ID,
+				From: Cursor{ID: fetched[0].ID},
 			})
 			require.NoError(t, err)
 			assert.Equal(t, 2, len(fetched))

@@ -4,7 +4,7 @@ import {
   RemoteStream as IonRemoteStream,
   LocalStream as IonLocalStream,
 } from "ion-sdk-js"
-import { currentUser } from "../models"
+import { userStore } from "../models/user"
 import { client } from "@/api"
 import { config } from "@/config"
 import { PeerMessage, PeerState, Message, Reaction, MessagePayload, RoomEvent, SDPType } from "./schema"
@@ -70,7 +70,7 @@ export class RTCPeer {
       iceServers: iceServers,
     })
     this.sfu.ontrack = this.ontrack
-    await this.sfu.join(this.roomId, currentUser.id)
+    await this.sfu.join(this.roomId, userStore.state.id)
   }
 
   publish(stream: LocalStream, encodingParams?: RTCRtpEncodingParameters[]): void {
@@ -100,8 +100,11 @@ class RoomWebSocket {
   private pendingRequests: Map<string, (msg: Message) => void> = new Map()
 
   async connect(roomId: string, token: string): Promise<void> {
-    const socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
-    socket.onmessage = (resp) => {
+    if (this.socket) {
+      this.socket.close()
+    }
+    this.socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
+    this.socket.onmessage = (resp) => {
       const msg = JSON.parse(resp.data) as Message
 
       if (msg.responseId) {
@@ -138,19 +141,27 @@ class RoomWebSocket {
       }
     }
 
-    socket.onclose = () => {
+    this.socket.onclose = () => {
       if (this.onclose) {
         this.onclose()
       }
     }
 
-    await new Promise<void>((resolve) => {
-      socket.onopen = () => {
+    const sock = this.socket
+    const opened = new Promise<void>((resolve) => {
+      sock.onopen = () => {
         resolve()
       }
     })
-
-    this.socket = socket
+    const failed = new Promise<void>((resolve) => {
+      sock.onerror = () => {
+        resolve()
+      }
+    })
+    await Promise.race([opened, failed])
+    if (this.socket.readyState !== this.socket.OPEN) {
+      throw new Error("Failed to connect to websocket.")
+    }
   }
 
   async join(sid: string, uid: string, offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {

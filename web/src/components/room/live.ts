@@ -8,7 +8,6 @@ import { Peer, Status, PeerAggregator } from "./aggregators/peers"
 import { Stream, StreamAggregator } from "./aggregators/streams"
 import { RecordingAggregator } from "./aggregators/recording"
 import { RoomEvent, Hint, Track, Reaction } from "@/api/room/schema"
-import { EventOrder } from "@/api/schema"
 
 const UPDATE_TIME_INTERVAL_MS = 300
 const PROFILE_CACHE_SIZE = 500
@@ -32,7 +31,7 @@ interface State {
   error?: Error
 }
 
-type Error = "UNKNOWN"
+type Error = "CLOSED"
 
 export class LiveRoom {
   private rtc: RTCPeer
@@ -63,7 +62,7 @@ export class LiveRoom {
     this.rtc = new RTCPeer()
     this.rtc.onclose = () => {
       this.close()
-      this._state.error = "UNKNOWN"
+      this._state.error = "CLOSED"
     }
     this.setTimeIntervalId = 0
   }
@@ -93,7 +92,6 @@ export class LiveRoom {
       this.messageAggregator = new MessageAggregator(this.profileRepo)
       const aggregators = new BufferedAggregator([peers, streams, recording, this.messageAggregator], 50)
 
-      this._state.error = undefined
       this._state.remote = streams.state().streams
       this._state.peers = peers.state().peers
       this._state.statuses = peers.state().statuses
@@ -110,11 +108,9 @@ export class LiveRoom {
       this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
       await this.rtc.joinRTC(roomId)
 
-      const iter = eventClient.fetch({ roomId: roomId }, { order: EventOrder.DESC, policy: "network-only" })
-      const events = await iter.next({ count: 3000, seconds: 2 * 60 * 60 })
+      const iter = eventClient.fetch({ roomId: roomId }, { policy: "network-only", cursor: { Asc: true } })
+      const events = await iter.next(3000)
 
-      // Sorting events to always be in chronological order.
-      events.reverse()
       aggregators.prepend(...events)
       aggregators.flush()
 
@@ -126,6 +122,8 @@ export class LiveRoom {
         const elapsed = Date.now() - serverNowAt
         aggregators.setTime(serverNow + elapsed)
       }, UPDATE_TIME_INTERVAL_MS)
+
+      this._state.error = undefined
     } finally {
       this._state.isLoading = false
     }

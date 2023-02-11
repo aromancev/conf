@@ -15,7 +15,7 @@ import { onError, ErrorResponse } from "@apollo/client/link/error"
 import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
 import { ApolloError } from "@apollo/client/core"
-import { userStore } from "./models"
+import { userStore } from "./models/user"
 
 const minRefresh = 10 * Duration.second
 const httpOK = 200
