@@ -9,28 +9,39 @@ import (
 	"github.com/aromancev/confa/internal/proto/sender"
 )
 
-type Sender struct {
-	mailer *email.Sender
+type Mailer interface {
+	Send(ctx context.Context, emails ...email.Email) error
 }
 
-func NewSender(server, port, fromAddress, password string, secure bool) *Sender {
+type Sender struct {
+	mailer Mailer
+	from   email.Address
+}
+
+func NewSender(mailer Mailer, fromEmail string) *Sender {
 	return &Sender{
-		mailer: email.NewSender(server, port, fromAddress, password, secure),
+		mailer: mailer,
+		from: email.Address{
+			Email: fromEmail,
+			Name:  "Confa",
+		},
 	}
 }
 
-func (s *Sender) Send(ctx context.Context, message *sender.Message, toAddress string) error {
+func (s *Sender) Send(ctx context.Context, message *sender.Message, to ...email.Address) error {
 	var msg email.Email
 	var err error
 	switch pl := message.Message.(type) { // nolint: gocritic
 	case *sender.Message_LoginViaEmail_:
 		msg, err = newLoginViaEmail(
-			toAddress,
+			s.from,
+			to,
 			pl.LoginViaEmail.SecretLoginUrl,
 		)
 	case *sender.Message_TalkRecordingReady_:
 		msg, err = newTalkRecordingReady(
-			toAddress,
+			s.from,
+			to,
 			pl.TalkRecordingReady.ConfaUrl,
 			pl.TalkRecordingReady.ConfaTitle,
 			pl.TalkRecordingReady.TalkUrl,

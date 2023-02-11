@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/cmd/sender/queue"
+	"github.com/aromancev/confa/internal/platform/email/mailersend"
 	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/sender"
 	"github.com/aromancev/confa/sender/email"
@@ -62,7 +63,14 @@ func main() {
 
 	jobHandler := queue.NewHandler(
 		sender.NewSender(
-			email.NewSender(config.Email.Server, config.Email.Port, config.Email.Address, config.Email.Password, config.Email.Secure != "false"),
+			email.NewSender(
+				mailersend.NewSender(
+					&http.Client{},
+					config.Email.MailersendBaseURL,
+					config.Email.MailersendToken,
+				),
+				config.Email.MailersendFromEmail,
+			),
 			iamClient,
 		),
 		queue.Tubes{

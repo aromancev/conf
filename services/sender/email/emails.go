@@ -18,7 +18,7 @@ func init() {
 	talkRecordingReady = template.Must(template.ParseFS(templates, "talk_recording_ready.html"))
 }
 
-func newLoginViaEmail(to, secretLoginURL string) (email.Email, error) {
+func newLoginViaEmail(from email.Address, to []email.Address, secretLoginURL string) (email.Email, error) {
 	var html bytes.Buffer
 	err := loginViaEmail.Execute(&html, map[string]string{
 		"secretLoginURL": secretLoginURL,
@@ -27,14 +27,14 @@ func newLoginViaEmail(to, secretLoginURL string) (email.Email, error) {
 		return email.Email{}, err
 	}
 	return email.Email{
-		FromName:  "Confa",
-		Subject:   "Login",
-		ToAddress: to,
-		HTML:      html.String(),
+		From:    from,
+		Subject: "Login",
+		To:      to,
+		HTML:    html.String(),
 	}, nil
 }
 
-func newTalkRecordingReady(to, confaURL, confaTitle, talkURL, talkTitle string) (email.Email, error) {
+func newTalkRecordingReady(from email.Address, to []email.Address, confaURL, confaTitle, talkURL, talkTitle string) (email.Email, error) {
 	var html bytes.Buffer
 	err := talkRecordingReady.Execute(&html, map[string]string{
 		"confaURL":   confaURL,
@@ -46,9 +46,9 @@ func newTalkRecordingReady(to, confaURL, confaTitle, talkURL, talkTitle string) 
 		return email.Email{}, err
 	}
 	return email.Email{
-		FromName:  "Confa",
-		Subject:   "Talk Recording is Ready",
-		ToAddress: to,
-		HTML:      html.String(),
+		From:    from,
+		Subject: "Talk Recording is Ready",
+		To:      to,
+		HTML:    html.String(),
 	}, nil
 }

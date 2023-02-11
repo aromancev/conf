@@ -157,11 +157,9 @@ services:
     command: "go run ./cmd/sender"
     environment:
       <<: *service-env
-      EMAIL_SERVER: "email-client"
-      EMAIL_PORT: "1025"
-      EMAIL_ADDRESS: "noreply@confa.io"
-      EMAIL_PASSWORD: "stub"
-      EMAIL_SECURE: "false"
+      MAILERSEND_TOKEN: $MAILERSEND_TOKEN
+      MAILERSEND_BASE_URL: http://sender-clients
+      MAILERSEND_FROM_EMAIL: noreply@mail.confa.io
 
   beanstalk:
     build:
@@ -177,8 +175,8 @@ services:
     networks:
       - confa
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=mongo
-      - MONGO_INITDB_ROOT_PASSWORD=mongo
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
     volumes:
       - .artifacts/mongo/:/data/db
     entrypoint:
@@ -195,18 +193,21 @@ services:
     image: minio/minio:RELEASE.2022-04-16T04-26-02Z
     command: server /data --address=":80"
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=miniominio
-      - MINIO_BROWSER=off
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniominio
+      MINIO_BROWSER: off
     networks:
       - confa
     volumes:
       - .artifacts/minio:/data
 
-  email-client:
-    image: kbedel/fake-smtp-server
-    profiles: [ "email-client" ]
-    command: fake-smtp-server -s 1025 -h 80
+  sender-clients:
+    <<: *service-common
+    command: "go run ./cmd/sender-clients"
+    environment:
+      LISTEN_WEB_ADDRESS: ":80"
+      LOG_FORMAT: "console"
+      LOG_LEVEL: "info"
     networks:
       - confa
     ports:

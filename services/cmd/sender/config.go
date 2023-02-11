@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,8 +31,6 @@ func (c Config) WithEnv() Config {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to process env")
 	}
-
-	c.Email = c.Email.WithEnv()
 	return c
 }
 
@@ -56,36 +53,22 @@ func (c Config) Validate() error {
 }
 
 type EmailConfig struct {
-	Server   string `envconfig:"EMAIL_SERVER"`
-	Port     string `envconfig:"EMAIL_PORT"`
-	Address  string `envconfig:"EMAIL_ADDRESS"`
-	Password string `envconfig:"EMAIL_PASSWORD"`
-	Secure   string `envconfig:"EMAIL_SECURE"`
+	MailersendBaseURL   string `envconfig:"MAILERSEND_BASE_URL"`
+	MailersendToken     string `envconfig:"MAILERSEND_TOKEN"`
+	MailersendFromEmail string `envconfig:"MAILERSEND_FROM_EMAIL"`
 }
 
 func (c EmailConfig) Validate() error {
-	if c.Server == "" {
-		return errors.New("EMAIL_SERVER not set")
+	if c.MailersendBaseURL == "" {
+		return errors.New("MAILERSEND_BASE_URL not set")
 	}
-	if c.Port == "" {
-		return errors.New("EMAIL_PORT not set")
+	if c.MailersendToken == "" {
+		return errors.New("MAILERSEND_TOKEN not set")
 	}
-	if c.Address == "" {
-		return errors.New("EMAIL_ADDRESS not set")
-	}
-	if c.Password == "" {
-		return errors.New("EMAIL_PASSWORD not set")
+	if c.MailersendFromEmail == "" {
+		return errors.New("MAILERSEND_FROM_EMAIL not set")
 	}
 	return nil
-}
-
-func (c EmailConfig) WithEnv() EmailConfig {
-	pass, err := base64.StdEncoding.DecodeString(c.Password)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to decode email password")
-	}
-	c.Password = string(pass)
-	return c
 }
 
 type BeanstalkConfig struct {

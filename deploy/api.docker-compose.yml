@@ -175,10 +175,9 @@ services:
       - IAM_RPC_ADDRESS=iam:8080
       - BASE_URL=https://confa.io
       - LOG_FORMAT=console
-      - EMAIL_SERVER=smtp.yandex.com
-      - EMAIL_PORT=465
-      - EMAIL_ADDRESS=noreply@confa.io
-      - EMAIL_PASSWORD=$EMAIL_PASSWORD
+      - MAILERSEND_TOKEN=$MAILERSEND_TOKEN
+      - MAILERSEND_BASE_URL=https://api.mailersend.com
+      - MAILERSEND_FROM_EMAIL=noreply@mail.confa.io
       - BEANSTALK_POOL=beanstalk:11300
       - BEANSTALK_TUBE_SEND=sender/send
       - LOG_LEVEL=warn
