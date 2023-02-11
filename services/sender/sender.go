@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aromancev/confa/internal/platform/email"
 	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/proto/sender"
 )
 
 type EmailSender interface {
-	Send(ctx context.Context, message *sender.Message, toAddress string) error
+	Send(ctx context.Context, message *sender.Message, to ...email.Address) error
 }
 
 type Sender struct {
@@ -18,9 +19,9 @@ type Sender struct {
 	iamClient iam.IAM
 }
 
-func NewSender(email EmailSender, iamClient iam.IAM) *Sender {
+func NewSender(emails EmailSender, iamClient iam.IAM) *Sender {
 	return &Sender{
-		email:     email,
+		email:     emails,
 		iamClient: iamClient,
 	}
 }
@@ -40,13 +41,13 @@ func (s *Sender) Send(ctx context.Context, send *sender.Send) error {
 		if !ok {
 			return errors.New("user does not have email identificator")
 		}
-		err = s.email.Send(ctx, send.Message, address)
+		err = s.email.Send(ctx, send.Message, email.Address{Email: address})
 		if err != nil {
 			return fmt.Errorf("failed to send email: %w", err)
 		}
 		return nil
 	case *sender.Delivery_Email_:
-		err := s.email.Send(ctx, send.Message, delivery.Email.ToAddress)
+		err := s.email.Send(ctx, send.Message, email.Address{Email: delivery.Email.ToAddress})
 		if err != nil {
 			return fmt.Errorf("failed to send email: %w", err)
 		}

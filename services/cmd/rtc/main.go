@@ -201,13 +201,12 @@ func main() {
 		consumer.Receive(ctx, jobHandler.ServeJob)
 		consumerDone.Done()
 	}()
-	log.Info().Msg("Listening on " + config.ListenWebAddress)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	log.Info().Msg("Shutting down")
+	log.Info().Msg("Shutting down.")
 
 	ctx, shutdown := context.WithTimeout(ctx, time.Second*60)
 	defer shutdown()
@@ -219,5 +218,5 @@ func main() {
 	consumerDone.Wait()
 	_ = sfuConn.Close()
 
-	log.Info().Msg("Shutdown complete")
+	log.Info().Msg("Shutdown complete.")
 }

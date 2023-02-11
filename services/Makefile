@@ -12,7 +12,7 @@ lint:
 		-t \
 		-w /app \
 		-v `pwd`:/app \
-		golangci/golangci-lint:v1.50-alpine golangci-lint run
+		golangci/golangci-lint:v1.51-alpine golangci-lint run
 
 .PHONY: build
 build:
