@@ -127,7 +127,7 @@ func TestMongo(t *testing.T) {
 			request = created[0]
 			request.Handle = "2222"
 			request.Title = "title"
-			updated, err := confas.UpdateOne(ctx, Lookup{ID: request.ID}, Mask{Handle: &request.Handle, Title: &request.Title})
+			updated, err := confas.UpdateOne(ctx, Lookup{ID: request.ID}, Update{Handle: &request.Handle, Title: &request.Title})
 			require.NoError(t, err)
 			require.EqualValues(t, request, updated)
 
@@ -144,7 +144,7 @@ func TestMongo(t *testing.T) {
 			confas := NewMongo(dockerMongo(t))
 
 			handle := "test"
-			_, err := confas.UpdateOne(ctx, Lookup{ID: uuid.New()}, Mask{Handle: &handle})
+			_, err := confas.UpdateOne(ctx, Lookup{ID: uuid.New()}, Update{Handle: &handle})
 			require.ErrorIs(t, err, ErrNotFound)
 		})
 
@@ -176,7 +176,7 @@ func TestMongo(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			_, err = confas.UpdateOne(ctx, Lookup{ID: created[0].ID}, Mask{Handle: &created[1].Handle})
+			_, err = confas.UpdateOne(ctx, Lookup{ID: created[0].ID}, Update{Handle: &created[1].Handle})
 			require.ErrorIs(t, err, ErrDuplicateEntry)
 		})
 	})
@@ -193,10 +193,12 @@ func TestMongo(t *testing.T) {
 			Owner:  uuid.New(),
 			Handle: "test",
 		}
+		_, err := confas.Create(ctx, conf)
+		require.NoError(t, err)
 
-		requests := []Talk{
-			{
-				ID:      uuid.New(),
+		created, err := talks.Create(ctx,
+			Talk{
+				ID:      uuid.UUID{1},
 				Owner:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
@@ -204,8 +206,8 @@ func TestMongo(t *testing.T) {
 				Confa:   conf.ID,
 				Handle:  "test1",
 			},
-			{
-				ID:      uuid.New(),
+			Talk{
+				ID:      uuid.UUID{2},
 				Owner:   uuid.New(),
 				Speaker: uuid.New(),
 				Room:    uuid.New(),
@@ -213,12 +215,16 @@ func TestMongo(t *testing.T) {
 				Confa:   conf.ID,
 				Handle:  "test2",
 			},
-		}
-
-		_, err := confas.Create(ctx, conf)
-		require.NoError(t, err)
-
-		created, err := talks.Create(ctx, requests...)
+			Talk{
+				ID:      uuid.UUID{3},
+				Owner:   uuid.New(),
+				Speaker: uuid.New(),
+				Room:    uuid.New(),
+				State:   StateRecording,
+				Confa:   uuid.New(),
+				Handle:  "test3",
+			},
+		)
 		require.NoError(t, err)
 
 		t.Run("By ID", func(t *testing.T) {
@@ -234,7 +240,7 @@ func TestMongo(t *testing.T) {
 				Confa: conf.ID,
 			})
 			require.NoError(t, err)
-			assert.ElementsMatch(t, created, fetched)
+			assert.ElementsMatch(t, created[:2], fetched)
 		})
 
 		t.Run("By State In", func(t *testing.T) {
@@ -242,7 +248,29 @@ func TestMongo(t *testing.T) {
 				StateIn: []State{StateEnded},
 			})
 			require.NoError(t, err)
-			assert.ElementsMatch(t, created[1:], fetched)
+			assert.ElementsMatch(t, []Talk{created[1]}, fetched)
+		})
+
+		t.Run("Pagination works in both directions", func(t *testing.T) {
+			fetched, err := talks.Fetch(ctx, Lookup{
+				From: From{
+					ID: created[1].ID,
+				},
+				Limit: 1,
+				Asc:   true,
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []Talk{created[2]}, fetched)
+
+			fetched, err = talks.Fetch(ctx, Lookup{
+				From: From{
+					ID: created[1].ID,
+				},
+				Limit: 1,
+				Asc:   false,
+			})
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []Talk{created[0]}, fetched)
 		})
 	})
 }

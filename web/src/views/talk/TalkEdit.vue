@@ -47,47 +47,30 @@
     </div>
   </div>
 
-  <ModalDialog :is-visible="modal === Modal.DuplicateEntry" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Talk with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal === Modal.NotFound" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Talk no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
-  <InternalError :is-visible="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
-
-<script lang="ts">
-import { RegexValidator } from "@/platform/validator"
-
-const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
-  "Must be from 4 to 64 characters long",
-  "Can only contain lower case letters, numbers, and '-'",
-])
-const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
-  "Must be from 0 to 64 characters long",
-  "Can only contain letters, numbers, spaces, and '-'",
-])
-</script>
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { talkClient, Talk, errorCode, Code, currentUser } from "@/api"
-import { TalkMask } from "@/api/schema"
+import { talkClient, errorCode, Code } from "@/api"
+import { userStore } from "@/api/models/user"
+import { Talk, titleValidator, handleValidator } from "@/api/models/talk"
+import { TalkUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
-import InternalError from "@/components/modals/InternalError.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
 import Textarea from "@/components/fields/TextareaField.vue"
+import { notificationStore } from "@/api/models/notifications"
 
-enum Modal {
-  None = "",
-  Error = "error",
-  DuplicateEntry = "duplicate_entry",
-  NotFound = "not_found",
-}
+type Modal = "none" | "duplicate_entry" | "not_found"
 
 const emit = defineEmits<{
   (e: "update", input: Talk): void
@@ -99,15 +82,14 @@ const props = defineProps<{
 
 const router = useRouter()
 
-const modal = ref(Modal.None)
+const modal = ref<Modal>("none")
 const handle = ref(props.talk.handle)
-const title = ref<string>(props.talk.title || "")
+const title = ref<string>(props.talk.title)
 const description = ref(props.talk.description || "")
-const update = ref<TalkMask>({})
+const update = ref<TalkUpdate>({})
 const saving = ref(false)
-
-const handleError = handleValidator.reactive(handle)
-const titleError = titleValidator.reactive(title)
+const handleError = computed(() => handleValidator.validate(handle.value))
+const titleError = computed(() => titleValidator.validate(title.value))
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
@@ -118,6 +100,17 @@ const formValid = computed(() => {
   return !titleError.value && !handleError.value
 })
 
+watch(
+  () => props.talk,
+  (c) => {
+    title.value = c.title
+    handle.value = c.handle
+    description.value = c.description || ""
+  },
+  {
+    deep: true,
+  },
+)
 watch(handle, (value) => {
   if (value === props.talk.handle) {
     delete update.value.handle
@@ -142,7 +135,7 @@ watch(description, (value) => {
 watch(
   () => props.talk,
   (value) => {
-    if (value.ownerId !== currentUser.id) {
+    if (value.ownerId !== userStore.state.id) {
       router.replace({ name: "talk.overview", params: { talk: props.talk.handle } })
     }
   },
@@ -162,13 +155,13 @@ async function save() {
   } catch (e) {
     switch (errorCode(e)) {
       case Code.DuplicateEntry:
-        modal.value = Modal.DuplicateEntry
+        modal.value = "duplicate_entry"
         break
       case Code.NotFound:
-        modal.value = Modal.NotFound
+        modal.value = "not_found"
         break
       default:
-        modal.value = Modal.Error
+        notificationStore.error("failed to update talk")
         break
     }
   } finally {

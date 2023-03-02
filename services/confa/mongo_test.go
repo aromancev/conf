@@ -102,7 +102,7 @@ func TestMongo(t *testing.T) {
 			updated := created[0]
 			updated.Handle = "2222"
 			updated.Title = "title"
-			res, err := confas.Update(ctx, Lookup{ID: updated.ID}, Mask{Handle: &updated.Handle, Title: &updated.Title})
+			res, err := confas.Update(ctx, Lookup{ID: updated.ID}, Update{Handle: &updated.Handle, Title: &updated.Title})
 			require.NoError(t, err)
 			require.EqualValues(t, 1, res.Updated)
 
@@ -133,7 +133,7 @@ func TestMongo(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			res, err := confas.Update(ctx, Lookup{ID: created[0].ID}, Mask{Handle: &created[1].Handle})
+			res, err := confas.Update(ctx, Lookup{ID: created[0].ID}, Update{Handle: &created[1].Handle})
 			require.ErrorIs(t, err, ErrDuplicateEntry)
 			require.EqualValues(t, 0, res.Updated)
 		})
@@ -156,7 +156,7 @@ func TestMongo(t *testing.T) {
 			request = created[0]
 			request.Handle = "2222"
 			request.Title = "title"
-			updated, err := confas.UpdateOne(ctx, Lookup{ID: request.ID}, Mask{Handle: &request.Handle, Title: &request.Title})
+			updated, err := confas.UpdateOne(ctx, Lookup{ID: request.ID}, Update{Handle: &request.Handle, Title: &request.Title})
 			require.NoError(t, err)
 			require.EqualValues(t, request, updated)
 
@@ -173,7 +173,7 @@ func TestMongo(t *testing.T) {
 			confas := NewMongo(dockerMongo(t))
 
 			handle := "test"
-			_, err := confas.UpdateOne(ctx, Lookup{ID: uuid.New()}, Mask{Handle: &handle})
+			_, err := confas.UpdateOne(ctx, Lookup{ID: uuid.New()}, Update{Handle: &handle})
 			require.ErrorIs(t, err, ErrNotFound)
 		})
 
@@ -197,7 +197,7 @@ func TestMongo(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			_, err = confas.UpdateOne(ctx, Lookup{ID: created[0].ID}, Mask{Handle: &created[1].Handle})
+			_, err = confas.UpdateOne(ctx, Lookup{ID: created[0].ID}, Update{Handle: &created[1].Handle})
 			require.ErrorIs(t, err, ErrDuplicateEntry)
 		})
 	})
@@ -206,58 +206,62 @@ func TestMongo(t *testing.T) {
 		t.Parallel()
 
 		confas := NewMongo(dockerMongo(t))
-
-		conf := Confa{
-			ID:     uuid.New(),
-			Owner:  uuid.New(),
-			Handle: "test",
-		}
-		created, err := confas.Create(ctx, conf)
-		require.NoError(t, err)
-		_, err = confas.Create(
+		created, err := confas.Create(
 			ctx,
 			Confa{
-				ID:     uuid.New(),
+				ID:     uuid.UUID{1},
+				Owner:  uuid.New(),
+				Handle: "test",
+			},
+			Confa{
+				ID:     uuid.UUID{2},
 				Owner:  uuid.New(),
 				Handle: uuid.NewString(),
 			},
 			Confa{
-				ID:     uuid.New(),
+				ID:     uuid.UUID{3},
 				Owner:  uuid.New(),
 				Handle: uuid.NewString(),
 			},
 		)
 		require.NoError(t, err)
 
-		t.Run("by id", func(t *testing.T) {
+		t.Run("By id", func(t *testing.T) {
 			fetched, err := confas.Fetch(ctx, Lookup{
-				ID: conf.ID,
+				ID: created[1].ID,
 			})
 			require.NoError(t, err)
-			assert.ElementsMatch(t, created, fetched)
+			assert.ElementsMatch(t, []Confa{created[1]}, fetched)
 		})
 
-		t.Run("by owner", func(t *testing.T) {
+		t.Run("By owner", func(t *testing.T) {
 			fetched, err := confas.Fetch(ctx, Lookup{
-				Owner: conf.Owner,
+				Owner: created[1].Owner,
 			})
 			require.NoError(t, err)
-			assert.ElementsMatch(t, created, fetched)
+			assert.ElementsMatch(t, []Confa{created[1]}, fetched)
 		})
 
-		t.Run("with limit and offset", func(t *testing.T) {
+		t.Run("Pagination works in both directions", func(t *testing.T) {
 			fetched, err := confas.Fetch(ctx, Lookup{
+				From: From{
+					ID: created[1].ID,
+				},
 				Limit: 1,
+				Asc:   true,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, 1, len(fetched))
+			assert.ElementsMatch(t, []Confa{created[2]}, fetched)
 
-			// 3 in total, skipped one.
 			fetched, err = confas.Fetch(ctx, Lookup{
-				From: fetched[0].ID,
+				From: From{
+					ID: created[1].ID,
+				},
+				Limit: 1,
+				Asc:   false,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, 2, len(fetched))
+			assert.ElementsMatch(t, []Confa{created[0]}, fetched)
 		})
 	})
 }

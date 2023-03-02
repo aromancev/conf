@@ -4,7 +4,7 @@
       <div class="talks-header">
         <div>Talks</div>
         <router-link
-          v-if="currentUser.id === confa.ownerId"
+          v-if="userStore.state.id === confa.ownerId"
           class="btn create-talk"
           :to="route.talk(confa.handle, handleNew, 'watch')"
         >
@@ -17,44 +17,43 @@
         </div>
         <div v-if="!state.isTalksLoading" class="talks-items">
           <div v-for="talk in state.talks" :key="talk.id" class="talks-item">
-            /
-            <router-link class="talks-link" :to="route.talk(confa.handle, talk.handle, 'watch')">{{
-              talk.handle
-            }}</router-link>
+            <router-link
+              class="talks-link"
+              :class="{ untitled: talk.title ? false : true }"
+              :to="route.talk(confa.handle, talk.handle, 'watch')"
+            >
+              {{ talk.title || "Untitled" }}</router-link
+            >
           </div>
         </div>
       </div>
     </div>
-    <div class="description">{{ confa.description }}</div>
+    <div class="description" :class="{ empty: !confa.description }">{{ confa.description || "No description" }}</div>
   </div>
-
-  <InternalError :is-visible="state.modal === 'error'" @click="state.modal = 'none'" />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from "vue"
-import { currentUser, Confa, Talk } from "@/api/models"
+import { Confa } from "@/api/models/confa"
+import { userStore } from "@/api/models/user"
+import { Talk } from "@/api/models/talk"
 import { talkClient } from "@/api"
 import { TalkIterator } from "@/api/talk"
 import { route, handleNew } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
+import { notificationStore } from "@/api/models/notifications"
 
 const props = defineProps<{
   confa: Confa
 }>()
 
-type Modal = "none" | "error"
-
 interface State {
-  modal: Modal
   isTalksLoading: boolean
   isTalksFetchedAll: boolean
   talks: Talk[]
 }
 
 const state = reactive<State>({
-  modal: "none",
   isTalksLoading: true,
   isTalksFetchedAll: false,
   talks: [],
@@ -101,7 +100,7 @@ async function loadTalks() {
       state.talks = state.talks.concat(fetched)
     }
   } catch (e) {
-    state.modal = "error"
+    notificationStore.error("failed to load talks")
   } finally {
     state.isTalksLoading = false
   }
@@ -140,7 +139,8 @@ async function loadTalks() {
   flex-direction: row
   align-items: center
   margin-left: auto
-  font-size: 13px
+  font-size: 14px
+  padding: 3px 10px
 
 .talks-list
   @include theme.shadow-inset-xs
@@ -175,15 +175,20 @@ async function loadTalks() {
   white-space: nowrap
 
 .talks-link
-  color: var(--color-font-disabled)
+  color: var(--color-font)
   text-decoration: none
   &:hover
-    color: var(--color-font)
     text-decoration: underline
+  &.untitled
+    color: var(--color-font-disabled)
 
 .description
   flex-grow: 1
   margin: 10px
   padding: 20px
   white-space: pre-wrap
+  outline: 1px solid var(--color-outline)
+  border-radius: 4px
+  &.empty
+    color: var(--color-font-disabled)
 </style>

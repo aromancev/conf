@@ -6,10 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
-	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
@@ -60,18 +62,25 @@ type Service struct {
 	Schema  string
 }
 
-type Confas struct {
-	Items    []Confa
-	Limit    int32
-	NextFrom string
-}
-
 type Confa struct {
 	ID          string
 	OwnerID     string
 	Handle      string
 	Title       string
 	Description string
+	CreatedAt   string
+}
+
+type Confas struct {
+	Items []Confa
+	Limit int32
+	Next  *ConfaCursor
+}
+
+type ConfaCursor struct {
+	ID        *string
+	CreatedAt *string
+	Asc       *bool
 }
 
 type ConfaLookup struct {
@@ -80,7 +89,7 @@ type ConfaLookup struct {
 	Handle  *string
 }
 
-type ConfaMask struct {
+type ConfaUpdate struct {
 	Handle      *string
 	Title       *string
 	Description *string
@@ -96,6 +105,7 @@ type Talk struct {
 	Title       string
 	Description string
 	State       string
+	CreatedAt   string
 }
 
 type TalkLookup struct {
@@ -107,12 +117,18 @@ type TalkLookup struct {
 }
 
 type Talks struct {
-	Items    []Talk
-	Limit    int32
-	NextFrom string
+	Items []Talk
+	Limit int32
+	Next  *TalkCursor
 }
 
-type TalkMask struct {
+type TalkCursor struct {
+	ID        *string
+	CreatedAt *string
+	Asc       *bool
+}
+
+type TalkUpdate struct {
 	Handle      *string
 	Title       *string
 	Description *string
@@ -130,9 +146,9 @@ type ClapLookup struct {
 }
 
 type Profiles struct {
-	Items    []Profile
-	Limit    int32
-	NextFrom string
+	Items []Profile
+	Limit int32
+	Next  *ProfileCursor
 }
 
 type Profile struct {
@@ -143,12 +159,16 @@ type Profile struct {
 	AvatarThumbnail *Image
 }
 
+type ProfileCursor struct {
+	ID *string
+}
+
 type Image struct {
 	Format string
 	Data   string
 }
 
-type ProfileMask struct {
+type ProfileUpdate struct {
 	Handle      *string
 	DisplayName *string
 }
@@ -165,19 +185,17 @@ type UploadToken struct {
 
 type Resolver struct {
 	publicKey      *auth.PublicKey
-	confas         *confa.CRUD
-	talks          *talk.UserService
-	claps          *clap.CRUD
+	confas         *confa.User
+	talks          *talk.User
 	profiles       *profile.Mongo
 	profileUpdater *profile.Updater
 }
 
-func NewResolver(pk *auth.PublicKey, confas *confa.CRUD, talks *talk.UserService, claps *clap.CRUD, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
+func NewResolver(pk *auth.PublicKey, confas *confa.User, talks *talk.User, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
 	return &Resolver{
 		publicKey:      pk,
 		confas:         confas,
 		talks:          talks,
-		claps:          claps,
 		profiles:       profiles,
 		profileUpdater: uploader,
 	}
@@ -192,18 +210,18 @@ func (r *Resolver) Service(_ context.Context) Service {
 }
 
 func (r *Resolver) Confas(ctx context.Context, args struct {
-	Where ConfaLookup
-	Limit int32
-	From  *string
+	Where  ConfaLookup
+	Limit  int32
+	Cursor *ConfaCursor
 }) (Confas, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return Confas{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	lookup, err := newConfaLookup(args.Where, args.Limit, args.From)
+	lookup, err := newConfaLookup(args.Where, args.Limit, args.Cursor)
 	if err != nil {
-		return Confas{Limit: args.Limit}, nil
+		return Confas{Limit: args.Limit}, NewResolverError(CodeBadRequest, "Fiter params are not valid.")
 	}
 
 	confas, err := r.confas.Fetch(ctx, lookup)
@@ -220,26 +238,30 @@ func (r *Resolver) Confas(ctx context.Context, args struct {
 		Items: make([]Confa, len(confas)),
 		Limit: int32(lookup.Limit),
 	}
-	if len(confas) > 0 {
-		res.NextFrom = confas[len(confas)-1].ID.String()
-	}
 	for i, c := range confas {
 		res.Items[i] = newConfa(c)
+	}
+	if len(res.Items) == int(lookup.Limit) {
+		last := res.Items[len(res.Items)-1]
+		res.Next = &ConfaCursor{
+			ID:        &last.ID,
+			CreatedAt: &last.CreatedAt,
+		}
 	}
 	return res, nil
 }
 
 func (r *Resolver) Talks(ctx context.Context, args struct {
-	Where TalkLookup
-	Limit int32
-	From  *string
+	Where  TalkLookup
+	Limit  int32
+	Cursor *TalkCursor
 }) (Talks, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
 		return Talks{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	lookup, err := newTalkLookup(args.Where, args.Limit, args.From)
+	lookup, err := newTalkLookup(args.Where, args.Limit, args.Cursor)
 	if err != nil {
 		return Talks{Limit: args.Limit}, nil
 	}
@@ -257,57 +279,21 @@ func (r *Resolver) Talks(ctx context.Context, args struct {
 		Items: make([]Talk, len(talks)),
 		Limit: int32(lookup.Limit),
 	}
-	if len(talks) > 0 {
-		res.NextFrom = talks[len(talks)-1].ID.String()
-	}
 	for i, t := range talks {
 		res.Items[i] = newTalk(t)
+	}
+	if len(res.Items) == int(lookup.Limit) {
+		last := res.Items[len(res.Items)-1]
+		res.Next = &TalkCursor{
+			ID:        &last.ID,
+			CreatedAt: &last.CreatedAt,
+		}
 	}
 	return res, nil
 }
 
-func (r *Resolver) AggregateClaps(ctx context.Context, args struct {
-	Where ClapLookup
-}) (Claps, error) {
-	var claims auth.APIClaims
-	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Claps{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
-	}
-
-	var lookup clap.Lookup
-	var err error
-	if args.Where.ConfaID != nil {
-		lookup.Confa, err = uuid.Parse(*args.Where.ConfaID)
-		if err != nil {
-			return Claps{}, nil
-		}
-	}
-	if args.Where.SpeakerID != nil {
-		lookup.Speaker, err = uuid.Parse(*args.Where.SpeakerID)
-		if err != nil {
-			return Claps{}, nil
-		}
-	}
-	if args.Where.TalkID != nil {
-		lookup.Talk, err = uuid.Parse(*args.Where.TalkID)
-		if err != nil {
-			return Claps{}, nil
-		}
-	}
-	res, err := r.claps.Aggregate(ctx, lookup, claims.UserID)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to aggregate claps.")
-		return Claps{}, NewInternalError()
-	}
-	claps := Claps{
-		Value:     int32(res.Value),
-		UserValue: int32(res.UserValue),
-	}
-	return claps, nil
-}
-
 func (r *Resolver) CreateConfa(ctx context.Context, args struct {
-	Request ConfaMask
+	Request ConfaUpdate
 }) (Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -343,7 +329,7 @@ func (r *Resolver) CreateConfa(ctx context.Context, args struct {
 
 func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 	Where   ConfaLookup
-	Request ConfaMask
+	Request ConfaUpdate
 }) (Confa, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -355,15 +341,14 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 
 	lookup, err := newConfaLookup(args.Where, 0, nil)
 	if err != nil {
-		return Confa{}, nil
+		return Confa{}, NewResolverError(CodeBadRequest, "Fiter params are not valid.")
 	}
 
-	mask := confa.Mask{
+	updated, err := r.confas.Update(ctx, claims.UserID, lookup, confa.Update{
 		Handle:      args.Request.Handle,
 		Title:       args.Request.Title,
 		Description: args.Request.Description,
-	}
-	updated, err := r.confas.Update(ctx, claims.UserID, lookup, mask)
+	})
 	switch {
 	case errors.Is(err, confa.ErrValidation):
 		return Confa{}, NewResolverError(CodeBadRequest, err.Error())
@@ -380,7 +365,7 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 
 func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 	Where   ConfaLookup
-	Request TalkMask
+	Request TalkUpdate
 }) (Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -402,7 +387,7 @@ func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 	}
 	confaLookup, err := newConfaLookup(args.Where, 1, nil)
 	if err != nil {
-		return Talk{}, NewResolverError(CodeNotFound, "Confa not found.")
+		return Talk{}, NewResolverError(CodeBadRequest, "Fiter params are not valid.")
 	}
 
 	created, err := r.talks.Create(ctx, claims.UserID, confaLookup, req)
@@ -425,7 +410,7 @@ func (r *Resolver) CreateTalk(ctx context.Context, args struct {
 
 func (r *Resolver) UpdateTalk(ctx context.Context, args struct {
 	Where   TalkLookup
-	Request TalkMask
+	Request TalkUpdate
 }) (Talk, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -439,12 +424,11 @@ func (r *Resolver) UpdateTalk(ctx context.Context, args struct {
 	if err != nil {
 		return Talk{}, nil
 	}
-	mask := talk.Mask{
+	updated, err := r.talks.Update(ctx, claims.UserID, lookup, talk.Update{
 		Handle:      args.Request.Handle,
 		Title:       args.Request.Title,
 		Description: args.Request.Description,
-	}
-	updated, err := r.talks.Update(ctx, claims.UserID, lookup, mask)
+	})
 	switch {
 	case errors.Is(err, confa.ErrValidation):
 		return Talk{}, NewResolverError(CodeBadRequest, err.Error())
@@ -523,36 +507,8 @@ func (r *Resolver) StopTalkRecording(ctx context.Context, args struct {
 	return newTalk(started), nil
 }
 
-func (r *Resolver) UpdateClap(ctx context.Context, args struct {
-	TalkID string
-	Value  int32
-}) (string, error) {
-	var claims auth.APIClaims
-	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return "", NewResolverError(CodeUnauthorized, "Invalid access token.")
-	}
-	if !claims.AllowedWrite() {
-		return "", NewResolverError(CodeUnauthorized, "Writes not allowed for guest.")
-	}
-
-	tID, err := uuid.Parse(args.TalkID)
-	if err != nil {
-		return "", NewResolverError(CodeNotFound, "Talk not found.")
-	}
-	id, err := r.claps.CreateOrUpdate(ctx, claims.UserID, tID, uint(args.Value))
-	switch {
-	case errors.Is(err, clap.ErrValidation):
-		return "", NewResolverError(CodeBadRequest, err.Error())
-	case err != nil:
-		log.Ctx(ctx).Err(err).Msg("Failed to update clap.")
-		return "", NewInternalError()
-	}
-
-	return id.String(), nil
-}
-
 func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
-	Request ProfileMask
+	Request ProfileUpdate
 }) (Profile, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -586,9 +542,9 @@ func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
 }
 
 func (r *Resolver) Profiles(ctx context.Context, args struct {
-	Where ProfileLookup
-	Limit int32
-	From  *string
+	Where  ProfileLookup
+	Limit  int32
+	Cursor *ProfileCursor
 }) (Profiles, error) {
 	var claims auth.APIClaims
 	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
@@ -609,6 +565,12 @@ func (r *Resolver) Profiles(ctx context.Context, args struct {
 	if args.Where.Handle != nil {
 		lookup.Handle = *args.Where.Handle
 	}
+	if args.Cursor != nil && args.Cursor.ID != nil {
+		id, err := uuid.Parse(*args.Cursor.ID)
+		if err == nil {
+			lookup.From.ID = id
+		}
+	}
 
 	fetched, err := r.profiles.Fetch(ctx, lookup)
 	if err != nil {
@@ -619,11 +581,14 @@ func (r *Resolver) Profiles(ctx context.Context, args struct {
 		Items: make([]Profile, len(fetched)),
 		Limit: int32(lookup.Limit),
 	}
-	if len(fetched) > 0 {
-		res.NextFrom = fetched[len(fetched)-1].ID.String()
-	}
 	for i, p := range fetched {
 		res.Items[i] = newProfile(p)
+	}
+	if len(res.Items) > 0 {
+		last := res.Items[len(res.Items)-1]
+		res.Next = &ProfileCursor{
+			ID: &last.ID,
+		}
 	}
 	return res, nil
 }
@@ -651,7 +616,7 @@ func (r *Resolver) RequestAvatarUpload(ctx context.Context) (UploadToken, error)
 	}, nil
 }
 
-func newConfaLookup(input ConfaLookup, limit int32, from *string) (confa.Lookup, error) {
+func newConfaLookup(input ConfaLookup, limit int32, cursor *ConfaCursor) (confa.Lookup, error) {
 	if limit <= 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -660,10 +625,22 @@ func newConfaLookup(input ConfaLookup, limit int32, from *string) (confa.Lookup,
 		Limit: int64(limit),
 	}
 	var err error
-	if from != nil {
-		lookup.From, err = uuid.Parse(*from)
-		if err != nil {
-			return confa.Lookup{}, err
+	if cursor != nil {
+		if cursor.CreatedAt != nil {
+			createdAt, err := strconv.ParseInt(*cursor.CreatedAt, 10, 64)
+			if err != nil {
+				return confa.Lookup{}, NewResolverError(CodeBadRequest, "Invalid cursor.createdAt")
+			}
+			lookup.From.CreatedAt = time.UnixMilli(createdAt)
+		}
+		if cursor.ID != nil {
+			id, err := uuid.Parse(*cursor.ID)
+			if err == nil {
+				lookup.From.ID = id
+			}
+		}
+		if cursor.Asc != nil && *cursor.Asc {
+			lookup.Asc = true
 		}
 	}
 	if input.ID != nil {
@@ -691,10 +668,11 @@ func newConfa(c confa.Confa) Confa {
 		Handle:      c.Handle,
 		Title:       c.Title,
 		Description: c.Description,
+		CreatedAt:   fmt.Sprint(c.CreatedAt.UnixMilli()),
 	}
 }
 
-func newTalkLookup(input TalkLookup, limit int32, from *string) (talk.Lookup, error) {
+func newTalkLookup(input TalkLookup, limit int32, cursor *TalkCursor) (talk.Lookup, error) {
 	if limit < 0 || limit > batchLimit {
 		limit = batchLimit
 	}
@@ -702,10 +680,22 @@ func newTalkLookup(input TalkLookup, limit int32, from *string) (talk.Lookup, er
 		Limit: int64(limit),
 	}
 	var err error
-	if from != nil {
-		lookup.From, err = uuid.Parse(*from)
-		if err != nil {
-			return talk.Lookup{}, err
+	if cursor != nil {
+		if cursor.CreatedAt != nil {
+			createdAt, err := strconv.ParseInt(*cursor.CreatedAt, 10, 64)
+			if err != nil {
+				return talk.Lookup{}, NewResolverError(CodeBadRequest, "Invalid cursor.createdAt")
+			}
+			lookup.From.CreatedAt = time.UnixMilli(createdAt)
+		}
+		if cursor.ID != nil {
+			id, err := uuid.Parse(*cursor.ID)
+			if err == nil {
+				lookup.From.ID = id
+			}
+		}
+		if cursor.Asc != nil && *cursor.Asc {
+			lookup.Asc = true
 		}
 	}
 	if input.ID != nil {
@@ -749,6 +739,7 @@ func newTalk(t talk.Talk) Talk {
 		Title:       t.Title,
 		Description: t.Description,
 		State:       string(t.State),
+		CreatedAt:   fmt.Sprint(t.CreatedAt.UnixMilli()),
 	}
 }
 

@@ -56,7 +56,7 @@ func (m *Mongo) Create(ctx context.Context, requests ...Confa) ([]Confa, error) 
 	return requests, nil
 }
 
-func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (UpdateResult, error) {
+func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Update) (UpdateResult, error) {
 	if lookup.Limit > batchLimit || lookup.Limit == 0 {
 		lookup.Limit = batchLimit
 	}
@@ -77,7 +77,10 @@ func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Mask) (Update
 	return UpdateResult{Updated: res.ModifiedCount}, nil
 }
 
-func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Mask) (Confa, error) {
+func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Update) (Confa, error) {
+	if err := request.Validate(); err != nil {
+		return Confa{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
 	update := bson.M{
 		"$set": request,
 	}
@@ -107,11 +110,19 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Confa, error) {
 		lookup.Limit = batchLimit
 	}
 
+	order := -1
+	if lookup.Asc {
+		order = 1
+	}
+
 	cur, err := m.db.Collection(collection).Find(
 		ctx,
 		mongoFilter(lookup),
 		&options.FindOptions{
-			Sort:  bson.M{"_id": 1},
+			Sort: bson.D{
+				{Key: "createdAt", Value: order},
+				{Key: "_id", Value: order},
+			},
 			Limit: &lookup.Limit,
 		},
 	)
@@ -154,19 +165,41 @@ func mongoNow() time.Time {
 
 func mongoFilter(l Lookup) bson.M {
 	filter := make(bson.M)
+	orderComp := "$lt"
+	if l.Asc {
+		orderComp = "$gt"
+	}
+
 	switch {
 	case l.ID != uuid.Nil:
 		filter["_id"] = l.ID
-	case l.From != uuid.Nil:
+	case l.Handle != "":
+		filter["handle"] = l.Handle
+	case !l.From.CreatedAt.IsZero() && l.From.ID != uuid.Nil:
+		filter["$or"] = bson.A{
+			bson.M{
+				"createdAt": bson.M{
+					orderComp: l.From.CreatedAt,
+				},
+			},
+			bson.M{
+				"createdAt": l.From.CreatedAt,
+				"_id": bson.M{
+					orderComp: l.From.ID,
+				},
+			},
+		}
+	case !l.From.CreatedAt.IsZero():
+		filter["createdAt"] = bson.M{
+			orderComp: l.From.CreatedAt,
+		}
+	case l.From.ID != uuid.Nil:
 		filter["_id"] = bson.M{
-			"$gt": l.From,
+			orderComp: l.From.ID,
 		}
 	}
 	if l.Owner != uuid.Nil {
 		filter["ownerId"] = l.Owner
-	}
-	if l.Handle != "" {
-		filter["handle"] = l.Handle
 	}
 	return filter
 }

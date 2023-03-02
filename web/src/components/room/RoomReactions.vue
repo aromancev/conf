@@ -9,9 +9,6 @@
     >
       <div class="clap-animation" :class="{ active: state.isClapping }"></div>
       <div v-if="state.isClapWaveDisplayed" class="clap-wave"></div>
-      <transition name="bubble">
-        <div v-if="state.isClapTooltipDisplayed" class="clap-tooltip">hold to clap</div>
-      </transition>
     </HoldableButton>
   </div>
 </template>
@@ -21,6 +18,7 @@ import { onUnmounted, reactive } from "vue"
 import { Reaction } from "@/api/room/schema"
 import { sleep, repeat } from "@/platform/sync"
 import { Sound } from "./actor"
+import { notificationStore } from "@/api/models/notifications"
 import HoldableButton from "@/components/HoldableButton.vue"
 import reactionsSoundURL from "/static/room/reactions.webm"
 
@@ -31,7 +29,6 @@ const emit = defineEmits<{
 interface State {
   isClapping: boolean
   isClapWaveDisplayed: boolean
-  isClapTooltipDisplayed: boolean
 }
 
 const CLAP_SOUND_DELAY_MS = 250
@@ -40,7 +37,6 @@ const CLAP_SINGLE_DURATION_MS = 1000
 const state = reactive<State>({
   isClapping: false,
   isClapWaveDisplayed: false,
-  isClapTooltipDisplayed: false,
 })
 const sounds = new Sound(reactionsSoundURL, {
   clap: [
@@ -52,6 +48,7 @@ const sounds = new Sound(reactionsSoundURL, {
   ],
 })
 let clapCtrl = new AbortController()
+let tooltipShown = 0
 
 async function clapStart() {
   clapCtrl.abort()
@@ -100,9 +97,10 @@ async function clapSingle() {
   } catch (e) {
     state.isClapping = false
   }
-  state.isClapTooltipDisplayed = true
-  setTimeout(() => (state.isClapTooltipDisplayed = false), 2000)
-
+  if (tooltipShown < 3) {
+    notificationStore.info("hold to clap continuously")
+    tooltipShown += 1
+  }
   emit("reaction", {
     clap: {
       isStarting: false,
@@ -141,9 +139,9 @@ onUnmounted(() => sounds.close())
 
 .clap-btn
   position: relative
-  margin: 10px
-  width: 66px
-  height: 66px
+  margin: 5px
+  width: 55px
+  height: 55px
   display: flex
   align-items: center
   justify-content: center
@@ -160,7 +158,7 @@ onUnmounted(() => sounds.close())
   height: 256px
   background: url(/static/room/reactions.webp) 0 0 no-repeat
   animation: none
-  transform: scale(0.15) translate(-5%, -10%)
+  transform: scale(0.13) translate(-5%, -10%)
   &.active
     animation: sprite steps(12) 300ms infinite both
 
@@ -180,25 +178,4 @@ onUnmounted(() => sounds.close())
   height: 100%
   border-radius: 50%
   border: 1px solid white
-
-.clap-tooltip
-  font-size: 12px
-  width: 100px
-  text-align: center
-  cursor: default
-  position: absolute
-  left: 50%
-  bottom: 75px
-  transform: translateX(-50%)
-
-.bubble-enter-active,
-.bubble-leave-active
-  transition: opacity .2s, bottom .2s
-
-.bubble-enter-from,
-.bubble-leave-to
-  opacity: 0
-
-.bubble-enter-from
-  bottom: 10px
 </style>

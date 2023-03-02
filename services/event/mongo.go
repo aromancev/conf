@@ -104,7 +104,10 @@ func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]Event, error) {
 		ctx,
 		mongoFilter(lookup),
 		&options.FindOptions{
-			Sort:  bson.D{{Key: "createdAt", Value: order}, {Key: "_id", Value: order}},
+			Sort: bson.D{
+				{Key: "createdAt", Value: order},
+				{Key: "_id", Value: order},
+			},
 			Limit: &lookup.Limit,
 		},
 	)
@@ -169,6 +172,10 @@ func mongoNow() time.Time {
 
 func mongoFilter(l Lookup) bson.M {
 	filter := make(bson.M)
+	orderComp := "$lt"
+	if l.Asc {
+		orderComp = "$gt"
+	}
 	switch {
 	case l.ID != uuid.Nil:
 		filter["_id"] = l.ID
@@ -176,19 +183,23 @@ func mongoFilter(l Lookup) bson.M {
 		filter["$or"] = bson.A{
 			bson.M{
 				"createdAt": bson.M{
-					"$gt": l.From.CreatedAt,
+					orderComp: l.From.CreatedAt,
 				},
 			},
 			bson.M{
 				"createdAt": l.From.CreatedAt,
 				"_id": bson.M{
-					"$gt": l.From.ID,
+					orderComp: l.From.ID,
 				},
 			},
 		}
 	case !l.From.CreatedAt.IsZero():
 		filter["createdAt"] = bson.M{
-			"$gt": l.From.CreatedAt,
+			orderComp: l.From.CreatedAt,
+		}
+	case l.From.ID != uuid.Nil:
+		filter["_id"] = bson.M{
+			orderComp: l.From.ID,
 		}
 	}
 	if l.Room != uuid.Nil {

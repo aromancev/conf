@@ -1,4 +1,5 @@
 import { Store } from "@/platform/store"
+import { RegexValidator } from "@/platform/validator"
 
 interface ProfileMask {
   id?: string
@@ -17,16 +18,6 @@ export interface Profile extends Object {
 }
 
 export class ProfileStore extends Store<Profile> {
-  protected data(): Profile {
-    return {
-      id: "",
-      ownerId: "",
-      handle: "",
-      displayName: "",
-      avatarThumbnail: "",
-    }
-  }
-
   update(mask: ProfileMask): void {
     if (mask.id !== undefined) this._state.id = mask.id
     if (mask.ownerId !== undefined) this._state.ownerId = mask.ownerId
@@ -35,3 +26,19 @@ export class ProfileStore extends Store<Profile> {
     if (mask.avatarThumbnail !== undefined) this._state.avatarThumbnail = mask.avatarThumbnail
   }
 }
+
+export const profileStore = new ProfileStore({
+  id: "",
+  ownerId: "",
+  handle: "",
+  displayName: "",
+  avatarThumbnail: "",
+})
+export const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
+  "Must be from 4 to 64 characters long",
+  "Can only contain lower case letters, numbers, and '-'",
+])
+export const displayNameValidator = new RegexValidator("^[a-zA-Z ]{0,64}$", [
+  "Must be from 0 to 64 characters long",
+  "Can only contain letters and spaces",
+])

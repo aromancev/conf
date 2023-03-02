@@ -1,6 +1,14 @@
 [
   {
     "dropIndexes": "talks",
-    "index": "unique_handle"
+    "index": "uniqueHandle"
+  },
+  {
+    "dropIndexes": "talks",
+    "index": "uniqueRoomId"
+  },
+  {
+    "dropIndexes": "talks",
+    "index": "confaIdCreatedAt"
   }
 ]

@@ -1,5 +1,6 @@
 import { reactive, readonly } from "vue"
-import { eventClient, Recording } from "@/api"
+import { eventClient } from "@/api"
+import { Recording } from "@/api/models/recording"
 import { EventIterator } from "@/api/event"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
@@ -272,15 +273,15 @@ export class ReplayRoom {
           roomId: this.roomId,
         },
         {
-          from: {
+          cursor: {
             createdAt: eventsFrom.toString(),
-            id: "",
+            Asc: true,
           },
         },
       )
     }
 
-    const fetched = await this.eventIter.next({ count: EVENT_BATCH })
+    const fetched = await this.eventIter.next(EVENT_BATCH)
     if (!fetched.length) {
       // Didn't fetch anything or the fetch was aborted (iterator reset).
       return

@@ -157,9 +157,9 @@ func mongoFilter(l Lookup) bson.M {
 	switch {
 	case l.ID != uuid.Nil:
 		filter["_id"] = l.ID
-	case l.From != uuid.Nil:
+	case l.From.ID != uuid.Nil:
 		filter["_id"] = bson.M{
-			"$gt": l.From,
+			"$gt": l.From.ID,
 		}
 	}
 	if len(l.Owners) != 0 {

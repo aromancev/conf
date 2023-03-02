@@ -1,26 +1,15 @@
 <template>
   <div class="layout">
-    <div class="description">{{ talk.description }}</div>
+    <div class="description" :class="{ empty: !talk.description }">{{ talk.description || "No description" }}</div>
   </div>
-
-  <InternalError :is-visible="modal === Modal.Error" @click="modal = Modal.None" />
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
-import { Talk } from "@/api/models"
-import InternalError from "@/components/modals/InternalError.vue"
-
-enum Modal {
-  None = "",
-  Error = "error",
-}
+import { Talk } from "@/api/models/talk"
 
 defineProps<{
   talk: Talk
 }>()
-
-const modal = ref(Modal.None)
 </script>
 
 <style scoped lang="sass">
@@ -39,4 +28,8 @@ const modal = ref(Modal.None)
   margin: 10px
   padding: 20px
   white-space: pre-wrap
+  outline: 1px solid var(--color-outline)
+  border-radius: 4px
+  &.empty
+    color: var(--color-font-disabled)
 </style>

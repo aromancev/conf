@@ -1,22 +1,19 @@
 import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy } from "./api"
-import { EventLookup, EventLimit, EventOrder, events, eventsVariables, EventFromInput } from "./schema"
+import { EventLookup, events, eventsVariables, EventCursorInput } from "./schema"
 import { RoomEvent } from "./room/schema"
 
 interface OptionalFetchParams {
   policy?: FetchPolicy
-  order?: EventOrder
-  from?: EventFromInput
+  cursor?: EventCursorInput
 }
 
 interface FetchParams {
   policy: FetchPolicy
-  order: EventOrder
 }
 
 const defaultParams: FetchParams = {
   policy: "cache-first",
-  order: EventOrder.ASC,
 }
 
 export class EventClient {
@@ -46,7 +43,7 @@ export class EventClient {
 export class EventIterator {
   private api: Client
   private lookup: EventLookup
-  private from?: EventFromInput
+  private cursor?: EventCursorInput
   private params: FetchParams
   private pages: number
 
@@ -57,7 +54,7 @@ export class EventIterator {
       ...defaultParams,
       ...params,
     }
-    this.from = params?.from
+    this.cursor = params?.cursor
     this.pages = 0
   }
 
@@ -65,20 +62,20 @@ export class EventIterator {
     return this.pages
   }
 
-  async next(limit?: EventLimit): Promise<RoomEvent[]> {
+  async next(limit?: number): Promise<RoomEvent[]> {
     this.pages++
 
     const resp = await this.api.query<events, eventsVariables>({
       query: gql`
-        query events($where: EventLookup!, $from: EventFromInput, $limit: EventLimit!, $order: EventOrder) {
-          events(where: $where, limit: $limit, from: $from, order: $order) {
+        query events($where: EventLookup!, $limit: Int!, $cursor: EventCursorInput) {
+          events(where: $where, limit: $limit, cursor: $cursor) {
             items {
               id
               roomId
               createdAt
               payload
             }
-            nextFrom {
+            next {
               id
               createdAt
             }
@@ -87,20 +84,19 @@ export class EventIterator {
       `,
       variables: {
         where: this.lookup,
-        from: this.from,
-        limit: limit || { count: 100, seconds: 0 },
-        order: this.params.order,
+        cursor: this.cursor,
+        limit: limit || 100,
       },
       fetchPolicy: this.params.policy,
     })
 
-    this.from = resp.data.events.nextFrom || undefined
+    this.cursor = resp.data.events.next || undefined
     const events: RoomEvent[] = []
     for (const item of resp.data.events.items) {
       events.push({
         id: item.id,
         roomId: item.roomId,
-        createdAt: item.createdAt,
+        createdAt: Number(item.createdAt),
         payload: JSON.parse(item.payload),
       })
     }

@@ -14,7 +14,6 @@ import (
 	"github.com/aromancev/confa/cmd/confa/web"
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
-	"github.com/aromancev/confa/confa/talk/clap"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/aromancev/confa/internal/routes"
@@ -120,15 +119,13 @@ func main() {
 	rtcClient := rtc.NewRTCProtobufClient("http://"+config.RTCRPCAddress, &http.Client{})
 
 	confaMongo := confa.NewMongo(mongoDB)
-	confaCRUD := confa.NewCRUD(confaMongo)
+	confaCRUD := confa.NewUser(confaMongo)
 	talkMongo := talk.NewMongo(mongoDB)
 	talkBeanstalk := talk.NewBeanstalk(producer, talk.Tubes{
 		StartRecording: config.Beanstalk.TubeStartRecording,
 		StopRecording:  config.Beanstalk.TubeStopRecording,
 	})
-	talkUserService := talk.NewUserService(talkMongo, confaMongo, talkBeanstalk, rtcClient)
-	clapMongo := clap.NewMongo(mongoDB)
-	clapCRUD := clap.NewCRUD(clapMongo, talkMongo)
+	talkUserService := talk.NewUser(talkMongo, confaMongo, talkBeanstalk, rtcClient)
 	profileEmitter := profile.NewBeanstalkEmitter(producer, profile.BeanstalkTubes{
 		UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
 	})
@@ -172,7 +169,6 @@ func main() {
 				publicKey,
 				confaCRUD,
 				talkUserService,
-				clapCRUD,
 				profileMongo,
 				avatarUploader,
 			),

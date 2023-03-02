@@ -6,15 +6,23 @@
         "key": {
           "handle": 1
         },
-        "name": "unique_handle",
+        "name": "uniqueHandle",
         "unique": true
       },
       {
         "key": {
           "roomId": 1
         },
-        "name": "unique_room",
+        "name": "uniqueRoomId",
         "unique": true
+      },
+      {
+        "key": {
+          "confaId": 1,
+          "createdAt": 1
+        },
+        "name": "confaIdCreatedAt",
+        "unique": false
       }
     ]
   }

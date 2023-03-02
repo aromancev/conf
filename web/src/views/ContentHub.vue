@@ -1,44 +1,50 @@
 <template>
   <div class="content">
-    <div class="title">Created Conferences</div>
-    <div ref="list" class="confas-list" @scroll="onScroll">
-      <div v-if="state.isLoading" class="confas-loader">
-        <PageLoader />
+    <div class="confas">
+      <div class="confas-header">
+        <div class="title">My conferences</div>
+        <router-link class="btn create-confa" :to="route.confa(handleNew, 'overview')">
+          <span class="material-icons">add</span> New
+        </router-link>
       </div>
-      <div v-if="!state.isLoading" class="confas-items">
-        <div v-for="confa in state.confas" :key="confa.id" class="confas-item">
-          /
-          <router-link class="confas-link" :to="route.confa(confa.handle, 'overview')">{{ confa.handle }}</router-link>
-          <span v-if="confa.title" class="confas-title">{{ confa.title }}</span>
+      <div ref="list" class="confas-list" @scroll="onScroll">
+        <div v-if="state.isLoading" class="confas-loader">
+          <PageLoader />
+        </div>
+        <div v-if="!state.isLoading" class="confas-items">
+          <div v-for="confa in state.confas" :key="confa.id" class="confas-item">
+            <router-link
+              class="confas-link"
+              :class="{ untitled: confa.title ? false : true }"
+              :to="route.confa(confa.handle, 'overview')"
+              >{{ confa.title || "Untitled" }}</router-link
+            >
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <InternalError :is-visible="state.modal === 'error'" @click="state.modal = 'none'" />
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted, ref } from "vue"
-import { currentUser, Confa } from "@/api/models"
+import { Confa } from "@/api/models/confa"
+import { userStore } from "@/api/models/user"
 import { confaClient } from "@/api"
 import { ConfaIterator } from "@/api/confa"
-import { route } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
+import { handleNew, route } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
-
-type Modal = "none" | "error"
+import { notificationStore } from "@/api/models/notifications"
 
 interface State {
   isLoading: boolean
   isFetchedAll: boolean
-  modal: Modal
   confas: Confa[]
 }
 
 const state = reactive<State>({
   isLoading: true,
   isFetchedAll: false,
-  modal: "none",
   confas: [],
 })
 const list = ref<HTMLElement>()
@@ -67,7 +73,7 @@ async function loadConfas() {
 
   try {
     if (!iterator) {
-      iterator = confaClient.fetch({ ownerId: currentUser.id })
+      iterator = confaClient.fetch({ ownerId: userStore.state.id })
     }
     const fetched = await iterator.next()
     if (!fetched.length) {
@@ -76,7 +82,7 @@ async function loadConfas() {
       state.confas = state.confas.concat(fetched)
     }
   } catch (e) {
-    state.modal = "error"
+    notificationStore.error("failed to load conferences")
   } finally {
     state.isLoading = false
   }
@@ -89,22 +95,40 @@ async function loadConfas() {
 .content
   width: theme.$content-width
   max-width: 100%
-  text-align: left
   max-height: 100%
+  padding: 50px
+  height: 100%
+
+.confas
+  width: 400px
+  height: 100%
   display: flex
   flex-direction: column
-  padding: 50px
+
+.confas-header
+  width: 100%
+  display: flex
+  flex-direction: row
+  justify-content: flex-start
+  align-items: flex-end
+  margin: 20px 0
 
 .title
-  font-size: 40px
-  margin-bottom: 30px
+  font-size: 20px
+
+.create-confa
+  display: flex
+  flex-direction: row
+  align-items: center
+  margin-left: auto
+  font-size: 14px
+  padding: 3px 10px
 
 .confas-list
   @include theme.shadow-inset-xs
 
   min-height: 300px
-  width: 400px
-  max-width: 100%
+  width: 100%
   overflow-y: scroll
 
 .confas-loader
@@ -131,13 +155,14 @@ async function loadConfas() {
   white-space: nowrap
 
 .confas-link
-  color: var(--color-font-disabled)
+  color: var(--color-font)
   text-decoration: none
-  width: 100px
   display: inline-block
   &:hover
     color: var(--color-font)
     text-decoration: underline
+  &.untitled
+    color: var(--color-font-disabled)
 
 .confas-title
   margin-left: 30px

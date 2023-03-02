@@ -1,6 +1,10 @@
 [
   {
     "dropIndexes": "confas",
-    "index": "unique_handle"
+    "index": "uniqueHandle"
+  },
+  {
+    "dropIndexes": "confas",
+    "index": "ownerIdCreatedAt"
   }
 ]

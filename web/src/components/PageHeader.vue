@@ -12,13 +12,13 @@
       NOT A COMMERCIAL PRODUCT
     </router-link>
     <div class="end">
-      <img v-if="currentUser.allowedWrite" class="avatar" :src="profile.avatar" @click="switchModal('profile')" />
-      <router-link v-if="!currentUser.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
+      <img v-if="userStore.state.allowedWrite" class="avatar" :src="profile.avatar" @click="switchModal('profile')" />
+      <router-link v-if="!userStore.state.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
     </div>
 
     <div v-if="modal === 'sidebar'" class="sidebar">
       <router-link
-        v-if="currentUser.allowedWrite"
+        v-if="userStore.state.allowedWrite"
         class="control-item"
         :to="route.contentHub()"
         @click="switchModal('none')"
@@ -26,7 +26,7 @@
         <span class="icon material-icons">hub</span>
         Content hub
       </router-link>
-      <router-link v-if="currentUser.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
+      <router-link v-if="userStore.state.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
         <span class="icon material-icons">add</span>
         Create conference
       </router-link>
@@ -39,7 +39,7 @@
     </div>
 
     <div
-      v-if="currentUser.allowedWrite"
+      v-if="userStore.state.allowedWrite"
       class="control"
       :class="{ opened: modal === 'profile' }"
       @click="modal = 'none'"
@@ -59,7 +59,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from "vue"
-import { currentUser, currentProfile, client } from "@/api"
+import { client } from "@/api"
+import { userStore } from "@/api/models/user"
+import { profileStore } from "@/api/models/profile"
 import { genAvatar, genName } from "@/platform/gen"
 import { route, handleNew } from "@/router"
 import { Theme } from "@/platform/theme"
@@ -88,11 +90,11 @@ const profile = reactive<Profile>({
 })
 
 watch(
-  currentProfile,
+  profileStore.state,
   async () => {
-    profile.handle = currentProfile.handle || handleNew
-    profile.displayName = currentProfile.displayName || genName(currentUser.id)
-    profile.avatar = currentProfile.avatarThumbnail || (await genAvatar(currentUser.id, 128))
+    profile.handle = profileStore.state.handle || handleNew
+    profile.displayName = profileStore.state.displayName || genName(userStore.state.id)
+    profile.avatar = profileStore.state.avatarThumbnail || (await genAvatar(userStore.state.id, 128))
   },
   { immediate: true },
 )
@@ -176,6 +178,7 @@ $height: 100%
   align-items: center
   padding: 5px
   border: 2px solid #fb8c00
+  border-radius: 4px
 
 .disclaimer-icon
   margin-right: 5px

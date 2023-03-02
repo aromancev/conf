@@ -16,10 +16,16 @@ export interface confas_confas_items {
   description: string;
 }
 
+export interface confas_confas_next {
+  __typename: "ConfaCursor";
+  id: string | null;
+  createdAt: string | null;
+}
+
 export interface confas_confas {
   __typename: "Confas";
   items: confas_confas_items[];
-  nextFrom: string;
+  next: confas_confas_next | null;
 }
 
 export interface confas {
@@ -29,7 +35,7 @@ export interface confas {
 export interface confasVariables {
   where: ConfaLookup;
   limit: number;
-  from?: string | null;
+  cursor?: ConfaCursorInput | null;
 }
 
 /* tslint:disable */
@@ -55,7 +61,7 @@ export interface createConfa {
 }
 
 export interface createConfaVariables {
-  request: ConfaMask;
+  request: ConfaUpdate;
 }
 
 /* tslint:disable */
@@ -82,7 +88,7 @@ export interface updateConfa {
 
 export interface updateConfaVariables {
   where: ConfaLookup;
-  request: ConfaMask;
+  request: ConfaUpdate;
 }
 
 /* tslint:disable */
@@ -98,20 +104,20 @@ export interface events_events_items {
   __typename: "Event";
   id: string;
   roomId: string;
-  createdAt: number;
+  createdAt: string;
   payload: string;
 }
 
-export interface events_events_nextFrom {
-  __typename: "EventFrom";
-  id: string;
-  createdAt: string;
+export interface events_events_next {
+  __typename: "EventCursor";
+  id: string | null;
+  createdAt: string | null;
 }
 
 export interface events_events {
   __typename: "Events";
   items: events_events_items[];
-  nextFrom: events_events_nextFrom | null;
+  next: events_events_next | null;
 }
 
 export interface events {
@@ -120,9 +126,8 @@ export interface events {
 
 export interface eventsVariables {
   where: EventLookup;
-  from?: EventFromInput | null;
-  limit: EventLimit;
-  order?: EventOrder | null;
+  limit: number;
+  cursor?: EventCursorInput | null;
 }
 
 /* tslint:disable */
@@ -149,10 +154,15 @@ export interface profiles_profiles_items {
   avatarThumbnail: profiles_profiles_items_avatarThumbnail | null;
 }
 
+export interface profiles_profiles_next {
+  __typename: "ProfileCursor";
+  id: string | null;
+}
+
 export interface profiles_profiles {
   __typename: "Profiles";
   items: profiles_profiles_items[];
-  nextFrom: string;
+  next: profiles_profiles_next | null;
 }
 
 export interface profiles {
@@ -162,7 +172,7 @@ export interface profiles {
 export interface profilesVariables {
   where: ProfileLookup;
   limit: number;
-  from?: string | null;
+  cursor?: ProfileCursorInput | null;
 }
 
 /* tslint:disable */
@@ -187,7 +197,7 @@ export interface updateProfile {
 }
 
 export interface updateProfileVariables {
-  request: ProfileMask;
+  request: ProfileUpdate;
 }
 
 /* tslint:disable */
@@ -270,10 +280,16 @@ export interface talksHydrated_talks_items {
   state: TalkState;
 }
 
+export interface talksHydrated_talks_next {
+  __typename: "TalkCursor";
+  id: string | null;
+  createdAt: string | null;
+}
+
 export interface talksHydrated_talks {
   __typename: "Talks";
   items: talksHydrated_talks_items[];
-  nextFrom: string;
+  next: talksHydrated_talks_next | null;
 }
 
 export interface talksHydrated {
@@ -283,7 +299,7 @@ export interface talksHydrated {
 export interface talksHydratedVariables {
   where: TalkLookup;
   limit: number;
-  from?: string | null;
+  cursor?: TalkCursorInput | null;
 }
 
 /* tslint:disable */
@@ -302,13 +318,20 @@ export interface talks_talks_items {
   confaId: string;
   roomId: string;
   handle: string;
+  title: string;
   state: TalkState;
+}
+
+export interface talks_talks_next {
+  __typename: "TalkCursor";
+  id: string | null;
+  createdAt: string | null;
 }
 
 export interface talks_talks {
   __typename: "Talks";
   items: talks_talks_items[];
-  nextFrom: string;
+  next: talks_talks_next | null;
 }
 
 export interface talks {
@@ -318,7 +341,7 @@ export interface talks {
 export interface talksVariables {
   where: TalkLookup;
   limit: number;
-  from?: string | null;
+  cursor?: TalkCursorInput | null;
 }
 
 /* tslint:disable */
@@ -348,7 +371,7 @@ export interface createTalk {
 
 export interface createTalkVariables {
   where: ConfaLookup;
-  request: TalkMask;
+  request: TalkUpdate;
 }
 
 /* tslint:disable */
@@ -378,7 +401,7 @@ export interface updateTalk {
 
 export interface updateTalkVariables {
   where: TalkLookup;
-  request: TalkMask;
+  request: TalkUpdate;
 }
 
 /* tslint:disable */
@@ -397,6 +420,7 @@ export interface startTalkRecording_startTalkRecording {
   confaId: string;
   roomId: string;
   handle: string;
+  title: string;
   state: TalkState;
 }
 
@@ -424,6 +448,7 @@ export interface stopTalkRecording_stopTalkRecording {
   confaId: string;
   roomId: string;
   handle: string;
+  title: string;
   state: TalkState;
 }
 
@@ -444,11 +469,6 @@ export interface stopTalkRecordingVariables {
 // START Enums and Input Objects
 //==============================================================
 
-export enum EventOrder {
-  ASC = "ASC",
-  DESC = "DESC",
-}
-
 export enum RecordingStatus {
   PROCESSING = "PROCESSING",
   READY = "READY",
@@ -462,30 +482,36 @@ export enum TalkState {
   RECORDING = "RECORDING",
 }
 
+export interface ConfaCursorInput {
+  id?: string | null;
+  createdAt?: string | null;
+  Asc?: boolean | null;
+}
+
 export interface ConfaLookup {
   id?: string | null;
   ownerId?: string | null;
   handle?: string | null;
 }
 
-export interface ConfaMask {
+export interface ConfaUpdate {
   handle?: string | null;
   title?: string | null;
   description?: string | null;
 }
 
-export interface EventFromInput {
-  createdAt: string;
-  id: string;
-}
-
-export interface EventLimit {
-  count: number;
-  seconds?: number | null;
+export interface EventCursorInput {
+  id?: string | null;
+  createdAt?: string | null;
+  Asc?: boolean | null;
 }
 
 export interface EventLookup {
   roomId: string;
+}
+
+export interface ProfileCursorInput {
+  id?: string | null;
 }
 
 export interface ProfileLookup {
@@ -493,7 +519,7 @@ export interface ProfileLookup {
   handle?: string | null;
 }
 
-export interface ProfileMask {
+export interface ProfileUpdate {
   handle?: string | null;
   displayName?: string | null;
 }
@@ -507,6 +533,12 @@ export interface RecordingLookup {
   key?: string | null;
 }
 
+export interface TalkCursorInput {
+  id?: string | null;
+  createdAt?: string | null;
+  Asc?: boolean | null;
+}
+
 export interface TalkLookup {
   id?: string | null;
   ownerId?: string | null;
@@ -515,7 +547,7 @@ export interface TalkLookup {
   handle?: string | null;
 }
 
-export interface TalkMask {
+export interface TalkUpdate {
   handle?: string | null;
   title?: string | null;
   description?: string | null;

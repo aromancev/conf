@@ -1,8 +1,17 @@
 <template>
-  <PageLoader v-if="loading" />
+  <PageLoader v-if="state.isLoading" />
 
-  <div v-if="!loading && talk" class="content">
-    <div class="title">{{ talk.title || talk.handle }}</div>
+  <div v-if="!state.isLoading && state.talk" class="content">
+    <div class="title">
+      <EditableField
+        v-if="userStore.state.id === state.talk.ownerId"
+        type="text"
+        :value="state.talk.title || state.talk.handle"
+        :validate="(v) => titleValidator.validate(v)"
+        @update="updateTitle"
+      ></EditableField>
+      <div v-else>{{ state.talk.title || state.talk.handle }}</div>
+    </div>
     <div class="path">
       /
       <router-link class="path-link" :to="route.confa(confaHandle, 'overview')">
@@ -10,7 +19,7 @@
       </router-link>
       /
       <router-link class="path-link" :to="route.talk(confaHandle, handle, 'watch')">
-        {{ talk.handle }}
+        {{ state.talk.handle }}
       </router-link>
     </div>
     <div class="header">
@@ -31,7 +40,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="talk.ownerId === user.id"
+        v-if="state.talk.ownerId === userStore.state.id"
         :to="route.talk(confaHandle, handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -42,40 +51,39 @@
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <TalkOverview v-if="tab === 'overview'" :talk="talk" />
+      <TalkOverview v-if="tab === 'overview'" :talk="state.talk" />
       <TalkLive
-        v-if="tab === 'watch' && talk.state !== TalkState.ENDED"
-        :talk="talk"
+        v-if="tab === 'watch' && state.talk.state !== TalkState.ENDED"
+        :talk="state.talk"
         :confa-handle="confaHandle"
-        :join-confirmed="joinConfirmed"
+        :join-confirmed="state.isJoinConfirmed"
         :invite-link="inviteLink"
         @join="join"
         @update="update"
       />
-      <TalkReplay v-if="tab === 'watch' && talk.state === TalkState.ENDED" :talk="talk" />
-      <TalkEdit v-if="tab === 'edit'" :talk="talk" @update="update" />
+      <TalkReplay v-if="tab === 'watch' && state.talk.state === TalkState.ENDED" :talk="state.talk" />
+      <TalkEdit v-if="tab === 'edit'" :talk="state.talk" @update="update" />
     </div>
   </div>
 
-  <NotFound v-if="!loading && !talk" />
-
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
+  <NotFound v-if="!state.isLoading && !state.talk" />
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue"
+import { watch, computed, reactive } from "vue"
 import { useRouter } from "vue-router"
-import { talkClient, Talk, userStore, confaClient, errorCode, Code, TalkState } from "@/api"
+import { talkClient, confaClient, errorCode, Code } from "@/api"
+import { userStore } from "@/api/models/user"
+import { Talk, TalkState, titleValidator } from "@/api/models/talk"
 import { route, TalkTab, handleNew } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
+import EditableField from "@/components/fields/EditableField.vue"
 import TalkEdit from "./TalkEdit.vue"
 import TalkOverview from "./TalkOverview.vue"
 import TalkLive from "./TalkLive.vue"
 import TalkReplay from "./TalkReplay.vue"
-
-type Modal = "none" | "error"
+import { notificationStore } from "@/api/models/notifications"
 
 const props = defineProps<{
   tab: TalkTab
@@ -83,13 +91,18 @@ const props = defineProps<{
   handle: string
 }>()
 
-const router = useRouter()
-const user = userStore.state()
+type State = {
+  talk?: Talk
+  isLoading: boolean
+  isJoinConfirmed: boolean
+}
 
-const talk = ref<Talk | null>()
-const loading = ref(false)
-const modal = ref<Modal>("none")
-const joinConfirmed = ref(false)
+const state = reactive<State>({
+  isLoading: false,
+  isJoinConfirmed: false,
+})
+
+const router = useRouter()
 
 const inviteLink = computed(() => {
   return window.location.host + router.resolve(route.talk(props.confaHandle, props.handle, "watch")).fullPath
@@ -98,16 +111,16 @@ const inviteLink = computed(() => {
 watch(
   () => props.handle,
   async (value) => {
-    if (!user.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
+    if (!userStore.state.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
       router.replace(route.login())
       return
     }
 
-    if (talk.value && props.handle === talk.value.handle) {
+    if (state.talk && props.handle === state.talk.handle) {
       return
     }
 
-    loading.value = true
+    state.isLoading = true
     let confaHandle = props.confaHandle
     let talkHandle = value
     try {
@@ -116,14 +129,14 @@ watch(
         confaHandle = confa.handle
       }
       if (talkHandle === handleNew) {
-        if (!user.allowedWrite) {
+        if (!userStore.state.allowedWrite) {
           router.replace(route.login())
           return
         }
-        talk.value = await talkClient.create({ handle: confaHandle }, {})
-        talkHandle = talk.value.handle
+        state.talk = await talkClient.create({ handle: confaHandle }, {})
+        talkHandle = state.talk.handle
       } else {
-        talk.value = await talkClient.fetchOne(
+        state.talk = await talkClient.fetchOne(
           {
             handle: talkHandle,
           },
@@ -140,23 +153,34 @@ watch(
         case Code.NotFound:
           break
         default:
-          modal.value = "error"
+          notificationStore.error("failed to load talk")
           break
       }
     } finally {
-      loading.value = false
+      state.isLoading = false
     }
   },
   { immediate: true },
 )
 
+async function updateTitle(title: string) {
+  if (!state.talk || title === state.talk.title) {
+    return
+  }
+  state.talk = await talkClient.update({ id: state.talk.id }, { title: title })
+}
+
 function update(value: Talk) {
-  talk.value = value
-  router.replace(route.talk(props.confaHandle, value.handle, props.tab))
+  const oldHandle = state.talk?.handle
+  state.talk = value
+  if (oldHandle !== value.handle) {
+    router.replace(route.talk(props.confaHandle, value.handle, props.tab))
+  }
+  state.talk = value
 }
 
 function join(confirmed: boolean) {
-  joinConfirmed.value = confirmed
+  state.isJoinConfirmed = confirmed
   if (!confirmed) {
     router.push(route.talk(props.confaHandle, props.handle, "overview"))
   }

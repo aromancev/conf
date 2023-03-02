@@ -1,11 +1,20 @@
 <template>
-  <PageLoader v-if="loading" />
+  <PageLoader v-if="state.isLoading" />
 
-  <div v-if="!loading && confa" class="content">
-    <div class="title">{{ confa.title || confa.handle }}</div>
+  <div v-if="!state.isLoading && state.confa" class="content">
+    <div class="title">
+      <EditableField
+        v-if="userStore.state.id === state.confa.ownerId"
+        type="text"
+        :value="state.confa.title || state.confa.handle"
+        :validate="(v) => titleValidator.validate(v)"
+        @update="updateTitle"
+      ></EditableField>
+      <div v-else>{{ state.confa.title || state.confa.handle }}</div>
+    </div>
     <div class="path">
       /
-      <router-link class="path-link" :to="route.confa(handle, 'overview')">{{ confa.handle }}</router-link>
+      <router-link class="path-link" :to="route.confa(handle, 'overview')">{{ state.confa.handle }}</router-link>
     </div>
     <div class="header">
       <router-link :to="route.confa(handle, 'overview')" class="header-item" :class="{ active: tab === 'overview' }">
@@ -13,7 +22,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="confa.ownerId === user.id"
+        v-if="state.confa.ownerId === userStore.state.id"
         :to="route.confa(handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -24,60 +33,64 @@
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <ConfaOverview v-if="tab === 'overview'" :confa="confa" />
-      <ConfaEdit v-if="tab === 'edit'" :confa="confa" @update="update" />
+      <ConfaOverview v-if="tab === 'overview'" :confa="state.confa" />
+      <ConfaEdit v-if="tab === 'edit'" :confa="state.confa" @update="update" />
     </div>
   </div>
 
-  <NotFound v-if="!loading && !confa" />
-
-  <InternalError :is-visible="modal === 'error'" @click="modal = 'none'" />
+  <NotFound v-if="!state.isLoading && !state.confa" />
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { watch, reactive } from "vue"
 import { useRouter } from "vue-router"
-import { confaClient, Confa, userStore, errorCode, Code } from "@/api"
+import { confaClient, errorCode, Code } from "@/api"
+import { userStore } from "@/api/models/user"
+import { Confa } from "@/api/models/confa"
+import { titleValidator } from "@/api/models/confa"
 import { route, ConfaTab, handleNew } from "@/router"
-import InternalError from "@/components/modals/InternalError.vue"
 import PageLoader from "@/components/PageLoader.vue"
+import EditableField from "@/components/fields/EditableField.vue"
 import NotFound from "@/views/NotFound.vue"
 import ConfaEdit from "./ConfaEdit.vue"
 import ConfaOverview from "./ConfaOverview.vue"
-
-type Modal = "none" | "error"
+import { notificationStore } from "@/api/models/notifications"
 
 const props = defineProps<{
   tab: ConfaTab
   handle: string
 }>()
 
-const router = useRouter()
-const user = userStore.state()
+type State = {
+  confa?: Confa
+  isLoading: boolean
+}
 
-const confa = ref<Confa | null>()
-const loading = ref(false)
-const modal = ref<Modal>("none")
+const state = reactive<State>({
+  isLoading: false,
+})
+
+const router = useRouter()
 
 watch(
   () => props.handle,
   async (handle) => {
-    if (!user.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+    if (!userStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
       router.replace(route.login())
       return
     }
 
-    if (confa.value && props.handle === confa.value.handle) {
+    if (state.confa && props.handle === state.confa.handle) {
       return
     }
 
-    loading.value = true
+    state.isLoading = true
     try {
       if (handle === handleNew) {
-        confa.value = await confaClient.create()
-        router.replace(route.confa(confa.value.handle, props.tab))
+        state.confa = await confaClient.create()
+        router.replace(route.confa(state.confa.handle, props.tab))
       } else {
-        confa.value = await confaClient.fetchOne({
+        state.confa = await confaClient.fetchOne({
           handle: handle,
         })
       }
@@ -86,19 +99,29 @@ watch(
         case Code.NotFound:
           break
         default:
-          modal.value = "error"
+          notificationStore.error("failed to load conference")
           break
       }
     } finally {
-      loading.value = false
+      state.isLoading = false
     }
   },
   { immediate: true },
 )
 
+async function updateTitle(title: string) {
+  if (!state.confa || title === state.confa.title) {
+    return
+  }
+  state.confa = await confaClient.update({ id: state.confa.id }, { title: title })
+}
+
 function update(value: Confa) {
-  confa.value = value
-  router.replace(route.confa(props.handle, props.tab))
+  const oldHandle = state.confa?.handle
+  state.confa = value
+  if (oldHandle !== value.handle) {
+    router.replace(route.confa(value.handle, props.tab))
+  }
 }
 </script>
 

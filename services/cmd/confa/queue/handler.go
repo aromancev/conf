@@ -191,7 +191,7 @@ func startRecording(talks *talk.Mongo, rtcClient RTC, emitter *talk.Beanstalk) J
 				ID:      talkID,
 				StateIn: []talk.State{talk.StateLive},
 			},
-			talk.Mask{
+			talk.Update{
 				State: &(stateRecording),
 			},
 		)
@@ -252,7 +252,7 @@ func stopRecording(talks *talk.Mongo, rtcClient RTC) JobHandle {
 				ID:      talkID,
 				StateIn: []talk.State{talk.StateRecording},
 			},
-			talk.Mask{
+			talk.Update{
 				State: &stateEnded,
 			},
 		)
