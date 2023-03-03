@@ -3,7 +3,7 @@
     v-model="state.value"
     v-click-outside="submit"
     type="text"
-    class="input"
+    class="editable-field"
     :class="{ focused: state.isEditing }"
     :error="error"
     @click="startEdit"
@@ -94,7 +94,7 @@ function discard() {
 <style scoped lang="sass">
 @use '@/css/theme'
 
-.input
+.field.editable-field
   border-radius: 4px
   padding: 0.5em 0
   box-shadow: none
