@@ -112,8 +112,7 @@ import PageLoader from "@/components/PageLoader.vue"
 import { Media } from "@/components/room/aggregators/media"
 import { Hint } from "@/api/room/schema"
 import { notificationStore } from "@/api/models/notifications"
-
-const READY_CHECK_INTERVAL = 10 * 1000
+import { Backoff } from "@/platform/sync"
 
 type SidePanel = "none" | "chat"
 
@@ -170,6 +169,7 @@ const audios = computed<Media[]>(() => {
   }
   return auds
 })
+const loadBackoff = new Backoff(1.2, 3000, 3 * 60 * 1000)
 
 watch(
   roomId,
@@ -207,10 +207,11 @@ async function loadRoom(): Promise<void> {
     state.isLoading = false
     if (recording.status != RecordingStatus.READY) {
       // If recording isn't finished yet, try again later.
-      loadTimerId = setTimeout(() => loadRoom(), READY_CHECK_INTERVAL)
+      loadTimerId = setTimeout(() => loadRoom(), loadBackoff.next())
       return
     }
     state.isReady = true
+    loadBackoff.reset()
     await room.load(roomId.value, recording)
   } catch (e) {
     notificationStore.error("failed to load recording")
