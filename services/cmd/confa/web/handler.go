@@ -21,7 +21,7 @@ func NewHandler(resolver *Resolver, publicKey *auth.PublicKey) *Handler {
 
 	r.HandleFunc("/health", ok)
 	r.Handle(
-		"/query",
+		"/graph",
 		withHTTPAuth(
 			&relay.Handler{
 				Schema: graphql.MustParseSchema(schema, resolver, graphql.UseFieldResolvers()),

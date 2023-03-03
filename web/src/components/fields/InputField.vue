@@ -1,5 +1,6 @@
 <template>
   <div class="field" tabindex="0" @focus="focusInput">
+    <div class="label">{{ label }}</div>
     <input
       ref="input"
       :type="type"
@@ -7,13 +8,16 @@
       :placeholder="placeholder"
       :spellcheck="spellcheck"
       :disabled="disabled"
+      :autocomplete="autocomplete"
       tabindex="-1"
       @input="change"
       @keydown="keySend"
     />
-    <div v-if="error && errExpanded" class="error">{{ error }}</div>
+    <div v-if="errors?.length && errExpanded" class="error">
+      {{  errors.map((err: string) => "• " + err).join("\n") }}
+    </div>
     <div
-      v-if="error"
+      v-if="errors?.length"
       class="error-badge material-icons"
       @mouseenter="errExpanded = true"
       @mouseleave="errExpanded = false"
@@ -33,10 +37,12 @@ const emit = defineEmits<{
 defineProps<{
   type: string
   modelValue: string
+  label?: string
+  autocomplete?: string
   placeholder?: string
   spellcheck?: boolean
   disabled?: boolean
-  error?: string
+  errors?: string[]
 }>()
 
 const errExpanded = ref(false)
@@ -68,6 +74,11 @@ function change(event: Event) {
   position: relative
   border-radius: 4px
   padding: 0.5em 1em
+  text-align: left
+
+.label
+  font-size: 0.7em
+  color: var(--color-font-disabled)
 
 input
   width: 100%

@@ -14,6 +14,7 @@ import (
 
 const (
 	batchLimit = 500
+	collection = "users"
 )
 
 type Mongo struct {
@@ -22,6 +23,19 @@ type Mongo struct {
 
 func NewMongo(db *mongo.Database) *Mongo {
 	return &Mongo{db: db}
+}
+
+func (m *Mongo) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	sess, err := m.db.Client().StartSession()
+	if err != nil {
+		return fmt.Errorf("failed to start session: %w", err)
+	}
+	defer sess.EndSession(ctx)
+
+	_, err = sess.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+		return nil, fn(sessCtx)
+	})
+	return err
 }
 
 func (m *Mongo) Create(ctx context.Context, requests ...User) ([]User, error) {
@@ -35,20 +49,20 @@ func (m *Mongo) Create(ctx context.Context, requests ...User) ([]User, error) {
 	now := mongoNow()
 	docs := make([]interface{}, len(requests))
 	for i, r := range requests {
-		if err := r.Validate(); err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrValidation, err)
-		}
 		for j := range r.Idents {
-			requests[i].Idents[j].CreatedAt = now
+			requests[i].Idents[j] = requests[i].Idents[j].Normalized()
 		}
 		requests[i].CreatedAt = now
 		docs[i] = requests[i]
+		if err := r.Validate(); err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrValidation, err)
+		}
 	}
 
-	_, err := m.db.Collection("users").InsertMany(ctx, docs)
+	_, err := m.db.Collection(collection).InsertMany(ctx, docs)
 	switch {
 	case mongo.IsDuplicateKeyError(err):
-		return nil, ErrDuplicatedEntry
+		return nil, ErrDuplicateEntry
 	case err != nil:
 		return nil, err
 	}
@@ -58,13 +72,13 @@ func (m *Mongo) Create(ctx context.Context, requests ...User) ([]User, error) {
 
 func (m *Mongo) GetOrCreate(ctx context.Context, request User) (User, error) {
 	now := mongoNow()
+	for i := range request.Idents {
+		request.Idents[i] = request.Idents[i].Normalized()
+	}
+	request.CreatedAt = now
 	if err := request.Validate(); err != nil {
 		return User{}, fmt.Errorf("%w: %s", ErrValidation, err)
 	}
-	for i := range request.Idents {
-		request.Idents[i].CreatedAt = now
-	}
-	request.CreatedAt = now
 
 	var match bson.A
 	for _, ident := range request.Idents {
@@ -73,7 +87,7 @@ func (m *Mongo) GetOrCreate(ctx context.Context, request User) (User, error) {
 			"value":    ident.Value,
 		})
 	}
-	res := m.db.Collection("users").FindOneAndUpdate(
+	res := m.db.Collection(collection).FindOneAndUpdate(
 		ctx,
 		bson.M{
 			"idents": bson.M{
@@ -97,15 +111,64 @@ func (m *Mongo) GetOrCreate(ctx context.Context, request User) (User, error) {
 	return request, nil
 }
 
-func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]User, error) {
-	filter := bson.M{}
-	if lookup.ID != uuid.Nil {
-		filter["_id"] = lookup.ID
+func (m *Mongo) Update(ctx context.Context, lookup Lookup, request Update) (UpdateResult, error) {
+	if err := request.Validate(); err != nil {
+		return UpdateResult{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	update := bson.M{
+		"$set": request,
+	}
+	res, err := m.db.Collection(collection).UpdateMany(ctx, mongoFilter(lookup), update)
+	switch {
+	case mongo.IsDuplicateKeyError(err):
+		return UpdateResult{}, ErrDuplicateEntry
+	case err != nil:
+		return UpdateResult{}, err
+	}
+	return UpdateResult{Updated: res.ModifiedCount}, nil
+}
+
+func (m *Mongo) UpdateOne(ctx context.Context, lookup Lookup, request Update) (User, error) {
+	if err := request.Validate(); err != nil {
+		return User{}, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	update := bson.M{
+		"$set": request,
+	}
+	returnAfter := options.After
+	res := m.db.Collection(collection).FindOneAndUpdate(
+		ctx,
+		mongoFilter(lookup),
+		update,
+		&options.FindOneAndUpdateOptions{
+			ReturnDocument: &returnAfter,
+		},
+	)
+	switch {
+	case mongo.IsDuplicateKeyError(res.Err()):
+		return User{}, ErrDuplicateEntry
+	case errors.Is(res.Err(), mongo.ErrNoDocuments):
+		return User{}, ErrNotFound
+	case res.Err() != nil:
+		return User{}, res.Err()
 	}
 
-	cur, err := m.db.Collection("users").Find(
+	var user User
+	err := res.Decode(&user)
+	if err != nil {
+		return User{}, fmt.Errorf("faile to decode user: %w", err)
+	}
+	return user, nil
+}
+
+func (m *Mongo) Fetch(ctx context.Context, lookup Lookup) ([]User, error) {
+	if err := lookup.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+
+	cur, err := m.db.Collection(collection).Find(
 		ctx,
-		filter,
+		mongoFilter(lookup),
 		&options.FindOptions{
 			Limit: &lookup.Limit,
 		},
@@ -143,4 +206,32 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (User, error) {
 func mongoNow() time.Time {
 	// Mongodb only stores milliseconds.
 	return time.Now().UTC().Round(time.Millisecond)
+}
+
+func mongoFilter(l Lookup) bson.M {
+	filter := make(bson.M)
+	if l.ID != uuid.Nil {
+		filter["_id"] = l.ID
+	}
+	if len(l.Idents) > 0 {
+		var match bson.A
+		for _, ident := range l.Idents {
+			ident = ident.Normalized()
+			match = append(match, bson.M{
+				"platform": ident.Platform,
+				"value":    ident.Value,
+			})
+		}
+		filter["idents"] = bson.M{
+			"$elemMatch": bson.M{
+				"$or": match,
+			},
+		}
+	}
+	if l.WithoutPassword {
+		filter["passwordHash"] = bson.M{
+			"$exists": false,
+		}
+	}
+	return filter
 }

@@ -4,7 +4,7 @@
     <div v-if="!state.isLoading" class="processing-note">
       <p>Processing talk recording.</p>
       <p>It might take a while (especially screen sharing) becuase it runs on a very cheap server.</p>
-      <p v-if="userStore.state.id === talk.ownerId">You will receive an email when it's done.</p>
+      <p v-if="accessStore.state.id === talk.ownerId">You will receive an email when it's done.</p>
     </div>
   </div>
   <div v-if="state.isReady" class="content">
@@ -50,7 +50,7 @@
 
       <RoomAudience
         ref="audience"
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :is-loading="room.state.isLoading"
         :is-playing="room.state.isPlaying"
         :peers="room.state.peers"
@@ -78,7 +78,7 @@
     </div>
     <div v-if="state.sidePanel !== 'none'" class="side-panel">
       <RoomMessages
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :messages="room.state.messages"
         :is-loading="room.state.isLoading"
         :is-readonly="true"
@@ -102,7 +102,7 @@ import { ref, computed, watch, nextTick, onUnmounted, reactive } from "vue"
 import { recordingClient } from "@/api"
 import { Talk } from "@/api/models/talk"
 import { RecordingStatus } from "@/api/models/recording"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { ReplayRoom } from "@/components/room"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"

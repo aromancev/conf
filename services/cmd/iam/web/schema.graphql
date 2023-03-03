@@ -1,0 +1,28 @@
+type Service {
+  name: String!
+  version: String!
+  schema: String!
+}
+
+type User {
+  id: String!
+  identifiers: [Identifier!]!
+  hasPassword: Boolean!
+}
+
+type Identifier {
+  platform: Platform!
+  value: String!
+}
+
+enum Platform {
+  EMAIL
+	GITHUB
+	TWITTER
+}
+
+type Query {
+  service: Service!
+
+  user: User!
+}

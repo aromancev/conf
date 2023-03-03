@@ -1,132 +1,259 @@
 <template>
-  <div class="d-flex justify-content-center">
-    <div class="content">
-      <div class="title">Sign in to Confa</div>
-      <div>
-        <InputField
-          v-model="email"
-          :spellcheck="false"
-          class="email"
-          type="text"
-          placeholder="email address"
-          :disabled="submitted"
-          :error="valid ? '' : emailError"
-        />
-      </div>
-      <button class="submit btn" :disabled="submitted || !valid" @click="login">Sign in</button>
+  <div class="content">
+    <PageLoader v-if="state === 'LOADING'"></PageLoader>
+
+    <div v-if="state === 'GUEST'">
+      <InputField
+        v-model="email"
+        :spellcheck="false"
+        class="field"
+        type="text"
+        label="Email address"
+        autocomplete="email"
+        :errors="emailErrors"
+      />
+      <InputField v-model="password" class="field" type="password" label="Password" autocomplete="password" />
+      <button class="submit btn" :disabled="isSubmitted" @click="login">
+        {{ password.length ? "Log in with password" : "Send login link" }}
+      </button>
+      <span class="link" @click="emailResetPassword">I forgot my password</span>
+    </div>
+
+    <div v-if="state === 'CREATE_PASSWORD'">
+      <div class="title">Logged in as {{ profileStore.state.displayName || genName(accessStore.state.id) }}</div>
+      <InputField
+        v-model="password"
+        :spellcheck="false"
+        type="password"
+        label="Password"
+        autocomplete="password"
+        :error="passwordErrors"
+      />
+      <button class="submit btn" :disabled="isSubmitted || passwordErrors.length !== 0" @click="resetPassword">
+        Set password
+      </button>
+      <div class="or">or</div>
+      <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
+        >Start broadcasting</router-link
+      >
+    </div>
+
+    <div v-if="state === 'RESET_PASSWORD'">
+      <InputField
+        v-model="password"
+        :spellcheck="false"
+        type="password"
+        label="Password"
+        autocomplete="password"
+        :error="passwordErrors"
+      />
+      <button class="submit btn" :disabled="isSubmitted || passwordErrors.length !== 0" @click="resetPassword">
+        Set password
+      </button>
+    </div>
+
+    <div v-if="state === 'HAS_PASSWORD'">
+      <div class="title">Logged in as {{ profileStore.state.displayName || genName(accessStore.state.id) }}</div>
+      <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
+        >Start broadcasting</router-link
+      >
     </div>
   </div>
 
-  <ModalDialog :is-visible="modal == Modal.EmailSent" :buttons="{ ok: 'OK' }" @click="router.push({ name: 'home' })">
+  <ModalDialog :is-visible="modal === 'EMAIL_LOGIN_SENT'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal == Modal.BadRequest" :buttons="{ ok: 'OK' }" @click="modal = Modal.None">
+  <ModalDialog :is-visible="modal === 'EMAIL_RESET_SENT'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+    <p>Email sent!</p>
+    <p>Check your inbox to reset password.</p>
+  </ModalDialog>
+  <ModalDialog :is-visible="modal == 'BAD_REQUEST'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
     <p>Incorrect email.</p>
+  </ModalDialog>
+  <ModalDialog :is-visible="modal == 'NOT_FOUND'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+    <p>Incorrect password or no such user.</p>
+  </ModalDialog>
+  <ModalDialog :is-visible="modal == 'INVALID_TOKEN'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+    <p>Email token has expired or has been used before.</p>
+    <p>Please request a new email.</p>
   </ModalDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { ref, watch, computed } from "vue"
 import { useRouter } from "vue-router"
-import { client, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models/user"
-import { isValid } from "@/platform/email"
+import { api, errorCode, Code } from "@/api"
+import { Account, accessStore } from "@/api/models/access"
+import { emailValidator, passwordValidator } from "@/api/models/user"
+import { route, handleNew, LoginAction } from "@/router"
+import { genName } from "@/platform/gen"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import InputField from "@/components/fields/InputField.vue"
+import PageLoader from "@/components/PageLoader.vue"
 import { notificationStore } from "@/api/models/notifications"
+import { profileStore } from "@/api/models/profile"
 
-enum Modal {
-  None = "",
-  EmailSent = "sent",
-  BadRequest = "bad_request",
-}
-
-const emailError = "• Must be a valid email"
-
-const email = ref("")
-const submitted = ref(false)
-const valid = ref(false)
-const modal = ref(Modal.None)
-
-const router = useRouter()
+type Modal = "NONE" | "EMAIL_LOGIN_SENT" | "EMAIL_RESET_SENT" | "BAD_REQUEST" | "NOT_FOUND" | "INVALID_TOKEN"
+type State = "LOADING" | "GUEST" | "HAS_PASSWORD" | "CREATE_PASSWORD" | "RESET_PASSWORD"
 
 const props = defineProps<{
+  action?: LoginAction
   token?: string
 }>()
 
-watch(
-  userStore.state,
-  () => {
-    if (userStore.state.allowedWrite) {
-      router.replace({ name: "home" })
-    }
-  },
-  { immediate: true },
-)
+const password = ref<string>("")
+const modal = ref<Modal>("NONE")
+const state = ref<State>("LOADING")
+const email = ref<string>("")
+const emailErrors = computed<string[]>(() => (isSubmitted.value ? emailValidator.validate(email.value) : []))
+const passwordErrors = computed<string[]>(() => (isSubmitted.value ? passwordValidator.validate(password.value) : []))
+const isSubmitted = ref<boolean>(false)
+
+const router = useRouter()
+let resetPasswordToken = ""
 
 watch(
-  () => props.token,
-  async (value) => {
-    if (!value) {
+  accessStore.state,
+  async () => {
+    if (!props.action || !props.token) {
+      state.value = accessStore.state.account === Account.Guest ? "GUEST" : "HAS_PASSWORD"
       return
     }
+
+    state.value = "LOADING"
     try {
-      await client.createSession(value)
+      if (accessStore.state.account !== Account.Guest || props.action === "login") {
+        const session = await api.createSessionByEmail(props.token)
+        if (session?.createPasswordToken) {
+          resetPasswordToken = session.createPasswordToken
+          state.value = "CREATE_PASSWORD"
+        } else {
+          state.value = "HAS_PASSWORD"
+        }
+        return
+      }
+      switch (props.action) {
+        case "create-password":
+          resetPasswordToken = props.token
+          state.value = "CREATE_PASSWORD"
+          break
+        case "reset-password":
+          resetPasswordToken = props.token
+          state.value = "RESET_PASSWORD"
+          break
+      }
     } catch (e) {
-      notificationStore.error("failed to verify email")
+      if (errorCode(e) === Code.Unauthorized) {
+        modal.value = "INVALID_TOKEN"
+        router.replace(route.login())
+      } else {
+        notificationStore.error("failed to verify email")
+      }
+      state.value = "GUEST"
     }
   },
   { immediate: true },
 )
 
-watch(email, (value) => {
-  valid.value = isValid(value)
-})
+watch([email, password], () => (isSubmitted.value = false))
 
 async function login() {
-  if (submitted.value || !valid.value) {
+  if (isSubmitted.value) {
     return
   }
-  submitted.value = true
-  try {
-    await client.login(email.value)
-    modal.value = Modal.EmailSent
-  } catch (e) {
-    if (errorCode(e) === Code.BadRequest) {
-      modal.value = Modal.BadRequest
-    } else {
-      notificationStore.error("failed to login")
-    }
-    submitted.value = false
+
+  isSubmitted.value = true
+  if (emailErrors.value.length) {
+    return
   }
+
+  try {
+    state.value = "LOADING"
+    if (password.value.length) {
+      await api.createSessionByLogin(email.value, password.value)
+      clearForm()
+      state.value = "HAS_PASSWORD"
+    } else {
+      await api.emailLogin(email.value)
+      clearForm()
+      modal.value = "EMAIL_LOGIN_SENT"
+    }
+  } catch (e) {
+    switch (errorCode(e)) {
+      case Code.BadRequest:
+        modal.value = "BAD_REQUEST"
+        break
+      case Code.NotFound:
+        modal.value = "NOT_FOUND"
+        state.value = "GUEST"
+        break
+      default:
+        notificationStore.error("failed to login")
+        state.value = "GUEST"
+        break
+    }
+  }
+}
+
+async function emailResetPassword() {
+  isSubmitted.value = true
+  if (emailErrors.value.length) {
+    return
+  }
+  state.value = "LOADING"
+  try {
+    await api.emailResetPassword(email.value)
+    clearForm()
+    modal.value = "EMAIL_RESET_SENT"
+  } catch {
+    notificationStore.error("failed to send email")
+  } finally {
+    state.value = "GUEST"
+  }
+}
+
+async function resetPassword() {
+  state.value = "LOADING"
+  try {
+    await api.resetPassword(resetPasswordToken, password.value)
+    clearForm()
+    accessStore.logout()
+    api.refreshToken()
+    state.value = "GUEST"
+    router.push(route.login())
+  } catch {
+    notificationStore.error("failed to create password")
+    state.value = "GUEST"
+  }
+}
+
+function clearForm() {
+  email.value = ""
+  password.value = ""
+  isSubmitted.value = false
 }
 </script>
 
 <style lang="sass" scoped>
 
 .content
-  margin-top: 7rem
   width: 300px
 
 .title
-  font-size: 2em
-  margin-bottom: 2rem
-  text-align: center
+  font-size: 20px
+  margin-bottom: 20px
 
-.email
-  width: 100%
+.field
+  margin: 10px 0
 
 .submit
   width: 100%
-  margin: 1rem 0
+  margin: 15px 0
 
-.error
-  color: rgba(0, 0, 0, 0)
-  width: 100%
-  text-align: left
-  margin-bottom: 0.3em
-  font-size: 0.9em
-  &.active
-    color: #ff5252
+.create-talk
+  margin: 15px 0
+
+.or
+  color: var(--color-font-disabled)
 </style>

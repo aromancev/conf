@@ -2,9 +2,10 @@ import { createRouter, createWebHistory, RouteRecordRaw, RouteLocationNormalized
 
 export const handleNew = "new"
 
-export type ProfileTab = "overview" | "edit"
+export type ProfileTab = "overview" | "edit" | "settings"
 export type ConfaTab = "overview" | "edit"
 export type TalkTab = "overview" | "edit" | "watch"
+export type LoginAction = "login" | "create-password" | "reset-password"
 
 export const route = {
   home(): RouteLocationRaw {
@@ -21,7 +22,7 @@ export const route = {
 
   contentHub(): RouteLocationRaw {
     return {
-      name: "content.hub",
+      name: "contentHub",
     }
   },
 
@@ -67,10 +68,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/HomePage.vue"),
   },
   {
-    path: "/login",
+    path: "/acc/login",
     name: "login",
     props(to: RouteLocationNormalized): Record<string, string> {
       return {
+        action: to.query.action as string,
         token: to.query.token as string,
       }
     },
@@ -78,7 +80,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/hub",
-    name: "content.hub",
+    name: "contentHub",
     component: () => import("@/views/ContentHub.vue"),
   },
   {
@@ -104,6 +106,17 @@ const routes: Array<RouteRecordRaw> = [
       return {
         handle: to.params.profile as string,
         tab: "edit",
+      }
+    },
+    component: () => import("@/views/profile/ProfileRoot.vue"),
+  },
+  {
+    path: "/pro/:profile/settings",
+    name: "profile.settings",
+    props(to: RouteLocationNormalized): Record<string, string> {
+      return {
+        handle: to.params.profile as string,
+        tab: "settings",
       }
     },
     component: () => import("@/views/profile/ProfileRoot.vue"),

@@ -1,8 +1,14 @@
 syntax = "proto3";
 
 message Message {
-    message LoginViaEmail {
-        string secret_login_url = 1;
+    message Login {
+        string secret_url = 1;
+    }
+    message CreatePassword {
+        string secret_url = 1;
+    }
+    message ResetPassword {
+        string secret_url = 1;
     }
     message TalkRecordingReady {
         string talk_url = 1;
@@ -11,8 +17,10 @@ message Message {
         string talk_title = 4;
     }
     oneof message {
-        LoginViaEmail login_via_email = 1;
-        TalkRecordingReady talk_recording_ready = 2;
+        Login login = 1;
+        CreatePassword create_password = 2;
+        ResetPassword reset_password = 3;
+        TalkRecordingReady talk_recording_ready = 4;
     }
 }
 

@@ -155,6 +155,7 @@ type Profile struct {
 	ID              string
 	OwnerID         string
 	Handle          string
+	HasAvatar       bool
 	DisplayName     *string
 	AvatarThumbnail *Image
 }
@@ -745,9 +746,10 @@ func newTalk(t talk.Talk) Talk {
 
 func newProfile(p profile.Profile) Profile {
 	api := Profile{
-		ID:      p.ID.String(),
-		OwnerID: p.Owner.String(),
-		Handle:  p.Handle,
+		ID:        p.ID.String(),
+		OwnerID:   p.Owner.String(),
+		Handle:    p.Handle,
+		HasAvatar: !p.AvatarThumbnail.IsEmpty(),
 	}
 	if p.DisplayName != "" {
 		api.DisplayName = &p.DisplayName

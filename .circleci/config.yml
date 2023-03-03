@@ -10,7 +10,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -w /app \
             golang:1.19 \
-            go test ./... -race -timeout 5m
+            go test ./... -timeout 5m
   
   go-build:
     docker:

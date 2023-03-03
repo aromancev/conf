@@ -12,13 +12,20 @@
       NOT A COMMERCIAL PRODUCT
     </router-link>
     <div class="end">
-      <img v-if="userStore.state.allowedWrite" class="avatar" :src="profile.avatar" @click="switchModal('profile')" />
-      <router-link v-if="!userStore.state.allowedWrite" class="btn-convex login" to="/login">Sign in</router-link>
+      <img
+        v-if="accessStore.state.allowedWrite"
+        class="avatar"
+        :src="profileStore.state.avatarThumbnail"
+        @click="switchModal('profile')"
+      />
+      <router-link v-if="!accessStore.state.allowedWrite" class="btn-convex login" :to="route.login()"
+        >Sign in</router-link
+      >
     </div>
 
     <div v-if="modal === 'sidebar'" class="sidebar">
       <router-link
-        v-if="userStore.state.allowedWrite"
+        v-if="accessStore.state.allowedWrite"
         class="control-item"
         :to="route.contentHub()"
         @click="switchModal('none')"
@@ -26,7 +33,7 @@
         <span class="icon material-icons">hub</span>
         Content hub
       </router-link>
-      <router-link v-if="userStore.state.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
+      <router-link v-if="accessStore.state.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
         <span class="icon material-icons">add</span>
         Create conference
       </router-link>
@@ -39,12 +46,12 @@
     </div>
 
     <div
-      v-if="userStore.state.allowedWrite"
+      v-if="accessStore.state.allowedWrite"
       class="control"
       :class="{ opened: modal === 'profile' }"
       @click="modal = 'none'"
     >
-      <router-link class="control-item" :to="route.profile(profile.handle, 'overview')">
+      <router-link class="control-item" :to="route.profile(profileStore.state.handle || handleNew, 'overview')">
         <span class="icon material-icons">person</span>
         My profile
       </router-link>
@@ -58,21 +65,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from "vue"
-import { client } from "@/api"
-import { userStore } from "@/api/models/user"
+import { ref, watch, onMounted } from "vue"
+import { api } from "@/api"
+import { accessStore } from "@/api/models/access"
 import { profileStore } from "@/api/models/profile"
-import { genAvatar, genName } from "@/platform/gen"
-import { route, handleNew } from "@/router"
+import router, { route, handleNew } from "@/router"
 import { Theme } from "@/platform/theme"
 import ConfaLogo from "@/components/ConfaLogo.vue"
 import CopyText from "@/components/fields/CopyText.vue"
-
-interface Profile {
-  avatar: string
-  handle: string
-  displayName: string
-}
 
 type Modal = "none" | "sidebar" | "profile"
 
@@ -82,22 +82,6 @@ const emit = defineEmits<{
 
 const theme = ref(Theme.Light)
 const modal = ref<Modal>("none")
-
-const profile = reactive<Profile>({
-  avatar: "",
-  handle: "",
-  displayName: "",
-})
-
-watch(
-  profileStore.state,
-  async () => {
-    profile.handle = profileStore.state.handle || handleNew
-    profile.displayName = profileStore.state.displayName || genName(userStore.state.id)
-    profile.avatar = profileStore.state.avatarThumbnail || (await genAvatar(userStore.state.id, 128))
-  },
-  { immediate: true },
-)
 
 watch(theme, (val: Theme) => {
   emit("theme", val)
@@ -109,8 +93,8 @@ onMounted(() => {
 })
 
 async function logout() {
-  await client.logout()
-  window.location.reload()
+  await api.logout()
+  router.push(route.login())
 }
 function switchModal(val: Modal) {
   if (modal.value === val) {
@@ -121,7 +105,6 @@ function switchModal(val: Modal) {
 }
 function toggleTheme() {
   theme.value = theme.value === Theme.Light ? Theme.Dark : Theme.Light
-  switchModal("none")
 }
 </script>
 

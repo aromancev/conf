@@ -151,6 +151,7 @@ export interface profiles_profiles_items {
   ownerId: string;
   handle: string;
   displayName: string | null;
+  hasAvatar: boolean;
   avatarThumbnail: profiles_profiles_items_avatarThumbnail | null;
 }
 
@@ -184,12 +185,20 @@ export interface profilesVariables {
 // GraphQL mutation operation: updateProfile
 // ====================================================
 
+export interface updateProfile_updateProfile_avatarThumbnail {
+  __typename: "Image";
+  format: string;
+  data: string;
+}
+
 export interface updateProfile_updateProfile {
   __typename: "Profile";
   id: string;
   ownerId: string;
   handle: string;
   displayName: string | null;
+  hasAvatar: boolean;
+  avatarThumbnail: updateProfile_updateProfile_avatarThumbnail | null;
 }
 
 export interface updateProfile {
@@ -465,9 +474,41 @@ export interface stopTalkRecordingVariables {
 // @generated
 // This file was automatically generated and should not be edited.
 
+// ====================================================
+// GraphQL query operation: user
+// ====================================================
+
+export interface user_user_identifiers {
+  __typename: "Identifier";
+  platform: Platform;
+  value: string;
+}
+
+export interface user_user {
+  __typename: "User";
+  id: string;
+  identifiers: user_user_identifiers[];
+  hasPassword: boolean;
+}
+
+export interface user {
+  user: user_user;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
 //==============================================================
 // START Enums and Input Objects
 //==============================================================
+
+export enum Platform {
+  EMAIL = "EMAIL",
+  GITHUB = "GITHUB",
+  TWITTER = "TWITTER",
+}
 
 export enum RecordingStatus {
   PROCESSING = "PROCESSING",

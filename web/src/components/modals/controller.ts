@@ -1,30 +1,30 @@
 import { reactive, readonly } from "vue"
 
 export interface State {
-  current?: string
+  state?: string
 }
 
 export class ModalController<T extends string> {
-  private _state: State
-  private readState: State
+  private readonly reactive: State
+  private readonly readState: State
   private submitFunc?: (id?: string) => void
 
   constructor(state?: T) {
-    this._state = reactive({
-      current: state,
+    this.reactive = reactive({
+      state: state,
     })
-    this.readState = readonly(this._state)
+    this.readState = readonly(this.reactive)
   }
 
-  get state(): { current: T } {
-    return this.readState as { current: T }
+  get state(): T {
+    return this.readState.state as T
   }
 
   async set(state?: T): Promise<string | undefined> {
     if (this.submitFunc) {
       this.submitFunc(undefined)
     }
-    this._state.current = state
+    this.reactive.state = state
     return new Promise((resolve) => {
       this.submitFunc = (id?: string) => {
         resolve(id)
@@ -38,6 +38,6 @@ export class ModalController<T extends string> {
       return
     }
     this.submitFunc(id)
-    this._state.current = undefined
+    this.reactive.state = undefined
   }
 }

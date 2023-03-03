@@ -15,10 +15,16 @@ import { onError, ErrorResponse } from "@apollo/client/link/error"
 import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
 import { ApolloError } from "@apollo/client/core"
-import { userStore } from "./models/user"
+import { accessStore } from "./models/access"
 
 const minRefresh = 10 * Duration.second
-const httpOK = 200
+
+enum HTTPCode {
+  OK = 200,
+  BadRequest = 400,
+  Unauthorized = 401,
+  NotFound = 404,
+}
 
 export type FetchPolicy =
   // Apollo Client first executes the query against the cache. If all requested data is present in the cache, that data is returned. Otherwise, Apollo Client executes the query against your GraphQL server and returns that data after caching it.
@@ -50,6 +56,7 @@ export enum Code {
   DuplicateEntry = "DUPLICATE_ENTRY",
   NotFound = "NOT_FOUND",
   BadRequest = "BAD_REQUEST",
+  Unauthorized = "UNAUTHORIZED",
   Unknown = "UNKNOWN_CODE",
 }
 
@@ -66,9 +73,13 @@ export function errorCode(e: unknown): Code {
   return Code.Unknown
 }
 
-interface Token {
+export type Token = {
   token: string
   expiresIn: number
+}
+
+export type Session = Token & {
+  createPasswordToken?: string
 }
 
 export class Client {
@@ -144,8 +155,8 @@ export class Client {
     return this.graph.query(options)
   }
 
-  async login(email: string): Promise<void> {
-    const resp = await fetch("/api/iam/login", {
+  async emailLogin(email: string): Promise<void> {
+    const resp = await fetch("/api/iam/email-login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -154,8 +165,38 @@ export class Client {
         address: email,
       }),
     })
-    if (resp.status !== httpOK) {
-      throw new APIError(Code.Unknown, "Login failed.")
+    if (resp.status !== HTTPCode.OK) {
+      throw new APIError(Code.Unknown, "")
+    }
+  }
+
+  async emailCreatePassword(email: string): Promise<void> {
+    const resp = await fetch("/api/iam/email-create-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        address: email,
+      }),
+    })
+    if (resp.status !== HTTPCode.OK) {
+      throw new APIError(Code.Unknown, "")
+    }
+  }
+
+  async emailResetPassword(email: string): Promise<void> {
+    const resp = await fetch("/api/iam/email-reset-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        address: email,
+      }),
+    })
+    if (resp.status !== HTTPCode.OK) {
+      throw new APIError(Code.Unknown, "")
     }
   }
 
@@ -163,15 +204,17 @@ export class Client {
     const resp = await fetch("/api/iam/logout", {
       method: "POST",
     })
-    if (resp.status !== httpOK) {
+    if (resp.status !== HTTPCode.OK) {
       throw new APIError(Code.Unknown, "Logout failed.")
     }
+    accessStore.logout()
+    this.refreshToken()
   }
 
-  async createSession(emailToken: string): Promise<void> {
+  async createSessionByEmail(emailToken: string): Promise<Session | undefined> {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/session", {
+    const resp = await fetch("/api/iam/session-email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -180,13 +223,49 @@ export class Client {
         emailToken: emailToken,
       }),
     })
-    if (resp.status === httpOK) {
-      const data = (await resp.json()) as Token
-      this.setToken(data.token, data.expiresIn)
-    } else {
-      console.error("No token present in session response. Trying to refresh.")
-      // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
-      this.refreshToken() // No point in waiting for it, so no `await`.
+    let data: Session
+    switch (resp.status) {
+      case HTTPCode.Unauthorized:
+        throw new APIError(Code.Unauthorized, "Invalid email token.")
+      case HTTPCode.OK:
+        data = (await resp.json()) as Session
+        if (data.token && data.expiresIn) {
+          this.setToken(data.token, data.expiresIn)
+        } else {
+          console.error("No token present in session response. Trying to refresh.")
+          // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
+          this.refreshToken() // No point in waiting for it, so no `await`.
+        }
+        return data
+      default:
+        throw new APIError(Code.Unknown, "Failed to verify email.")
+    }
+  }
+
+  async createSessionByLogin(email: string, password: string): Promise<void> {
+    this.setRefreshInProgress()
+
+    const resp = await fetch("/api/iam/session-login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+      }),
+    })
+
+    let data: Token
+    switch (resp.status) {
+      case HTTPCode.OK:
+        data = (await resp.json()) as Token
+        this.setToken(data.token, data.expiresIn)
+        break
+      case HTTPCode.NotFound:
+        throw new APIError(Code.NotFound, "Invalid password or user does not exist.")
+      default:
+        throw new APIError(Code.Unknown, "")
     }
   }
 
@@ -196,12 +275,52 @@ export class Client {
     const resp = await fetch("/api/iam/token", {
       method: "GET",
     })
-    if (resp.status === httpOK) {
+    if (resp.status === HTTPCode.OK) {
       const data = (await resp.json()) as Token
       this.setToken(data.token, data.expiresIn)
     } else {
       // Failed to refresh the token. Give up and set an empty token.
       this.setToken("", 0)
+    }
+  }
+
+  async updatePassword(oldPassword: string, newPassword: string): Promise<void> {
+    const resp = await fetch("/api/iam/password-update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${await this._token}`,
+      },
+      body: JSON.stringify({
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        logout: true,
+      }),
+    })
+    switch (resp.status) {
+      case HTTPCode.OK:
+        break
+      case HTTPCode.BadRequest:
+        throw new APIError(Code.BadRequest, "Invalid old password.")
+      default:
+        throw new APIError(Code.Unknown, "")
+    }
+  }
+
+  async resetPassword(emailToken: string, password: string): Promise<void> {
+    const resp = await fetch("/api/iam/password-reset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        emailToken: emailToken,
+        password: password,
+        logout: true,
+      }),
+    })
+    if (resp.status !== HTTPCode.OK) {
+      throw new APIError(Code.Unknown, "Failed to reset password.")
     }
   }
 
@@ -242,7 +361,7 @@ export class Client {
     }
     // Set user in user store. This will trigger reactive state change.
     const claims = JSON.parse(window.atob(token.split(".")[1]))
-    userStore.login(claims.uid, claims.acc)
+    accessStore.login(claims.uid, claims.acc)
 
     // If expiresIn is set, schedule a new refresh.
     if (expiresIn === 0) {

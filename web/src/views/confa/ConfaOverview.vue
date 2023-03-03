@@ -4,7 +4,7 @@
       <div class="talks-header">
         <div>Talks</div>
         <router-link
-          v-if="userStore.state.id === confa.ownerId"
+          v-if="accessStore.state.id === confa.ownerId"
           class="btn create-talk"
           :to="route.talk(confa.handle, handleNew, 'watch')"
         >
@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from "vue"
 import { Confa } from "@/api/models/confa"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { Talk } from "@/api/models/talk"
 import { talkClient } from "@/api"
 import { TalkIterator } from "@/api/talk"

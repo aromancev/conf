@@ -11,17 +11,19 @@ import (
 //go:embed *.html
 var templates embed.FS
 
-var loginViaEmail, talkRecordingReady *template.Template
+var login, createPassword, resetPassword, talkRecordingReady *template.Template
 
 func init() {
-	loginViaEmail = template.Must(template.ParseFS(templates, "login_via_email.html"))
-	talkRecordingReady = template.Must(template.ParseFS(templates, "talk_recording_ready.html"))
+	login = template.Must(template.ParseFS(templates, "login.html"))
+	createPassword = template.Must(template.ParseFS(templates, "create-password.html"))
+	resetPassword = template.Must(template.ParseFS(templates, "reset-password.html"))
+	talkRecordingReady = template.Must(template.ParseFS(templates, "talk-recording-ready.html"))
 }
 
-func newLoginViaEmail(from email.Address, to []email.Address, secretLoginURL string) (email.Email, error) {
+func newLogin(from email.Address, to []email.Address, secretURL string) (email.Email, error) {
 	var html bytes.Buffer
-	err := loginViaEmail.Execute(&html, map[string]string{
-		"secretLoginURL": secretLoginURL,
+	err := login.Execute(&html, map[string]string{
+		"secretURL": secretURL,
 	})
 	if err != nil {
 		return email.Email{}, err
@@ -29,6 +31,38 @@ func newLoginViaEmail(from email.Address, to []email.Address, secretLoginURL str
 	return email.Email{
 		From:    from,
 		Subject: "Login",
+		To:      to,
+		HTML:    html.String(),
+	}, nil
+}
+
+func newCreatePassword(from email.Address, to []email.Address, secretURL string) (email.Email, error) {
+	var html bytes.Buffer
+	err := createPassword.Execute(&html, map[string]string{
+		"secretURL": secretURL,
+	})
+	if err != nil {
+		return email.Email{}, err
+	}
+	return email.Email{
+		From:    from,
+		Subject: "Create Password",
+		To:      to,
+		HTML:    html.String(),
+	}, nil
+}
+
+func newResetPassword(from email.Address, to []email.Address, secretURL string) (email.Email, error) {
+	var html bytes.Buffer
+	err := resetPassword.Execute(&html, map[string]string{
+		"secretURL": secretURL,
+	})
+	if err != nil {
+		return email.Email{}, err
+	}
+	return email.Email{
+		From:    from,
+		Subject: "Reset Password",
 		To:      to,
 		HTML:    html.String(),
 	}, nil

@@ -12,26 +12,26 @@
     <div class="form-row">
       <div class="form-cell label">Handle</div>
       <div class="form-cell">
-        <Input
+        <InputField
           v-model="handle"
           :spellcheck="false"
           class="form-input"
           type="text"
           placeholder="handle"
-          :error="handleError"
+          :errors="handleErrors"
         />
       </div>
     </div>
     <div class="form-row">
       <div class="form-cell label">Display Name</div>
       <div class="form-cell">
-        <Input
+        <InputField
           v-model="displayName"
           :spellcheck="false"
           class="form-input"
           type="text"
           placeholder="display name"
-          :error="displayNameError"
+          :errors="displayNameErrors"
         />
       </div>
     </div>
@@ -43,7 +43,6 @@
           <div v-if="saving" class="save-loader">
             <PageLoader />
           </div>
-
           <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
         </div>
       </div>
@@ -67,13 +66,13 @@
 import { ref, computed, watch } from "vue"
 import { profileClient, errorCode, Code } from "@/api"
 import { Profile, handleValidator, displayNameValidator } from "@/api/models/profile"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { ProfileUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
-import Input from "@/components/fields/InputField.vue"
+import InputField from "@/components/fields/InputField.vue"
 import AvatarEditor from "./AvatarEditor.vue"
 import { notificationStore } from "@/api/models/notifications"
 
@@ -98,8 +97,8 @@ const update = ref<ProfileUpdate>({})
 const saving = ref<boolean>(false)
 const uploadedAvatar = ref<string>("")
 
-const handleError = computed(() => handleValidator.validate(handle.value))
-const displayNameError = computed(() => displayNameValidator.validate(displayName.value))
+const handleErrors = computed<string[]>(() => handleValidator.validate(handle.value))
+const displayNameErrors = computed<string[]>(() => displayNameValidator.validate(displayName.value))
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
@@ -107,7 +106,7 @@ const hasUpdate = computed(() => {
   return Object.keys(update.value).length !== 0
 })
 const formValid = computed(() => {
-  return !displayNameError.value && !handleError.value
+  return !displayNameErrors.value.length && !handleErrors.value.length
 })
 
 watch(handle, (value) => {
@@ -127,7 +126,7 @@ watch(displayName, (value) => {
 watch(
   () => props.profile,
   (profile) => {
-    if (profile.ownerId !== userStore.state.id) {
+    if (profile.ownerId !== accessStore.state.id) {
       router.replace(route.profile(profile.handle, "overview"))
     }
   },

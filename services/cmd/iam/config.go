@@ -27,6 +27,7 @@ type Config struct {
 	BaseURL          string `envconfig:"BASE_URL"`
 	SecretKey        string `envconfig:"SECRET_KEY"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	Domain           string `envconfig:"DOMAIN"`
 	Mongo            MongoConfig
 	Beanstalk        BeanstalkConfig
 }
@@ -67,6 +68,9 @@ func (c Config) Validate() error {
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
+	}
+	if c.Domain == "" {
+		return errors.New("DOMAIN not set")
 	}
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)

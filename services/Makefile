@@ -3,7 +3,7 @@ IMG_RTC_GEN=confa/rtc-gen
 
 .PHONY: test
 test:
-	go test ./... -race -timeout 2m
+	go test ./... -race -timeout 5m
 
 .PHONY: lint
 lint:

@@ -9,7 +9,7 @@
           class="form-input"
           type="text"
           placeholder="handle"
-          :error="handleError"
+          :errors="handleErrors"
         />
       </div>
     </div>
@@ -22,7 +22,7 @@
           class="form-input"
           type="text"
           placeholder="title"
-          :error="titleError"
+          :errors="titleErrors"
         />
       </div>
     </div>
@@ -61,7 +61,7 @@
 import { computed, watch, reactive } from "vue"
 import { confaClient, errorCode, Code } from "@/api"
 import { Confa } from "@/api/models/confa"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { ConfaUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
 import { route } from "@/router"
@@ -102,8 +102,8 @@ const state = reactive<State>({
 
 const router = useRouter()
 
-const handleError = computed(() => handleValidator.validate(state.handle))
-const titleError = computed(() => titleValidator.validate(state.title))
+const handleErrors = computed<string[]>(() => handleValidator.validate(state.handle))
+const titleErrors = computed<string[]>(() => titleValidator.validate(state.title))
 const hasUpdate = computed(() => {
   if (!state.update) {
     return 0
@@ -111,7 +111,7 @@ const hasUpdate = computed(() => {
   return Object.keys(state.update).length !== 0
 })
 const formValid = computed(() => {
-  return !titleError.value && !handleError.value
+  return !titleErrors.value.length && !handleErrors.value.length
 })
 
 watch(
@@ -158,7 +158,7 @@ watch(
 watch(
   () => props.confa,
   (confa) => {
-    if (confa.ownerId !== userStore.state.id) {
+    if (confa.ownerId !== accessStore.state.id) {
       router.replace(route.confa(confa.handle, "overview"))
     }
   },

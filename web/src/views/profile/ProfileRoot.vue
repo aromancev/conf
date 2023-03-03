@@ -12,7 +12,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="profile.ownerId === userStore.state.id"
+        v-if="profile.ownerId === accessStore.state.id"
         :to="route.profile(handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -20,11 +20,21 @@
         <span class="material-icons icon">edit</span>
         Edit
       </router-link>
+      <router-link
+        v-if="profile.ownerId === accessStore.state.id"
+        :to="route.profile(handle, 'settings')"
+        class="header-item"
+        :class="{ active: tab === 'settings' }"
+      >
+        <span class="material-icons icon">settings</span>
+        Settings
+      </router-link>
     </div>
     <div class="header-divider"></div>
     <div class="tab">
-      <ProfileOverview v-if="tab === 'overview'" :avatar="avatar" :name="profile.displayName" />
+      <ProfileOverview v-if="tab === 'overview'" :avatar="avatar" :profile="profile" />
       <ProfileEdit v-if="tab === 'edit'" :profile="profile" :avatar="avatar" @update="update" @avatar="updateAvatar" />
+      <ProfileSettings v-if="tab === 'settings'" />
     </div>
   </div>
 
@@ -35,7 +45,7 @@
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { profileClient, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { Profile, profileStore } from "@/api/models/profile"
 import { route, ProfileTab, handleNew } from "@/router"
 import { genAvatar, genName } from "@/platform/gen"
@@ -43,6 +53,7 @@ import PageLoader from "@/components/PageLoader.vue"
 import NotFound from "@/views/NotFound.vue"
 import ProfileEdit from "./ProfileEdit.vue"
 import ProfileOverview from "./ProfileOverview.vue"
+import ProfileSettings from "./ProfileSettings.vue"
 import { notificationStore } from "@/api/models/notifications"
 
 const props = defineProps<{
@@ -59,7 +70,7 @@ const avatar = ref<string>("")
 watch(
   () => props.handle,
   async (handle) => {
-    if (!userStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+    if (!accessStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -79,7 +90,7 @@ watch(
         })
       }
 
-      if (profile.value.avatarThumbnail) {
+      if (profile.value.hasAvatar) {
         avatar.value = await profileClient.fetchAvatar(profile.value.ownerId, profile.value.id)
       }
       if (!avatar.value) {
@@ -102,6 +113,7 @@ watch(
 
 function update(value: Profile) {
   profile.value = value
+  profileStore.update(value)
   router.replace(route.profile(value.handle, props.tab))
 }
 

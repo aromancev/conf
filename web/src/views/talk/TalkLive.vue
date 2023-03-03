@@ -27,7 +27,7 @@
       </div>
       <RoomAudience
         ref="audience"
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :is-loading="!isRoomReady"
         :is-playing="true"
         :peers="room.state.peers"
@@ -38,7 +38,7 @@
       <div class="controls-top">
         <RoomReactions @reaction="sendReaction"></RoomReactions>
         <div
-          v-if="userStore.state.id === talk.ownerId"
+          v-if="accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.screen }"
           :disabled="!isMediaReady ? true : null"
@@ -47,7 +47,7 @@
           {{ room.state.local.screen ? "desktop_windows" : "desktop_access_disabled" }}
         </div>
         <div
-          v-if="userStore.state.id === talk.ownerId"
+          v-if="accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
           :class="{ active: room.state.local.camera }"
           :disabled="!isMediaReady ? true : null"
@@ -64,7 +64,7 @@
           {{ room.state.local.mic ? "mic" : "mic_off" }}
         </div>
         <div
-          v-if="recordingStatus !== 'stopped' && userStore.state.id === talk.ownerId"
+          v-if="recordingStatus !== 'stopped' && accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons record-icon"
           :disabled="recordingStatus === 'pending' ? true : null"
           @click="handleRecording"
@@ -91,7 +91,7 @@
     </div>
     <div v-if="sidePanel !== 'none'" class="side-panel">
       <RoomMessages
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :messages="room.state.messages"
         :is-loading="!isRoomReady"
         @sent="sendMessage"
@@ -104,7 +104,7 @@
   </div>
 
   <ModalDialog
-    :is-visible="modal.state.current === 'confirm_join'"
+    :is-visible="modal.state === 'confirm_join'"
     :ctrl="modal"
     :buttons="{ join: 'Join', leave: 'Leave' }"
     @click="confirmJoin"
@@ -115,16 +115,12 @@
       <CopyField :value="inviteLink"></CopyField>
     </p>
   </ModalDialog>
-  <ModalDialog
-    :is-visible="modal.state.current === 'confirm_leave'"
-    :ctrl="modal"
-    :buttons="{ leave: 'Leave', stay: 'Stay' }"
-  >
+  <ModalDialog :is-visible="modal.state === 'confirm_leave'" :ctrl="modal" :buttons="{ leave: 'Leave', stay: 'Stay' }">
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
   <ModalDialog
-    :is-visible="modal.state.current === 'recording_finished'"
+    :is-visible="modal.state === 'recording_finished'"
     :ctrl="modal"
     :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
   >
@@ -138,7 +134,7 @@ import { ref, computed, watch, nextTick, onUnmounted } from "vue"
 import { onBeforeRouteLeave } from "vue-router"
 import { talkClient } from "@/api"
 import { Talk, TalkState } from "@/api/models/talk"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { LiveRoom } from "@/components/room"
 import { Hint, Reaction } from "@/api/room/schema"
 import { ModalController } from "@/components/modals/controller"
@@ -313,7 +309,7 @@ function confirmJoin(value: string) {
 }
 
 function sendMessage(message: string) {
-  room.send(userStore.state.id, message)
+  room.send(accessStore.state.id, message)
 }
 
 function sendReaction(reaction: Reaction) {

@@ -5,7 +5,7 @@
     type="text"
     class="editable-field"
     :class="{ focused: state.isEditing }"
-    :error="error"
+    :errors="errors"
     @click="startEdit"
     @focus="startEdit"
     @keydown="keySend"
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const props = defineProps<{
   value: string
   disabled?: boolean
-  validate?: (val: string) => string
+  validate?: (val: string) => string[]
 }>()
 
 type State = {
@@ -35,11 +35,11 @@ const state = reactive<State>({
   isEditing: false,
 })
 
-const error = computed<string>(() => {
+const errors = computed<string[]>(() => {
   if (props.validate) {
     return props.validate(state.value)
   }
-  return ""
+  return []
 })
 
 watch(
@@ -60,7 +60,7 @@ function startEdit() {
 function keySend(ev: KeyboardEvent) {
   if (ev.code === "Enter") {
     ev.preventDefault()
-    if (error.value) {
+    if (errors.value) {
       discard()
     } else {
       submit()
@@ -78,7 +78,7 @@ function submit() {
   if (!state.isEditing) {
     return
   }
-  if (error.value) {
+  if (errors.value) {
     discard()
   }
   state.isEditing = false

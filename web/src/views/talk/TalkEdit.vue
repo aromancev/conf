@@ -9,7 +9,7 @@
           class="form-input"
           type="text"
           placeholder="handle"
-          :error="handleError"
+          :errors="handleErrors"
         />
       </div>
     </div>
@@ -22,7 +22,7 @@
           class="form-input"
           type="text"
           placeholder="title"
-          :error="titleError"
+          :errors="titleErrors"
         />
       </div>
     </div>
@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
 import { talkClient, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { Talk, titleValidator, handleValidator } from "@/api/models/talk"
 import { TalkUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
@@ -88,8 +88,8 @@ const title = ref<string>(props.talk.title)
 const description = ref(props.talk.description || "")
 const update = ref<TalkUpdate>({})
 const saving = ref(false)
-const handleError = computed(() => handleValidator.validate(handle.value))
-const titleError = computed(() => titleValidator.validate(title.value))
+const handleErrors = computed<string[]>(() => handleValidator.validate(handle.value))
+const titleErrors = computed<string[]>(() => titleValidator.validate(title.value))
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
@@ -97,7 +97,7 @@ const hasUpdate = computed(() => {
   return Object.keys(update.value).length !== 0
 })
 const formValid = computed(() => {
-  return !titleError.value && !handleError.value
+  return !titleErrors.value.length && !handleErrors.value.length
 })
 
 watch(
@@ -135,7 +135,7 @@ watch(description, (value) => {
 watch(
   () => props.talk,
   (value) => {
-    if (value.ownerId !== userStore.state.id) {
+    if (value.ownerId !== accessStore.state.id) {
       router.replace({ name: "talk.overview", params: { talk: props.talk.handle } })
     }
   },
