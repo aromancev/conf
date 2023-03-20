@@ -14,8 +14,16 @@ func NewRoutes(base string) *Routes {
 	}
 }
 
-func (r *Routes) LoginViaEmail(token string) string {
-	return fmt.Sprintf("%s/login?token=%s", r.base, token)
+func (r *Routes) LoginWithEmail(token string) string {
+	return fmt.Sprintf("%s/acc/login?action=login&token=%s", r.base, token)
+}
+
+func (r *Routes) CreatePassword(token string) string {
+	return fmt.Sprintf("%s/acc/login?action=create-password&token=%s", r.base, token)
+}
+
+func (r *Routes) ResetPassword(token string) string {
+	return fmt.Sprintf("%s/acc/login?action=reset-password&token=%s", r.base, token)
 }
 
 func (r *Routes) Confa(confaHandle string) string {

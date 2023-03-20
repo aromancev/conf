@@ -110,6 +110,7 @@ type Profile {
     id: String!
     ownerId: String!
     handle: String!
+    hasAvatar: Boolean!
     displayName: String
     avatarThumbnail: Image
 }

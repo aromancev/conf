@@ -50,6 +50,7 @@ services:
       - LOG_FORMAT=console
       - SECRET_KEY=$SECRET_KEY
       - PUBLIC_KEY=$PUBLIC_KEY
+      - DOMAIN=confa.io
       - MONGO_HOSTS=mongo:27017
       - MONGO_USER=iam
       - MONGO_PASSWORD=iam

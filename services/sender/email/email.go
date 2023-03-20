@@ -32,11 +32,23 @@ func (s *Sender) Send(ctx context.Context, message *sender.Message, to ...email.
 	var msg email.Email
 	var err error
 	switch pl := message.Message.(type) { // nolint: gocritic
-	case *sender.Message_LoginViaEmail_:
-		msg, err = newLoginViaEmail(
+	case *sender.Message_Login_:
+		msg, err = newLogin(
 			s.from,
 			to,
-			pl.LoginViaEmail.SecretLoginUrl,
+			pl.Login.SecretUrl,
+		)
+	case *sender.Message_CreatePassword_:
+		msg, err = newCreatePassword(
+			s.from,
+			to,
+			pl.CreatePassword.SecretUrl,
+		)
+	case *sender.Message_ResetPassword_:
+		msg, err = newResetPassword(
+			s.from,
+			to,
+			pl.ResetPassword.SecretUrl,
 		)
 	case *sender.Message_TalkRecordingReady_:
 		msg, err = newTalkRecordingReady(

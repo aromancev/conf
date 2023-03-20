@@ -1,8 +1,8 @@
 import { createApp, watch } from "vue"
 import App from "./App.vue"
 import router from "./router"
-import { client, profileClient } from "@/api"
-import { userStore } from "@/api/models/user"
+import { api, profileClient } from "@/api"
+import { accessStore } from "@/api/models/access"
 
 const app = createApp(App)
 
@@ -24,11 +24,11 @@ app.use(router)
 app.mount("#app")
 
 watch(
-  userStore.state,
+  accessStore.state,
   () => {
     profileClient.refreshProfile()
   },
   { immediate: true },
 )
 
-client.refreshToken()
+api.refreshToken()

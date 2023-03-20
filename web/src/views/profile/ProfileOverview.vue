@@ -2,15 +2,18 @@
   <div class="profile-overview">
     <div class="avatar">
       <img class="avatar-img" :src="avatar" />
-      <div>{{ name }}</div>
+      <div>{{ profile.displayName || genName(profile.ownerId) }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { genName } from "@/platform/gen"
+import { Profile } from "@/api/models/profile"
+
 defineProps<{
+  profile: Profile
   avatar: string
-  name: string
 }>()
 </script>
 
@@ -18,8 +21,6 @@ defineProps<{
 @use '@/css/theme'
 
 .profile-overview
-  width: 100%
-  max-width: theme.$content-width
   padding: 30px 100px
   text-align: left
 

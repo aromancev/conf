@@ -36,7 +36,7 @@ func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emit
 
 	r.HandleFunc("/health", ok)
 	r.Handle(
-		"/query",
+		"/graph",
 		withHTTPAuth(
 			&relay.Handler{
 				Schema: graphql.MustParseSchema(

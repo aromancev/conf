@@ -1,27 +1,28 @@
-import { Store } from "@/platform/store"
+import { RegexValidator } from "@/platform/validator"
 
-export enum Account {
-  Guest = 0,
-  User = 1,
-  Admin = 2,
+export enum Platform {
+  EMAIL = "EMAIL",
+  GITHUB = "GITHUB",
+  TWITTER = "TWITTER",
 }
 
-export interface User {
+export type Identifier = {
+  platform: Platform
+  value: string
+}
+
+export type User = {
   id: string
-  account: Account
-  allowedWrite: boolean
+  identifiers: Identifier[]
+  hasPassword: boolean
 }
 
-export class UserStore extends Store<User> {
-  login(id: string, acc: Account): void {
-    this._state.id = id
-    this._state.account = acc
-    this._state.allowedWrite = acc === Account.User || acc === Account.Admin
-  }
-}
+export const emailValidator = new RegexValidator(
+  "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:.[a-zA-Z0-9-]+)*$",
+  ["Must be a valid email"],
+)
 
-export const userStore = new UserStore({
-  id: "",
-  account: Account.Guest,
-  allowedWrite: false,
-})
+export const passwordValidator = new RegexValidator("^[^ \t].{6,64}[^ \t]$", [
+  "Must be from 8 to 64 charachters long",
+  "Cannot start or end with a space",
+])

@@ -9,18 +9,20 @@ import (
 )
 
 const (
-	emailExpire    = 1 * time.Hour
+	emailExpire    = 2 * time.Hour
 	apiExpire      = 15 * time.Minute
 	guestAPIExpire = 24 * time.Hour
 )
 
 type EmailClaims struct {
 	jwt.StandardClaims
+	ID      string `json:"id"`
 	Address string `json:"adr"`
 }
 
-func NewEmailClaims(address string) *EmailClaims {
-	return &EmailClaims{
+func NewEmailClaims(address string) EmailClaims {
+	return EmailClaims{
+		ID: uuid.NewString(),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(emailExpire).Unix(),
 		},
@@ -49,8 +51,8 @@ type APIClaims struct {
 	Account Account   `json:"acc"`
 }
 
-func NewAPIClaims(userID uuid.UUID, acc Account) *APIClaims {
-	return &APIClaims{
+func NewAPIClaims(userID uuid.UUID, acc Account) APIClaims {
+	return APIClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(apiExpire).Unix(),
 		},

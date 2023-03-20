@@ -11,19 +11,24 @@ import {
   requestAvatarUpload,
 } from "./schema"
 import { Profile, profileStore } from "./models/profile"
-import { userStore } from "./models/user"
+import { accessStore } from "./models/access"
 import { config } from "@/config"
 
-interface OptionalFetchParams {
+type OptionalFetchParams = {
   policy?: FetchPolicy
 }
 
-interface FetchParams {
+type FetchParams = {
   policy: FetchPolicy
 }
 
 const defaultParams: FetchParams = {
   policy: "cache-first",
+}
+
+type Image = {
+  format: string
+  data: string
 }
 
 class ProfileIterator {
@@ -51,6 +56,7 @@ class ProfileIterator {
               ownerId
               handle
               displayName
+              hasAvatar
               avatarThumbnail {
                 format
                 data
@@ -77,10 +83,9 @@ class ProfileIterator {
         id: p.id,
         ownerId: p.ownerId,
         handle: p.handle,
+        hasAvatar: p.hasAvatar,
         displayName: p.displayName || "",
-        avatarThumbnail: p.avatarThumbnail
-          ? `data:image/${p.avatarThumbnail.format};base64,${p.avatarThumbnail.data}`
-          : "",
+        avatarThumbnail: p.avatarThumbnail ? avatarThumbnail(p.avatarThumbnail) : "",
       })
     }
     return profs
@@ -103,6 +108,11 @@ export class ProfileClient {
             ownerId
             handle
             displayName
+            hasAvatar
+            avatarThumbnail {
+              format
+              data
+            }
           }
         }
       `,
@@ -118,8 +128,9 @@ export class ProfileClient {
       id: p.id,
       ownerId: p.ownerId,
       handle: p.handle,
+      hasAvatar: p.hasAvatar,
       displayName: p.displayName || "",
-      avatarThumbnail: "",
+      avatarThumbnail: p.avatarThumbnail ? avatarThumbnail(p.avatarThumbnail) : "",
     }
   }
 
@@ -185,17 +196,17 @@ export class ProfileClient {
 
   async refreshProfile(): Promise<void> {
     try {
-      if (userStore.state.id === "") {
+      if (accessStore.state.id === "") {
         throw new APIError(Code.NotFound, "failed to fetch user")
       }
-      const profile = await this.fetchOne({ ownerIds: [userStore.state.id] })
+      const profile = await this.fetchOne({ ownerIds: [accessStore.state.id] })
       profileStore.update(profile)
     } catch (e) {
       switch (errorCode(e)) {
         case Code.NotFound:
           profileStore.update({
             id: "",
-            ownerId: userStore.state.id,
+            ownerId: accessStore.state.id,
             handle: "",
             displayName: "",
             avatarThumbnail: "",
@@ -208,4 +219,8 @@ export class ProfileClient {
   fetch(lookup: ProfileLookup, params?: OptionalFetchParams): ProfileIterator {
     return new ProfileIterator(this.api, lookup, params)
   }
+}
+
+function avatarThumbnail(img: Image): string {
+  return `data:image/${img.format};base64,${img.data}`
 }

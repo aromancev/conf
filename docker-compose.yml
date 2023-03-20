@@ -80,7 +80,7 @@ services:
     command: "go run ./cmd/gateway"
     environment:
       <<: *service-env
-      SERVICES: "http://rtc:80/query,http://confa:80/query"
+      SERVICES: "http://iam:80/graph,http://rtc:80/graph,http://confa:80/graph"
       SCHEMA_UPDATE_INTERVAL_S: 5
 
   iam:
@@ -96,6 +96,7 @@ services:
       MONGO_USER: "iam"
       MONGO_PASSWORD: "iam"
       MONGO_DATABASE: "iam"
+      DOMAIN: "localhost"
 
   confa:
     <<: *service-common
@@ -157,7 +158,7 @@ services:
     command: "go run ./cmd/sender"
     environment:
       <<: *service-env
-      MAILERSEND_TOKEN: $MAILERSEND_TOKEN
+      MAILERSEND_TOKEN: stub
       MAILERSEND_BASE_URL: http://sender-clients
       MAILERSEND_FROM_EMAIL: noreply@mail.confa.io
 

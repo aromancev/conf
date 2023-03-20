@@ -11,7 +11,6 @@ const (
 	algorithm = "ES256"
 )
 
-// Consider https://github.com/cristalhq/jwt
 type SecretKey struct {
 	key    *ecdsa.PrivateKey
 	method jwt.SigningMethod

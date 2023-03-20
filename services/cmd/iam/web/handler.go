@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,11 +14,12 @@ import (
 	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/internal/proto/sender"
 	"github.com/aromancev/confa/internal/routes"
+	"github.com/aromancev/confa/session"
 	"github.com/aromancev/confa/user"
-	"github.com/aromancev/confa/user/session"
 	"github.com/google/uuid"
+	"github.com/graph-gophers/graphql-go"
+	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/prep/beanstalk"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,10 +30,42 @@ type Token struct {
 }
 
 type Session struct {
+	Token               string `json:"token"`
+	ExpiresIn           int32  `json:"expiresIn"`
+	CreatePasswordToken string `json:"createPasswordToken,omitempty"`
+}
+
+type CreateSessionByEmail struct {
 	EmailToken string `json:"emailToken"`
 }
 
-type Login struct {
+type CreateSessionByLogin struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type CreateSessionEmail struct {
+	Token string `json:"token"`
+}
+
+type UpdatePassword struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+	Logout      bool   `json:"logout"`
+}
+
+type ResetPassword struct {
+	EmailToken string `json:"emailToken"`
+	Password   string `json:"password"`
+	Logout     bool   `json:"logout"`
+}
+
+type CreatePassword struct {
+	EmailToken string `json:"emailToken"`
+	Password   string `json:"password"`
+}
+
+type Email struct {
 	Address string `json:"address"`
 }
 
@@ -40,37 +74,85 @@ type Producer interface {
 }
 
 type Handler struct {
-	router http.Handler
+	auth      *Auth
+	router    *http.ServeMux
+	publicKey *auth.PublicKey
+	secretKey *auth.SecretKey
+	routes    *routes.Routes
+	sessions  *session.Mongo
+	user      *user.Actions
+	producer  Producer
+	tubes     Tubes
 }
 
 type Tubes struct {
 	Send string
 }
 
-func NewHandler(rts *routes.Routes, secretKey *auth.SecretKey, publicKey *auth.PublicKey, sessions *session.CRUD, users *user.CRUD, producer Producer, tubes Tubes) *Handler {
-	r := http.NewServeMux()
-
-	r.HandleFunc("/health", ok)
-	r.Handle(
-		"/token",
-		fetchToken(publicKey, secretKey, sessions),
-	)
-	r.Handle(
-		"/session",
-		createSession(publicKey, secretKey, users, sessions),
-	)
-	r.Handle(
-		"/login",
-		login(rts, secretKey, producer, tubes),
-	)
-	r.Handle(
-		"/logout",
-		logout(sessions),
-	)
-
-	return &Handler{
-		router: r,
+func NewHandler(httpAuth *Auth, rts *routes.Routes, secretKey *auth.SecretKey, publicKey *auth.PublicKey, resolver *Resolver, sessions *session.Mongo, userActions *user.Actions, producer Producer, tubes Tubes) *Handler {
+	h := &Handler{
+		auth:      httpAuth,
+		router:    http.NewServeMux(),
+		publicKey: publicKey,
+		secretKey: secretKey,
+		routes:    rts,
+		sessions:  sessions,
+		user:      userActions,
+		producer:  producer,
+		tubes:     tubes,
 	}
+
+	// All routes must be on the first level in order for secure cookies to work.
+	h.router.HandleFunc("/health", ok)
+	h.router.Handle(
+		"/graph",
+		withHTTPAuth(
+			&relay.Handler{
+				Schema: graphql.MustParseSchema(schema, resolver, graphql.UseFieldResolvers()),
+			},
+		),
+	)
+	h.router.HandleFunc(
+		"/token",
+		h.fetchToken,
+	)
+	h.router.HandleFunc(
+		"/session-email",
+		h.createSessionByEmail,
+	)
+	h.router.HandleFunc(
+		"/session-login",
+		h.createSessionByLogin,
+	)
+	h.router.HandleFunc(
+		"/email-login",
+		h.emailLogin,
+	)
+	h.router.HandleFunc(
+		"/email-create-password",
+		h.emailCreatePassword,
+	)
+	h.router.HandleFunc(
+		"/email-reset-password",
+		h.emailResetPassword,
+	)
+	h.router.HandleFunc(
+		"/logout",
+		h.logout,
+	)
+	h.router.HandleFunc(
+		"/password-create",
+		h.createPassword,
+	)
+	h.router.HandleFunc(
+		"/password-update",
+		h.updatePassword,
+	)
+	h.router.HandleFunc(
+		"/password-reset",
+		h.resetPassword,
+	)
+	return h
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -83,233 +165,577 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
-	lw := newResponseWriter(w)
-	r = r.WithContext(ctx)
-	h.router.ServeHTTP(lw, r)
-
-	lw.Event(ctx, r).Msg("Web served")
+	h.router.ServeHTTP(w, r.WithContext(ctx))
 }
 
 func ok(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
 
-type responseWriter struct {
-	http.ResponseWriter
-	code int
-}
+func (h *Handler) fetchToken(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-func newResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{ResponseWriter: w, code: http.StatusOK}
-}
-
-func (w *responseWriter) WriteHeader(code int) {
-	w.code = code
-	w.ResponseWriter.WriteHeader(code)
-}
-
-func (w *responseWriter) Event(ctx context.Context, r *http.Request) *zerolog.Event {
-	var event *zerolog.Event
-	if w.code >= http.StatusInternalServerError {
-		event = log.Ctx(ctx).Error()
-	} else {
-		event = log.Ctx(ctx).Info()
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
-	return event.Str("method", r.Method).Int("code", w.code).Str("url", r.URL.String())
-}
 
-func fetchToken(publicKey *auth.PublicKey, secretKey *auth.SecretKey, sessions *session.CRUD) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
+	sess, err := h.sessions.FetchOne(ctx, session.Lookup{Key: h.auth.Session(r)})
+	if err != nil {
+		if !errors.Is(err, session.ErrNotFound) && !errors.Is(err, session.ErrValidation) {
+			log.Ctx(ctx).Err(err).Msg("Failed to fetch session.")
 		}
-
-		authCtx := auth.NewHTTPContext(w, r)
-
-		claims := func() *auth.APIClaims {
-			if s, err := sessions.Fetch(ctx, authCtx.Session()); err == nil {
-				return auth.NewAPIClaims(s.Owner, auth.AccountUser)
-			}
-			var c auth.APIClaims
-			if err := publicKey.Verify(authCtx.GuestClaims(), &c); err == nil {
-				return &c
-			}
-			return auth.NewGuesAPIClaims(uuid.New())
-		}()
-
-		access, err := secretKey.Sign(claims)
+		var claims auth.APIClaims
+		err := h.publicKey.Verify(h.auth.GuestToken(r), &claims)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
-			w.WriteHeader(http.StatusInternalServerError)
+			// Session not found, try validating guest claims.
+			guestClaims := auth.NewAPIClaims(uuid.New(), auth.AccountGuest)
+			guestToken, err := h.secretKey.Sign(guestClaims)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			h.auth.SetGuestToken(w, guestToken)
+			_ = json.NewEncoder(w).Encode(Token{
+				Token:     guestToken,
+				ExpiresIn: int32(claims.ExpiresIn().Seconds()),
+			})
 			return
 		}
-
-		if claims.Account == auth.AccountGuest {
-			authCtx.SetGuestClaims(access)
-		} else {
-			authCtx.ResetGuestClaims()
-		}
-
 		_ = json.NewEncoder(w).Encode(Token{
-			Token:     access,
+			Token:     h.auth.GuestToken(r),
 			ExpiresIn: int32(claims.ExpiresIn().Seconds()),
 		})
+		return
 	}
+
+	userClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
+	userToken, err := h.secretKey.Sign(userClaims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign API token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(Token{
+		Token:     userToken,
+		ExpiresIn: int32(userClaims.ExpiresIn().Seconds()),
+	})
 }
 
-func createSession(publicKey *auth.PublicKey, secretKey *auth.SecretKey, users *user.CRUD, sessions *session.CRUD) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (h *Handler) createSessionByEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		var sessionRequest Session
-		err := json.NewDecoder(r.Body).Decode(&sessionRequest)
-		if err != nil {
-			log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var claims auth.EmailClaims
-		err = publicKey.Verify(sessionRequest.EmailToken, &claims)
-		if err != nil {
-			log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		usr, err := users.GetOrCreate(ctx, user.User{
-			Idents: []user.Ident{
-				{Platform: user.PlatformEmail,
-					Value: claims.Address,
-				},
-			},
-		})
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to create session.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		sess, err := sessions.Create(ctx, usr.ID)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to create session.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		apiClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
-		access, err := secretKey.Sign(apiClaims)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to sign access token.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		auth.NewHTTPContext(w, r).SetSession(sess.Key)
-		_ = json.NewEncoder(w).Encode(Token{
-			Token:     access,
-			ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
-		})
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
+
+	var request CreateSessionByEmail
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var claims auth.EmailClaims
+	err = h.publicKey.Verify(request.EmailToken, &claims)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	usr, err := h.user.GetOrCreate(ctx, user.User{
+		Idents: []user.Ident{
+			{
+				Platform: user.PlatformEmail,
+				Value:    claims.Address,
+			},
+		},
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to find user.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	created, err := h.sessions.Create(ctx, session.Session{
+		Key:   session.NewKey(),
+		Owner: usr.ID,
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create session.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	sess := created[0]
+
+	apiClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
+	access, err := h.secretKey.Sign(apiClaims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign access token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	result := Session{
+		Token:     access,
+		ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
+	}
+	// User has no password. Returning a new email token to set a password.
+	if len(usr.PasswordHash) == 0 {
+		claims = auth.NewEmailClaims(claims.Address)
+		result.CreatePasswordToken, err = h.secretKey.Sign(claims)
+		if err != nil {
+			// This error is not critical.
+			log.Ctx(ctx).Err(err).Msg("Failed to sign email token.")
+		}
+	}
+	h.auth.ResetGuestToken(w)
+	h.auth.SetSession(w, sess.Key)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
-func login(rts *routes.Routes, secretKey *auth.SecretKey, producer Producer, tubes Tubes) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (h *Handler) createSessionByLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		var loginRequest Login
-		err := json.NewDecoder(r.Body).Decode(&loginRequest)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if err := email.Validate(loginRequest.Address); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		token, err := secretKey.Sign(auth.NewEmailClaims(loginRequest.Address))
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		payload, err := proto.Marshal(&sender.Send{
-			Message: &sender.Message{
-				Message: &sender.Message_LoginViaEmail_{
-					LoginViaEmail: &sender.Message_LoginViaEmail{
-						SecretLoginUrl: rts.LoginViaEmail(token),
-					},
-				},
-			},
-			Delivery: &sender.Delivery{
-				Delivery: &sender.Delivery_Email_{
-					Email: &sender.Delivery_Email{
-						ToAddress: loginRequest.Address,
-					},
-				},
-			},
-		})
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		body, err := proto.Marshal(
-			&queue.Job{
-				Payload: payload,
-				TraceId: trace.ID(ctx),
-			},
-		)
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		id, err := producer.Put(ctx, tubes.Send, body, beanstalk.PutParams{TTR: time.Minute})
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted.")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
+
+	var request CreateSessionByLogin
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	usr, err := h.user.CheckPassword(
+		ctx,
+		user.Ident{
+			Platform: user.PlatformEmail,
+			Value:    request.Email,
+		},
+		user.Password(request.Password),
+	)
+	switch {
+	case errors.Is(err, user.ErrNotFound), errors.Is(err, user.ErrValidation):
+		w.WriteHeader(http.StatusNotFound)
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to check user password.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	created, err := h.sessions.Create(ctx, session.Session{
+		Key:   session.NewKey(),
+		Owner: usr.ID,
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create session.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	sess := created[0]
+
+	apiClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
+	access, err := h.secretKey.Sign(apiClaims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign access token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	h.auth.ResetGuestToken(w)
+	h.auth.SetSession(w, sess.Key)
+	_ = json.NewEncoder(w).Encode(Session{
+		Token:     access,
+		ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
+	})
 }
 
-func logout(sessions *session.CRUD) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func (h *Handler) emailLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 
-		authCtx := auth.NewHTTPContext(w, r)
-		err := sessions.Delete(ctx, authCtx.Session())
+	var request Email
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := email.Validate(request.Address); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.secretKey.Sign(auth.NewEmailClaims(request.Address))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	payload, err := proto.Marshal(&sender.Send{
+		Message: &sender.Message{
+			Message: &sender.Message_Login_{
+				Login: &sender.Message_Login{
+					SecretUrl: h.routes.LoginWithEmail(token),
+				},
+			},
+		},
+		Delivery: &sender.Delivery{
+			Delivery: &sender.Delivery_Email_{
+				Email: &sender.Delivery_Email{
+					ToAddress: request.Address,
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	body, err := proto.Marshal(
+		&queue.Job{
+			Payload: payload,
+			TraceId: trace.ID(ctx),
+		},
+	)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	id, err := h.producer.Put(ctx, h.tubes.Send, body, beanstalk.PutParams{TTR: time.Minute})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email login job emitted.")
+}
+
+func (h *Handler) emailCreatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request Email
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := email.Validate(request.Address); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.secretKey.Sign(auth.NewEmailClaims(request.Address))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	payload, err := proto.Marshal(&sender.Send{
+		Message: &sender.Message{
+			Message: &sender.Message_CreatePassword_{
+				CreatePassword: &sender.Message_CreatePassword{
+					SecretUrl: h.routes.CreatePassword(token),
+				},
+			},
+		},
+		Delivery: &sender.Delivery{
+			Delivery: &sender.Delivery_Email_{
+				Email: &sender.Delivery_Email{
+					ToAddress: request.Address,
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	body, err := proto.Marshal(
+		&queue.Job{
+			Payload: payload,
+			TraceId: trace.ID(ctx),
+		},
+	)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	id, err := h.producer.Put(ctx, h.tubes.Send, body, beanstalk.PutParams{TTR: time.Minute})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email create password job emitted.")
+}
+
+func (h *Handler) emailResetPassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request Email
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := email.Validate(request.Address); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.secretKey.Sign(auth.NewEmailClaims(request.Address))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	payload, err := proto.Marshal(&sender.Send{
+		Message: &sender.Message{
+			Message: &sender.Message_ResetPassword_{
+				ResetPassword: &sender.Message_ResetPassword{
+					SecretUrl: h.routes.ResetPassword(token),
+				},
+			},
+		},
+		Delivery: &sender.Delivery{
+			Delivery: &sender.Delivery_Email_{
+				Email: &sender.Delivery_Email{
+					ToAddress: request.Address,
+				},
+			},
+		},
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	body, err := proto.Marshal(
+		&queue.Job{
+			Payload: payload,
+			TraceId: trace.ID(ctx),
+		},
+	)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to marshal email.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	id, err := h.producer.Put(ctx, h.tubes.Send, body, beanstalk.PutParams{TTR: time.Minute})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to put email job.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Ctx(ctx).Info().Uint64("jobId", id).Msg("Email reset password job emitted.")
+}
+
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	_, err := h.sessions.Delete(ctx, session.Lookup{Key: h.auth.Session(r)})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to delete session.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	h.auth.ResetGuestToken(w)
+	h.auth.ResetSession(w)
+	log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("User logged out.")
+}
+
+func (h *Handler) createPassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request CreatePassword
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var claims auth.EmailClaims
+	err = h.publicKey.Verify(request.EmailToken, &claims)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	_, err = h.user.CreatePassword(
+		ctx,
+		user.Ident{
+			Platform: user.PlatformEmail,
+			Value:    claims.Address,
+		},
+		user.Password(request.Password),
+	)
+	switch {
+	case errors.Is(err, user.ErrValidation):
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	case errors.Is(err, user.ErrNotFound):
+		w.WriteHeader(http.StatusNotFound)
+		return
+	case err != nil:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Password created.")
+}
+
+func (h *Handler) updatePassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var claims auth.APIClaims
+	if err := h.publicKey.Verify(h.auth.Token(r), &claims); err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var request UpdatePassword
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	_, err = h.user.UpdatePassword(
+		ctx,
+		claims.UserID,
+		user.Password(request.OldPassword),
+		user.Password(request.NewPassword),
+	)
+	switch {
+	case errors.Is(err, user.ErrValidation):
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	case err != nil:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if request.Logout {
+		_, err = h.sessions.Delete(ctx, session.Lookup{Owner: claims.UserID})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to delete session.")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		authCtx.ResetSession()
-		log.Ctx(ctx).Info().Str("sessionKey", authCtx.Session()).Msg("User logged out.")
+		h.auth.ResetSession(w)
+		log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Deleted all sessions.")
 	}
+
+	log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Password reset.")
+}
+
+func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request ResetPassword
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var claims auth.EmailClaims
+	err = h.publicKey.Verify(request.EmailToken, &claims)
+	if err != nil {
+		log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	usr, err := h.user.ResetPassword(
+		ctx,
+		user.Ident{
+			Platform: user.PlatformEmail,
+			Value:    claims.Address,
+		},
+		user.Password(request.Password),
+	)
+	switch {
+	case errors.Is(err, user.ErrValidation):
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	case errors.Is(err, user.ErrNotFound):
+		w.WriteHeader(http.StatusNotFound)
+		return
+	case err != nil:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if request.Logout {
+		_, err = h.sessions.Delete(ctx, session.Lookup{Owner: usr.ID})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to delete session.")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		h.auth.ResetSession(w)
+		log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Deleted all sessions.")
+	}
+
+	log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Password reset.")
 }

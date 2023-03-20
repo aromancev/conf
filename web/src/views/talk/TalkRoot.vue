@@ -4,7 +4,7 @@
   <div v-if="!state.isLoading && state.talk" class="content">
     <div class="title">
       <EditableField
-        v-if="userStore.state.id === state.talk.ownerId"
+        v-if="accessStore.state.id === state.talk.ownerId"
         type="text"
         :value="state.talk.title || state.talk.handle"
         :validate="(v) => titleValidator.validate(v)"
@@ -40,7 +40,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="state.talk.ownerId === userStore.state.id"
+        v-if="state.talk.ownerId === accessStore.state.id"
         :to="route.talk(confaHandle, handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -73,7 +73,7 @@
 import { watch, computed, reactive } from "vue"
 import { useRouter } from "vue-router"
 import { talkClient, confaClient, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { Talk, TalkState, titleValidator } from "@/api/models/talk"
 import { route, TalkTab, handleNew } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
@@ -111,7 +111,7 @@ const inviteLink = computed(() => {
 watch(
   () => props.handle,
   async (value) => {
-    if (!userStore.state.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
+    if (!accessStore.state.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -129,7 +129,7 @@ watch(
         confaHandle = confa.handle
       }
       if (talkHandle === handleNew) {
-        if (!userStore.state.allowedWrite) {
+        if (!accessStore.state.allowedWrite) {
           router.replace(route.login())
           return
         }

@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { reactive, onMounted, ref } from "vue"
 import { Confa } from "@/api/models/confa"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { confaClient } from "@/api"
 import { ConfaIterator } from "@/api/confa"
 import { handleNew, route } from "@/router"
@@ -73,7 +73,7 @@ async function loadConfas() {
 
   try {
     if (!iterator) {
-      iterator = confaClient.fetch({ ownerId: userStore.state.id })
+      iterator = confaClient.fetch({ ownerId: accessStore.state.id })
     }
     const fetched = await iterator.next()
     if (!fetched.length) {

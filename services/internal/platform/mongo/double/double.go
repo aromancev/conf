@@ -15,6 +15,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	containerExpireTimeout = 5 * time.Minute
+)
+
 func NewDocker() *mongo.Database {
 	return clientFromContainer().Database(uuid.NewString())
 }
@@ -83,11 +87,14 @@ func clientFromContainer() *mongo.Client {
 		}
 	}()
 
-	if err := resource.Expire(60); err != nil {
+	if err := resource.Expire(uint(containerExpireTimeout.Seconds())); err != nil {
 		panic(err)
 	}
 
 	err = pool.Retry(func() error {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
 		port := resource.GetPort("27017/tcp")
 		client, err = mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf("mongodb://mongo:mongo@localhost:%s", port)).SetDirect(true))
 		if err != nil {

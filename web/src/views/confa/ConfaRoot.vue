@@ -4,7 +4,7 @@
   <div v-if="!state.isLoading && state.confa" class="content">
     <div class="title">
       <EditableField
-        v-if="userStore.state.id === state.confa.ownerId"
+        v-if="accessStore.state.id === state.confa.ownerId"
         type="text"
         :value="state.confa.title || state.confa.handle"
         :validate="(v) => titleValidator.validate(v)"
@@ -22,7 +22,7 @@
         Overview
       </router-link>
       <router-link
-        v-if="state.confa.ownerId === userStore.state.id"
+        v-if="state.confa.ownerId === accessStore.state.id"
         :to="route.confa(handle, 'edit')"
         class="header-item"
         :class="{ active: tab === 'edit' }"
@@ -45,7 +45,7 @@
 import { watch, reactive } from "vue"
 import { useRouter } from "vue-router"
 import { confaClient, errorCode, Code } from "@/api"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { Confa } from "@/api/models/confa"
 import { titleValidator } from "@/api/models/confa"
 import { route, ConfaTab, handleNew } from "@/router"
@@ -75,7 +75,7 @@ const router = useRouter()
 watch(
   () => props.handle,
   async (handle) => {
-    if (!userStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+    if (!accessStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
       router.replace(route.login())
       return
     }

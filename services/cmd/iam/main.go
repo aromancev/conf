@@ -15,8 +15,8 @@ import (
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/routes"
+	"github.com/aromancev/confa/session"
 	"github.com/aromancev/confa/user"
-	"github.com/aromancev/confa/user/session"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -88,18 +88,30 @@ func main() {
 	rts := routes.NewRoutes(config.BaseURL)
 
 	userMongo := user.NewMongo(mongoDB)
-	userCRUD := user.NewCRUD(userMongo)
+	userCRUD := user.NewActions(userMongo)
 	sessionMongo := session.NewMongo(mongoDB)
-	sessionCRUD := session.NewCRUD(sessionMongo)
 
 	webServer := &http.Server{
 		Addr:         config.ListenWebAddress,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler: web.NewHandler(rts, secretKey, publicKey, sessionCRUD, userCRUD, producer, web.Tubes{
-			Send: config.Beanstalk.TubeSend,
-		}),
+		Handler: web.NewHandler(
+			web.NewAuth(config.Domain),
+			rts,
+			secretKey,
+			publicKey,
+			web.NewResolver(
+				publicKey,
+				userMongo,
+			),
+			sessionMongo,
+			userCRUD,
+			producer,
+			web.Tubes{
+				Send: config.Beanstalk.TubeSend,
+			},
+		),
 	}
 
 	rpcServer := &http.Server{

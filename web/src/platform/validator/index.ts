@@ -1,16 +1,16 @@
 export class RegexValidator {
   readonly regex: RegExp
-  readonly error: string
+  readonly errors: string[]
 
   constructor(regex: string, errors: string[]) {
     this.regex = new RegExp(regex)
-    this.error = errors.map((err: string) => "• " + err).join("\n")
+    this.errors = errors
   }
 
-  validate(value: string): string {
+  validate(value: string): string[] {
     if (this.regex.test(value)) {
-      return ""
+      return []
     }
-    return this.error
+    return this.errors
   }
 }

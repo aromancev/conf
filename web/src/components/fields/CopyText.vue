@@ -1,5 +1,5 @@
 <template>
-  <div class="copy-text" @click="copy">{{ value }} <span class="copy-icon material-icons">content_copy</span></div>
+  <div class="link copy-text" @click="copy">{{ value }} <span class="copy-icon material-icons">content_copy</span></div>
 </template>
 
 <script setup lang="ts">

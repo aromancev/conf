@@ -4,7 +4,7 @@
     <div v-if="!state.isLoading" class="processing-note">
       <p>Processing talk recording.</p>
       <p>It might take a while (especially screen sharing) becuase it runs on a very cheap server.</p>
-      <p v-if="userStore.state.id === talk.ownerId">You will receive an email when it's done.</p>
+      <p v-if="accessStore.state.id === talk.ownerId">You will receive an email when it's done.</p>
     </div>
   </div>
   <div v-if="state.isReady" class="content">
@@ -50,7 +50,7 @@
 
       <RoomAudience
         ref="audience"
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :is-loading="room.state.isLoading"
         :is-playing="room.state.isPlaying"
         :peers="room.state.peers"
@@ -78,7 +78,7 @@
     </div>
     <div v-if="state.sidePanel !== 'none'" class="side-panel">
       <RoomMessages
-        :user-id="userStore.state.id"
+        :user-id="accessStore.state.id"
         :messages="room.state.messages"
         :is-loading="room.state.isLoading"
         :is-readonly="true"
@@ -102,7 +102,7 @@ import { ref, computed, watch, nextTick, onUnmounted, reactive } from "vue"
 import { recordingClient } from "@/api"
 import { Talk } from "@/api/models/talk"
 import { RecordingStatus } from "@/api/models/recording"
-import { userStore } from "@/api/models/user"
+import { accessStore } from "@/api/models/access"
 import { ReplayRoom } from "@/components/room"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
@@ -112,8 +112,7 @@ import PageLoader from "@/components/PageLoader.vue"
 import { Media } from "@/components/room/aggregators/media"
 import { Hint } from "@/api/room/schema"
 import { notificationStore } from "@/api/models/notifications"
-
-const READY_CHECK_INTERVAL = 10 * 1000
+import { Backoff } from "@/platform/sync"
 
 type SidePanel = "none" | "chat"
 
@@ -170,6 +169,7 @@ const audios = computed<Media[]>(() => {
   }
   return auds
 })
+const loadBackoff = new Backoff(1.2, 3000, 3 * 60 * 1000)
 
 watch(
   roomId,
@@ -207,10 +207,11 @@ async function loadRoom(): Promise<void> {
     state.isLoading = false
     if (recording.status != RecordingStatus.READY) {
       // If recording isn't finished yet, try again later.
-      loadTimerId = setTimeout(() => loadRoom(), READY_CHECK_INTERVAL)
+      loadTimerId = setTimeout(() => loadRoom(), loadBackoff.next())
       return
     }
     state.isReady = true
+    loadBackoff.reset()
     await room.load(roomId.value, recording)
   } catch (e) {
     notificationStore.error("failed to load recording")

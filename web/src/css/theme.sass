@@ -83,6 +83,13 @@ $content-width: 1200px
     cursor: default
     color: var(--color-font-disabled)
 
+.link
+  @include clickable
+  text-decoration: none
+  color: var(--color-highlight-background)
+  &:hover
+    text-decoration: underline
+
 .btn-convex
   @include clickable
   display: inline-block

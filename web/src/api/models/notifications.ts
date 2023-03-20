@@ -22,11 +22,11 @@ export class NotificationStore extends Store<Notification> {
 
   message(message: string, level: Level): void {
     clearTimeout(this.timeoutId)
-    this._state.message = message
-    this._state.level = level
+    this.reactive.message = message
+    this.reactive.level = level
     this.timeoutId = setTimeout(() => {
-      this._state.message = ""
-      this._state.level = "info"
+      this.reactive.message = ""
+      this.reactive.level = "info"
     }, (message.length / CHARS_PER_SECOND) * 1000)
   }
 }
