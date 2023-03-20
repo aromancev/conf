@@ -6,11 +6,12 @@
       <EditableField
         v-if="accessStore.state.id === state.confa.ownerId"
         type="text"
-        :value="state.confa.title || state.confa.handle"
+        :value="state.confa.title || 'Untitled'"
         :validate="(v) => titleValidator.validate(v)"
         @update="updateTitle"
+        @discard="discardTitle"
       ></EditableField>
-      <div v-else>{{ state.confa.title || state.confa.handle }}</div>
+      <div v-else>{{ state.confa.title || "Untitled" }}</div>
     </div>
     <div class="path">
       /
@@ -113,7 +114,17 @@ async function updateTitle(title: string) {
   if (!state.confa || title === state.confa.title) {
     return
   }
-  state.confa = await confaClient.update({ id: state.confa.id }, { title: title })
+
+  try {
+    state.confa = await confaClient.update({ id: state.confa.id }, { title: title })
+    notificationStore.info("title updated")
+  } catch {
+    notificationStore.error("failed to update title")
+  }
+}
+
+function discardTitle() {
+  notificationStore.info("title discarded")
 }
 
 function update(value: Confa) {

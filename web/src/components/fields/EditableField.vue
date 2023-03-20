@@ -17,6 +17,7 @@ import InputField from "@/components/fields/InputField.vue"
 
 const emit = defineEmits<{
   (e: "update", value: string): void
+  (e: "discard", value: string): void
 }>()
 
 const props = defineProps<{
@@ -45,7 +46,7 @@ const errors = computed<string[]>(() => {
 watch(
   () => props.value,
   (val) => {
-    state.value = val
+    state.value = val.trim()
   },
 )
 
@@ -60,11 +61,7 @@ function startEdit() {
 function keySend(ev: KeyboardEvent) {
   if (ev.code === "Enter") {
     ev.preventDefault()
-    if (errors.value) {
-      discard()
-    } else {
-      submit()
-    }
+    submit()
     return
   }
   if (ev.code === "Escape") {
@@ -78,16 +75,20 @@ function submit() {
   if (!state.isEditing) {
     return
   }
-  if (errors.value) {
+  if (errors.value.length) {
     discard()
+    return
   }
+  state.value = state.value.trim()
   state.isEditing = false
   emit("update", state.value)
 }
 
 function discard() {
+  const discardedValue = state.value.trim()
   state.isEditing = false
   state.value = props.value
+  emit("discard", discardedValue)
 }
 </script>
 

@@ -8,8 +8,8 @@ export type Confa = {
   description: string
 }
 
-export const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{0,64}$", [
-  "Must be from 0 to 64 characters long",
+export const titleValidator = new RegexValidator("^[a-zA-Z0-9- ]{4,64}$", [
+  "Must be from 4 to 64 characters long",
   "Can only contain letters, numbers, spaces, and '-'",
 ])
 

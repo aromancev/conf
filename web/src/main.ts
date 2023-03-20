@@ -2,7 +2,7 @@ import { createApp, watch } from "vue"
 import App from "./App.vue"
 import router from "./router"
 import { api, profileClient } from "@/api"
-import { accessStore } from "@/api/models/access"
+import { accessStore, Account } from "@/api/models/access"
 
 const app = createApp(App)
 
@@ -26,6 +26,9 @@ app.mount("#app")
 watch(
   accessStore.state,
   () => {
+    if (accessStore.state.account === Account.Guest) {
+      return
+    }
     profileClient.refreshProfile()
   },
   { immediate: true },
