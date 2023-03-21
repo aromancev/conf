@@ -336,7 +336,7 @@ func TestActions(t *testing.T) {
 
 			// Takes about the same time.
 			diffMs := math.Abs(float64(wrongPass.Milliseconds() - notFound.Milliseconds()))
-			assert.Less(t, diffMs, float64(100))
+			assert.Less(t, diffMs, float64(wrongPass.Milliseconds()+notFound.Milliseconds())*0.05)
 		})
 	})
 }

@@ -6,11 +6,12 @@
       <EditableField
         v-if="accessStore.state.id === state.talk.ownerId"
         type="text"
-        :value="state.talk.title || state.talk.handle"
+        :value="state.talk.title || 'Untitled'"
         :validate="(v) => titleValidator.validate(v)"
         @update="updateTitle"
+        @discard="discardTitle"
       ></EditableField>
-      <div v-else>{{ state.talk.title || state.talk.handle }}</div>
+      <div v-else>{{ state.talk.title || "Untitled" }}</div>
     </div>
     <div class="path">
       /
@@ -167,7 +168,17 @@ async function updateTitle(title: string) {
   if (!state.talk || title === state.talk.title) {
     return
   }
-  state.talk = await talkClient.update({ id: state.talk.id }, { title: title })
+
+  try {
+    state.talk = await talkClient.update({ id: state.talk.id }, { title: title })
+    notificationStore.info("title updated")
+  } catch {
+    notificationStore.error("failed to update title")
+  }
+}
+
+function discardTitle() {
+  notificationStore.info("title discarded")
 }
 
 function update(value: Talk) {

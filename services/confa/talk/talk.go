@@ -50,7 +50,7 @@ type Talk struct {
 }
 
 var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
-var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,64}$")
+var validTitle = regexp.MustCompile("^[^ ][a-zA-Z0-9- ]{2,64}[^ ]$")
 
 const (
 	maxDescription = 5000

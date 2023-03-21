@@ -25,7 +25,7 @@ type Confa struct {
 }
 
 var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
-var validTitle = regexp.MustCompile("^[a-zA-Z0-9- ]{0,64}$")
+var validTitle = regexp.MustCompile("^[^ ]*[a-zA-Z0-9- ]{2,64}[^ ]*$")
 
 const (
 	maxDescription = 5000
@@ -38,7 +38,7 @@ func (c Confa) Validate() error {
 	if !validHandle.MatchString(c.Handle) {
 		return errors.New("invalid handle")
 	}
-	if !validTitle.MatchString(c.Title) {
+	if c.Title != "" && !validTitle.MatchString(c.Title) {
 		return errors.New("invalid title")
 	}
 	if len(c.Description) > maxDescription {
