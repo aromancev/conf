@@ -27,11 +27,16 @@
         type="password"
         label="Password"
         autocomplete="password"
-        :error="passwordErrors"
+        :errors="passwordErrors"
       />
-      <button class="submit btn" :disabled="isSubmitted || passwordErrors.length !== 0" @click="resetPassword">
-        Set password
-      </button>
+      <InputField
+        v-model="confirmPassword"
+        type="password"
+        label="Confirm password"
+        autocomplete="new-password"
+        :errors="confirmPasswordErrors"
+      />
+      <button class="submit btn" :disabled="isSubmitted" @click="createPassword">Set password</button>
       <div class="or">or</div>
       <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
         >Start broadcasting</router-link
@@ -41,15 +46,19 @@
     <div v-if="state === 'RESET_PASSWORD'">
       <InputField
         v-model="password"
-        :spellcheck="false"
         type="password"
-        label="Password"
-        autocomplete="password"
-        :error="passwordErrors"
+        label="New password"
+        autocomplete="new-password"
+        :errors="passwordErrors"
       />
-      <button class="submit btn" :disabled="isSubmitted || passwordErrors.length !== 0" @click="resetPassword">
-        Set password
-      </button>
+      <InputField
+        v-model="confirmPassword"
+        type="password"
+        label="Confirm password"
+        autocomplete="new-password"
+        :errors="confirmPasswordErrors"
+      />
+      <button class="submit btn" :disabled="isSubmitted" @click="resetPassword">Set password</button>
     </div>
 
     <div v-if="state === 'HAS_PASSWORD'">
@@ -68,6 +77,31 @@
     <p>Email sent!</p>
     <p>Check your inbox to reset password.</p>
   </ModalDialog>
+  <ModalDialog
+    :is-visible="modal === 'PASSWORD_CREATED'"
+    :buttons="{ ok: 'OK' }"
+    @click="
+      () => {
+        modal = 'NONE'
+        router.replace(route.login())
+      }
+    "
+  >
+    <p>Passwword created.</p>
+  </ModalDialog>
+  <ModalDialog
+    :is-visible="modal === 'PASSWORD_RESET'"
+    :buttons="{ ok: 'OK' }"
+    @click="
+      () => {
+        modal = 'NONE'
+        router.replace(route.login())
+      }
+    "
+  >
+    <p>New password set.</p>
+    <p>You can use it to log in.</p>
+  </ModalDialog>
   <ModalDialog :is-visible="modal == 'BAD_REQUEST'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
     <p>Incorrect email.</p>
   </ModalDialog>
@@ -77,6 +111,9 @@
   <ModalDialog :is-visible="modal == 'INVALID_TOKEN'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
     <p>Email token has expired or has been used before.</p>
     <p>Please request a new email.</p>
+  </ModalDialog>
+  <ModalDialog :is-visible="modal == 'ALREADY_HAS_PASSWORD'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+    <p>User already has a password.</p>
   </ModalDialog>
 </template>
 
@@ -94,7 +131,16 @@ import PageLoader from "@/components/PageLoader.vue"
 import { notificationStore } from "@/api/models/notifications"
 import { profileStore } from "@/api/models/profile"
 
-type Modal = "NONE" | "EMAIL_LOGIN_SENT" | "EMAIL_RESET_SENT" | "BAD_REQUEST" | "NOT_FOUND" | "INVALID_TOKEN"
+type Modal =
+  | "NONE"
+  | "EMAIL_LOGIN_SENT"
+  | "EMAIL_RESET_SENT"
+  | "PASSWORD_CREATED"
+  | "PASSWORD_RESET"
+  | "BAD_REQUEST"
+  | "NOT_FOUND"
+  | "INVALID_TOKEN"
+  | "ALREADY_HAS_PASSWORD"
 type State = "LOADING" | "GUEST" | "HAS_PASSWORD" | "CREATE_PASSWORD" | "RESET_PASSWORD"
 
 const props = defineProps<{
@@ -103,18 +149,28 @@ const props = defineProps<{
 }>()
 
 const password = ref<string>("")
+const confirmPassword = ref<string>("")
 const modal = ref<Modal>("NONE")
 const state = ref<State>("LOADING")
 const email = ref<string>("")
 const emailErrors = computed<string[]>(() => (isSubmitted.value ? emailValidator.validate(email.value) : []))
 const passwordErrors = computed<string[]>(() => (isSubmitted.value ? passwordValidator.validate(password.value) : []))
+const confirmPasswordErrors = computed<string[]>(() => {
+  if (!isSubmitted.value) {
+    return []
+  }
+  if (password.value === confirmPassword.value) {
+    return []
+  }
+  return ["Must be the same as the new password"]
+})
 const isSubmitted = ref<boolean>(false)
 
 const router = useRouter()
 let resetPasswordToken = ""
 
 watch(
-  accessStore.state,
+  [accessStore.state, () => props.action, () => props.token],
   async () => {
     if (!props.action || !props.token) {
       state.value = accessStore.state.account === Account.Guest ? "GUEST" : "HAS_PASSWORD"
@@ -130,6 +186,7 @@ watch(
           state.value = "CREATE_PASSWORD"
         } else {
           state.value = "HAS_PASSWORD"
+          router.replace(route.login())
         }
         return
       }
@@ -156,7 +213,7 @@ watch(
   { immediate: true },
 )
 
-watch([email, password], () => (isSubmitted.value = false))
+watch([email, password, confirmPassword], () => (isSubmitted.value = false))
 
 async function login() {
   if (isSubmitted.value) {
@@ -178,6 +235,7 @@ async function login() {
       await api.emailLogin(email.value)
       clearForm()
       modal.value = "EMAIL_LOGIN_SENT"
+      state.value = "GUEST"
     }
   } catch (e) {
     switch (errorCode(e)) {
@@ -213,15 +271,48 @@ async function emailResetPassword() {
   }
 }
 
+async function createPassword() {
+  isSubmitted.value = true
+
+  if (passwordErrors.value.length || confirmPasswordErrors.value.length) {
+    return
+  }
+
+  state.value = "LOADING"
+  try {
+    await api.createPassword(resetPasswordToken, password.value)
+    clearForm()
+    accessStore.logout()
+    api.refreshToken()
+    modal.value = "PASSWORD_CREATED"
+    state.value = "HAS_PASSWORD"
+  } catch (e) {
+    if (errorCode(e) === Code.NotFound) {
+      modal.value = "ALREADY_HAS_PASSWORD"
+      state.value = "HAS_PASSWORD"
+      router.replace(route.login())
+    } else {
+      notificationStore.error("failed to create password")
+      state.value = "GUEST"
+    }
+  }
+}
+
 async function resetPassword() {
+  isSubmitted.value = true
+
+  if (passwordErrors.value.length || confirmPasswordErrors.value.length) {
+    return
+  }
+
   state.value = "LOADING"
   try {
     await api.resetPassword(resetPasswordToken, password.value)
     clearForm()
     accessStore.logout()
     api.refreshToken()
+    modal.value = "PASSWORD_RESET"
     state.value = "GUEST"
-    router.push(route.login())
   } catch {
     notificationStore.error("failed to create password")
     state.value = "GUEST"
@@ -231,6 +322,7 @@ async function resetPassword() {
 function clearForm() {
   email.value = ""
   password.value = ""
+  confirmPassword.value = ""
   isSubmitted.value = false
 }
 </script>

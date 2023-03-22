@@ -307,6 +307,27 @@ export class Client {
     }
   }
 
+  async createPassword(emailToken: string, password: string): Promise<void> {
+    const resp = await fetch("/api/iam/password-create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        emailToken: emailToken,
+        password: password,
+      }),
+    })
+    switch (resp.status) {
+      case HTTPCode.OK:
+        break
+      case HTTPCode.NotFound:
+        throw new APIError(Code.NotFound, "User already has a password.")
+      default:
+        throw new APIError(Code.Unknown, "")
+    }
+  }
+
   async resetPassword(emailToken: string, password: string): Promise<void> {
     const resp = await fetch("/api/iam/password-reset", {
       method: "POST",
