@@ -32,7 +32,7 @@ services:
     environment:
       - LOG_FORMAT=console
       - LISTEN_WEB_ADDRESS=:80
-      - SERVICES=http://rtc:80/query,http://confa:80/query
+      - SERVICES=http://iam:80/graph,http://rtc:80/graph,http://confa:80/graph
       - SCHEMA_UPDATE_INTERVAL_S=20
       - LOG_LEVEL=warn
   
