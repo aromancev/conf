@@ -11,6 +11,9 @@ export const config = {
     stunURLs: split(import.meta.env.VITE_SFU_STUN_URLS),
     turnURLs: split(import.meta.env.VITE_SFU_TURN_URLS),
   },
+  gsi: {
+    clientId: import.meta.env.VITE_GSI_CLIENT_ID as string,
+  },
 }
 
 function split(val: string | boolean | undefined): string[] {

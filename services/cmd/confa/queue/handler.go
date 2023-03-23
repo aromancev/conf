@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/aromancev/confa/confa"
@@ -39,18 +40,18 @@ type Handler struct {
 	route func(job *beanstalk.Job) JobHandle
 }
 
-func NewHandler(uploader *profile.Updater, r RTC, confas *confa.Mongo, talks *talk.Mongo, emitter *talk.Beanstalk, tubes Tubes, sender Sender, rts *routes.Routes) *Handler {
+func NewHandler(uploader *profile.Updater, r RTC, confas *confa.Mongo, talks *talk.Mongo, emitter *talk.Beanstalk, tubes Tubes, sender Sender, pages *routes.Pages, profiles *profile.Mongo) *Handler {
 	return &Handler{
 		route: func(job *beanstalk.Job) JobHandle {
 			switch job.Stats.Tube {
 			case tubes.UpdateAvatar:
-				return updateAvatar(uploader)
+				return updateAvatar(uploader, profiles)
 			case tubes.StartRecording:
 				return startRecording(talks, r, emitter)
 			case tubes.StopRecording:
 				return stopRecording(talks, r)
 			case tubes.RecordingUpdate:
-				return recordingUpdate(confas, talks, sender, rts)
+				return recordingUpdate(confas, talks, sender, pages)
 			default:
 				return nil
 			}
@@ -75,7 +76,7 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Msg("ServeJob panic")
+			log.Ctx(ctx).Error().Str("error", fmt.Sprint(err)).Str("stack", string(debug.Stack())).Msg("ServeJob panic")
 		}
 	}()
 
@@ -89,12 +90,28 @@ func (h *Handler) ServeJob(ctx context.Context, job *beanstalk.Job) {
 	handle(ctx, job)
 }
 
-func updateAvatar(uploader *profile.Updater) JobHandle {
+func updateAvatar(uploader *profile.Updater, profiles *profile.Mongo) JobHandle {
 	const maxAge = 24 * time.Hour
 	bo := backoff.Backoff{
 		Factor: 1.5,
 		Min:    2 * time.Second,
 		Max:    time.Hour,
+	}
+
+	newSource := func(pb *confapb.UpdateProfile_FileSource) profile.FileSource {
+		var source profile.FileSource
+		if pb != nil && pb.Storage != nil {
+			source.Storage = &profile.FileSourceStorage{
+				Bucket: pb.Storage.Bucket,
+				Path:   pb.Storage.Path,
+			}
+		}
+		if pb != nil && pb.PublicUrl != nil {
+			source.PublicURL = &profile.FileSourcePublicURL{
+				URL: pb.PublicUrl.Url,
+			}
+		}
+		return source
 	}
 
 	return func(ctx context.Context, job *beanstalk.Job) {
@@ -108,20 +125,27 @@ func updateAvatar(uploader *profile.Updater) JobHandle {
 		var userID uuid.UUID
 		_ = userID.UnmarshalBinary(payload.UserId)
 
-		var source profile.AvatarSource
-		if payload.Avatar.PublicUrl != nil {
-			source.PublicURL = &profile.AvatarSourcePublicURL{
-				URL: payload.Avatar.PublicUrl.Url,
-			}
-		}
-		if payload.Avatar.Storage != nil {
-			source.Storage = &profile.AvatarSourceStorage{
-				Bucket: payload.Avatar.Storage.Bucket,
-				Path:   payload.Avatar.Storage.Path,
+		// TODO: Remove this when migrated to event-based message queue and create a new event.
+		if payload.SkipIfExists {
+			_, err := profiles.FetchOne(ctx, profile.Lookup{
+				Owners: []uuid.UUID{
+					userID,
+				},
+			})
+			switch {
+			case errors.Is(err, profile.ErrNotFound):
+			case err != nil:
+				log.Ctx(ctx).Err(err).Msg("Failed to fetch profile.")
+				jobRetry(ctx, job, bo, maxAge)
+				return
+			default:
+				log.Ctx(ctx).Info().Msg("Skipped profile update because it exists.")
+				jobDelete(ctx, job)
+				return
 			}
 		}
 
-		err = uploader.Update(ctx, userID, source)
+		err = uploader.Update(ctx, userID, payload.GivenName, payload.FamilyName, newSource(payload.Thumbnail), newSource(payload.Avatar))
 		switch {
 		case errors.Is(err, profile.ErrValidation):
 			log.Ctx(ctx).Err(err).Msg("Invalid payload for update avatar job.")
@@ -271,7 +295,7 @@ func stopRecording(talks *talk.Mongo, rtcClient RTC) JobHandle {
 	}
 }
 
-func recordingUpdate(confas *confa.Mongo, talks *talk.Mongo, sender Sender, rts *routes.Routes) JobHandle {
+func recordingUpdate(confas *confa.Mongo, talks *talk.Mongo, sender Sender, pages *routes.Pages) JobHandle {
 	const maxAge = 2 * time.Hour
 	bo := backoff.Backoff{
 		Factor: 1.2,
@@ -332,9 +356,9 @@ func recordingUpdate(confas *confa.Mongo, talks *talk.Mongo, sender Sender, rts 
 		err = sender.Send(ctx, tlk.Owner, &senderpb.Message{
 			Message: &senderpb.Message_TalkRecordingReady_{
 				TalkRecordingReady: &senderpb.Message_TalkRecordingReady{
-					ConfaUrl:   rts.Confa(cnf.Handle),
+					ConfaUrl:   pages.Confa(cnf.Handle),
 					ConfaTitle: cnf.Title,
-					TalkUrl:    rts.Talk(cnf.Handle, tlk.Handle),
+					TalkUrl:    pages.Talk(cnf.Handle, tlk.Handle),
 					TalkTitle:  tlk.Title,
 				},
 			},

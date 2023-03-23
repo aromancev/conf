@@ -97,6 +97,8 @@ services:
       MONGO_PASSWORD: "iam"
       MONGO_DATABASE: "iam"
       DOMAIN: "localhost"
+      GOOGLE_CLIENT_ID: "stub"
+      GOOGLE_CLIENT_SECRET: "stub" 
 
   confa:
     <<: *service-common

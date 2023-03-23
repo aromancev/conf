@@ -114,7 +114,10 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	rts := routes.NewRoutes(config.BaseURL)
+	pages := routes.NewPages(config.BaseURL)
+	storageRoutes := routes.NewStorage(config.Storage.PublicURL, routes.Buckets{
+		UserPublic: config.Storage.BucketUserPublic,
+	})
 
 	rtcClient := rtc.NewRTCProtobufClient("http://"+config.RTCRPCAddress, &http.Client{})
 
@@ -139,6 +142,7 @@ func main() {
 		minioClient,
 		profileEmitter,
 		profileMongo,
+		&http.Client{},
 	)
 
 	tubes := queue.Tubes{
@@ -156,7 +160,8 @@ func main() {
 		talkBeanstalk,
 		tubes,
 		queue.NewBeanstalk(producer, tubes),
-		rts,
+		pages,
+		profileMongo,
 	)
 
 	webServer := &http.Server{
@@ -171,6 +176,7 @@ func main() {
 				talkUserService,
 				profileMongo,
 				avatarUploader,
+				storageRoutes,
 			),
 			publicKey,
 		),

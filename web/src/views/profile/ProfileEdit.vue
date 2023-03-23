@@ -1,51 +1,32 @@
 <template>
   <div class="form">
-    <div class="form-row">
-      <div class="form-cell"></div>
-      <div class="form-cell">
-        <div class="avatar">
-          <img class="avatar-img" :src="avatar" />
-          <div class="avatar-edit-icon material-icons" @click="editAvatar">edit</div>
-        </div>
-      </div>
+    <div class="avatar">
+      <img class="avatar-img" :src="avatar" />
+      <div class="avatar-edit-icon material-icons" @click="editAvatar">edit</div>
     </div>
-    <div class="form-row">
-      <div class="form-cell label">Handle</div>
-      <div class="form-cell">
-        <InputField
-          v-model="handle"
-          :spellcheck="false"
-          class="form-input"
-          type="text"
-          placeholder="handle"
-          :errors="handleErrors"
-        />
+    <InputField v-model="handle" :spellcheck="false" class="input" type="text" label="Handle" :errors="handleErrors" />
+    <InputField
+      v-model="givenName"
+      :spellcheck="false"
+      class="input"
+      type="text"
+      label="Given name"
+      :errors="givenNameErrors"
+    />
+    <InputField
+      v-model="familyName"
+      :spellcheck="false"
+      class="input"
+      type="text"
+      label="Family name"
+      :errors="familyNameErrors"
+    />
+    <div class="save-indicator"></div>
+    <div class="btn save" :disabled="!hasUpdate || saving || !isFormValid ? true : null" @click="save">
+      <div v-if="saving" class="save-loader">
+        <PageLoader />
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell label">Display Name</div>
-      <div class="form-cell">
-        <InputField
-          v-model="displayName"
-          :spellcheck="false"
-          class="form-input"
-          type="text"
-          placeholder="display name"
-          :errors="displayNameErrors"
-        />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell"></div>
-      <div class="form-cell controls">
-        <div class="save-indicator"></div>
-        <div class="btn save" :disabled="!hasUpdate || saving || !formValid ? true : null" @click="save">
-          <div v-if="saving" class="save-loader">
-            <PageLoader />
-          </div>
-          <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
-        </div>
-      </div>
+      <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
     </div>
   </div>
 
@@ -65,7 +46,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
 import { profileClient, errorCode, Code } from "@/api"
-import { Profile, handleValidator, displayNameValidator } from "@/api/models/profile"
+import { Profile, handleValidator, nameValidator } from "@/api/models/profile"
 import { accessStore } from "@/api/models/access"
 import { ProfileUpdate } from "@/api/schema"
 import { useRouter } from "vue-router"
@@ -92,21 +73,23 @@ const router = useRouter()
 
 const modal = ref<Modal>("none")
 const handle = ref(props.profile.handle)
-const displayName = ref<string>(props.profile.displayName || "")
+const givenName = ref<string>(props.profile.givenName)
+const familyName = ref<string>(props.profile.familyName)
 const update = ref<ProfileUpdate>({})
 const saving = ref<boolean>(false)
 const uploadedAvatar = ref<string>("")
 
 const handleErrors = computed<string[]>(() => handleValidator.validate(handle.value))
-const displayNameErrors = computed<string[]>(() => displayNameValidator.validate(displayName.value))
+const givenNameErrors = computed<string[]>(() => nameValidator.validate(givenName.value))
+const familyNameErrors = computed<string[]>(() => nameValidator.validate(familyName.value))
 const hasUpdate = computed(() => {
   if (!update.value) {
     return 0
   }
   return Object.keys(update.value).length !== 0
 })
-const formValid = computed(() => {
-  return !displayNameErrors.value.length && !handleErrors.value.length
+const isFormValid = computed(() => {
+  return !givenNameErrors.value.length && !familyNameErrors.value.length && !handleErrors.value.length
 })
 
 watch(handle, (value) => {
@@ -116,11 +99,18 @@ watch(handle, (value) => {
     update.value.handle = value
   }
 })
-watch(displayName, (value) => {
-  if (value === props.profile.displayName) {
-    delete update.value.displayName
+watch(givenName, (value) => {
+  if (value === props.profile.givenName) {
+    delete update.value.givenName
   } else {
-    update.value.displayName = value
+    update.value.givenName = value
+  }
+})
+watch(familyName, (value) => {
+  if (value === props.profile.familyName) {
+    delete update.value.familyName
+  } else {
+    update.value.familyName = value
   }
 })
 watch(
@@ -134,7 +124,7 @@ watch(
 )
 
 async function save() {
-  if (saving.value || !hasUpdate.value || !formValid.value) {
+  if (saving.value || !hasUpdate.value || !isFormValid.value) {
     return
   }
   saving.value = true
@@ -193,19 +183,16 @@ async function uploadAvatar(full: string, thumbnail: string) {
 @use '@/css/theme'
 
 .form
-  margin: 30px
-  margin-left: 100px
-  display: table
+  padding: 30px
+  padding-left: 100px
+  display: flex
+  flex-direction: column
+  align-items: center
 
-.form-row
-  display: table-row
-
-.form-cell
-  display: table-cell
-  padding: 10px
-  vertical-align: middle
-  &.align-top
-    vertical-align: top
+.input
+  width: 100%
+  max-width: 400px
+  margin: 10px 0
 
 .label
   text-align: right
@@ -235,9 +222,6 @@ async function uploadAvatar(full: string, thumbnail: string) {
   bottom: 10%
   &:hover
     background: #2A2A2A
-
-.form-input
-  width: 400px
 
 .controls
   display: flex

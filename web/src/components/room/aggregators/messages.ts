@@ -1,4 +1,3 @@
-import { reactive, readonly } from "vue"
 import { RoomEvent } from "@/api/room/schema"
 
 interface Profile {
@@ -11,10 +10,6 @@ interface Repo {
   profile(id: string): Profile
 }
 
-export interface State {
-  messages: Message[]
-}
-
 export interface Message {
   id: string
   fromId: string
@@ -24,18 +19,12 @@ export interface Message {
 }
 
 export class MessageAggregator {
-  private _state: State
-  private repo: Repo
+  private readonly messages: Message[]
+  private readonly repo: Repo
 
-  constructor(repo: Repo) {
-    this._state = reactive({
-      messages: [],
-    })
+  constructor(messages: Message[], repo: Repo) {
+    this.messages = messages
     this.repo = repo
-  }
-
-  state(): State {
-    return readonly(this._state) as State
   }
 
   put(event: RoomEvent): void {
@@ -58,17 +47,17 @@ export class MessageAggregator {
       existing.text = msg.text
       existing.accepted = msg.accepted
     } else {
-      this._state.messages.push(msg)
+      this.messages.push(msg)
     }
 
     // Drop outstanding message.
-    if (this._state.messages.length > CAPACITY) {
-      this._state.messages.shift()
+    if (this.messages.length > CAPACITY) {
+      this.messages.shift()
     }
   }
 
   reset(): void {
-    this._state.messages.splice(0, this._state.messages.length)
+    this.messages.splice(0, this.messages.length)
   }
 
   // addMessage returns a function that can be called to provide message id for created message.
@@ -80,10 +69,10 @@ export class MessageAggregator {
       accepted: false,
       profile: this.repo.profile(userId),
     }
-    this._state.messages.push(msg)
+    this.messages.push(msg)
     // Drop outstanding message.
-    if (this._state.messages.length > CAPACITY) {
-      this._state.messages.shift()
+    if (this.messages.length > CAPACITY) {
+      this.messages.shift()
     }
     return (id: string) => {
       msg.id = id
@@ -92,7 +81,7 @@ export class MessageAggregator {
 
   // Since the number of messages is not too large, we don't use a separate map for simplicity.
   private find(id: string): Message | null {
-    for (const m of this._state.messages) {
+    for (const m of this.messages) {
       if (m.id === id) {
         return m
       }

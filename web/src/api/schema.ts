@@ -150,9 +150,10 @@ export interface profiles_profiles_items {
   id: string;
   ownerId: string;
   handle: string;
-  displayName: string | null;
-  hasAvatar: boolean;
+  givenName: string | null;
+  familyName: string | null;
   avatarThumbnail: profiles_profiles_items_avatarThumbnail | null;
+  avatarUrl: string | null;
 }
 
 export interface profiles_profiles_next {
@@ -196,9 +197,10 @@ export interface updateProfile_updateProfile {
   id: string;
   ownerId: string;
   handle: string;
-  displayName: string | null;
-  hasAvatar: boolean;
+  givenName: string | null;
+  familyName: string | null;
   avatarThumbnail: updateProfile_updateProfile_avatarThumbnail | null;
+  avatarUrl: string | null;
 }
 
 export interface updateProfile {
@@ -562,7 +564,8 @@ export interface ProfileLookup {
 
 export interface ProfileUpdate {
   handle?: string | null;
-  displayName?: string | null;
+  givenName?: string | null;
+  familyName?: string | null;
 }
 
 export interface RecordingFromInput {

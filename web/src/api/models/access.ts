@@ -19,18 +19,12 @@ export class AccessStore extends Store<Access> {
     this.reactive.allowedWrite = acc === Account.User || acc === Account.Admin
   }
   logout(): void {
-    this.reactive.id = ""
-    this.reactive.account = Account.Guest
-    this.reactive.allowedWrite = false
+    this.reset()
   }
 }
 
-export const accessStore = new AccessStore(defaultState())
-
-function defaultState(): Access {
-  return {
-    id: "",
-    account: Account.Guest,
-    allowedWrite: false,
-  }
-}
+export const accessStore = new AccessStore({
+  id: "",
+  account: Account.Guest,
+  allowedWrite: false,
+})

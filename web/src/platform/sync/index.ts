@@ -20,6 +20,7 @@ export class Throttler<T> {
   private resolve?: (t: T) => void
   private isReady: boolean
   private doAfterReady: boolean
+  private timeoutId: ReturnType<typeof setTimeout>
 
   constructor(params: ThrottleParams) {
     this.params = params
@@ -28,6 +29,7 @@ export class Throttler<T> {
     })
     this.isReady = true
     this.doAfterReady = false
+    this.timeoutId = 0
   }
 
   async do(): Promise<T> {
@@ -50,7 +52,8 @@ export class Throttler<T> {
       prevResolve(t)
     }
 
-    setTimeout(() => {
+    clearTimeout(this.timeoutId)
+    this.timeoutId = setTimeout(() => {
       this.isReady = true
       if (this.doAfterReady) {
         this.doAfterReady = false
@@ -59,6 +62,10 @@ export class Throttler<T> {
     }, this.params.delayMs)
 
     return t
+  }
+
+  close(): void {
+    clearTimeout(this.timeoutId)
   }
 }
 

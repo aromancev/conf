@@ -12,12 +12,14 @@
       NOT A COMMERCIAL PRODUCT
     </router-link>
     <div class="end">
-      <img
+      <ProfileAvatar
         v-if="accessStore.state.allowedWrite"
         class="avatar"
+        :size="128"
+        :user-id="accessStore.state.id"
         :src="profileStore.state.avatarThumbnail"
         @click="switchModal('profile')"
-      />
+      ></ProfileAvatar>
       <router-link v-if="!accessStore.state.allowedWrite" class="btn-convex login" :to="route.login()"
         >Sign in</router-link
       >
@@ -39,8 +41,8 @@
       </router-link>
       <div class="control-divider"></div>
       <div class="control-item" @click="toggleTheme">
-        <span class="icon material-icons">{{ theme === Theme.Dark ? "light_mode" : "dark_mode" }}</span>
-        {{ theme === Theme.Dark ? "Light mode" : "Dark mode" }}
+        <span class="icon material-icons">{{ styleStore.state.theme === "dark" ? "light_mode" : "dark_mode" }}</span>
+        {{ styleStore.state.theme === "dark" ? "Light mode" : "Dark mode" }}
       </div>
       <CopyText class="sidebar-end info" :value="'info@confa.io'"></CopyText>
     </div>
@@ -65,32 +67,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue"
+import { ref } from "vue"
 import { api } from "@/api"
 import { accessStore } from "@/api/models/access"
 import { profileStore } from "@/api/models/profile"
+import { styleStore } from "@/api/models/style"
 import router, { route, handleNew } from "@/router"
-import { Theme } from "@/platform/theme"
 import ConfaLogo from "@/components/ConfaLogo.vue"
 import CopyText from "@/components/fields/CopyText.vue"
+import ProfileAvatar from "@/components/profile/ProfileAvatar.vue"
 
 type Modal = "none" | "sidebar" | "profile"
 
-const emit = defineEmits<{
-  (e: "theme", value: Theme): void
-}>()
-
-const theme = ref(Theme.Light)
 const modal = ref<Modal>("none")
-
-watch(theme, (val: Theme) => {
-  emit("theme", val)
-  localStorage.setItem("theme", val)
-})
-
-onMounted(() => {
-  theme.value = (localStorage.getItem("theme") as Theme) || Theme.Light
-})
 
 async function logout() {
   await api.logout()
@@ -104,7 +93,7 @@ function switchModal(val: Modal) {
   modal.value = val
 }
 function toggleTheme() {
-  theme.value = theme.value === Theme.Light ? Theme.Dark : Theme.Light
+  styleStore.setTheme(styleStore.state.theme === "light" ? "dark" : "light")
 }
 </script>
 

@@ -70,11 +70,17 @@ func (m *Mongo) CreateOrUpdate(ctx context.Context, request Profile) (Profile, e
 	} else {
 		update["handle"] = request.Handle
 	}
-	if request.DisplayName != "" {
-		update["displayName"] = request.DisplayName
+	if request.GivenName != "" {
+		update["givenName"] = request.GivenName
 	}
-	if len(request.AvatarThumbnail.Data) > 0 {
+	if request.FamilyName != "" {
+		update["familyName"] = request.FamilyName
+	}
+	if !request.AvatarThumbnail.IsEmpty() {
 		update["avatarThumbnail"] = request.AvatarThumbnail
+	}
+	if request.AvatarID != uuid.Nil {
+		update["avatarId"] = request.AvatarID
 	}
 
 	res := m.db.Collection("profiles").FindOneAndUpdate(

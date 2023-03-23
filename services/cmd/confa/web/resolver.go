@@ -13,6 +13,7 @@ import (
 	"github.com/aromancev/confa/confa"
 	"github.com/aromancev/confa/confa/talk"
 	"github.com/aromancev/confa/internal/auth"
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/profile"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -155,9 +156,10 @@ type Profile struct {
 	ID              string
 	OwnerID         string
 	Handle          string
-	HasAvatar       bool
-	DisplayName     *string
+	GivenName       *string
+	FamilyName      *string
 	AvatarThumbnail *Image
+	AvatarURL       *string
 }
 
 type ProfileCursor struct {
@@ -170,8 +172,9 @@ type Image struct {
 }
 
 type ProfileUpdate struct {
-	Handle      *string
-	DisplayName *string
+	Handle     *string
+	GivenName  *string
+	FamilyName *string
 }
 
 type ProfileLookup struct {
@@ -190,15 +193,17 @@ type Resolver struct {
 	talks          *talk.User
 	profiles       *profile.Mongo
 	profileUpdater *profile.Updater
+	storageRoutes  *routes.Storage
 }
 
-func NewResolver(pk *auth.PublicKey, confas *confa.User, talks *talk.User, profiles *profile.Mongo, uploader *profile.Updater) *Resolver {
+func NewResolver(pk *auth.PublicKey, confas *confa.User, talks *talk.User, profiles *profile.Mongo, uploader *profile.Updater, storageRoutes *routes.Storage) *Resolver {
 	return &Resolver{
 		publicKey:      pk,
 		confas:         confas,
 		talks:          talks,
 		profiles:       profiles,
 		profileUpdater: uploader,
+		storageRoutes:  storageRoutes,
 	}
 }
 
@@ -526,8 +531,11 @@ func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
 	if args.Request.Handle != nil {
 		request.Handle = *args.Request.Handle
 	}
-	if args.Request.DisplayName != nil {
-		request.DisplayName = *args.Request.DisplayName
+	if args.Request.GivenName != nil {
+		request.GivenName = *args.Request.GivenName
+	}
+	if args.Request.FamilyName != nil {
+		request.FamilyName = *args.Request.FamilyName
 	}
 
 	upserted, err := r.profiles.CreateOrUpdate(ctx, request)
@@ -539,7 +547,7 @@ func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
 		return Profile{}, NewInternalError()
 	}
 
-	return newProfile(upserted), nil
+	return newProfile(r.storageRoutes, upserted), nil
 }
 
 func (r *Resolver) Profiles(ctx context.Context, args struct {
@@ -583,7 +591,7 @@ func (r *Resolver) Profiles(ctx context.Context, args struct {
 		Limit: int32(lookup.Limit),
 	}
 	for i, p := range fetched {
-		res.Items[i] = newProfile(p)
+		res.Items[i] = newProfile(r.storageRoutes, p)
 	}
 	if len(res.Items) > 0 {
 		last := res.Items[len(res.Items)-1]
@@ -600,7 +608,7 @@ func (r *Resolver) RequestAvatarUpload(ctx context.Context) (UploadToken, error)
 		return UploadToken{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
 	}
 
-	url, data, err := r.profileUpdater.RequestUpload(ctx, claims.UserID)
+	url, data, err := r.profileUpdater.UpdateAndRequestUpload(ctx, claims.UserID)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to request upload.")
 		return UploadToken{}, NewInternalError()
@@ -744,21 +752,27 @@ func newTalk(t talk.Talk) Talk {
 	}
 }
 
-func newProfile(p profile.Profile) Profile {
+func newProfile(storage *routes.Storage, p profile.Profile) Profile {
 	api := Profile{
-		ID:        p.ID.String(),
-		OwnerID:   p.Owner.String(),
-		Handle:    p.Handle,
-		HasAvatar: !p.AvatarThumbnail.IsEmpty(),
+		ID:      p.ID.String(),
+		OwnerID: p.Owner.String(),
+		Handle:  p.Handle,
 	}
-	if p.DisplayName != "" {
-		api.DisplayName = &p.DisplayName
+	if p.GivenName != "" {
+		api.GivenName = &p.GivenName
+	}
+	if p.FamilyName != "" {
+		api.FamilyName = &p.FamilyName
 	}
 	if !p.AvatarThumbnail.IsEmpty() {
 		api.AvatarThumbnail = &Image{
 			Format: p.AvatarThumbnail.Format,
 			Data:   base64.StdEncoding.EncodeToString(p.AvatarThumbnail.Data),
 		}
+	}
+	if p.AvatarID != uuid.Nil {
+		url := storage.ProfileAvatar(p.Owner, p.AvatarID)
+		api.AvatarURL = &url
 	}
 	return api
 }

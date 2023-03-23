@@ -1,4 +1,3 @@
-import { reactive, readonly } from "vue"
 import { RoomEvent, Track, Hint } from "@/api/room/schema"
 import { config } from "@/config"
 import { FIFOMap } from "@/platform/cache"
@@ -11,29 +10,19 @@ export interface Media {
   isLive: boolean
 }
 
-export interface State {
-  medias: Map<string, Media>
-}
-
 export class MediaAggregator {
+  private readonly medias: Map<string, Media>
   private roomId: string
   private startedAt: number
   private recordings: FIFOMap<string, Recording>
   private tracks: FIFOMap<string, Track>
-  private _state: State
 
-  constructor(roomId: string, startedAt: number) {
+  constructor(medias: Map<string, Media>, roomId: string, startedAt: number) {
+    this.medias = medias
     this.roomId = roomId
     this.startedAt = startedAt
     this.recordings = new FIFOMap(CAPACITY)
     this.tracks = new FIFOMap(CAPACITY)
-    this._state = reactive({
-      medias: new FIFOMap(CAPACITY),
-    })
-  }
-
-  state(): State {
-    return readonly(this._state) as State
   }
 
   prepare(events: RoomEvent[]): void {
@@ -84,14 +73,14 @@ export class MediaAggregator {
   }
 
   private calculateMedias(): void {
-    this._state.medias.clear()
+    this.medias.clear()
 
     for (const rec of this.recordings.values()) {
       const track = this.tracks.get(rec.trackId)
       if (!track) {
         break
       }
-      this._state.medias.set(rec.id, {
+      this.medias.set(rec.id, {
         id: rec.id,
         manifestUrl: `${config.storage.baseURL}/confa-tracks-public/${this.roomId}/${rec.id}/manifest`,
         hint: track.hint,

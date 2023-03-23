@@ -110,9 +110,10 @@ type Profile {
     id: String!
     ownerId: String!
     handle: String!
-    hasAvatar: Boolean!
-    displayName: String
+    givenName: String
+    familyName: String
     avatarThumbnail: Image
+    avatarUrl: String
 }
 
 type Image {
@@ -122,7 +123,8 @@ type Image {
 
 input ProfileUpdate {
     handle: String
-    displayName: String
+    givenName: String
+    familyName: String
 }
 
 input ProfileLookup {

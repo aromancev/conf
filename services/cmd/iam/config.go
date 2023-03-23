@@ -30,6 +30,7 @@ type Config struct {
 	Domain           string `envconfig:"DOMAIN"`
 	Mongo            MongoConfig
 	Beanstalk        BeanstalkConfig
+	Google           Google
 }
 
 func (c Config) WithEnv() Config {
@@ -78,7 +79,9 @@ func (c Config) Validate() error {
 	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalk config: %w", err)
 	}
-
+	if err := c.Google.Validate(); err != nil {
+		return fmt.Errorf("invalid google config: %w", err)
+	}
 	return nil
 }
 
@@ -106,8 +109,9 @@ func (c MongoConfig) Validate() error {
 }
 
 type BeanstalkConfig struct {
-	Pool     string `envconfig:"BEANSTALK_POOL"`
-	TubeSend string `envconfig:"BEANSTALK_TUBE_SEND"`
+	Pool             string `envconfig:"BEANSTALK_POOL"`
+	TubeSend         string `envconfig:"BEANSTALK_TUBE_SEND"`
+	TubeUpdateAvatar string `envconfig:"BEANSTALK_TUBE_UPDATE_AVATAR"`
 }
 
 func (c BeanstalkConfig) Validate() error {
@@ -117,10 +121,27 @@ func (c BeanstalkConfig) Validate() error {
 	if c.TubeSend == "" {
 		return errors.New("BEANSTALK_TUBE_SEND not set")
 	}
-
+	if c.TubeUpdateAvatar == "" {
+		return errors.New("BEANSTALK_TUBE_UPDATE_AVATAR not set")
+	}
 	return nil
 }
 
 func (c BeanstalkConfig) ParsePool() []string {
 	return strings.Split(c.Pool, ",")
+}
+
+type Google struct {
+	ClientID     string `envconfig:"GOOGLE_CLIENT_ID"`
+	ClientSecret string `envconfig:"GOOGLE_CLIENT_SECRET"`
+}
+
+func (c Google) Validate() error {
+	if c.ClientID == "" {
+		return errors.New("GOOGLE_CLIENT_ID not set")
+	}
+	if c.ClientSecret == "" {
+		return errors.New("GOOGLE_CLIENT_SECRET not set")
+	}
+	return nil
 }

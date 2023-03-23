@@ -12,7 +12,6 @@ import {
 } from "./schema"
 import { Profile, profileStore } from "./models/profile"
 import { accessStore } from "./models/access"
-import { config } from "@/config"
 
 type OptionalFetchParams = {
   policy?: FetchPolicy
@@ -55,12 +54,13 @@ class ProfileIterator {
               id
               ownerId
               handle
-              displayName
-              hasAvatar
+              givenName
+              familyName
               avatarThumbnail {
                 format
                 data
               }
+              avatarUrl
             }
             next {
               id
@@ -83,9 +83,10 @@ class ProfileIterator {
         id: p.id,
         ownerId: p.ownerId,
         handle: p.handle,
-        hasAvatar: p.hasAvatar,
-        displayName: p.displayName || "",
+        givenName: p.givenName || "",
+        familyName: p.familyName || "",
         avatarThumbnail: p.avatarThumbnail ? avatarThumbnail(p.avatarThumbnail) : "",
+        avatarUrl: p.avatarUrl || "",
       })
     }
     return profs
@@ -94,9 +95,11 @@ class ProfileIterator {
 
 export class ProfileClient {
   private api: Client
+  private refreshCtrl: AbortController
 
   constructor(api: Client) {
     this.api = api
+    this.refreshCtrl = new AbortController()
   }
 
   async update(request: ProfileUpdate = {}): Promise<Profile> {
@@ -107,12 +110,13 @@ export class ProfileClient {
             id
             ownerId
             handle
-            displayName
-            hasAvatar
+            givenName
+            familyName
             avatarThumbnail {
               format
               data
             }
+            avatarUrl
           }
         }
       `,
@@ -128,9 +132,10 @@ export class ProfileClient {
       id: p.id,
       ownerId: p.ownerId,
       handle: p.handle,
-      hasAvatar: p.hasAvatar,
-      displayName: p.displayName || "",
+      givenName: p.givenName || "",
+      familyName: p.familyName || "",
       avatarThumbnail: p.avatarThumbnail ? avatarThumbnail(p.avatarThumbnail) : "",
+      avatarUrl: p.avatarUrl || "",
     }
   }
 
@@ -166,8 +171,8 @@ export class ProfileClient {
     }
   }
 
-  async fetchAvatar(ownerId: string, profileId: string): Promise<string> {
-    const resp = await fetch(`${config.storage.baseURL}/user-public/${ownerId}/${profileId}`, {
+  async fetchAvatar(url: string): Promise<string> {
+    const resp = await fetch(url, {
       method: "GET",
       cache: "default",
     })
@@ -182,8 +187,8 @@ export class ProfileClient {
     })
   }
 
-  async fetchOne(input: ProfileLookup): Promise<Profile> {
-    const iter = this.fetch(input)
+  async fetchOne(input: ProfileLookup, params?: OptionalFetchParams): Promise<Profile> {
+    const iter = this.fetch(input, params)
     const confas = await iter.next()
     if (confas.length === 0) {
       throw new APIError(Code.NotFound, "Profile not found.")
@@ -200,18 +205,10 @@ export class ProfileClient {
         throw new APIError(Code.NotFound, "failed to fetch user")
       }
       const profile = await this.fetchOne({ ownerIds: [accessStore.state.id] })
-      profileStore.update(profile)
+      profileStore.set(profile)
     } catch (e) {
-      switch (errorCode(e)) {
-        case Code.NotFound:
-          profileStore.update({
-            id: "",
-            ownerId: accessStore.state.id,
-            handle: "",
-            displayName: "",
-            avatarThumbnail: "",
-          })
-          break
+      if (errorCode(e) !== Code.NotFound) {
+        throw e
       }
     }
   }

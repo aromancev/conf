@@ -33,25 +33,31 @@ func NewBeanstalkEmitter(producer Producer, tubes BeanstalkTubes) *BeansltalkEmi
 	}
 }
 
-func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID, source AvatarSource) error {
-	if err := source.Validate(); err != nil {
-		return fmt.Errorf("invalid source: %w", err)
+func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName string, thumbnail, avatar FileSource) error {
+	if err := thumbnail.Validate(); err != nil {
+		return fmt.Errorf("invalid thumbnail: %w", err)
+	}
+	if err := avatar.Validate(); err != nil {
+		return fmt.Errorf("invalid avatar: %w", err)
 	}
 
 	id, _ := userID.MarshalBinary()
 	job := confa.UpdateProfile{
-		UserId: id,
-		Avatar: &confa.UpdateProfile_Source{},
+		UserId:     id,
+		GivenName:  givenName,
+		FamilyName: familyName,
+		Thumbnail:  newFileSource(thumbnail),
+		Avatar:     newFileSource(avatar),
 	}
-	if source.PublicURL != nil {
-		job.Avatar.PublicUrl = &confa.UpdateProfile_Source_PublicURL{
-			Url: source.PublicURL.URL,
+	if thumbnail.PublicURL != nil {
+		job.Thumbnail.PublicUrl = &confa.UpdateProfile_FileSource_PublicURL{
+			Url: thumbnail.PublicURL.URL,
 		}
 	}
-	if source.Storage != nil {
-		job.Avatar.Storage = &confa.UpdateProfile_Source_Storage{
-			Bucket: source.Storage.Bucket,
-			Path:   source.Storage.Path,
+	if thumbnail.Storage != nil {
+		job.Thumbnail.Storage = &confa.UpdateProfile_FileSource_Storage{
+			Bucket: thumbnail.Storage.Bucket,
+			Path:   thumbnail.Storage.Path,
 		}
 	}
 	payload, err := proto.Marshal(&job)
@@ -73,6 +79,25 @@ func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to put job: %w", err)
+	}
+	return nil
+}
+
+func newFileSource(source FileSource) *confa.UpdateProfile_FileSource {
+	if source.PublicURL != nil {
+		return &confa.UpdateProfile_FileSource{
+			PublicUrl: &confa.UpdateProfile_FileSource_PublicURL{
+				Url: source.PublicURL.URL,
+			},
+		}
+	}
+	if source.Storage != nil {
+		return &confa.UpdateProfile_FileSource{
+			Storage: &confa.UpdateProfile_FileSource_Storage{
+				Bucket: source.Storage.Bucket,
+				Path:   source.Storage.Path,
+			},
+		}
 	}
 	return nil
 }
