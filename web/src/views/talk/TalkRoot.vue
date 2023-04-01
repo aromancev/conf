@@ -73,7 +73,9 @@
 <script setup lang="ts">
 import { watch, computed, reactive } from "vue"
 import { useRouter } from "vue-router"
-import { talkClient, confaClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { ConfaClient } from "@/api/confa"
+import { TalkClient } from "@/api/talk"
 import { accessStore } from "@/api/models/access"
 import { Talk, TalkState, titleValidator } from "@/api/models/talk"
 import { route, TalkTab, handleNew } from "@/router"
@@ -126,7 +128,7 @@ watch(
     let talkHandle = value
     try {
       if (props.confaHandle === handleNew) {
-        const confa = await confaClient.create()
+        const confa = await new ConfaClient(api).create()
         confaHandle = confa.handle
       }
       if (talkHandle === handleNew) {
@@ -134,10 +136,10 @@ watch(
           router.replace(route.login())
           return
         }
-        state.talk = await talkClient.create({ handle: confaHandle }, {})
+        state.talk = await new TalkClient(api).create({ handle: confaHandle }, {})
         talkHandle = state.talk.handle
       } else {
-        state.talk = await talkClient.fetchOne(
+        state.talk = await new TalkClient(api).fetchOne(
           {
             handle: talkHandle,
           },
@@ -170,7 +172,7 @@ async function updateTitle(title: string) {
   }
 
   try {
-    state.talk = await talkClient.update({ id: state.talk.id }, { title: title })
+    state.talk = await new TalkClient(api).update({ id: state.talk.id }, { title: title })
     notificationStore.info("title updated")
   } catch {
     notificationStore.error("failed to update title")

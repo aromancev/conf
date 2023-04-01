@@ -45,7 +45,8 @@
 <script setup lang="ts">
 import { watch, reactive } from "vue"
 import { useRouter } from "vue-router"
-import { confaClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { ConfaClient } from "@/api/confa"
 import { accessStore } from "@/api/models/access"
 import { Confa } from "@/api/models/confa"
 import { titleValidator } from "@/api/models/confa"
@@ -88,10 +89,10 @@ watch(
     state.isLoading = true
     try {
       if (handle === handleNew) {
-        state.confa = await confaClient.create()
+        state.confa = await new ConfaClient(api).create()
         router.replace(route.confa(state.confa.handle, props.tab))
       } else {
-        state.confa = await confaClient.fetchOne({
+        state.confa = await new ConfaClient(api).fetchOne({
           handle: handle,
         })
       }
@@ -116,7 +117,7 @@ async function updateTitle(title: string) {
   }
 
   try {
-    state.confa = await confaClient.update({ id: state.confa.id }, { title: title })
+    state.confa = await new ConfaClient(api).update({ id: state.confa.id }, { title: title })
     notificationStore.info("title updated")
   } catch {
     notificationStore.error("failed to update title")

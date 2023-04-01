@@ -1,7 +1,8 @@
 import { createApp, watch } from "vue"
 import App from "./App.vue"
 import router from "./router"
-import { api, profileClient } from "@/api"
+import { api } from "@/api"
+import { ProfileClient } from "@/api/profile"
 import { accessStore, Account } from "@/api/models/access"
 import { gsiPromptOneTap } from "@/components/gsi"
 
@@ -28,7 +29,7 @@ watch(accessStore.state, () => {
   if (accessStore.state.account === Account.Guest) {
     gsiPromptOneTap()
   } else {
-    profileClient.refreshProfile()
+    new ProfileClient(api).refreshProfile()
   }
 })
 api.refreshToken()

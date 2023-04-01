@@ -1,6 +1,7 @@
 import { reactive } from "vue"
+import { api } from "@/api"
+import { ProfileClient } from "@/api/profile"
 import { Throttler } from "@/platform/sync"
-import { profileClient } from "@/api"
 import { genName, genAvatar } from "@/platform/gen"
 import { LRUMap } from "@/platform/cache"
 
@@ -67,7 +68,10 @@ export class ProfileRepository {
     }
 
     // Fetch profiles. Only fetching one page.
-    const iter = profileClient.fetch({ ownerIds: toFetch.map((e) => e.profile.userId) }, { policy: "no-cache" })
+    const iter = new ProfileClient(api).fetch(
+      { ownerIds: toFetch.map((e) => e.profile.userId) },
+      { policy: "no-cache" },
+    )
     const profiles = await iter.next()
 
     // Update info in all the entries.

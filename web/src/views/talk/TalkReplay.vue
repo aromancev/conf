@@ -99,7 +99,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted, reactive } from "vue"
-import { recordingClient } from "@/api"
+import { api } from "@/api"
+import { RecordingClient } from "@/api/recording"
 import { Talk } from "@/api/models/talk"
 import { RecordingStatus } from "@/api/models/recording"
 import { accessStore } from "@/api/models/access"
@@ -200,7 +201,7 @@ async function loadRoom(): Promise<void> {
   clearTimeout(loadTimerId)
   state.isReady = false
   try {
-    const recording = await recordingClient.fetchOne(
+    const recording = await new RecordingClient(api).fetchOne(
       { roomId: roomId.value, key: props.talk.id },
       { policy: "no-cache" },
     )

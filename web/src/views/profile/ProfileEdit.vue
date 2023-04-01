@@ -45,7 +45,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { profileClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { ProfileClient } from "@/api/profile"
 import { Profile, handleValidator, nameValidator } from "@/api/models/profile"
 import { accessStore } from "@/api/models/access"
 import { ProfileUpdate } from "@/api/schema"
@@ -130,7 +131,7 @@ async function save() {
   saving.value = true
   try {
     const currentUpdate = Object.assign({}, update.value)
-    const updated = await profileClient.update(currentUpdate)
+    const updated = await new ProfileClient(api).update(currentUpdate)
     update.value = {}
     emit("update", updated)
   } catch (e) {
@@ -172,7 +173,7 @@ async function editAvatar() {
 
 async function uploadAvatar(full: string, thumbnail: string) {
   saving.value = true
-  await profileClient.uploadAvatar(full)
+  await new ProfileClient(api).uploadAvatar(full)
   emit("avatar", full, thumbnail)
   modal.value = "none"
   saving.value = false

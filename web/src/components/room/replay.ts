@@ -1,5 +1,6 @@
 import { reactive, readonly } from "vue"
-import { eventClient } from "@/api"
+import { api } from "@/api"
+import { EventClient } from "@/api/event"
 import { Recording } from "@/api/models/recording"
 import { EventIterator } from "@/api/event"
 import { ProfileRepository } from "./profiles"
@@ -266,7 +267,7 @@ export class ReplayRoom {
 
     if (!this.eventIter) {
       const eventsFrom = this.recordingStartedAt - duration({ minutes: 15 })
-      this.eventIter = eventClient.fetch(
+      this.eventIter = new EventClient(api).fetch(
         {
           roomId: this.roomId,
         },

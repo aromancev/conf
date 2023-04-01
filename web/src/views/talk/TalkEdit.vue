@@ -59,7 +59,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
-import { talkClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { TalkClient } from "@/api/talk"
 import { accessStore } from "@/api/models/access"
 import { Talk, titleValidator, handleValidator } from "@/api/models/talk"
 import { TalkUpdate } from "@/api/schema"
@@ -149,7 +150,7 @@ async function save() {
   saving.value = true
   try {
     const currentUpdate = Object.assign({}, update.value)
-    const updated = await talkClient.update({ id: props.talk.id }, currentUpdate)
+    const updated = await new TalkClient(api).update({ id: props.talk.id }, currentUpdate)
     update.value = {}
     emit("update", updated)
   } catch (e) {
