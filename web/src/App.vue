@@ -2,12 +2,12 @@
   <div
     class="page"
     :class="{
-      'theme-light': theme === Theme.Light,
-      'theme-dark': theme === Theme.Dark,
+      'theme-light': styleStore.state.theme === 'light',
+      'theme-dark': styleStore.state.theme === 'dark',
     }"
   >
     <div class="page-header">
-      <PageHeader @theme="switchTheme"></PageHeader>
+      <PageHeader></PageHeader>
     </div>
     <div class="page-body">
       <router-view />
@@ -23,21 +23,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
-import { Theme } from "@/platform/theme"
 import { notificationStore } from "./api/models/notifications"
+import { styleStore } from "@/api/models/style"
 import PageHeader from "@/components/PageHeader.vue"
-
-const theme = ref(Theme.Light)
-
-function switchTheme(value: Theme) {
-  theme.value = value
-}
 </script>
 
 <style lang="sass">
 @use '@/css/clear'
 @use '@/css/theme'
+@use '@/css/override'
 
 $header-height: 60px
 

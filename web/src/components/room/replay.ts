@@ -9,8 +9,11 @@ import { Media, MediaAggregator } from "./aggregators/media"
 import { RoomEvent } from "@/api/room/schema"
 import { duration } from "@/platform/time"
 import { Throttler } from "@/platform/sync"
+import { FIFOMap } from "@/platform/cache"
 
 const PROFILE_CACHE_SIZE = 500
+const MAX_PEERS = 3000
+const MAX_MEDIAS = 10
 
 interface State {
   isLoading: boolean
@@ -31,8 +34,8 @@ export interface Progress {
 }
 
 export class ReplayRoom {
-  private _state: State
-  private readState: State
+  private readonly reactive: State
+  private readonly readonly: State
   private roomId: string
   private aggregators: Aggregator[]
   private recordingStartedAt: number
@@ -48,7 +51,7 @@ export class ReplayRoom {
   private deferredProcessTimeoutId: ReturnType<typeof setTimeout>
 
   constructor() {
-    this._state = reactive<State>({
+    this.reactive = reactive<State>({
       isLoading: true,
       isPlaying: false,
       isBuffering: true,
@@ -59,11 +62,11 @@ export class ReplayRoom {
         value: 0,
         increasingSince: 0,
       },
-      peers: new Map(),
-      statuses: new Map(),
-      medias: new Map(),
+      peers: new FIFOMap(MAX_PEERS),
+      statuses: new FIFOMap(MAX_PEERS),
+      medias: new FIFOMap(MAX_MEDIAS),
     })
-    this.readState = readonly(this._state) as State
+    this.readonly = readonly(this.reactive) as State
     this.profileRepo = new ProfileRepository(PROFILE_CACHE_SIZE, 3 * 1000)
     this.recordingStartedAt = 0
     this.putFromIndex = 0
@@ -81,11 +84,11 @@ export class ReplayRoom {
   }
 
   get state(): State {
-    return this.readState
+    return this.readonly
   }
 
   async load(roomId: string, recording: Recording) {
-    this._state.isLoading = true
+    this.reactive.isLoading = true
 
     this.roomId = roomId
     try {
@@ -93,70 +96,65 @@ export class ReplayRoom {
         throw new Error("Recording is not finished.")
       }
 
-      const media = new MediaAggregator(roomId, recording.startedAt)
-      const peers = new PeerAggregator(this.profileRepo)
-      const messages = new MessageAggregator(this.profileRepo)
+      const media = new MediaAggregator(this.reactive.medias, roomId, recording.startedAt)
+      const peers = new PeerAggregator(this.reactive.peers, this.reactive.statuses, this.profileRepo)
+      const messages = new MessageAggregator(this.reactive.messages, this.profileRepo)
       this.aggregators = [messages, peers, media]
-
-      this._state.medias = media.state().medias
-      this._state.peers = peers.state().peers
-      this._state.statuses = peers.state().statuses
-      this._state.messages = messages.state().messages
 
       this.resetState()
       this.resetEventFetching()
       this.recordingStartedAt = recording.startedAt
-      this._state.duration = recording.stoppedAt - recording.startedAt
-      this._state.progress.value = 0
-      this._state.progress.increasingSince = 0
-      while (this.eventBuffer() <= Math.min(FETCH_ADVANCE_MS, this._state.duration)) {
+      this.reactive.duration = recording.stoppedAt - recording.startedAt
+      this.reactive.progress.value = 0
+      this.reactive.progress.increasingSince = 0
+      while (this.eventBuffer() <= Math.min(FETCH_ADVANCE_MS, this.reactive.duration)) {
         await this.fetchEvents.do()
       }
       await this.processEvents.do()
     } finally {
-      this._state.isLoading = false
+      this.reactive.isLoading = false
     }
   }
 
   play(): void {
-    if (this._state.isLoading) {
+    if (this.reactive.isLoading) {
       return
     }
     if (this.stopped) {
       this.rewind(0)
       this.stopped = false
     }
-    this._state.isPlaying = true
-    if (!this._state.isBuffering) {
-      this._state.progress.increasingSince = Date.now()
+    this.reactive.isPlaying = true
+    if (!this.reactive.isBuffering) {
+      this.reactive.progress.increasingSince = Date.now()
     }
     this.processEvents.do()
   }
 
   pause(): void {
-    if (this._state.isLoading) {
+    if (this.reactive.isLoading) {
       return
     }
-    this._state.isPlaying = false
-    if (!this._state.progress.increasingSince) {
+    this.reactive.isPlaying = false
+    if (!this.reactive.progress.increasingSince) {
       return
     }
-    this._state.progress.value = this._state.progress.value + Date.now() - this._state.progress.increasingSince
-    this._state.progress.increasingSince = 0
+    this.reactive.progress.value = this.reactive.progress.value + Date.now() - this.reactive.progress.increasingSince
+    this.reactive.progress.increasingSince = 0
   }
 
   stop(): void {
-    if (this._state.isLoading) {
+    if (this.reactive.isLoading) {
       return
     }
-    this._state.isPlaying = false
-    this._state.progress.value = this._state.duration
-    this._state.progress.increasingSince = 0
+    this.reactive.isPlaying = false
+    this.reactive.progress.value = this.reactive.duration
+    this.reactive.progress.increasingSince = 0
     this.stopped = true
   }
 
   togglePlay(): void {
-    if (this._state.isPlaying) {
+    if (this.reactive.isPlaying) {
       this.pause()
     } else {
       this.play()
@@ -164,7 +162,7 @@ export class ReplayRoom {
   }
 
   rewind(pos: number): void {
-    if (this._state.isLoading) {
+    if (this.reactive.isLoading) {
       return
     }
 
@@ -177,17 +175,17 @@ export class ReplayRoom {
     }
     this.stopped = false
 
-    this._state.progress.value = pos
-    if (this._state.isPlaying) {
-      this._state.progress.increasingSince = Date.now()
+    this.reactive.progress.value = pos
+    if (this.reactive.isPlaying) {
+      this.reactive.progress.increasingSince = Date.now()
     } else {
-      this._state.progress.increasingSince = 0
+      this.reactive.progress.increasingSince = 0
     }
     this.processEvents.do()
   }
 
   updateMediaBuffer(id: string, bufferMs: number, durationMs: number): void {
-    const media = this._state.medias.get(id)
+    const media = this.reactive.medias.get(id)
     if (!media) {
       return
     }
@@ -223,33 +221,33 @@ export class ReplayRoom {
     this.setAggregatorsTime(this.recordingStartedAt + progress)
 
     // Only stop AFTER the events were consumed.
-    if (progress >= this._state.duration) {
+    if (progress >= this.reactive.duration) {
       this.stop()
       return
     }
 
     // Update buffering state.
-    this._state.buffer = this.bufferForProgress(progress)
-    const wasBuffering = this._state.isBuffering
-    this._state.isBuffering = progress >= this._state.buffer
-    if (this._state.isBuffering) {
-      this._state.progress.increasingSince = 0
+    this.reactive.buffer = this.bufferForProgress(progress)
+    const wasBuffering = this.reactive.isBuffering
+    this.reactive.isBuffering = progress >= this.reactive.buffer
+    if (this.reactive.isBuffering) {
+      this.reactive.progress.increasingSince = 0
     }
     // Stopped buffering and is playing.
-    if (wasBuffering && !this._state.isBuffering && this._state.isPlaying) {
-      this._state.progress.increasingSince = now
+    if (wasBuffering && !this.reactive.isBuffering && this.reactive.isPlaying) {
+      this.reactive.progress.increasingSince = now
     }
     // Started buffering.
-    if (!wasBuffering && this._state.isBuffering) {
-      this._state.progress.value = progress
+    if (!wasBuffering && this.reactive.isBuffering) {
+      this.reactive.progress.value = progress
     }
 
-    if (!nextEventAt || this._state.isBuffering || !this._state.isPlaying) {
+    if (!nextEventAt || this.reactive.isBuffering || !this.reactive.isPlaying) {
       return
     }
 
     const untilNextEvent = nextEventAt - this.recordingStartedAt - progress
-    const untilBufferRunsOut = this._state.buffer - progress
+    const untilBufferRunsOut = this.reactive.buffer - progress
     this.deferredProcessTimeoutId = setTimeout(
       () => this.processEvents.do(),
       Math.min(untilNextEvent, untilBufferRunsOut),
@@ -258,7 +256,7 @@ export class ReplayRoom {
 
   private async fetchEventsFunc(): Promise<void> {
     const eventBuffer = this.eventBuffer()
-    if (eventBuffer > this._state.duration) {
+    if (eventBuffer > this.reactive.duration) {
       return
     }
     const progress = this.progressForTime(Date.now())
@@ -298,7 +296,7 @@ export class ReplayRoom {
     const lastAt = fetched[fetched.length - 1].createdAt
     this.updateBuffer(EVENTS_BUFFER_ID, {
       bufferMs: lastAt - this.recordingStartedAt,
-      durationMs: this._state.duration,
+      durationMs: this.reactive.duration,
     })
     return
   }
@@ -339,23 +337,23 @@ export class ReplayRoom {
 
   private resetEventFetching(): void {
     this.buffers.clear()
-    this._state.buffer = 0
+    this.reactive.buffer = 0
     this.eventIter = undefined
     this.eventBatch = []
   }
 
   private progressForTime(time: number): number {
-    if (!this._state.progress.increasingSince) {
-      return this._state.progress.value
+    if (!this.reactive.progress.increasingSince) {
+      return this.reactive.progress.value
     }
-    const timeProgress = time - this._state.progress.increasingSince + this._state.progress.value
-    return Math.min(timeProgress, this._state.duration)
+    const timeProgress = time - this.reactive.progress.increasingSince + this.reactive.progress.value
+    return Math.min(timeProgress, this.reactive.duration)
   }
 
   private bufferForProgress(progress: number): number {
     let min = Infinity
     this.buffers.forEach((buf: MediaBuffer, id: string) => {
-      const media = this._state.medias.get(id)
+      const media = this.reactive.medias.get(id)
       if (!media) {
         return
       }

@@ -59,7 +59,7 @@ jobs:
             - web-v1
       - run: |
           cd ./web
-          sudo npm install --unsafe-perm -g pnpm
+          sudo npm install --unsafe-perm -g pnpm@7.1.0
           pnpm install
           pnpm run lint
           git diff --exit-code

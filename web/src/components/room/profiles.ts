@@ -77,7 +77,7 @@ export class ProfileRepository {
         continue
       }
       entry.profile.handle = prof.handle || entry.profile.handle
-      entry.profile.name = prof.displayName || entry.profile.name
+      entry.profile.name = `${prof.givenName} ${prof.familyName}` || entry.profile.name
       entry.profile.avatar = prof.avatarThumbnail || entry.profile.avatar
     }
 

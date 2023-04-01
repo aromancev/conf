@@ -172,7 +172,7 @@ const audios = computed<Media[]>(() => {
 const loadBackoff = new Backoff(1.2, 3000, 3 * 60 * 1000)
 
 watch(
-  roomId,
+  [roomId, () => accessStore.state.id],
   () => {
     loadRoom()
   },

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/platform/signal"
@@ -80,6 +81,10 @@ func NewProxy(ctx context.Context, userID, roomID uuid.UUID, events event.Cursor
 		log.Ctx(ctx).Err(err).Msg("Failed to emit peer status event.")
 	}
 	return p
+}
+
+func (p *Proxy) SessionID() uuid.UUID {
+	return p.peerSessionID
 }
 
 func (p *Proxy) SendSignal(ctx context.Context, client Signal, msg signal.Message) error {
@@ -176,7 +181,10 @@ func (p *Proxy) Close(ctx context.Context) {
 		log.Ctx(ctx).Err(err).Msg("Failed to close events.")
 	}
 
-	_, err := p.emit(ctx, event.Payload{
+	// Peer leave event must be sent even if context is cancelled.
+	emitCtx, done := context.WithTimeout(context.Background(), 10*time.Second)
+	defer done()
+	_, err := p.emit(emitCtx, event.Payload{
 		PeerState: &event.PayloadPeerState{
 			Peer:      p.userID,
 			SessionID: p.peerSessionID,

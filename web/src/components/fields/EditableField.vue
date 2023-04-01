@@ -22,7 +22,6 @@ const emit = defineEmits<{
 
 const props = defineProps<{
   value: string
-  disabled?: boolean
   validate?: (val: string) => string[]
 }>()
 
@@ -97,7 +96,7 @@ function discard() {
 
 .field.editable-field
   border-radius: 4px
-  padding: 0.5em 0
+  padding: 0
   box-shadow: none
   cursor: text
   &:hover

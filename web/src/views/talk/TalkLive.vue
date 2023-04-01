@@ -105,7 +105,6 @@
 
   <ModalDialog
     :is-visible="modal.state === 'confirm_join'"
-    :ctrl="modal"
     :buttons="{ join: 'Join', leave: 'Leave' }"
     @click="confirmJoin"
   >
@@ -121,8 +120,8 @@
   </ModalDialog>
   <ModalDialog
     :is-visible="modal.state === 'recording_finished'"
-    :ctrl="modal"
     :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
+    @click="recordingFinished"
   >
     <p>Recording finished.</p>
     <p>For demo purposes it is limited to 5 minutes.</p>
@@ -130,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from "vue"
+import { ref, computed, watch, nextTick, onUnmounted, onMounted } from "vue"
 import { onBeforeRouteLeave } from "vue-router"
 import { talkClient } from "@/api"
 import { Talk, TalkState } from "@/api/models/talk"
@@ -144,7 +143,7 @@ import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
 import RoomReactions from "@/components/room/RoomReactions.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
-import { Backoff } from "@/platform/sync"
+import { Throttler } from "@/platform/sync"
 import { notificationStore } from "@/api/models/notifications"
 
 type RecordingStatus = "none" | "pending" | "recording" | "stopped"
@@ -178,8 +177,6 @@ const roomId = computed<string>(() => {
   return props.talk.roomId
 })
 const lastReadMessageId = ref<string>("")
-const connectBackoff = new Backoff(1.5, 1000, 60 * 1000, 0.2)
-let connectTimeoutId: ReturnType<typeof setTimeout> = 0
 
 const screen = computed<MediaStream | undefined>(() => {
   if (room.state.local.screen) {
@@ -221,30 +218,54 @@ const isMediaReady = computed<boolean>(() => {
   return !room.state.isLoading && !room.state.error && !room.state.isPublishing && room.state.joinedMedia
 })
 
-watch(roomId, async () => connect(), { immediate: true })
+const connectThrottler = new Throttler({ delayMs: 1000 })
+let connectRetries = 0
+connectThrottler.func = async () => {
+  try {
+    await room.joinRTC(roomId.value)
+    if (props.joinConfirmed) {
+      await room.joinMedia()
+    }
+    if (connectRetries > 0) {
+      notificationStore.info("connection restored")
+      connectRetries = 0
+    }
+  } catch (e) {
+    if (connectRetries === 0) {
+      notificationStore.error("connection lost")
+    }
+    connectRetries++
+    connectThrottler.do()
+  }
+}
+
+watch(
+  [roomId, () => accessStore.state.id],
+  () => {
+    connectThrottler.do()
+  },
+  { immediate: true },
+)
 
 watch(room.state.recording, async (r) => {
   if (r.isRecording) {
     recordingStatus.value = "recording"
   } else {
     recordingStatus.value = "stopped"
-    const answer = await modal.set("recording_finished")
-    if (answer === "leave") {
-      const talk = Object.assign({}, props.talk)
-      talk.state = TalkState.ENDED
-      emit("update", talk)
-    }
+    modal.set("recording_finished")
   }
 })
+
 watch(
   () => room.state.error,
   async (err) => {
     if (!err) {
       return
     }
-    connect()
+    connectThrottler.do()
   },
 )
+
 watch(
   () => props.talk.state,
   (state?: TalkState) => {
@@ -263,14 +284,35 @@ watch(
   },
   { immediate: true },
 )
+
 watch([room.state.messages, sidePanel], () => {
   if (sidePanel.value === "chat") {
     lastReadMessageId.value = room.state.messages.at(-1)?.id || ""
   }
 })
 
+watch(
+  () => props.joinConfirmed,
+  async (joined) => {
+    if (!joined || room.state.joinedMedia) {
+      return
+    }
+    try {
+      await room.joinMedia()
+    } catch (e) {
+      connectThrottler.do()
+    }
+  },
+)
+
+onMounted(() => {
+  if (!props.joinConfirmed) {
+    modal.set("confirm_join")
+  }
+})
+
 onUnmounted(() => {
-  clearTimeout(connectTimeoutId)
+  connectThrottler.close()
   room.close()
 })
 
@@ -283,29 +325,19 @@ onBeforeRouteLeave(async (to, from, next) => {
   next(btn === "leave")
 })
 
-async function connect(): Promise<void> {
-  clearTimeout(connectTimeoutId)
-  try {
-    room.close()
-    await room.joinRTC(roomId.value)
-    if (!props.joinConfirmed) {
-      await modal.set("confirm_join")
-    }
-    await room.joinMedia()
-    if (connectBackoff.retries > 0) {
-      notificationStore.info("connection restored")
-      connectBackoff.reset()
-    }
-  } catch (e) {
-    if (connectBackoff.retries === 0) {
-      notificationStore.error("connection lost")
-    }
-    connectTimeoutId = setTimeout(() => connect(), connectBackoff.next())
-  }
+function confirmJoin(resp: string) {
+  emit("join", resp === "join")
+  modal.set()
 }
 
-function confirmJoin(value: string) {
-  emit("join", value === "join")
+function recordingFinished(resp: string) {
+  modal.set()
+  if (resp !== "leave") {
+    return
+  }
+  const talk = Object.assign({}, props.talk)
+  talk.state = TalkState.ENDED
+  emit("update", talk)
 }
 
 function sendMessage(message: string) {

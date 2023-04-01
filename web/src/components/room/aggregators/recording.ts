@@ -1,21 +1,14 @@
-import { reactive, readonly } from "vue"
 import { RoomEvent, RecordingEventStatus } from "@/api/room/schema"
 
-export interface State {
+export interface Recording {
   isRecording: boolean
 }
 
 export class RecordingAggregator {
-  private _state: State
+  private readonly recording: Recording
 
-  constructor() {
-    this._state = reactive({
-      isRecording: false,
-    })
-  }
-
-  state(): State {
-    return readonly(this._state) as State
+  constructor(recording: Recording) {
+    this.recording = recording
   }
 
   put(event: RoomEvent): void {
@@ -25,10 +18,10 @@ export class RecordingAggregator {
     }
     switch (recording.status) {
       case RecordingEventStatus.Started:
-        this._state.isRecording = true
+        this.recording.isRecording = true
         break
       case RecordingEventStatus.Stopped:
-        this._state.isRecording = false
+        this.recording.isRecording = false
         break
     }
   }

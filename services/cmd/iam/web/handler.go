@@ -10,7 +10,9 @@ import (
 
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/email"
+	"github.com/aromancev/confa/internal/platform/google/gsi"
 	"github.com/aromancev/confa/internal/platform/trace"
+	"github.com/aromancev/confa/internal/proto/confa"
 	"github.com/aromancev/confa/internal/proto/queue"
 	"github.com/aromancev/confa/internal/proto/sender"
 	"github.com/aromancev/confa/internal/routes"
@@ -29,22 +31,16 @@ type Token struct {
 	ExpiresIn int32  `json:"expiresIn"`
 }
 
-type Session struct {
-	Token               string `json:"token"`
-	ExpiresIn           int32  `json:"expiresIn"`
-	CreatePasswordToken string `json:"createPasswordToken,omitempty"`
-}
-
 type CreateSessionByEmail struct {
 	EmailToken string `json:"emailToken"`
 }
 
-type CreateSessionByLogin struct {
+type CreateSessionByCredentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type CreateSessionEmail struct {
+type CreateSessionByGoogleID struct {
 	Token string `json:"token"`
 }
 
@@ -74,32 +70,49 @@ type Producer interface {
 }
 
 type Handler struct {
-	auth      *Auth
-	router    *http.ServeMux
-	publicKey *auth.PublicKey
-	secretKey *auth.SecretKey
-	routes    *routes.Routes
-	sessions  *session.Mongo
-	user      *user.Actions
-	producer  Producer
-	tubes     Tubes
+	tubes       Tubes
+	auth        *Auth
+	router      *http.ServeMux
+	publicKey   *auth.PublicKey
+	secretKey   *auth.SecretKey
+	pages       *routes.Pages
+	sessions    *session.Mongo
+	user        *user.Actions
+	producer    Producer
+	googlePK    *gsi.PublicKey
+	googleCreds gsi.Creds
 }
 
 type Tubes struct {
-	Send string
+	Send         string
+	UpdateAvatar string
 }
 
-func NewHandler(httpAuth *Auth, rts *routes.Routes, secretKey *auth.SecretKey, publicKey *auth.PublicKey, resolver *Resolver, sessions *session.Mongo, userActions *user.Actions, producer Producer, tubes Tubes) *Handler {
+func NewHandler(
+	tubes Tubes,
+	httpAuth *Auth,
+	pages *routes.Pages,
+	secretKey *auth.SecretKey,
+	publicKey *auth.PublicKey,
+	resolver *Resolver,
+	sessions *session.Mongo,
+	userActions *user.Actions,
+	producer Producer,
+	googlePK *gsi.PublicKey,
+	googleCreds gsi.Creds,
+) *Handler {
 	h := &Handler{
-		auth:      httpAuth,
-		router:    http.NewServeMux(),
-		publicKey: publicKey,
-		secretKey: secretKey,
-		routes:    rts,
-		sessions:  sessions,
-		user:      userActions,
-		producer:  producer,
-		tubes:     tubes,
+		tubes:       tubes,
+		auth:        httpAuth,
+		router:      http.NewServeMux(),
+		publicKey:   publicKey,
+		secretKey:   secretKey,
+		pages:       pages,
+		sessions:    sessions,
+		user:        userActions,
+		producer:    producer,
+		googlePK:    googlePK,
+		googleCreds: googleCreds,
 	}
 
 	// All routes must be on the first level in order for secure cookies to work.
@@ -121,8 +134,12 @@ func NewHandler(httpAuth *Auth, rts *routes.Routes, secretKey *auth.SecretKey, p
 		h.createSessionByEmail,
 	)
 	h.router.HandleFunc(
-		"/session-login",
-		h.createSessionByLogin,
+		"/session-credentials",
+		h.createSessionByCredentials,
+	)
+	h.router.HandleFunc(
+		"/session-google-sign-in",
+		h.createSessionByGoogleSignIn,
 	)
 	h.router.HandleFunc(
 		"/email-login",
@@ -234,7 +251,6 @@ func (h *Handler) createSessionByEmail(w http.ResponseWriter, r *http.Request) {
 	var request CreateSessionByEmail
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -242,7 +258,6 @@ func (h *Handler) createSessionByEmail(w http.ResponseWriter, r *http.Request) {
 	var claims auth.EmailClaims
 	err = h.publicKey.Verify(request.EmailToken, &claims)
 	if err != nil {
-		log.Ctx(ctx).Debug().Err(err).Msg("Email verification failed.")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -280,25 +295,16 @@ func (h *Handler) createSessionByEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := Session{
+	result := Token{
 		Token:     access,
 		ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
-	}
-	// User has no password. Returning a new email token to set a password.
-	if len(usr.PasswordHash) == 0 {
-		claims = auth.NewEmailClaims(claims.Address)
-		result.CreatePasswordToken, err = h.secretKey.Sign(claims)
-		if err != nil {
-			// This error is not critical.
-			log.Ctx(ctx).Err(err).Msg("Failed to sign email token.")
-		}
 	}
 	h.auth.ResetGuestToken(w)
 	h.auth.SetSession(w, sess.Key)
 	_ = json.NewEncoder(w).Encode(result)
 }
 
-func (h *Handler) createSessionByLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createSessionByCredentials(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if r.Method != http.MethodPost {
@@ -306,10 +312,9 @@ func (h *Handler) createSessionByLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request CreateSessionByLogin
+	var request CreateSessionByCredentials
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		log.Ctx(ctx).Debug().Err(err).Msg("Failed to unmarshal session.")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -353,7 +358,82 @@ func (h *Handler) createSessionByLogin(w http.ResponseWriter, r *http.Request) {
 
 	h.auth.ResetGuestToken(w)
 	h.auth.SetSession(w, sess.Key)
-	_ = json.NewEncoder(w).Encode(Session{
+	_ = json.NewEncoder(w).Encode(Token{
+		Token:     access,
+		ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
+	})
+}
+
+func (h *Handler) createSessionByGoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request CreateSessionByGoogleID
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pk, err := h.googlePK.PEM(ctx, gsi.KeyID(request.Token))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to get PEM.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	id, err := gsi.NewIDAuth(pk, h.googleCreds.ClientID).Verify(request.Token)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to validate token.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	usr, err := h.user.GetOrCreate(ctx, user.User{
+		Idents: []user.Ident{
+			{
+				Platform: user.PlatformEmail,
+				Value:    id.Email,
+			},
+		},
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to find user.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	created, err := h.sessions.Create(ctx, session.Session{
+		Key:   session.NewKey(),
+		Owner: usr.ID,
+	})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create session.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	sess := created[0]
+
+	apiClaims := auth.NewAPIClaims(sess.Owner, auth.AccountUser)
+	access, err := h.secretKey.Sign(apiClaims)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to sign access token.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Remove this when migrated to event-based message queue and create a new event.
+	err = h.emitUpdateProfile(ctx, usr.ID, id.GivenName, id.FamilyName, id.Picture)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to emit profile update event.")
+	}
+
+	h.auth.ResetGuestToken(w)
+	h.auth.SetSession(w, sess.Key)
+	_ = json.NewEncoder(w).Encode(Token{
 		Token:     access,
 		ExpiresIn: int32(apiClaims.ExpiresIn().Seconds()),
 	})
@@ -390,7 +470,7 @@ func (h *Handler) emailLogin(w http.ResponseWriter, r *http.Request) {
 		Message: &sender.Message{
 			Message: &sender.Message_Login_{
 				Login: &sender.Message_Login{
-					SecretUrl: h.routes.LoginWithEmail(token),
+					SecretUrl: h.pages.Login(routes.ActionLogin, token),
 				},
 			},
 		},
@@ -459,7 +539,7 @@ func (h *Handler) emailCreatePassword(w http.ResponseWriter, r *http.Request) {
 		Message: &sender.Message{
 			Message: &sender.Message_CreatePassword_{
 				CreatePassword: &sender.Message_CreatePassword{
-					SecretUrl: h.routes.CreatePassword(token),
+					SecretUrl: h.pages.Login(routes.ActionCreatePassword, token),
 				},
 			},
 		},
@@ -528,7 +608,7 @@ func (h *Handler) emailResetPassword(w http.ResponseWriter, r *http.Request) {
 		Message: &sender.Message{
 			Message: &sender.Message_ResetPassword_{
 				ResetPassword: &sender.Message_ResetPassword{
-					SecretUrl: h.routes.ResetPassword(token),
+					SecretUrl: h.pages.Login(routes.ActionResetPassword, token),
 				},
 			},
 		},
@@ -738,4 +818,43 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Ctx(ctx).Info().Str("sessionKey", h.auth.Session(r)).Msg("Password reset.")
+}
+
+// TODO: Remove this when migrated to event-based message queue and create a new event.
+func (h *Handler) emitUpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName, thumbnailURL string) error {
+	id, _ := userID.MarshalBinary()
+	job := confa.UpdateProfile{
+		UserId:       id,
+		GivenName:    givenName,
+		FamilyName:   familyName,
+		SkipIfExists: true,
+	}
+	if thumbnailURL != "" {
+		job.Thumbnail = &confa.UpdateProfile_FileSource{
+			PublicUrl: &confa.UpdateProfile_FileSource_PublicURL{
+				Url: thumbnailURL,
+			},
+		}
+	}
+	payload, err := proto.Marshal(&job)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+	body, err := proto.Marshal(
+		&queue.Job{
+			Payload: payload,
+			TraceId: trace.ID(ctx),
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to marshal job: %w", err)
+	}
+	_, err = h.producer.Put(ctx, h.tubes.UpdateAvatar, body, beanstalk.PutParams{
+		Delay: 2 * time.Second,
+		TTR:   2 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to put job: %w", err)
+	}
+	return nil
 }

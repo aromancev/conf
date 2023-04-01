@@ -128,9 +128,9 @@ func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientCo
 		}
 		defer pp.Close(ctx)
 
-		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer connected.")
+		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Str("userId", claims.UserID.String()).Str("sessionId", pp.SessionID().String()).Msg("RTC peer connected.")
 		pp.Serve()
-		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Msg("RTC peer disconnected.")
+		log.Ctx(ctx).Info().Str("roomId", rm.ID.String()).Str("userId", claims.UserID.String()).Str("sessionId", pp.SessionID().String()).Msg("RTC peer disconnected.")
 	})
 }
 

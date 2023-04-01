@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 message UpdateProfile {
-    message Source {
+    message FileSource {
         message Storage {
             string bucket = 1;
             string path = 2;
@@ -16,7 +16,12 @@ message UpdateProfile {
     }
 
     bytes user_id = 1;
-    Source avatar = 2;
+    string given_name = 2;
+    string family_name = 3;
+    FileSource thumbnail = 4;
+    FileSource avatar = 5;
+    // TODO: Remove this when migrated to event-based message queue and create a new event.
+    bool skip_if_exists = 6;
 }
 
 message StartRecording {

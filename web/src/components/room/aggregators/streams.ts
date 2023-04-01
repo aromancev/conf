@@ -1,4 +1,3 @@
-import { reactive, readonly } from "vue"
 import { RemoteStream } from "ion-sdk-js"
 import { RoomEvent, Track, Hint } from "@/api/room/schema"
 import { FIFOMap } from "@/platform/cache"
@@ -9,25 +8,15 @@ export interface Stream {
   sourse: MediaStream
 }
 
-export interface State {
-  streams: Map<string, Stream>
-}
-
 export class StreamAggregator {
-  private tracks: FIFOMap<string, Track>
-  private streams: FIFOMap<string, MediaStream>
-  private _state: State
+  private readonly streams: Map<string, Stream>
+  private readonly tracks: FIFOMap<string, Track>
+  private readonly mediaStreams: FIFOMap<string, MediaStream>
 
-  constructor() {
+  constructor(streams: Map<string, Stream>) {
+    this.streams = streams
     this.tracks = new FIFOMap(CAPACITY)
-    this.streams = new FIFOMap(CAPACITY)
-    this._state = reactive({
-      streams: new FIFOMap(CAPACITY),
-    })
-  }
-
-  state(): State {
-    return readonly(this._state) as State
+    this.mediaStreams = new FIFOMap(CAPACITY)
   }
 
   put(event: RoomEvent): void {
@@ -45,9 +34,9 @@ export class StreamAggregator {
   }
 
   reset(): void {
-    this.tracks.clear()
     this.streams.clear()
-    this._state.streams.clear()
+    this.tracks.clear()
+    this.mediaStreams.clear()
   }
 
   addTrack(track: MediaStreamTrack, stream: RemoteStream): void {
@@ -56,24 +45,24 @@ export class StreamAggregator {
     }
 
     const id = trackId(stream)
-    this.streams.set(id, stream)
+    this.mediaStreams.set(id, stream)
     this.computeState()
     stream.onremovetrack = () => {
-      this.streams.delete(id)
+      this.mediaStreams.delete(id)
       this.computeState()
     }
   }
 
   private computeState(): void {
-    this._state.streams.clear()
+    this.streams.clear()
 
-    for (const stream of this.streams.values()) {
+    for (const stream of this.mediaStreams.values()) {
       const id = trackId(stream)
       const track = this.tracks.get(id)
       if (!track) {
         break
       }
-      this._state.streams.set(id, {
+      this.streams.set(id, {
         id: id,
         hint: track.hint,
         sourse: stream,

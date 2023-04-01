@@ -3,6 +3,7 @@ import App from "./App.vue"
 import router from "./router"
 import { api, profileClient } from "@/api"
 import { accessStore, Account } from "@/api/models/access"
+import { gsiPromptOneTap } from "@/components/gsi"
 
 const app = createApp(App)
 
@@ -23,15 +24,11 @@ app.directive("click-outside", {
 app.use(router)
 app.mount("#app")
 
-watch(
-  accessStore.state,
-  () => {
-    if (accessStore.state.account === Account.Guest) {
-      return
-    }
+watch(accessStore.state, () => {
+  if (accessStore.state.account === Account.Guest) {
+    gsiPromptOneTap()
+  } else {
     profileClient.refreshProfile()
-  },
-  { immediate: true },
-)
-
+  }
+})
 api.refreshToken()

@@ -11,6 +11,10 @@ const (
 	algorithm = "ES256"
 )
 
+type Claims interface {
+	Valid() error
+}
+
 type SecretKey struct {
 	key    *ecdsa.PrivateKey
 	method jwt.SigningMethod
@@ -50,7 +54,7 @@ func NewPublicKey(ecdsaKey string) (*PublicKey, error) {
 	}, nil
 }
 
-func (v *PublicKey) Verify(token string, claims jwt.Claims) error {
+func (v *PublicKey) Verify(token string, claims Claims) error {
 	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return v.key, nil
 	})

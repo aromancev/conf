@@ -2,7 +2,7 @@
   <PageLoader v-if="loading" />
 
   <div v-if="!loading && profile" class="content">
-    <div class="title">{{ profile.displayName || genName(profile.ownerId) }}</div>
+    <div class="title">{{ profile.givenName || genName(profile.ownerId) }} {{ profile.familyName }}</div>
     <div class="path">
       <router-link class="path-link" :to="route.profile(handle, tab)">{{ profile.handle }}</router-link>
     </div>
@@ -90,8 +90,8 @@ watch(
         })
       }
 
-      if (profile.value.hasAvatar) {
-        avatar.value = await profileClient.fetchAvatar(profile.value.ownerId, profile.value.id)
+      if (profile.value.avatarUrl) {
+        avatar.value = await profileClient.fetchAvatar(profile.value.avatarUrl)
       }
       if (!avatar.value) {
         avatar.value = await genAvatar(profile.value.ownerId, 460)
@@ -113,13 +113,13 @@ watch(
 
 function update(value: Profile) {
   profile.value = value
-  profileStore.update(value)
+  profileStore.set(value)
   router.replace(route.profile(value.handle, props.tab))
 }
 
 function updateAvatar(full: string, thumbnail: string) {
   avatar.value = full
-  profileStore.update({ avatarThumbnail: thumbnail })
+  profileStore.update("", "", thumbnail)
 }
 </script>
 

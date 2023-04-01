@@ -78,10 +78,6 @@ export type Token = {
   expiresIn: number
 }
 
-export type Session = Token & {
-  createPasswordToken?: string
-}
-
 export class Client {
   private graph: ApolloClient<NormalizedCacheObject>
   private refreshTimer = 0
@@ -211,7 +207,7 @@ export class Client {
     this.refreshToken()
   }
 
-  async createSessionByEmail(emailToken: string): Promise<Session | undefined> {
+  async createSessionWithEmail(emailToken: string): Promise<void> {
     this.setRefreshInProgress()
 
     const resp = await fetch("/api/iam/session-email", {
@@ -223,12 +219,12 @@ export class Client {
         emailToken: emailToken,
       }),
     })
-    let data: Session
+    let data: Token
     switch (resp.status) {
       case HTTPCode.Unauthorized:
         throw new APIError(Code.Unauthorized, "Invalid email token.")
       case HTTPCode.OK:
-        data = (await resp.json()) as Session
+        data = (await resp.json()) as Token
         if (data.token && data.expiresIn) {
           this.setToken(data.token, data.expiresIn)
         } else {
@@ -236,16 +232,16 @@ export class Client {
           // Failed to acquire token from session. Try refreshing (hoping that the session cookie was set).
           this.refreshToken() // No point in waiting for it, so no `await`.
         }
-        return data
+        break
       default:
         throw new APIError(Code.Unknown, "Failed to verify email.")
     }
   }
 
-  async createSessionByLogin(email: string, password: string): Promise<void> {
+  async createSessionWithCredentials(email: string, password: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/session-login", {
+    const resp = await fetch("/api/iam/session-credentials", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -266,6 +262,28 @@ export class Client {
         throw new APIError(Code.NotFound, "Invalid password or user does not exist.")
       default:
         throw new APIError(Code.Unknown, "")
+    }
+  }
+
+  async createSessionWithGSI(token: string): Promise<void> {
+    this.setRefreshInProgress()
+
+    const resp = await fetch("/api/iam/session-google-sign-in", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+      }),
+    })
+
+    let data: Token
+    if (resp.status === HTTPCode.OK) {
+      data = (await resp.json()) as Token
+      this.setToken(data.token, data.expiresIn)
+    } else {
+      throw new APIError(Code.Unknown, "")
     }
   }
 

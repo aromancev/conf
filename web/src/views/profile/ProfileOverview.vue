@@ -2,7 +2,7 @@
   <div class="profile-overview">
     <div class="avatar">
       <img class="avatar-img" :src="avatar" />
-      <div>{{ profile.displayName || genName(profile.ownerId) }}</div>
+      <div>{{ profile.givenName || genName(profile.ownerId) }} {{ profile.familyName }}</div>
     </div>
   </div>
 </template>

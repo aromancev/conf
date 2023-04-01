@@ -51,6 +51,10 @@ func NewPeerProxy(ctx context.Context, w http.ResponseWriter, r *http.Request, u
 	}, nil
 }
 
+func (p *PeerProxy) SessionID() uuid.UUID {
+	return p.proxy.SessionID()
+}
+
 func (p *PeerProxy) Serve() {
 	p.workers.Serve(func(ctx context.Context) {
 		for {
@@ -59,7 +63,7 @@ func (p *PeerProxy) Serve() {
 			case errors.Is(err, proxy.ErrValidation):
 				log.Ctx(ctx).Warn().Err(err).Msg("Message from websocket rejected.")
 				continue
-			case errors.Is(err, ErrClosed), errors.Is(err, io.EOF):
+			case errors.Is(err, ErrClosed), errors.Is(err, io.EOF), errors.As(err, &websocket.CloseError{}):
 				return
 			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Failed to process websocket message.")
@@ -71,7 +75,7 @@ func (p *PeerProxy) Serve() {
 		for {
 			err := p.ping(ctx)
 			switch {
-			case errors.Is(err, io.EOF), errors.Is(err, ErrClosed), errors.Is(err, context.DeadlineExceeded):
+			case errors.Is(err, io.EOF), errors.Is(err, ErrClosed), errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled), errors.As(err, &websocket.CloseError{}):
 				return
 			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Websocket ping failed.")
@@ -97,7 +101,10 @@ func (p *PeerProxy) Serve() {
 					Event: NewRoomEvent(ev),
 				},
 			})
-			if err != nil {
+			switch {
+			case errors.As(err, &websocket.CloseError{}):
+				return
+			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Failed to reply to websocket.")
 				return
 			}

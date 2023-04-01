@@ -32,6 +32,10 @@ export class RTCPeer {
     this.socket.onclose = val
   }
 
+  set onerror(val: () => void) {
+    this.socket.onerror = val
+  }
+
   async message(msg: PeerMessage): Promise<RoomEvent> {
     return this.socket.message(msg)
   }
@@ -80,10 +84,14 @@ export class RTCPeer {
     this.sfu.publish(stream, encodingParams)
   }
 
-  close(): void {
+  async close(): Promise<void> {
     this.sfu?.close()
-    this.socket.close()
+    await this.socket.close()
   }
+}
+
+enum CloseCode {
+  NORMAL_CLOSURE = 1000,
 }
 
 const requestTimeout = 10 * 1000
@@ -93,15 +101,17 @@ class RoomWebSocket {
   ontrickle?: (trickle: Trickle) => void
   onevent?: (event: RoomEvent) => void
   onclose?: () => void
+  onerror?: () => void
 
   private socket?: WebSocket
   private onSignalAnswer?: (desc: RTCSessionDescriptionInit) => void
   private requestId = 0
   private pendingRequests: Map<string, (msg: Message) => void> = new Map()
+  private connected?: Promise<void>
 
   async connect(roomId: string, token: string): Promise<void> {
     if (this.socket) {
-      this.socket.close()
+      await this.close()
     }
     this.socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
     this.socket.onmessage = (resp) => {
@@ -141,9 +151,15 @@ class RoomWebSocket {
       }
     }
 
-    this.socket.onclose = () => {
-      if (this.onclose) {
-        this.onclose()
+    this.socket.onclose = (e: CloseEvent) => {
+      if (e.code === CloseCode.NORMAL_CLOSURE) {
+        if (this.onclose) {
+          this.onclose()
+        }
+      } else {
+        if (this.onerror) {
+          this.onerror()
+        }
       }
     }
 
@@ -158,7 +174,8 @@ class RoomWebSocket {
         resolve()
       }
     })
-    await Promise.race([opened, failed])
+    this.connected = Promise.race([opened, failed])
+    await this.connected
     if (this.socket.readyState !== this.socket.OPEN) {
       throw new Error("Failed to connect to websocket.")
     }
@@ -275,8 +292,9 @@ class RoomWebSocket {
     return resp.payload.event
   }
 
-  close(): void {
-    this.socket?.close()
+  async close(): Promise<void> {
+    await this.connected
+    this.socket?.close(CloseCode.NORMAL_CLOSURE)
   }
 
   private send(payload: MessagePayload): Promise<Message> {

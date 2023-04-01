@@ -13,6 +13,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
+	"github.com/rs/zerolog/log"
 )
 
 type Repo interface {
@@ -20,7 +21,7 @@ type Repo interface {
 }
 
 type Emitter interface {
-	UpdateProfile(ctx context.Context, userID uuid.UUID, source AvatarSource) error
+	UpdateProfile(ctx context.Context, userID uuid.UUID, gavenName string, familyName string, thumbnail, avatar FileSource) error
 }
 
 type Buckets struct {
@@ -29,24 +30,26 @@ type Buckets struct {
 }
 
 type Updater struct {
+	baseURL string
 	storage *minio.Client
 	buckets Buckets
-	baseURL string
 	emitter Emitter
 	repo    Repo
+	client  *http.Client
 }
 
-func NewUpdater(baseURL string, buckets Buckets, storage *minio.Client, emitter Emitter, repo Repo) *Updater {
+func NewUpdater(baseURL string, buckets Buckets, storage *minio.Client, emitter Emitter, repo Repo, client *http.Client) *Updater {
 	return &Updater{
 		storage: storage,
 		buckets: buckets,
 		baseURL: baseURL,
 		emitter: emitter,
 		repo:    repo,
+		client:  client,
 	}
 }
 
-func (u *Updater) RequestUpload(ctx context.Context, userID uuid.UUID) (string, map[string]string, error) {
+func (u *Updater) UpdateAndRequestUpload(ctx context.Context, userID uuid.UUID) (string, map[string]string, error) {
 	objectID := "avatar"
 	objectPath := path.Join(userID.String(), objectID)
 	policy := minio.NewPostPolicy()
@@ -68,8 +71,8 @@ func (u *Updater) RequestUpload(ctx context.Context, userID uuid.UUID) (string, 
 		return "", nil, fmt.Errorf("failed to sign post policy: %w", err)
 	}
 
-	err = u.emitter.UpdateProfile(ctx, userID, AvatarSource{
-		Storage: &AvatarSourceStorage{
+	err = u.emitter.UpdateProfile(ctx, userID, "", "", FileSource{}, FileSource{
+		Storage: &FileSourceStorage{
 			Bucket: bucket,
 			Path:   objectPath,
 		},
@@ -81,85 +84,126 @@ func (u *Updater) RequestUpload(ctx context.Context, userID uuid.UUID) (string, 
 	return path.Join(u.baseURL, bucket), data, nil
 }
 
-func (u *Updater) Update(ctx context.Context, userID uuid.UUID, source AvatarSource) error {
+func (u *Updater) Update(ctx context.Context, userID uuid.UUID, givenName, familyName string, thumbnail, avatar FileSource) error {
 	const avatarFullSize = 460
-	const avatarThumbnailSize = 128
+	const thumbnailSize = 128
 	const quality = 50 // Ranges from 1 to 100 inclusive, higher is better.
 
-	if err := source.Validate(); err != nil {
+	if givenName == "" && familyName == "" && thumbnail.IsZero() && avatar.IsZero() {
+		return fmt.Errorf("%w: %s", ErrValidation, "empty update not allowed")
+	}
+	if err := thumbnail.Validate(); err != nil {
+		return fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	if err := avatar.Validate(); err != nil {
 		return fmt.Errorf("%w: %s", ErrValidation, err)
 	}
 
-	cleanup := func() error {
-		// Removing the temporary object if the source is storage.
-		if source.Storage != nil {
-			err := u.storage.RemoveObject(ctx, source.Storage.Bucket, source.Storage.Path, minio.RemoveObjectOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to remove temporary object: %w", err)
-			}
-		}
-		return nil
+	update := Profile{
+		ID:         uuid.New(),
+		Owner:      userID,
+		GivenName:  givenName,
+		FamilyName: familyName,
+	}
+	avatarImg, err := u.fetchImage(ctx, avatar)
+	if err != nil {
+		return err
+	}
+	thumbnailImg, err := u.fetchImage(ctx, thumbnail)
+	if err != nil {
+		return err
+	}
+	// Generate thumbnail from avatar.
+	if thumbnailImg == nil && avatarImg != nil {
+		thumbnailImg = avatarImg
 	}
 
-	// Fetching the original image.
-	var sourceImage image.Image
+	if avatarImg != nil {
+		update.AvatarID = uuid.New()
+		cropped := imaging.Fill(avatarImg, avatarFullSize, avatarFullSize, imaging.Center, imaging.Box)
+		buffer := bytes.NewBuffer(nil)
+		err := imaging.Encode(buffer, cropped, imaging.JPEG, imaging.JPEGQuality(quality))
+		if err != nil {
+			return fmt.Errorf("failed to encode image: %w", err)
+		}
+		_, err = u.storage.PutObject(ctx, u.buckets.UserPublic, path.Join(userID.String(), update.AvatarID.String()), buffer, int64(buffer.Len()), minio.PutObjectOptions{
+			ContentType: "image/jpeg",
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upload converted avatar: %w", err)
+		}
+	}
+	if thumbnailImg != nil {
+		cropped := imaging.Fill(thumbnailImg, thumbnailSize, thumbnailSize, imaging.Center, imaging.Box)
+		buffer := bytes.NewBuffer(nil)
+		err := imaging.Encode(buffer, cropped, imaging.JPEG, imaging.JPEGQuality(quality))
+		if err != nil {
+			return fmt.Errorf("failed to encode image: %w", err)
+		}
+		update.AvatarThumbnail = Image{
+			Format: "jpeg",
+			Data:   buffer.Bytes(),
+		}
+	}
+
+	_, err = u.repo.CreateOrUpdate(ctx, update)
+	if err != nil {
+		return fmt.Errorf("failed to upsert profile: %w", err)
+	}
+	u.cleanupObject(ctx, avatar)
+	u.cleanupObject(ctx, thumbnail)
+	return nil
+}
+
+func (u *Updater) fetchImage(ctx context.Context, source FileSource) (image.Image, error) {
+	var buff []byte
 	switch {
 	case source.Storage != nil:
 		object, err := u.storage.GetObject(ctx, source.Storage.Bucket, source.Storage.Path, minio.GetObjectOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to get object: %w", err)
+			return nil, fmt.Errorf("failed to get object: %w", err)
 		}
-		buff, err := io.ReadAll(object)
+		buff, err = io.ReadAll(object)
 		switch {
 		case minio.ToErrorResponse(err).StatusCode == http.StatusNotFound:
-			return ErrNotFound
+			return nil, ErrNotFound
 		case err != nil:
-			return fmt.Errorf("failed to read object: %w", err)
+			return nil, fmt.Errorf("failed to read object: %w", err)
 		}
-		sourceImage, _, err = image.Decode(bytes.NewReader(buff))
+	case source.PublicURL != nil:
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source.PublicURL.URL, http.NoBody)
 		if err != nil {
-			if err := cleanup(); err != nil {
-				return err
-			}
-			return fmt.Errorf("%w: %s", ErrValidation, err)
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		resp, err := u.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download file: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected response code")
+		}
+		buff, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download file: %w", err)
 		}
 	default:
-		return fmt.Errorf("%w: no image source", ErrValidation)
+		return nil, nil
 	}
+	img, _, err := image.Decode(bytes.NewReader(buff))
+	if err != nil {
+		u.cleanupObject(ctx, source)
+		return nil, fmt.Errorf("%w: %s", ErrValidation, err)
+	}
+	return img, nil
+}
 
-	// Cropping thumbnail and full size.
-	fullSize := imaging.Fill(sourceImage, avatarFullSize, avatarFullSize, imaging.Center, imaging.Box)
-	thumbnail := imaging.Fill(fullSize, avatarThumbnailSize, avatarThumbnailSize, imaging.Center, imaging.Box)
-
-	// Updating the thumbnail in the profile.
-	buffer := bytes.NewBuffer(nil)
-	err := imaging.Encode(buffer, thumbnail, imaging.JPEG, imaging.JPEGQuality(quality))
-	if err != nil {
-		return fmt.Errorf("failed to encode image: %w", err)
+func (u *Updater) cleanupObject(ctx context.Context, source FileSource) {
+	if source.Storage == nil {
+		return
 	}
-	prof, err := u.repo.CreateOrUpdate(ctx, Profile{
-		ID:    uuid.New(),
-		Owner: userID,
-		AvatarThumbnail: Image{
-			Format: "jpeg",
-			Data:   buffer.Bytes(),
-		},
-	})
+	err := u.storage.RemoveObject(ctx, source.Storage.Bucket, source.Storage.Path, minio.RemoveObjectOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to upsert profile: %w", err)
+		log.Ctx(ctx).Err(err).Str("bucket", source.Storage.Bucket).Str("path", source.Storage.Path).Msg("Failed to remove temporary object.")
 	}
-
-	// Uploading fullsize avatar to the storage.
-	buffer.Reset()
-	err = imaging.Encode(buffer, fullSize, imaging.JPEG, imaging.JPEGQuality(quality))
-	if err != nil {
-		return fmt.Errorf("failed to encode image: %w", err)
-	}
-	_, err = u.storage.PutObject(ctx, u.buckets.UserPublic, path.Join(userID.String(), prof.ID.String()), buffer, int64(buffer.Len()), minio.PutObjectOptions{
-		ContentType: "image/jpeg",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload converted avatar: %w", err)
-	}
-	return cleanup()
 }

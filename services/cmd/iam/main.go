@@ -13,6 +13,7 @@ import (
 	"github.com/aromancev/confa/cmd/iam/rpc"
 	"github.com/aromancev/confa/cmd/iam/web"
 	"github.com/aromancev/confa/internal/auth"
+	"github.com/aromancev/confa/internal/platform/google/gsi"
 	"github.com/aromancev/confa/internal/proto/iam"
 	"github.com/aromancev/confa/internal/routes"
 	"github.com/aromancev/confa/session"
@@ -85,7 +86,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
-	rts := routes.NewRoutes(config.BaseURL)
+	pages := routes.NewPages(config.BaseURL)
 
 	userMongo := user.NewMongo(mongoDB)
 	userCRUD := user.NewActions(userMongo)
@@ -97,8 +98,12 @@ func main() {
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler: web.NewHandler(
+			web.Tubes{
+				Send:         config.Beanstalk.TubeSend,
+				UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
+			},
 			web.NewAuth(config.Domain),
-			rts,
+			pages,
 			secretKey,
 			publicKey,
 			web.NewResolver(
@@ -108,8 +113,10 @@ func main() {
 			sessionMongo,
 			userCRUD,
 			producer,
-			web.Tubes{
-				Send: config.Beanstalk.TubeSend,
+			gsi.NewPublicKey(&http.Client{}),
+			gsi.Creds{
+				ClientID:     config.Google.ClientID,
+				ClientSecret: config.Google.ClientSecret,
 			},
 		),
 	}

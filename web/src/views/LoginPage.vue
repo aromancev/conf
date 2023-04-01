@@ -3,6 +3,9 @@
     <PageLoader v-if="state === 'LOADING'"></PageLoader>
 
     <div v-if="state === 'GUEST'">
+      <div class="title">Sign in</div>
+      <GSIButton class="gsi" @token="loginWithGSI"></GSIButton>
+      <div class="or">or use you email to sign in:</div>
       <InputField
         v-model="email"
         :spellcheck="false"
@@ -20,7 +23,14 @@
     </div>
 
     <div v-if="state === 'CREATE_PASSWORD'">
-      <div class="title">Logged in as {{ profileStore.state.displayName || genName(accessStore.state.id) }}</div>
+      <ProfileAvatar
+        v-if="accessStore.state.allowedWrite"
+        class="avatar"
+        :size="128"
+        :user-id="accessStore.state.id"
+        :src="profileStore.state.avatarThumbnail"
+      ></ProfileAvatar>
+      <div class="user">Logged in as {{ profileStore.state.givenName }} {{ profileStore.state.familyName }}</div>
       <InputField
         v-model="password"
         :spellcheck="false"
@@ -37,10 +47,6 @@
         :errors="confirmPasswordErrors"
       />
       <button class="submit btn" :disabled="isSubmitted" @click="createPassword">Set password</button>
-      <div class="or">or</div>
-      <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
-        >Start broadcasting</router-link
-      >
     </div>
 
     <div v-if="state === 'RESET_PASSWORD'">
@@ -61,8 +67,15 @@
       <button class="submit btn" :disabled="isSubmitted" @click="resetPassword">Set password</button>
     </div>
 
-    <div v-if="state === 'HAS_PASSWORD'">
-      <div class="title">Logged in as {{ profileStore.state.displayName || genName(accessStore.state.id) }}</div>
+    <div v-if="state === 'SIGNED_IN'">
+      <ProfileAvatar
+        v-if="accessStore.state.allowedWrite"
+        class="avatar"
+        :size="128"
+        :user-id="accessStore.state.id"
+        :src="profileStore.state.avatarThumbnail"
+      ></ProfileAvatar>
+      <div class="user">Logged in as {{ profileStore.state.givenName }} {{ profileStore.state.familyName }}</div>
       <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
         >Start broadcasting</router-link
       >
@@ -124,12 +137,13 @@ import { api, errorCode, Code } from "@/api"
 import { Account, accessStore } from "@/api/models/access"
 import { emailValidator, passwordValidator } from "@/api/models/user"
 import { route, handleNew, LoginAction } from "@/router"
-import { genName } from "@/platform/gen"
+import { notificationStore } from "@/api/models/notifications"
+import { profileStore } from "@/api/models/profile"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import InputField from "@/components/fields/InputField.vue"
 import PageLoader from "@/components/PageLoader.vue"
-import { notificationStore } from "@/api/models/notifications"
-import { profileStore } from "@/api/models/profile"
+import ProfileAvatar from "@/components/profile/ProfileAvatar.vue"
+import GSIButton from "@/components/GSIButton.vue"
 
 type Modal =
   | "NONE"
@@ -141,7 +155,7 @@ type Modal =
   | "NOT_FOUND"
   | "INVALID_TOKEN"
   | "ALREADY_HAS_PASSWORD"
-type State = "LOADING" | "GUEST" | "HAS_PASSWORD" | "CREATE_PASSWORD" | "RESET_PASSWORD"
+type State = "LOADING" | "GUEST" | "SIGNED_IN" | "CREATE_PASSWORD" | "RESET_PASSWORD"
 
 const props = defineProps<{
   action?: LoginAction
@@ -173,21 +187,16 @@ watch(
   [accessStore.state, () => props.action, () => props.token],
   async () => {
     if (!props.action || !props.token) {
-      state.value = accessStore.state.account === Account.Guest ? "GUEST" : "HAS_PASSWORD"
+      state.value = accessStore.state.account === Account.Guest ? "GUEST" : "SIGNED_IN"
       return
     }
 
     state.value = "LOADING"
     try {
       if (accessStore.state.account !== Account.Guest || props.action === "login") {
-        const session = await api.createSessionByEmail(props.token)
-        if (session?.createPasswordToken) {
-          resetPasswordToken = session.createPasswordToken
-          state.value = "CREATE_PASSWORD"
-        } else {
-          state.value = "HAS_PASSWORD"
-          router.replace(route.login())
-        }
+        await api.createSessionWithEmail(props.token)
+        state.value = "SIGNED_IN"
+        router.replace(route.login())
         return
       }
       switch (props.action) {
@@ -228,9 +237,9 @@ async function login() {
   try {
     state.value = "LOADING"
     if (password.value.length) {
-      await api.createSessionByLogin(email.value, password.value)
+      await api.createSessionWithCredentials(email.value, password.value)
       clearForm()
-      state.value = "HAS_PASSWORD"
+      state.value = "SIGNED_IN"
     } else {
       await api.emailLogin(email.value)
       clearForm()
@@ -252,6 +261,10 @@ async function login() {
         break
     }
   }
+}
+
+async function loginWithGSI(token: string) {
+  await api.createSessionWithGSI(token)
 }
 
 async function emailResetPassword() {
@@ -285,11 +298,11 @@ async function createPassword() {
     accessStore.logout()
     api.refreshToken()
     modal.value = "PASSWORD_CREATED"
-    state.value = "HAS_PASSWORD"
+    state.value = "SIGNED_IN"
   } catch (e) {
     if (errorCode(e) === Code.NotFound) {
       modal.value = "ALREADY_HAS_PASSWORD"
-      state.value = "HAS_PASSWORD"
+      state.value = "SIGNED_IN"
       router.replace(route.login())
     } else {
       notificationStore.error("failed to create password")
@@ -333,8 +346,20 @@ function clearForm() {
   width: 300px
 
 .title
-  font-size: 20px
+  text-align: left
+  font-size: 40px
   margin-bottom: 20px
+
+.gsi
+  max-width: 100%
+  margin-bottom: 10px
+
+.avatar
+  width: 48px
+  height: 48px
+  border-radius: 50%
+  overflow: hidden
+  margin: 10px
 
 .field
   margin: 10px 0
@@ -346,6 +371,9 @@ function clearForm() {
 .create-talk
   margin: 15px 0
 
+.user
+  margin-bottom: 50px
+
 .or
-  color: var(--color-font-disabled)
+  text-align: left
 </style>

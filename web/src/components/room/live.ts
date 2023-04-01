@@ -8,9 +8,14 @@ import { Peer, Status, PeerAggregator } from "./aggregators/peers"
 import { Stream, StreamAggregator } from "./aggregators/streams"
 import { RecordingAggregator } from "./aggregators/recording"
 import { RoomEvent, Hint, Track, Reaction } from "@/api/room/schema"
+import { FIFOMap } from "@/platform/cache"
 
 const UPDATE_TIME_INTERVAL_MS = 300
 const PROFILE_CACHE_SIZE = 500
+const MAX_PEERS = 3000
+const MAX_STREAMS = 10
+const MAX_TRACKS = 10
+const LOAD_EVENTS = 3000
 
 interface State {
   peers: Map<string, Peer>
@@ -31,21 +36,22 @@ interface State {
   error?: Error
 }
 
-type Error = "CLOSED"
+type Error = "UNKNOWN"
 
 export class LiveRoom {
   private rtc: RTCPeer
-  private _state: State
-  private readState: State
+  private readonly reactive: State
+  private readonly readonly: State
   private peerState: PeerState
   private profileRepo: ProfileRepository
   private messageAggregator?: MessageAggregator
   private setTimeIntervalId: ReturnType<typeof setInterval>
 
   constructor() {
-    this._state = reactive<State>({
-      peers: new Map(),
-      statuses: new Map(),
+    this.reactive = reactive<State>({
+      peers: new FIFOMap(MAX_PEERS),
+      statuses: new FIFOMap(MAX_PEERS),
+      remote: new FIFOMap(MAX_STREAMS),
       messages: [],
       isLoading: false,
       isPublishing: false,
@@ -53,50 +59,49 @@ export class LiveRoom {
       recording: {
         isRecording: false,
       },
-      remote: new Map(),
       local: {},
     }) as State
-    this.readState = readonly(this._state) as State
+    this.readonly = readonly(this.reactive) as State
     this.profileRepo = new ProfileRepository(PROFILE_CACHE_SIZE, 3000)
-    this.peerState = { tracks: new Map() }
+    this.peerState = { tracks: new FIFOMap(MAX_TRACKS) }
     this.rtc = new RTCPeer()
-    this.rtc.onclose = () => {
+    this.rtc.onerror = () => {
       this.close()
-      this._state.error = "CLOSED"
+      this.reactive.error = "UNKNOWN"
     }
     this.setTimeIntervalId = 0
   }
 
   get state(): State {
-    return this.readState
+    return this.readonly
   }
 
-  close(): void {
+  async close(): Promise<void> {
+    clearInterval(this.setTimeIntervalId)
     this.unshareScreen()
     this.unshareCamera()
     this.unshareMic()
-    this.rtc.close()
+    await this.rtc.close()
+    this.reactive.peers.clear()
+    this.reactive.statuses.clear()
+    this.reactive.remote.clear()
+    this.reactive.messages.slice(0, this.reactive.messages.length)
+    this.reactive.isLoading = false
+    this.reactive.joinedMedia = false
+    this.reactive.recording.isRecording = false
     this.peerState = { tracks: new Map() }
-    this._state.joinedMedia = false
-    clearInterval(this.setTimeIntervalId)
   }
 
   async joinRTC(roomId: string): Promise<void> {
-    this.close()
-    this._state.isLoading = true
+    await this.close()
+    this.reactive.isLoading = true
 
     try {
-      const streams = new StreamAggregator()
-      const peers = new PeerAggregator(this.profileRepo)
-      const recording = new RecordingAggregator()
-      this.messageAggregator = new MessageAggregator(this.profileRepo)
+      const streams = new StreamAggregator(this.reactive.remote)
+      const peers = new PeerAggregator(this.reactive.peers, this.reactive.statuses, this.profileRepo)
+      const recording = new RecordingAggregator(this.reactive.recording)
+      this.messageAggregator = new MessageAggregator(this.reactive.messages, this.profileRepo)
       const aggregators = new BufferedAggregator([peers, streams, recording, this.messageAggregator], 50)
-
-      this._state.remote = streams.state().streams
-      this._state.peers = peers.state().peers
-      this._state.statuses = peers.state().statuses
-      this._state.recording = recording.state()
-      this._state.messages = this.messageAggregator.state().messages
 
       let serverNow = 0
       let serverNowAt = 0
@@ -109,7 +114,7 @@ export class LiveRoom {
       await this.rtc.joinRTC(roomId)
 
       const iter = eventClient.fetch({ roomId: roomId }, { policy: "network-only", cursor: { Asc: true } })
-      const events = await iter.next(3000)
+      const events = await iter.next(LOAD_EVENTS)
 
       aggregators.prepend(...events)
       aggregators.flush()
@@ -123,16 +128,16 @@ export class LiveRoom {
         aggregators.setTime(serverNow + elapsed)
       }, UPDATE_TIME_INTERVAL_MS)
 
-      this._state.error = undefined
+      this.reactive.error = undefined
     } finally {
-      this._state.isLoading = false
+      this.reactive.isLoading = false
     }
   }
 
   async joinMedia(): Promise<void> {
-    this._state.joinedMedia = false
+    this.reactive.joinedMedia = false
     await this.rtc.joinMedia()
-    this._state.joinedMedia = true
+    this.reactive.joinedMedia = true
   }
 
   async send(userId: string, message: string): Promise<void> {
@@ -153,7 +158,7 @@ export class LiveRoom {
   }
 
   switchCamera() {
-    if (this._state.local.camera) {
+    if (this.reactive.local.camera) {
       this.unshareCamera()
     } else {
       this.shareCamera()
@@ -161,7 +166,7 @@ export class LiveRoom {
   }
 
   switchScreen() {
-    if (this._state.local.screen) {
+    if (this.reactive.local.screen) {
       this.unshareScreen()
     } else {
       this.shareScreen()
@@ -169,7 +174,7 @@ export class LiveRoom {
   }
 
   switchMic() {
-    if (this._state.local.mic) {
+    if (this.reactive.local.mic) {
       this.unshareMic()
     } else {
       this.shareMic()
@@ -177,7 +182,10 @@ export class LiveRoom {
   }
 
   async shareCamera() {
-    this._state.local.camera = await this.share(async () => {
+    if (!this.reactive.joinedMedia) {
+      return
+    }
+    this.reactive.local.camera = await this.share(async () => {
       return await LocalStream.getUserMedia({
         codec: "vp8",
         resolution: "vga",
@@ -189,12 +197,15 @@ export class LiveRoom {
   }
 
   unshareCamera() {
-    this.unshare(this._state.local.camera)
-    this._state.local.camera = undefined
+    this.unshare(this.reactive.local.camera)
+    this.reactive.local.camera = undefined
   }
 
   async shareScreen() {
-    this._state.local.screen = await this.share(async () => {
+    if (!this.reactive.joinedMedia) {
+      return
+    }
+    this.reactive.local.screen = await this.share(async () => {
       const stream = await LocalStream.getDisplayMedia({
         codec: "vp8",
         resolution: "hd",
@@ -219,12 +230,15 @@ export class LiveRoom {
   }
 
   unshareScreen() {
-    this.unshare(this._state.local.screen)
-    this._state.local.screen = undefined
+    this.unshare(this.reactive.local.screen)
+    this.reactive.local.screen = undefined
   }
 
   async shareMic() {
-    this._state.local.mic = await this.share(() => {
+    if (!this.reactive.joinedMedia) {
+      return
+    }
+    this.reactive.local.mic = await this.share(() => {
       return LocalStream.getUserMedia({
         video: false,
         audio: true,
@@ -233,16 +247,16 @@ export class LiveRoom {
   }
 
   unshareMic() {
-    this.unshare(this._state.local.mic)
-    this._state.local.mic = undefined
+    this.unshare(this.reactive.local.mic)
+    this.reactive.local.mic = undefined
   }
 
   private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | undefined> {
-    if (!this.rtc || this._state.isLoading || this._state.isPublishing) {
+    if (!this.rtc || this.reactive.isLoading || this.reactive.isPublishing) {
       return undefined
     }
 
-    this._state.isPublishing = true
+    this.reactive.isPublishing = true
     try {
       const stream = await fetch()
       const tId = trackId(stream)
@@ -254,7 +268,7 @@ export class LiveRoom {
       console.warn("Failed to share media:", e)
       return undefined
     } finally {
-      this._state.isPublishing = false
+      this.reactive.isPublishing = false
     }
   }
 
