@@ -131,7 +131,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from "vue"
 import { onBeforeRouteLeave } from "vue-router"
-import { talkClient } from "@/api"
+import { api } from "@/api"
+import { TalkClient } from "@/api/talk"
 import { Talk, TalkState } from "@/api/models/talk"
 import { accessStore } from "@/api/models/access"
 import { LiveRoom } from "@/components/room"
@@ -366,7 +367,7 @@ async function handleRecording() {
     case "none":
       recordingStatus.value = "pending"
       try {
-        await talkClient.startRecording({ id: props.talk.id })
+        await new TalkClient(api).startRecording({ id: props.talk.id })
       } catch (e) {
         notificationStore.error("failed to start recording")
       }
@@ -374,7 +375,7 @@ async function handleRecording() {
     case "recording":
       recordingStatus.value = "pending"
       try {
-        await talkClient.stopRecording({ id: props.talk.id })
+        await new TalkClient(api).stopRecording({ id: props.talk.id })
       } catch (e) {
         notificationStore.error("failed to stop recording")
       }

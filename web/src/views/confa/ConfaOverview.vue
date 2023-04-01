@@ -37,7 +37,8 @@ import { ref, onMounted, reactive } from "vue"
 import { Confa } from "@/api/models/confa"
 import { accessStore } from "@/api/models/access"
 import { Talk } from "@/api/models/talk"
-import { talkClient } from "@/api"
+import { api } from "@/api"
+import { TalkClient } from "@/api/talk"
 import { TalkIterator } from "@/api/talk"
 import { route, handleNew } from "@/router"
 import PageLoader from "@/components/PageLoader.vue"
@@ -85,7 +86,7 @@ async function loadTalks() {
 
   try {
     if (!talkIterator) {
-      talkIterator = talkClient.fetch(
+      talkIterator = new TalkClient(api).fetch(
         { confaId: props.confa.id },
         {
           hydrated: false,

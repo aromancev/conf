@@ -44,7 +44,8 @@
 <script setup lang="ts">
 import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
-import { profileClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { ProfileClient } from "@/api/profile"
 import { accessStore } from "@/api/models/access"
 import { Profile, profileStore } from "@/api/models/profile"
 import { route, ProfileTab, handleNew } from "@/router"
@@ -82,16 +83,16 @@ watch(
     loading.value = true
     try {
       if (handle === handleNew) {
-        profile.value = await profileClient.update()
+        profile.value = await new ProfileClient(api).update()
         router.replace(route.profile(profile.value.handle, props.tab))
       } else {
-        profile.value = await profileClient.fetchOne({
+        profile.value = await new ProfileClient(api).fetchOne({
           handle: handle,
         })
       }
 
       if (profile.value.avatarUrl) {
-        avatar.value = await profileClient.fetchAvatar(profile.value.avatarUrl)
+        avatar.value = await new ProfileClient(api).fetchAvatar(profile.value.avatarUrl)
       }
       if (!avatar.value) {
         avatar.value = await genAvatar(profile.value.ownerId, 460)

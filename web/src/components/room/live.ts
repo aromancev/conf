@@ -1,6 +1,7 @@
 import { LocalStream, Constraints } from "ion-sdk-js"
 import { reactive, readonly } from "vue"
-import { RTCPeer, eventClient } from "@/api"
+import { api } from "@/api"
+import { RTCPeer } from "@/api/room"
 import { BufferedAggregator } from "./aggregators/buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
@@ -9,6 +10,7 @@ import { Stream, StreamAggregator } from "./aggregators/streams"
 import { RecordingAggregator } from "./aggregators/recording"
 import { RoomEvent, Hint, Track, Reaction } from "@/api/room/schema"
 import { FIFOMap } from "@/platform/cache"
+import { EventClient } from "@/api/event"
 
 const UPDATE_TIME_INTERVAL_MS = 300
 const PROFILE_CACHE_SIZE = 500
@@ -113,7 +115,7 @@ export class LiveRoom {
       this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
       await this.rtc.joinRTC(roomId)
 
-      const iter = eventClient.fetch({ roomId: roomId }, { policy: "network-only", cursor: { Asc: true } })
+      const iter = new EventClient(api).fetch({ roomId: roomId }, { policy: "network-only", cursor: { Asc: true } })
       const events = await iter.next(LOAD_EVENTS)
 
       aggregators.prepend(...events)

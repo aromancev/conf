@@ -59,7 +59,8 @@
 
 <script setup lang="ts">
 import { computed, watch, reactive } from "vue"
-import { confaClient, errorCode, Code } from "@/api"
+import { api, errorCode, Code } from "@/api"
+import { ConfaClient } from "@/api/confa"
 import { Confa } from "@/api/models/confa"
 import { accessStore } from "@/api/models/access"
 import { ConfaUpdate } from "@/api/schema"
@@ -172,7 +173,7 @@ async function save() {
   state.isSaving = true
   try {
     const currentUpdate = Object.assign({}, state.update)
-    const updated = await confaClient.update({ id: props.confa.id }, currentUpdate)
+    const updated = await new ConfaClient(api).update({ id: props.confa.id }, currentUpdate)
     state.update = {}
     emit("update", updated)
   } catch (e) {
