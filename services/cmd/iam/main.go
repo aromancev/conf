@@ -86,7 +86,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
 
-	pages := routes.NewPages(config.BaseURL)
+	pages := routes.NewPages(config.WebScheme, config.WebHost)
 
 	userMongo := user.NewMongo(mongoDB)
 	userCRUD := user.NewActions(userMongo)
@@ -102,7 +102,7 @@ func main() {
 				Send:         config.Beanstalk.TubeSend,
 				UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
 			},
-			web.NewAuth(config.Domain),
+			web.NewAuth(config.WebHost),
 			pages,
 			secretKey,
 			publicKey,

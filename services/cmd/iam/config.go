@@ -22,12 +22,12 @@ const (
 type Config struct {
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
 	ListenRPCAddress string `envconfig:"LISTEN_RPC_ADDRESS"`
+	WebHost          string `envconfig:"WEB_HOST"`
+	WebScheme        string `envconfig:"WEB_SCHEME"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
-	BaseURL          string `envconfig:"BASE_URL"`
 	SecretKey        string `envconfig:"SECRET_KEY"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	Domain           string `envconfig:"DOMAIN"`
 	Mongo            MongoConfig
 	Beanstalk        BeanstalkConfig
 	Google           Google
@@ -61,8 +61,11 @@ func (c Config) Validate() error {
 	if c.ListenWebAddress == "" {
 		return errors.New("ADDRESS not set")
 	}
-	if c.BaseURL == "" {
-		return errors.New("BASE_URL not set")
+	if c.WebHost == "" {
+		return errors.New("WEB_HOST not set")
+	}
+	if c.WebScheme == "" {
+		return errors.New("WEB_SCHEME not set")
 	}
 	if c.SecretKey == "" {
 		return errors.New("SECRET_KEY not set")
@@ -70,9 +73,7 @@ func (c Config) Validate() error {
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
 	}
-	if c.Domain == "" {
-		return errors.New("DOMAIN not set")
-	}
+
 	if err := c.Mongo.Validate(); err != nil {
 		return fmt.Errorf("invalid mongo config: %w", err)
 	}

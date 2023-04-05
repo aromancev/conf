@@ -1,5 +1,6 @@
 import { api } from "@/api"
 import { profileStore } from "@/api/models/profile"
+import { ProfileClient } from "@/api/profile"
 import { config } from "@/config"
 
 declare global {
@@ -66,6 +67,9 @@ async function load(clientId: string): Promise<void> {
     callback: async (resp: PromptResponse) => {
       const token = resp.credential
       await api.createSessionWithGSI(token)
+      // Make sure we have an updated profile.
+      // Request is doubled from `main.ts` but graphql is caching it in memory.
+      await new ProfileClient(api).refreshProfile()
       if (!profileStore.state.id) {
         const p = JSON.parse(window.atob(token.split(".")[1])) as Token
         profileStore.update(p.given_name, p.family_name, p.picture)

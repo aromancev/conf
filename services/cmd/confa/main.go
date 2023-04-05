@@ -114,8 +114,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	pages := routes.NewPages(config.BaseURL)
-	storageRoutes := routes.NewStorage(config.Storage.PublicURL, routes.Buckets{
+	pages := routes.NewPages(config.WebScheme, config.WebHost)
+	storageRoutes := routes.NewStorage(config.WebScheme, config.WebHost, config.Storage.PublicPrefix, routes.Buckets{
 		UserPublic: config.Storage.BucketUserPublic,
 	})
 
@@ -134,7 +134,7 @@ func main() {
 	})
 	profileMongo := profile.NewMongo(mongoDB)
 	avatarUploader := profile.NewUpdater(
-		config.Storage.PublicURL,
+		config.Storage.PublicPrefix,
 		profile.Buckets{
 			UserUploads: config.Storage.BucketUserUploads,
 			UserPublic:  config.Storage.BucketUserPublic,

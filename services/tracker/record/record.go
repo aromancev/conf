@@ -119,7 +119,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 	}
 
 	const pliPeriod = 3 * time.Second
-	const minDuration = 1 * time.Second
+	const minDuration = 6 * time.Second
 	const rtpMaxLate = 300
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())

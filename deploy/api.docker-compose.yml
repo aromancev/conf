@@ -47,11 +47,11 @@ services:
     environment:
       - LISTEN_WEB_ADDRESS=:80
       - LISTEN_RPC_ADDRESS=:8080
-      - BASE_URL=https://confa.io
+      - WEB_HOST=confa.io
+      - WEB_SCHEME=https
       - LOG_FORMAT=console
       - SECRET_KEY=$SECRET_KEY
       - PUBLIC_KEY=$PUBLIC_KEY
-      - DOMAIN=confa.io
       - MONGO_HOSTS=mongo:27017
       - MONGO_USER=iam
       - MONGO_PASSWORD=iam
@@ -74,7 +74,8 @@ services:
       - LISTEN_WEB_ADDRESS=:80
       - RTC_RPC_ADDRESS=rtc:8080
       - LOG_FORMAT=console
-      - BASE_URL=https://confa.io
+      - WEB_HOST=confa.io
+      - WEB_SCHEME=https
       - PUBLIC_KEY=$PUBLIC_KEY
       - MONGO_HOSTS=mongo:27017
       - MONGO_USER=confa
@@ -174,7 +175,6 @@ services:
     environment:
       - LISTEN_RPC_ADDRESS=:8080
       - IAM_RPC_ADDRESS=iam:8080
-      - BASE_URL=https://confa.io
       - LOG_FORMAT=console
       - MAILERSEND_TOKEN=$MAILERSEND_TOKEN
       - MAILERSEND_BASE_URL=https://api.mailersend.com

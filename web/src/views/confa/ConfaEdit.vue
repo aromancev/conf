@@ -1,48 +1,16 @@
 <template>
   <div class="form">
-    <div class="form-row">
-      <div class="form-cell label">Handle</div>
-      <div class="form-cell">
-        <Input
-          v-model="state.handle"
-          :spellcheck="false"
-          class="form-input"
-          type="text"
-          placeholder="handle"
-          :errors="handleErrors"
-        />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell label">Title</div>
-      <div class="form-cell">
-        <Input
-          v-model="state.title"
-          :spellcheck="false"
-          class="form-input"
-          type="text"
-          placeholder="title"
-          :errors="titleErrors"
-        />
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell label align-top">Description</div>
-      <div class="form-cell">
-        <Textarea v-model="state.description" class="form-input description" placeholder="description"></Textarea>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-cell"></div>
-      <div class="form-cell controls">
-        <div class="save-indicator"></div>
-        <div class="btn save" :disabled="!hasUpdate || state.isSaving || !formValid ? true : null" @click="save">
-          <div v-if="state.isSaving" class="save-loader">
-            <PageLoader />
-          </div>
-
-          <span v-if="!state.isSaving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
+    <Input v-model="state.handle" :spellcheck="false" class="input" type="text" label="Handle" :errors="handleErrors" />
+    <Input v-model="state.title" :spellcheck="false" class="input" type="text" label="Title" :errors="titleErrors" />
+    <Textarea v-model="state.description" class="input description" label="Description"></Textarea>
+    <div class="controls">
+      <div class="save-indicator"></div>
+      <div class="btn save" :disabled="!hasUpdate || state.isSaving || !formValid ? true : null" @click="save">
+        <div v-if="state.isSaving" class="save-loader">
+          <PageLoader />
         </div>
+
+        <span v-if="!state.isSaving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
       </div>
     </div>
   </div>
@@ -89,6 +57,7 @@ type State = {
   description: string
   update: ConfaUpdate
   isSaving: boolean
+  isSubmitted: boolean
   modal: Modal
 }
 
@@ -98,13 +67,21 @@ const state = reactive<State>({
   description: props.confa.description,
   update: {},
   isSaving: false,
+  isSubmitted: false,
   modal: "none",
 })
 
 const router = useRouter()
 
-const handleErrors = computed<string[]>(() => handleValidator.validate(state.handle))
-const titleErrors = computed<string[]>(() => titleValidator.validate(state.title))
+const handleErrors = computed<string[]>(() => {
+  return handleValidator.validate(state.handle)
+})
+const titleErrors = computed<string[]>(() => {
+  if (!state.isSubmitted) {
+    return []
+  }
+  return titleValidator.validate(state.title)
+})
 const hasUpdate = computed(() => {
   if (!state.update) {
     return 0
@@ -115,6 +92,9 @@ const formValid = computed(() => {
   return !titleErrors.value.length && !handleErrors.value.length
 })
 
+watch([() => state.handle, () => state.title, () => state.description], () => {
+  state.isSubmitted = false
+})
 watch(
   () => props.confa,
   (c) => {
@@ -167,6 +147,7 @@ watch(
 )
 
 async function save() {
+  state.isSubmitted = true
   if (state.isSaving || !hasUpdate.value || !formValid.value) {
     return
   }
@@ -198,31 +179,22 @@ async function save() {
 @use '@/css/theme'
 
 .form
-  margin: 30px
-  margin-left: 100px
-  display: table
+  padding: 30px
+  display: flex
+  flex-direction: column
+  align-items: center
+  width: 100%
 
-.form-row
-  display: table-row
-
-.form-cell
-  display: table-cell
-  padding: 10px
-  vertical-align: middle
-  &.align-top
-    vertical-align: top
-
-.label
-  text-align: right
-  padding-right: 30px
-
-.form-input
-  width: 800px
+.input
+  margin: 5px 0
+  width: 100%
+  max-width: theme.$form-width
 
 .controls
-  display: flex
-  flex-direction: row
-  justify-content: flex-end
+  text-align: right
+  width: 100%
+  max-width: theme.$form-width
+  margin: 5px 0
 
 .save-loader
   height: 20px

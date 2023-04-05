@@ -15,21 +15,25 @@ const (
 )
 
 type Pages struct {
-	base string
+	host   string
+	scheme string
 }
 
-func NewPages(base string) *Pages {
+func NewPages(scheme, host string) *Pages {
 	return &Pages{
-		base: base,
+		scheme: scheme,
+		host:   host,
 	}
 }
 
 func (r *Pages) Login(action LoginAction, token string) string {
-	path, _ := url.JoinPath(r.base, "acc", "login")
+	path, _ := url.JoinPath("acc", "login")
 	vals := url.Values{}
 	vals.Set("action", string(action))
 	vals.Set("token", token)
 	u := url.URL{
+		Host:     r.host,
+		Scheme:   r.scheme,
 		Path:     path,
 		RawQuery: vals.Encode(),
 	}
@@ -37,13 +41,22 @@ func (r *Pages) Login(action LoginAction, token string) string {
 }
 
 func (r *Pages) Confa(confaHandle string) string {
-	path, _ := url.JoinPath(r.base, confaHandle)
-	return path
+	u := url.URL{
+		Host:   r.host,
+		Scheme: r.scheme,
+		Path:   confaHandle,
+	}
+	return u.String()
 }
 
 func (r *Pages) Talk(confaHandle, talkHandle string) string {
-	path, _ := url.JoinPath(r.base, confaHandle, talkHandle)
-	return path
+	path, _ := url.JoinPath(confaHandle, talkHandle)
+	u := url.URL{
+		Host:   r.host,
+		Scheme: r.scheme,
+		Path:   path,
+	}
+	return u.String()
 }
 
 type Buckets struct {
@@ -51,18 +64,27 @@ type Buckets struct {
 }
 
 type Storage struct {
-	base    string
+	scheme  string
+	host    string
+	prefix  string
 	buckets Buckets
 }
 
-func NewStorage(base string, buckets Buckets) *Storage {
+func NewStorage(scheme, host, prefix string, buckets Buckets) *Storage {
 	return &Storage{
-		base:    base,
+		scheme:  scheme,
+		host:    host,
+		prefix:  prefix,
 		buckets: buckets,
 	}
 }
 
 func (s *Storage) ProfileAvatar(userID, avatarID uuid.UUID) string {
-	path, _ := url.JoinPath(s.base, s.buckets.UserPublic, userID.String(), avatarID.String())
-	return path
+	path, _ := url.JoinPath(s.prefix, s.buckets.UserPublic, userID.String(), avatarID.String())
+	u := url.URL{
+		Host:   s.host,
+		Scheme: s.scheme,
+		Path:   path,
+	}
+	return u.String()
 }
