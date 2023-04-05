@@ -20,12 +20,13 @@ const (
 )
 
 type Config struct {
+	WebHost          string `envconfig:"WEB_HOST"`
+	WebScheme        string `envconfig:"WEB_SCHEME"`
 	ListenWebAddress string `envconfig:"LISTEN_WEB_ADDRESS"`
 	RTCRPCAddress    string `envconfig:"RTC_RPC_ADDRESS"`
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	BaseURL          string `envconfig:"BASE_URL"`
 	Mongo            MongoConfig
 	Storage          StorageConfig
 	Beanstalk        BeanstalkConfig
@@ -55,8 +56,11 @@ func (c Config) Validate() error {
 	if c.RTCRPCAddress == "" {
 		return errors.New("RTC_RPC_ADDRESS not set")
 	}
-	if c.BaseURL == "" {
-		return errors.New("BASE_URL not set")
+	if c.WebScheme == "" {
+		return errors.New("WEB_SCHEME not set")
+	}
+	if c.WebHost == "" {
+		return errors.New("WEB_HOST not set")
 	}
 	switch c.LogLevel {
 	case LevelDebug, LevelInfo, LevelWarn, LevelError:
@@ -102,7 +106,7 @@ type StorageConfig struct {
 	Host              string `envconfig:"STORAGE_HOST"`
 	AccessKey         string `envconfig:"STORAGE_ACCESS_KEY"`
 	SecretKey         string `envconfig:"STORAGE_SECRET_KEY"`
-	PublicURL         string `envconfig:"STORAGE_PUBLIC_URL"`
+	PublicPrefix      string `envconfig:"STORAGE_PUBLIC_URL"`
 	BucketUserUploads string `envconfig:"STORAGE_BUCKET_USER_UPLOADS"`
 	BucketUserPublic  string `envconfig:"STORAGE_BUCKET_USER_PUBLIC"`
 }
@@ -117,7 +121,7 @@ func (c StorageConfig) Validate() error {
 	if c.SecretKey == "" {
 		return errors.New("STORAGE_SECRET_KEY not set")
 	}
-	if c.PublicURL == "" {
+	if c.PublicPrefix == "" {
 		return errors.New("STORAGE_PUBLIC_URL not set")
 	}
 	if c.BucketUserUploads == "" {
