@@ -102,7 +102,7 @@ func main() {
 				Send:         config.Beanstalk.TubeSend,
 				UpdateAvatar: config.Beanstalk.TubeUpdateAvatar,
 			},
-			web.NewAuth(config.WebScheme),
+			web.NewAuth(config.WebHost),
 			pages,
 			secretKey,
 			publicKey,

@@ -21,12 +21,14 @@
       label="Family name"
       :errors="familyNameErrors"
     />
-    <div class="save-indicator"></div>
-    <div class="btn save" :disabled="!hasUpdate || saving || !isFormValid ? true : null" @click="save">
-      <div v-if="saving" class="save-loader">
-        <PageLoader />
+    <div class="controls">
+      <div class="save-indicator"></div>
+      <div class="btn save" :disabled="!hasUpdate || saving || !isFormValid ? true : null" @click="save">
+        <div v-if="saving" class="save-loader">
+          <PageLoader />
+        </div>
+        <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
       </div>
-      <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
     </div>
   </div>
 
@@ -185,19 +187,15 @@ async function uploadAvatar(full: string, thumbnail: string) {
 
 .form
   padding: 30px
-  padding-left: 100px
   display: flex
   flex-direction: column
   align-items: center
+  width: 100%
 
 .input
   width: 100%
-  max-width: 400px
-  margin: 10px 0
-
-.label
-  text-align: right
-  padding-right: 30px
+  margin: 5px 0
+  max-width: theme.$form-width
 
 .avatar
   position: relative
@@ -225,9 +223,10 @@ async function uploadAvatar(full: string, thumbnail: string) {
     background: #2A2A2A
 
 .controls
-  display: flex
-  flex-direction: row
-  justify-content: flex-end
+  text-align: right
+  margin: 5px 0
+  width: 100%
+  max-width: theme.$form-width
 
 .save-loader
   height: 20px

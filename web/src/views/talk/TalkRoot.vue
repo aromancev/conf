@@ -216,7 +216,6 @@ function join(confirmed: boolean) {
   font-size: 25px
   margin-top: 40px
   width: 100%
-  height: 35px
   max-width: theme.$content-width
   text-align: left
   padding: 0 30px

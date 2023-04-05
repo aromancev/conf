@@ -1,21 +1,24 @@
 <template>
-  <div class="field" :style="{ height: height }">
-    <textarea
-      ref="textarea"
-      :value="modelValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :spellcheck="spellcheck"
-      @input="input"
-    ></textarea>
-    <div v-if="error && errExpanded" class="error">{{ error }}</div>
-    <div
-      v-if="error"
-      class="error-badge material-icons"
-      @mouseenter="errExpanded = true"
-      @mouseleave="errExpanded = false"
-    >
-      priority_high
+  <div class="field">
+    <div class="label">{{ label }}</div>
+    <div class="area" :style="{ height: height }">
+      <textarea
+        ref="textarea"
+        :value="modelValue"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :spellcheck="spellcheck"
+        @input="input"
+      ></textarea>
+      <div v-if="error && errExpanded" class="error">{{ error }}</div>
+      <div
+        v-if="error"
+        class="error-badge material-icons"
+        @mouseenter="errExpanded = true"
+        @mouseleave="errExpanded = false"
+      >
+        priority_high
+      </div>
     </div>
   </div>
 </template>
@@ -29,6 +32,7 @@ const emit = defineEmits<{
 
 const props = defineProps<{
   modelValue: string
+  label?: string
   placeholder?: string
   disabled?: boolean
   spellcheck?: boolean
@@ -56,13 +60,15 @@ function input(event: Event) {
 
 function alignHeight() {
   // Woodoo magic to auto-resize textarea based on content.
+  if (!textarea.value) {
+    return
+  }
+
   if (props.modelValue.length === 0) {
     height.value = "0"
     return
   }
-  if (!textarea.value) {
-    return
-  }
+
   textarea.value.style.height = "0"
   height.value = `${textarea.value.scrollHeight}px`
 }
@@ -74,8 +80,11 @@ function alignHeight() {
 .field
   @include theme.shadow-inset-xs
 
-  position: relative
   border-radius: 4px
+  padding: 0.5em 1em
+
+.area
+  position: relative
   min-height: 3em
 
 textarea
@@ -84,12 +93,16 @@ textarea
   min-height: 100%
   max-height: 100%
   resize: none
-  padding: 1em 1em
   overflow: overlay
   &:disabled
     cursor: default
 
 textarea:disabled
+  color: var(--color-font-disabled)
+
+.label
+  text-align: left
+  font-size: 0.7em
   color: var(--color-font-disabled)
 
 .error-badge

@@ -30,7 +30,7 @@
         :user-id="accessStore.state.id"
         :src="profileStore.state.avatarThumbnail"
       ></ProfileAvatar>
-      <div class="user">Logged in as {{ profileStore.state.givenName }} {{ profileStore.state.familyName }}</div>
+      <div class="user">Logged in as {{ loggedInAs }}</div>
       <InputField
         v-model="password"
         :spellcheck="false"
@@ -75,7 +75,7 @@
         :user-id="accessStore.state.id"
         :src="profileStore.state.avatarThumbnail"
       ></ProfileAvatar>
-      <div class="user">Logged in as {{ profileStore.state.givenName }} {{ profileStore.state.familyName }}</div>
+      <div class="user">Logged in as {{ loggedInAs }}</div>
       <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
         >Start broadcasting</router-link
       >
@@ -144,6 +144,7 @@ import InputField from "@/components/fields/InputField.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import ProfileAvatar from "@/components/profile/ProfileAvatar.vue"
 import GSIButton from "@/components/GSIButton.vue"
+import { genName } from "@/platform/gen"
 
 type Modal =
   | "NONE"
@@ -162,6 +163,7 @@ const props = defineProps<{
   token?: string
 }>()
 
+const isSubmitted = ref<boolean>(false)
 const password = ref<string>("")
 const confirmPassword = ref<string>("")
 const modal = ref<Modal>("NONE")
@@ -178,13 +180,18 @@ const confirmPasswordErrors = computed<string[]>(() => {
   }
   return ["Must be the same as the new password"]
 })
-const isSubmitted = ref<boolean>(false)
+const loggedInAs = computed<string>(() => {
+  if (profileStore.state.givenName) {
+    return `${profileStore.state.givenName} ${profileStore.state.familyName}`
+  }
+  return genName(accessStore.state.id)
+})
 
 const router = useRouter()
 let resetPasswordToken = ""
 
 watch(
-  [accessStore.state, () => props.action, () => props.token],
+  [() => accessStore.state.account, () => props.action, () => props.token],
   async () => {
     if (!props.action || !props.token) {
       state.value = accessStore.state.account === Account.Guest ? "GUEST" : "SIGNED_IN"
@@ -193,7 +200,7 @@ watch(
 
     state.value = "LOADING"
     try {
-      if (accessStore.state.account !== Account.Guest || props.action === "login") {
+      if (accessStore.state.account === Account.Guest && props.action === "login") {
         await api.createSessionWithEmail(props.token)
         state.value = "SIGNED_IN"
         router.replace(route.login())

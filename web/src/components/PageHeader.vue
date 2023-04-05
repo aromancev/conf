@@ -33,7 +33,7 @@
         @click="switchModal('none')"
       >
         <span class="icon material-icons">hub</span>
-        Content hub
+        My conferences
       </router-link>
       <router-link v-if="accessStore.state.allowedWrite" class="control-item" to="/new" @click="switchModal('none')">
         <span class="icon material-icons">add</span>

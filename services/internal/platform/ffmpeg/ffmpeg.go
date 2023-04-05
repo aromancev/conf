@@ -84,7 +84,7 @@ func WriteDashVideo(ctx context.Context, in SourceVideo, out DestinationVideo) e
 	// Minimum number of frames for DASH encoding. The ideal value is 150 frames.
 	// If the video is shorter, it will output invalid DASH file.
 	// This is why we set it to either the total number of frames in the video or 150.
-	minFrames := uint(in.Duration.Seconds())*out.FPS - 1
+	minFrames := uint(in.Duration.Seconds()) * out.FPS
 	if minFrames > 150 {
 		minFrames = 150
 	}
