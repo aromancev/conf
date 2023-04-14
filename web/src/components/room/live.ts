@@ -108,8 +108,10 @@ export class LiveRoom {
       let serverNow = 0
       let serverNowAt = 0
       this.rtc.onevent = (event: RoomEvent): void => {
-        serverNow = event.createdAt
-        serverNowAt = Date.now()
+        if (event.createdAt > serverNow) {
+          serverNow = event.createdAt
+          serverNowAt = Date.now()
+        }
         aggregators.put(event)
       }
       this.rtc.ontrack = (t, s) => streams.addTrack(t, s)

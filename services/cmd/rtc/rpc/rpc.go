@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aromancev/confa/event"
 	"github.com/aromancev/confa/internal/proto/rtc"
@@ -103,8 +104,9 @@ func (h *Handler) StartRecording(ctx context.Context, request *rtc.RecordingPara
 
 	if !alreadyExists {
 		err := h.emitter.EmitEvent(ctx, event.Event{
-			ID:   uuid.New(),
-			Room: roomID,
+			ID:        uuid.New(),
+			Room:      roomID,
+			CreatedAt: time.Now(),
 			Payload: event.Payload{
 				Recording: &event.PayloadRecording{
 					Status: event.RecordingStarted,
@@ -171,8 +173,9 @@ func (h *Handler) StopRecording(ctx context.Context, request *rtc.RecordingLooku
 	}
 
 	err = h.emitter.EmitEvent(ctx, event.Event{
-		ID:   uuid.New(),
-		Room: roomID,
+		ID:        uuid.New(),
+		Room:      roomID,
+		CreatedAt: time.Now(),
 		Payload: event.Payload{
 			Recording: &event.PayloadRecording{
 				Status: event.RecordingStopped,

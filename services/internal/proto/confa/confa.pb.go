@@ -25,12 +25,13 @@ type UpdateProfile struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId       []byte                    `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	GivenName    string                    `protobuf:"bytes,2,opt,name=given_name,json=givenName,proto3" json:"given_name,omitempty"`
-	FamilyName   string                    `protobuf:"bytes,3,opt,name=family_name,json=familyName,proto3" json:"family_name,omitempty"`
-	Thumbnail    *UpdateProfile_FileSource `protobuf:"bytes,4,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
-	Avatar       *UpdateProfile_FileSource `protobuf:"bytes,5,opt,name=avatar,proto3" json:"avatar,omitempty"`
-	SkipIfExists bool                      `protobuf:"varint,6,opt,name=skip_if_exists,json=skipIfExists,proto3" json:"skip_if_exists,omitempty"`
+	UserId     []byte                    `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	GivenName  string                    `protobuf:"bytes,2,opt,name=given_name,json=givenName,proto3" json:"given_name,omitempty"`
+	FamilyName string                    `protobuf:"bytes,3,opt,name=family_name,json=familyName,proto3" json:"family_name,omitempty"`
+	Thumbnail  *UpdateProfile_FileSource `protobuf:"bytes,4,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
+	Avatar     *UpdateProfile_FileSource `protobuf:"bytes,5,opt,name=avatar,proto3" json:"avatar,omitempty"`
+	// TODO: Remove this when migrated to event-based message queue and create a new event.
+	SkipIfExists bool `protobuf:"varint,6,opt,name=skip_if_exists,json=skipIfExists,proto3" json:"skip_if_exists,omitempty"`
 }
 
 func (x *UpdateProfile) Reset() {

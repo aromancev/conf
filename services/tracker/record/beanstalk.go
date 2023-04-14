@@ -44,8 +44,9 @@ func (b *Beanstalk) RecordStarted(ctx context.Context, record Record) error {
 
 	payload, err := proto.Marshal(&rtc.StoreEvent{
 		Event: &rtc.Event{
-			Id:     id,
-			RoomId: roomID,
+			Id:        id,
+			RoomId:    roomID,
+			CreatedAt: record.CreatedAt.UnixMilli(),
 			Payload: &rtc.Event_Payload{
 				Payload: &rtc.Event_Payload_TrackRecording_{
 					TrackRecording: &rtc.Event_Payload_TrackRecording{

@@ -95,7 +95,7 @@ export class MediaController {
     if (!media || !element) {
       return
     }
-    this.startsAt = media.startsAt
+    this.startsAt = media.startedAt
 
     if (!this.player.isReady() || this.player.getSource() !== media.manifestUrl) {
       if (this.onBuffer) {
@@ -104,7 +104,7 @@ export class MediaController {
       this.player.initialize(element, media.manifestUrl, isPlaying)
     }
     const progressNow = this.progressForNow(progress)
-    if (progressNow < media.startsAt || progressNow > media.startsAt + this.player.duration() * 1000) {
+    if (progressNow < media.startedAt || progressNow > media.startedAt + this.player.duration() * 1000) {
       this.player.pause()
       return
     }

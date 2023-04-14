@@ -50,10 +50,13 @@ type Event struct {
 
 func (e Event) Validate() error {
 	if e.ID == uuid.Nil {
-		return errors.New("id should not be empty")
+		return errors.New("id should not be zero")
 	}
 	if e.Room == uuid.Nil {
-		return errors.New("room should not be empty")
+		return errors.New("room should not be zero")
+	}
+	if e.CreatedAt.IsZero() {
+		return errors.New("created at should not be zero")
 	}
 	return e.Payload.Validate()
 }

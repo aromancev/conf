@@ -35,6 +35,7 @@ type Record struct {
 	Bucket      string
 	Object      string
 	Duration    time.Duration
+	CreatedAt   time.Time
 }
 
 type Emitter interface {
@@ -70,6 +71,8 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 	}
 
 	tracker.rtc.OnTrack = func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+		startAt := time.Now()
+
 		tracker.mutex.Lock()
 		if tracker.closed {
 			tracker.mutex.Unlock()
@@ -81,9 +84,9 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 		tracker.writers.Add(1)
 		go func() {
 			if track.Kind() == webrtc.RTPCodecTypeAudio {
-				tracker.writeTrack(ctx, track, KindAudio)
+				tracker.writeTrack(ctx, track, KindAudio, startAt)
 			} else {
-				tracker.writeTrack(ctx, track, KindVideo)
+				tracker.writeTrack(ctx, track, KindVideo, startAt)
 			}
 			tracker.writers.Done()
 		}()
@@ -111,7 +114,7 @@ func (t *Tracker) Close(ctx context.Context) error {
 	return nil
 }
 
-func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kind Kind) {
+func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kind Kind, startAt time.Time) {
 	type RTPWriteCloser interface {
 		Duration() time.Duration
 		WriteRTP(packet *rtp.Packet) error
@@ -168,6 +171,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		Kind:        kind,
 		Bucket:      t.bucket,
 		Object:      objectPath,
+		CreatedAt:   startAt,
 	}
 	var recordStarted bool
 	wg.Add(1)

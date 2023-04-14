@@ -6,7 +6,7 @@ export interface Media {
   id: string
   manifestUrl: string
   hint: Hint
-  startsAt: number
+  startedAt: number
   isLive: boolean
 }
 
@@ -32,7 +32,7 @@ export class MediaAggregator {
         this.recordings.set(recording.trackId, {
           id: recording.id,
           trackId: recording.trackId,
-          startsAt: event.createdAt - this.startedAt,
+          startedAt: event.createdAt - this.startedAt,
           isLive: false,
         })
         continue
@@ -84,7 +84,7 @@ export class MediaAggregator {
         id: rec.id,
         manifestUrl: `${config.storage.baseURL}/confa-tracks-public/${this.roomId}/${rec.id}/manifest`,
         hint: track.hint,
-        startsAt: rec.startsAt,
+        startedAt: rec.startedAt,
         isLive: rec.isLive,
       })
     }
@@ -96,6 +96,6 @@ const CAPACITY = 10
 interface Recording {
   id: string
   trackId: string
-  startsAt: number
+  startedAt: number
   isLive: boolean
 }
