@@ -264,4 +264,33 @@ func TestMongo(t *testing.T) {
 			assert.ElementsMatch(t, []Confa{created[0]}, fetched)
 		})
 	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Happy path", func(t *testing.T) {
+			t.Parallel()
+
+			confas := NewMongo(dockerMongo(t))
+
+			request := Confa{
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test1",
+			}
+			_, err := confas.Create(ctx, request)
+			require.NoError(t, err)
+
+			res, err := confas.Delete(ctx, Lookup{
+				ID: request.ID,
+			})
+			require.NoError(t, err)
+			assert.EqualValues(t, 1, res.Updated)
+
+			_, err = confas.FetchOne(ctx, Lookup{
+				ID: request.ID,
+			})
+			assert.ErrorIs(t, err, ErrNotFound)
+		})
+	})
 }

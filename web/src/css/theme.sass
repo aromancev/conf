@@ -66,7 +66,7 @@ $form-width: 500px
 
 .btn
   @include clickable
-  @include shadow-m
+  @include shadow-sm
   display: inline-block
   text-decoration: none
   font-weight: 500
@@ -80,7 +80,6 @@ $form-width: 500px
     @include shadow-inset-s
     background: inherit
   &:disabled, &[disabled]
-    @include shadow-sm
     cursor: default
     color: var(--color-font-disabled)
 

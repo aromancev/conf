@@ -97,6 +97,28 @@ export interface updateConfaVariables {
 // This file was automatically generated and should not be edited.
 
 // ====================================================
+// GraphQL mutation operation: deleteConfa
+// ====================================================
+
+export interface deleteConfa_deleteConfa {
+  __typename: "DeleteResult";
+  deletedCount: number;
+}
+
+export interface deleteConfa {
+  deleteConfa: deleteConfa_deleteConfa;
+}
+
+export interface deleteConfaVariables {
+  where: ConfaLookup;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
 // GraphQL query operation: events
 // ====================================================
 
@@ -468,6 +490,28 @@ export interface stopTalkRecording {
 }
 
 export interface stopTalkRecordingVariables {
+  where: TalkLookup;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
+// GraphQL mutation operation: deleteTalk
+// ====================================================
+
+export interface deleteTalk_deleteTalk {
+  __typename: "DeleteResult";
+  deletedCount: number;
+}
+
+export interface deleteTalk {
+  deleteTalk: deleteTalk_deleteTalk;
+}
+
+export interface deleteTalkVariables {
   where: TalkLookup;
 }
 

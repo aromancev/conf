@@ -10,6 +10,8 @@ import {
   ConfaCursorInput,
   updateConfa,
   updateConfaVariables,
+  deleteConfa,
+  deleteConfaVariables,
 } from "./schema"
 import { Confa } from "./models/confa"
 
@@ -125,5 +127,21 @@ export class ConfaClient {
 
   fetch(lookup: ConfaLookup): ConfaIterator {
     return new ConfaIterator(this.api, lookup)
+  }
+
+  async delete(where: ConfaLookup): Promise<void> {
+    await this.api.mutate<deleteConfa, deleteConfaVariables>({
+      mutation: gql`
+        mutation deleteConfa($where: ConfaLookup!) {
+          deleteConfa(where: $where) {
+            deletedCount
+          }
+        }
+      `,
+      variables: {
+        where: where,
+      },
+    })
+    await this.api.clearCache()
   }
 }

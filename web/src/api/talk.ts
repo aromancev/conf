@@ -17,6 +17,8 @@ import {
   startTalkRecordingVariables,
   stopTalkRecording,
   stopTalkRecordingVariables,
+  deleteTalk,
+  deleteTalkVariables,
 } from "./schema"
 import { Talk } from "./models/talk"
 
@@ -243,5 +245,22 @@ export class TalkClient {
 
   fetch(lookup: TalkLookup, params?: OptionalFetchParams): TalkIterator {
     return new TalkIterator(this.api, lookup, params)
+  }
+
+  async delete(where: TalkLookup): Promise<void> {
+    await this.api.mutate<deleteTalk, deleteTalkVariables>({
+      mutation: gql`
+        mutation deleteTalk($where: TalkLookup!) {
+          deleteTalk(where: $where) {
+            deletedCount
+          }
+        }
+      `,
+      variables: {
+        where: where,
+      },
+    })
+
+    await this.api.clearCache()
   }
 }

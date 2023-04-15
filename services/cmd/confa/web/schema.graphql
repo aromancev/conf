@@ -151,14 +151,20 @@ type UploadToken {
     formData: String!
 }
 
+type DeleteResult {
+    deletedCount: Int!
+}
+
 type Mutation {
     createConfa(request: ConfaUpdate!): Confa!
-    updateConfa(where: ConfaLookup! = {}, request: ConfaUpdate!): Confa!
+    updateConfa(where: ConfaLookup!, request: ConfaUpdate!): Confa!
+    deleteConfa(where: ConfaLookup!): DeleteResult!
 
     createTalk(where: ConfaLookup!, request: TalkUpdate!): Talk!
-    updateTalk(where: TalkLookup! = {}, request: TalkUpdate!): Talk!
+    updateTalk(where: TalkLookup!, request: TalkUpdate!): Talk!
     startTalkRecording(where: TalkLookup!): Talk!
     stopTalkRecording(where: TalkLookup!): Talk!
+    deleteTalk(where: TalkLookup!): DeleteResult!
 
     updateProfile(request: ProfileUpdate!): Profile!
     requestAvatarUpload: UploadToken!

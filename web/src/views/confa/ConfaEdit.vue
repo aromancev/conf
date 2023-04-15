@@ -4,13 +4,13 @@
     <Input v-model="state.title" :spellcheck="false" class="input" type="text" label="Title" :errors="titleErrors" />
     <Textarea v-model="state.description" class="input description" label="Description"></Textarea>
     <div class="controls">
-      <div class="save-indicator"></div>
+      <div class="btn delete" @click="state.modal = 'delete'">Delete confa</div>
       <div class="btn save" :disabled="!hasUpdate || state.isSaving || !formValid ? true : null" @click="save">
         <div v-if="state.isSaving" class="save-loader">
           <PageLoader />
         </div>
 
-        <span v-if="!state.isSaving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
+        <span v-if="!state.isSaving">Save</span>
       </div>
     </div>
   </div>
@@ -22,6 +22,14 @@
   <ModalDialog :is-visible="state.modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="state.modal = 'none'">
     <p>Confa no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
+  </ModalDialog>
+  <ModalDialog
+    :is-visible="state.modal === 'delete'"
+    :buttons="{ delete: 'Delete', cancel: 'Cancel' }"
+    @click="deleteConfa"
+  >
+    <p>Are you sure you want to delete confa "{{ confa.title || "Untitled" }}"?</p>
+    <p>It will delete all the talks inside it as well.</p>
   </ModalDialog>
 </template>
 
@@ -41,7 +49,7 @@ import Input from "@/components/fields/InputField.vue"
 import Textarea from "@/components/fields/TextareaField.vue"
 import { notificationStore } from "@/api/models/notifications"
 
-type Modal = "none" | "duplicate_entry" | "not_found"
+type Modal = "none" | "duplicate_entry" | "not_found" | "delete"
 
 const emit = defineEmits<{
   (e: "update", input: Confa): void
@@ -173,6 +181,19 @@ async function save() {
     state.isSaving = false
   }
 }
+
+async function deleteConfa(response: string) {
+  state.modal = "none"
+  if (response !== "delete") {
+    return
+  }
+  try {
+    await new ConfaClient(api).delete({ id: props.confa.id })
+  } catch {
+    notificationStore.error("failed to delete confa")
+  }
+  router.push(route.contentHub())
+}
 </script>
 
 <style scoped lang="sass">
@@ -191,10 +212,10 @@ async function save() {
   max-width: theme.$form-width
 
 .controls
-  text-align: right
+  display: flex
   width: 100%
   max-width: theme.$form-width
-  margin: 5px 0
+  margin: 10px 0
 
 .save-loader
   height: 20px
@@ -202,5 +223,8 @@ async function save() {
 
 .save
   width: 100px
-  text-align: center
+  margin-left: auto
+
+.delete
+  color: var(--color-red)
 </style>

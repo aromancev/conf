@@ -132,6 +132,18 @@ func (m *Mongo) FetchOne(ctx context.Context, lookup Lookup) (Talk, error) {
 	return talks[0], nil
 }
 
+func (m *Mongo) Delete(ctx context.Context, lookup Lookup) (UpdateResult, error) {
+	if lookup.Limit > batchLimit || lookup.Limit == 0 {
+		lookup.Limit = batchLimit
+	}
+
+	res, err := m.db.Collection(collection).DeleteMany(ctx, mongoFilter(lookup))
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	return UpdateResult{Updated: res.DeletedCount}, nil
+}
+
 func mongoNow() time.Time {
 	// Mongodb only stores milliseconds.
 	return time.Now().UTC().Round(time.Millisecond)

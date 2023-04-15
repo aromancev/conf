@@ -17,23 +17,13 @@ func TestMongo(t *testing.T) {
 
 	ctx := context.Background()
 
-	type dependencies struct {
-		talks *Mongo
-	}
-	setup := func() dependencies {
-		db := dockerMongo(t)
-		return dependencies{
-			talks: NewMongo(db),
-		}
-	}
-
 	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("Happy path", func(t *testing.T) {
 			t.Parallel()
 
-			deps := setup()
+			talks := NewMongo(dockerMongo(t))
 
 			request := Talk{
 				ID:      uuid.New(),
@@ -45,10 +35,10 @@ func TestMongo(t *testing.T) {
 				Handle:  "test",
 			}
 
-			created, err := deps.talks.Create(ctx, request)
+			created, err := talks.Create(ctx, request)
 			require.NoError(t, err)
 
-			fetched, err := deps.talks.Fetch(ctx, Lookup{
+			fetched, err := talks.Fetch(ctx, Lookup{
 				ID: request.ID,
 			})
 			require.NoError(t, err)
@@ -57,7 +47,7 @@ func TestMongo(t *testing.T) {
 		t.Run("UUID handle", func(t *testing.T) {
 			t.Parallel()
 
-			deps := setup()
+			talks := NewMongo(dockerMongo(t))
 
 			request := Talk{
 				ID:      uuid.New(),
@@ -69,10 +59,10 @@ func TestMongo(t *testing.T) {
 				Handle:  uuid.New().String(),
 			}
 
-			created, err := deps.talks.Create(ctx, request)
+			created, err := talks.Create(ctx, request)
 			require.NoError(t, err)
 
-			fetched, err := deps.talks.Fetch(ctx, Lookup{
+			fetched, err := talks.Fetch(ctx, Lookup{
 				ID: request.ID,
 			})
 			require.NoError(t, err)
@@ -81,9 +71,9 @@ func TestMongo(t *testing.T) {
 		t.Run("Duplicated Entry", func(t *testing.T) {
 			t.Parallel()
 
-			deps := setup()
+			talks := NewMongo(dockerMongo(t))
 
-			_, err := deps.talks.Create(ctx, Talk{
+			_, err := talks.Create(ctx, Talk{
 				ID:      uuid.New(),
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
@@ -93,7 +83,7 @@ func TestMongo(t *testing.T) {
 				Handle:  "test",
 			})
 			require.NoError(t, err)
-			_, err = deps.talks.Create(ctx, Talk{
+			_, err = talks.Create(ctx, Talk{
 				ID:      uuid.New(),
 				Owner:   uuid.New(),
 				Confa:   uuid.New(),
@@ -271,6 +261,40 @@ func TestMongo(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []Talk{created[0]}, fetched)
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Happy path", func(t *testing.T) {
+			t.Parallel()
+
+			talks := NewMongo(dockerMongo(t))
+
+			request := Talk{
+				ID:      uuid.New(),
+				Owner:   uuid.New(),
+				Confa:   uuid.New(),
+				Speaker: uuid.New(),
+				Room:    uuid.New(),
+				State:   StateLive,
+				Handle:  "test",
+			}
+
+			_, err := talks.Create(ctx, request)
+			require.NoError(t, err)
+
+			res, err := talks.Delete(ctx, Lookup{
+				ID: request.ID,
+			})
+			require.NoError(t, err)
+			assert.EqualValues(t, 1, res.Updated)
+
+			_, err = talks.FetchOne(ctx, Lookup{
+				ID: request.ID,
+			})
+			assert.ErrorIs(t, err, ErrNotFound)
 		})
 	})
 }

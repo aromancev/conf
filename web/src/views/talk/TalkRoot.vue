@@ -63,7 +63,7 @@
         @update="update"
       />
       <TalkReplay v-if="tab === 'watch' && state.talk.state === TalkState.ENDED" :talk="state.talk" />
-      <TalkEdit v-if="tab === 'edit'" :talk="state.talk" @update="update" />
+      <TalkEdit v-if="tab === 'edit'" :talk="state.talk" :confa-handle="confaHandle" @update="update" />
     </div>
   </div>
 
