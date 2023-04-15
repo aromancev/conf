@@ -187,6 +187,10 @@ type UploadToken struct {
 	FormData string
 }
 
+type DeleteResult struct {
+	DeletedCount int32
+}
+
 type Resolver struct {
 	publicKey      *auth.PublicKey
 	confas         *confa.User
@@ -250,47 +254,6 @@ func (r *Resolver) Confas(ctx context.Context, args struct {
 	if len(res.Items) == int(lookup.Limit) {
 		last := res.Items[len(res.Items)-1]
 		res.Next = &ConfaCursor{
-			ID:        &last.ID,
-			CreatedAt: &last.CreatedAt,
-		}
-	}
-	return res, nil
-}
-
-func (r *Resolver) Talks(ctx context.Context, args struct {
-	Where  TalkLookup
-	Limit  int32
-	Cursor *TalkCursor
-}) (Talks, error) {
-	var claims auth.APIClaims
-	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
-		return Talks{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
-	}
-
-	lookup, err := newTalkLookup(args.Where, args.Limit, args.Cursor)
-	if err != nil {
-		return Talks{Limit: args.Limit}, nil
-	}
-	talks, err := r.talks.Fetch(ctx, lookup)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to fetch talks.")
-		return Talks{Limit: args.Limit}, NewInternalError()
-	}
-
-	if len(talks) == 0 {
-		return Talks{Limit: args.Limit}, nil
-	}
-
-	res := Talks{
-		Items: make([]Talk, len(talks)),
-		Limit: int32(lookup.Limit),
-	}
-	for i, t := range talks {
-		res.Items[i] = newTalk(t)
-	}
-	if len(res.Items) == int(lookup.Limit) {
-		last := res.Items[len(res.Items)-1]
-		res.Next = &TalkCursor{
 			ID:        &last.ID,
 			CreatedAt: &last.CreatedAt,
 		}
@@ -367,6 +330,71 @@ func (r *Resolver) UpdateConfa(ctx context.Context, args struct {
 		return Confa{}, NewInternalError()
 	}
 	return newConfa(updated), nil
+}
+
+func (r *Resolver) DeleteConfa(ctx context.Context, args struct {
+	Where ConfaLookup
+}) (DeleteResult, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return DeleteResult{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	lookup, err := newConfaLookup(args.Where, 0, nil)
+	if err != nil {
+		return DeleteResult{}, NewResolverError(CodeBadRequest, "Invalid where.")
+	}
+
+	res, err := r.talks.DeleteConfa(ctx, claims.UserID, lookup)
+	switch {
+	case errors.Is(err, talk.ErrNotFound), errors.Is(err, confa.ErrNotFound):
+		return DeleteResult{}, NewResolverError(CodeNotFound, "")
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to delete confa.")
+		return DeleteResult{}, NewInternalError()
+	}
+	return DeleteResult{DeletedCount: int32(res.Updated)}, nil
+}
+
+func (r *Resolver) Talks(ctx context.Context, args struct {
+	Where  TalkLookup
+	Limit  int32
+	Cursor *TalkCursor
+}) (Talks, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return Talks{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	lookup, err := newTalkLookup(args.Where, args.Limit, args.Cursor)
+	if err != nil {
+		return Talks{Limit: args.Limit}, nil
+	}
+	talks, err := r.talks.Fetch(ctx, lookup)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch talks.")
+		return Talks{Limit: args.Limit}, NewInternalError()
+	}
+
+	if len(talks) == 0 {
+		return Talks{Limit: args.Limit}, nil
+	}
+
+	res := Talks{
+		Items: make([]Talk, len(talks)),
+		Limit: int32(lookup.Limit),
+	}
+	for i, t := range talks {
+		res.Items[i] = newTalk(t)
+	}
+	if len(res.Items) == int(lookup.Limit) {
+		last := res.Items[len(res.Items)-1]
+		res.Next = &TalkCursor{
+			ID:        &last.ID,
+			CreatedAt: &last.CreatedAt,
+		}
+	}
+	return res, nil
 }
 
 func (r *Resolver) CreateTalk(ctx context.Context, args struct {
@@ -511,6 +539,30 @@ func (r *Resolver) StopTalkRecording(ctx context.Context, args struct {
 		return Talk{}, NewInternalError()
 	}
 	return newTalk(started), nil
+}
+
+func (r *Resolver) DeleteTalk(ctx context.Context, args struct {
+	Where TalkLookup
+}) (DeleteResult, error) {
+	var claims auth.APIClaims
+	if err := r.publicKey.Verify(auth.Ctx(ctx).Token(), &claims); err != nil {
+		return DeleteResult{}, NewResolverError(CodeUnauthorized, "Invalid access token.")
+	}
+
+	lookup, err := newTalkLookup(args.Where, 0, nil)
+	if err != nil {
+		return DeleteResult{}, NewResolverError(CodeBadRequest, "Invalid where.")
+	}
+
+	res, err := r.talks.Delete(ctx, claims.UserID, lookup)
+	switch {
+	case errors.Is(err, talk.ErrNotFound):
+		return DeleteResult{}, NewResolverError(CodeNotFound, "")
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to delete confa.")
+		return DeleteResult{}, NewInternalError()
+	}
+	return DeleteResult{DeletedCount: int32(res.Updated)}, nil
 }
 
 func (r *Resolver) UpdateProfile(ctx context.Context, args struct {

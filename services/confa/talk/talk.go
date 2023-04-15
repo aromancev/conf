@@ -136,3 +136,7 @@ type From struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
 }
+
+type UpdateResult struct {
+	Updated int64
+}

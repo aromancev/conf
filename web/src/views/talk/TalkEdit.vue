@@ -4,13 +4,13 @@
     <Input v-model="title" :spellcheck="false" class="input" type="text" label="Title" :errors="titleErrors" />
     <Textarea v-model="description" class="input" label="Description"></Textarea>
     <div class="controls">
-      <div class="save-indicator"></div>
+      <div class="btn delete" @click="modal = 'delete'">Delete talk</div>
       <div class="btn save" :disabled="!hasUpdate || saving || !formValid ? true : null" @click="save">
         <div v-if="saving" class="save-loader">
           <PageLoader />
         </div>
 
-        <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
+        <span v-if="!saving">Save</span>
       </div>
     </div>
   </div>
@@ -22,6 +22,9 @@
   <ModalDialog :is-visible="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
     <p>Talk no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
+  </ModalDialog>
+  <ModalDialog :is-visible="modal === 'delete'" :buttons="{ delete: 'Delete', cancel: 'Cancel' }" @click="deleteTalk">
+    <p>Are you sure you want to delete talk "{{ talk.title || "Untitled" }}"?</p>
   </ModalDialog>
 </template>
 
@@ -37,15 +40,17 @@ import ModalDialog from "@/components/modals/ModalDialog.vue"
 import PageLoader from "@/components/PageLoader.vue"
 import Input from "@/components/fields/InputField.vue"
 import Textarea from "@/components/fields/TextareaField.vue"
+import { route } from "@/router"
 import { notificationStore } from "@/api/models/notifications"
 
-type Modal = "none" | "duplicate_entry" | "not_found"
+type Modal = "none" | "duplicate_entry" | "not_found" | "delete"
 
 const emit = defineEmits<{
   (e: "update", input: Talk): void
 }>()
 
 const props = defineProps<{
+  confaHandle: string
   talk: Talk
 }>()
 
@@ -123,8 +128,12 @@ watch(
 )
 
 async function save() {
+  if (!hasUpdate.value) {
+    return
+  }
+
   isSubmitted.value = true
-  if (saving.value || !hasUpdate.value || !formValid.value) {
+  if (saving.value || !formValid.value) {
     return
   }
   saving.value = true
@@ -149,6 +158,19 @@ async function save() {
     saving.value = false
   }
 }
+
+async function deleteTalk(response: string) {
+  modal.value = "none"
+  if (response !== "delete") {
+    return
+  }
+  try {
+    await new TalkClient(api).delete({ id: props.talk.id })
+  } catch {
+    notificationStore.error("failed to delete talk")
+  }
+  router.push(route.confa(props.confaHandle, "overview"))
+}
 </script>
 
 <style scoped lang="sass">
@@ -167,10 +189,10 @@ async function save() {
   max-width: theme.$form-width
 
 .controls
-  text-align: right
+  display: flex
   width: 100%
   max-width: theme.$form-width
-  margin: 5px 0
+  margin: 10px 0
 
 .save-loader
   height: 20px
@@ -178,5 +200,8 @@ async function save() {
 
 .save
   width: 100px
-  text-align: center
+  margin-left: auto
+
+.delete
+  color: var(--color-red)
 </style>

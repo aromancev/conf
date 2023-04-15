@@ -8,7 +8,7 @@ x-service-common: &service-common
     - ./services:/app:delegated
     - ./.artifacts/.cache:/root/.cache:delegated
   networks:
-      - confa
+    - confa
 
 x-service-env: &service-env
   LOG_FORMAT: "console"
