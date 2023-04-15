@@ -98,6 +98,7 @@ services:
       MONGO_USER: "iam"
       MONGO_PASSWORD: "iam"
       MONGO_DATABASE: "iam"
+      GOOGLE_API_BASE_URL: "https://www.googleapis.com"
       GOOGLE_CLIENT_ID: "stub"
       GOOGLE_CLIENT_SECRET: "stub" 
 

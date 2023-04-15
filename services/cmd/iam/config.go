@@ -133,11 +133,15 @@ func (c BeanstalkConfig) ParsePool() []string {
 }
 
 type Google struct {
+	APIBaseURL   string `envconfig:"GOOGLE_API_BASE_URL"`
 	ClientID     string `envconfig:"GOOGLE_CLIENT_ID"`
 	ClientSecret string `envconfig:"GOOGLE_CLIENT_SECRET"`
 }
 
 func (c Google) Validate() error {
+	if c.APIBaseURL == "" {
+		return errors.New("GOOGLE_API_BASE_URL not set")
+	}
 	if c.ClientID == "" {
 		return errors.New("GOOGLE_CLIENT_ID not set")
 	}

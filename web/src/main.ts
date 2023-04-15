@@ -34,7 +34,7 @@ watch(accessStore.state, () => {
     if (accessStore.state.account !== Account.Guest) {
       return
     }
-    gsiPromptOneTap() 
+    gsiPromptOneTap()
   }, 500)
 })
 api.refreshToken()
