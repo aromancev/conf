@@ -221,10 +221,9 @@ function onScroll() {
 .send
   position: absolute
   bottom: 0
-  right: 0
+  right: 5px
   cursor: pointer
-  font-size: 1.6em
-  padding: 0.4em
+  height: 1.25em
 
 .status
   position: absolute

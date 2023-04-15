@@ -85,7 +85,7 @@ function alignHeight() {
 
 .area
   position: relative
-  min-height: 3em
+  min-height: 1.25em
 
 textarea
   box-sizing: border-box

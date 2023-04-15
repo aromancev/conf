@@ -511,9 +511,9 @@ async function handleRecording() {
   padding: 15px
   font-size: 25px
   position: relative
+  box-sizing: border-box
   &.active
-    margin: 10px
-    border: 1px solid var(--color-highlight-background)
+    outline: 1px solid var(--color-highlight-background)
 
 .new-content-marker
   position: absolute
