@@ -26,10 +26,15 @@ app.use(router)
 app.mount("#app")
 
 watch(accessStore.state, () => {
-  if (accessStore.state.account === Account.Guest) {
-    gsiPromptOneTap()
-  } else {
+  if (accessStore.state.account !== Account.Guest) {
     new ProfileClient(api).refreshProfile()
   }
+
+  setTimeout(() => {
+    if (accessStore.state.account !== Account.Guest) {
+      return
+    }
+    gsiPromptOneTap()
+  }, 500)
 })
 api.refreshToken()

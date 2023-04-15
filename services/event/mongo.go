@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -60,13 +59,11 @@ func (m *Mongo) Create(ctx context.Context, requests ...Event) ([]Event, error) 
 		return nil, fmt.Errorf("trying to create more than %d", batchLimit)
 	}
 
-	now := mongoNow()
 	docs := make([]interface{}, len(requests))
 	for i, r := range requests {
 		if err := r.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrValidation, err)
 		}
-		requests[i].CreatedAt = now
 		docs[i] = requests[i]
 	}
 
@@ -163,11 +160,6 @@ func (m *Mongo) Watch(ctx context.Context, roomID uuid.UUID) (Cursor, error) {
 		return nil, err
 	}
 	return &MongoCursor{stream: stream}, nil
-}
-
-func mongoNow() time.Time {
-	// Mongodb only stores milliseconds.
-	return time.Now().UTC().Round(time.Millisecond)
 }
 
 func mongoFilter(l Lookup) bson.M {

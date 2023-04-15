@@ -198,9 +198,10 @@ func (p *Proxy) Close(ctx context.Context) {
 
 func (p *Proxy) emit(ctx context.Context, payload event.Payload) (event.Event, error) {
 	ev := event.Event{
-		ID:      uuid.New(),
-		Room:    p.roomID,
-		Payload: payload,
+		ID:        uuid.New(),
+		Room:      p.roomID,
+		CreatedAt: time.Now(),
+		Payload:   payload,
 	}
 	err := p.emitter.EmitEvent(ctx, ev)
 	switch {

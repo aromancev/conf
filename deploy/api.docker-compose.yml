@@ -60,6 +60,7 @@ services:
       - BEANSTALK_TUBE_SEND=sender/send
       - BEANSTALK_TUBE_UPDATE_AVATAR=confa/update-avatar
       - LOG_LEVEL=warn
+      - GOOGLE_API_BASE_URL=https://www.googleapis.com
       - GOOGLE_CLIENT_ID=453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
       - GOOGLE_CLIENT_SECRET=stub 
 

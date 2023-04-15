@@ -22,8 +22,9 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:   uuid.New(),
-				Room: uuid.New(),
+				ID:        uuid.New(),
+				Room:      uuid.New(),
+				CreatedAt: time.Now().UTC().Round(time.Millisecond),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -48,8 +49,9 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:   uuid.New(),
-				Room: uuid.New(),
+				ID:        uuid.New(),
+				Room:      uuid.New(),
+				CreatedAt: time.Now().UTC().Round(time.Millisecond),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -71,11 +73,13 @@ func TestEventMongo(t *testing.T) {
 		events := NewMongo(dockerMongo(t))
 		roomID := uuid.New()
 
+		now := time.Now().UTC().Round(time.Millisecond)
 		created, err := events.Create(
 			ctx,
 			Event{
-				ID:   uuid.UUID{1},
-				Room: roomID,
+				ID:        uuid.UUID{1},
+				Room:      roomID,
+				CreatedAt: now,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -85,8 +89,9 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.UUID{2},
-				Room: roomID,
+				ID:        uuid.UUID{2},
+				Room:      roomID,
+				CreatedAt: now,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -96,8 +101,9 @@ func TestEventMongo(t *testing.T) {
 				},
 			},
 			Event{
-				ID:   uuid.UUID{3},
-				Room: roomID,
+				ID:        uuid.UUID{3},
+				Room:      roomID,
+				CreatedAt: now,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -109,12 +115,13 @@ func TestEventMongo(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		time.Sleep(10 * time.Millisecond)
+		later := now.Add(time.Millisecond)
 		createdLater, err := events.Create(
 			ctx,
 			Event{
-				ID:   uuid.UUID{4},
-				Room: roomID,
+				ID:        uuid.UUID{4},
+				Room:      roomID,
+				CreatedAt: later,
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -185,8 +192,9 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:   uuid.New(),
-				Room: uuid.New(),
+				ID:        uuid.New(),
+				Room:      uuid.New(),
+				CreatedAt: time.Now().UTC().Round(time.Millisecond),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),
@@ -211,8 +219,9 @@ func TestEventMongo(t *testing.T) {
 			events := NewMongo(dockerMongo(t))
 
 			request := Event{
-				ID:   uuid.New(),
-				Room: uuid.New(),
+				ID:        uuid.New(),
+				Room:      uuid.New(),
+				CreatedAt: time.Now().UTC().Round(time.Millisecond),
 				Payload: Payload{
 					PeerState: &PayloadPeerState{
 						Peer:      uuid.New(),

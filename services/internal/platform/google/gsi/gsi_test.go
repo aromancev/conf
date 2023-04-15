@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyID(t *testing.T) {
@@ -19,31 +20,15 @@ func TestKeyID(t *testing.T) {
 
 func TestPublicKey(t *testing.T) {
 	const resp = `{
-		"1aae8d7c92058b5eea456895bf89084571e306f3": "-----BEGIN CERTIFICATE-----
-		MIIDJjCCAg6gAwIBAgIIJhH74ArYaJMwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE
-		AwwrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe
-		Fw0yMzAzMjMxNTIyNDFaFw0yMzA0MDkwMzM3NDFaMDYxNDAyBgNVBAMMK2ZlZGVy
-		YXRlZC1zaWdub24uc3lzdGVtLmdzZXJ2aWNlYWNjb3VudC5jb20wggEiMA0GCSqG
-		SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCyC4goi+URUGwQaTvuJXbI1DGlj9CSLLfK
-		4x9jjCmac+V6+UMoBK7q4/8Ia5vNOGIEeUKFgMM29h86K1ZcPCnFsn8yqZqMD50N
-		usjkt2CDImlKhY8pOE8nUIpGFGJFcmNcaLoaDpN9thHC7TOLIOBlnXbk2zO405Q7
-		WlzWoa6fhI+J/Njs5joG0ANkOpNYcVN+b/KGAGDISUT6vh35mo9721hioKcC8gsG
-		5ls9i3dQLd8Cv0mW11Q7ni/EpuWjbPZ934f3MGf2NFk4GS5VUHxBJXmyt74fbcJM
-		EAFKlml7RKsmleAb0C5XgNrsVEcEL0D6gtgt75QXn/lzr9x3tz8pAgMBAAGjODA2
-		MAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB/wQMMAoGCCsG
-		AQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IBAQApnzWvLCszOvoKTfnP1v4p6dhQ8ZBl
-		Vlep9TqxftEyFez0iMPjuWr1xxuDAKB65AwaeN92cZ0S47MAMew1C9mTcmBpbOfN
-		rJhgnnV28DpAyOdNA1lBlNXT6CkH755cHh13mccfW1oD7BQI1iebPZtVnw1DUpyk
-		UwjPU8jZ/S4co0Ykyagr0IJzO/hRDk7wRJFyy13wBRaeIXKxM/lUdPASRDlt9Blz
-		BYdO3kt8m+RqDPbpWX/WB0M3xinVnfigFZpbfeiD4FF+evdaFl88w7kxg0NJLrFL
-		5NK55IfnxpKGhxW011KrZn8YR2hpTsbuasq4/p4nrvI/qOzmN/nul+bA
-		-----END CERTIFICATE-----"
+		"test": "-----BEGIN CERTIFICATE-----\nMIIDJjCCAg6gAwIBAgIIJReUdLXYTr0wDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE\nAwwrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe\nFw0yMzAzMzExNTIyNDJaFw0yMzA0MTcwMzM3NDJaMDYxNDAyBgNVBAMMK2ZlZGVy\nYXRlZC1zaWdub24uc3lzdGVtLmdzZXJ2aWNlYWNjb3VudC5jb20wggEiMA0GCSqG\nSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCvni13eFO/zsjBQ2F1z5tgsifLi0FVxqy9\n1J3uVskguDnwLgMnREk9zNd3+uV/PNga+Cm3c6R/9qcl3lpqHX3o/durBUN16VwN\ngCG5qMHOfjRCM4E95+90PnNKjXyLs60bueECFFIQZ7o+POlyTfACiCphwOCQXUHN\nOxEH4OTGmuxiGnmmYvlGdf7oRg/m3ab2Mn7+g/2/XK9mRPlQ9vYjA6TkYOWVE9u+\nn5olb9EzXwhNTeohuTBJOzWAkYVY7uPCfFPRAFoUPxrxp6/W2ZHnR6Er5LPY5G2+\n5YHFvNOpdcvf2qA0lpjBnJb7bTjS++5mdoauJtzFPze3dwmVB0zHAgMBAAGjODA2\nMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB/wQMMAoGCCsG\nAQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IBAQAht4VFQNv03bibZqmmUvw+um999dJ5\nKm1rtTQKLhXVnZUceU53W1NsGmw00SzGhC1CoUeWeLCKnmxfexB6soeqB2hagRzb\nQAUz6fJM/YIhnfeqgrkk5VzcWA4Lr0V2Q4lYuprwqS5A/iFOmOgeg8Kx4fPOs72v\n2zp8Ekg9stihLkkG/+eL2lPjzIke7VsmuWvB8MRDO2jyJXmU8xn8A2smHbFNaRf3\np1dK2ndlqMUwKTuIBjiJLKXTUbFaZDvNng70PYZdu3s0L3eUgEmfkpKCJl74f6yi\nNChi9RIe882AFzqGhAhXwfnvRkntDnakGpZR6/S0RVavbH7V97/DEm9B\n-----END CERTIFICATE-----\n"
 	}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(resp))
 	}))
+	defer server.Close()
 
-	pk := NewPublicKey(server.Client())
-	_, err := pk.PEM(context.Background(), "1aae8d7c92058b5eea456895bf89084571e306f3")
+	pk, err := NewPublicKey(server.URL, server.Client())
+	require.NoError(t, err)
+	_, err = pk.PEM(context.Background(), "test")
 	assert.NoError(t, err)
 }

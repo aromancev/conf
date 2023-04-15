@@ -191,7 +191,7 @@ export class ReplayRoom {
       return
     }
     this.updateBuffer(id, {
-      bufferMs: media.startsAt + bufferMs,
+      bufferMs: media.startedAt + bufferMs,
       durationMs: durationMs,
     })
   }
@@ -358,10 +358,10 @@ export class ReplayRoom {
       if (!media) {
         return
       }
-      if (media.startsAt + buf.durationMs <= progress) {
+      if (media.startedAt + buf.durationMs <= progress) {
         return
       }
-      min = Math.min(min, media.startsAt + buf.bufferMs)
+      min = Math.min(min, media.startedAt + buf.bufferMs)
     })
     return min
   }

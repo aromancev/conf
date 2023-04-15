@@ -85,6 +85,10 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create public key")
 	}
+	gsiPK, err := gsi.NewPublicKey(config.Google.APIBaseURL, &http.Client{})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create GSI public key")
+	}
 
 	pages := routes.NewPages(config.WebScheme, config.WebHost)
 
@@ -113,7 +117,7 @@ func main() {
 			sessionMongo,
 			userCRUD,
 			producer,
-			gsi.NewPublicKey(&http.Client{}),
+			gsiPK,
 			gsi.Creds{
 				ClientID:     config.Google.ClientID,
 				ClientSecret: config.Google.ClientSecret,

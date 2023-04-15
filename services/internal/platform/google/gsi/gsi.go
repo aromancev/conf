@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -61,22 +62,30 @@ func (a *IDAuth) Verify(token string) (ID, error) {
 
 type PublicKey struct {
 	client *http.Client
+	url    string
 }
 
-func NewPublicKey(client *http.Client) *PublicKey {
+func NewPublicKey(baseURL string, client *http.Client) (*PublicKey, error) {
+	const path = "oauth2/v1/certs"
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	a := base.ResolveReference(&url.URL{Path: path}).String()
+	_ = a
 	return &PublicKey{
 		client: client,
-	}
+		url:    base.ResolveReference(&url.URL{Path: path}).String(),
+	}, nil
 }
 
 func (k PublicKey) PEM(ctx context.Context, kid string) (*rsa.PublicKey, error) {
-	const url = "https://www.googleapis.com/oauth2/v1/certs"
-
 	if kid == "" {
 		return nil, errors.New("invalid key id")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, k.url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
