@@ -68,7 +68,6 @@ services:
       VITE_RTC_ROOM_URL: "ws://localhost/api/rtc/room/socket"
       VITE_SFU_TURN_URLS: "turn:localhost?transport=tcp"
       VITE_STORAGE_URL: "/api/storage"
-      VITE_GSI_CLIENT_ID: 453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
     volumes:
       - ./web:/app/web:delegated
       # Prevent node folders from being mapped by the previous volume.
