@@ -115,6 +115,7 @@ func main() {
 				userMongo,
 			),
 			sessionMongo,
+			userMongo,
 			userCRUD,
 			producer,
 			gsiPK,

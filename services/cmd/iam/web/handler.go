@@ -77,7 +77,8 @@ type Handler struct {
 	secretKey   *auth.SecretKey
 	pages       *routes.Pages
 	sessions    *session.Mongo
-	user        *user.Actions
+	users       *user.Mongo
+	userAction  *user.Actions
 	producer    Producer
 	googlePK    *gsi.PublicKey
 	googleCreds gsi.Creds
@@ -96,6 +97,7 @@ func NewHandler(
 	publicKey *auth.PublicKey,
 	resolver *Resolver,
 	sessions *session.Mongo,
+	users *user.Mongo,
 	userActions *user.Actions,
 	producer Producer,
 	googlePK *gsi.PublicKey,
@@ -109,7 +111,8 @@ func NewHandler(
 		secretKey:   secretKey,
 		pages:       pages,
 		sessions:    sessions,
-		user:        userActions,
+		users:       users,
+		userAction:  userActions,
 		producer:    producer,
 		googlePK:    googlePK,
 		googleCreds: googleCreds,
@@ -262,7 +265,7 @@ func (h *Handler) createSessionByEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usr, err := h.user.GetOrCreate(ctx, user.User{
+	usr, err := h.userAction.GetOrCreate(ctx, user.User{
 		Idents: []user.Ident{
 			{
 				Platform: user.PlatformEmail,
@@ -319,7 +322,7 @@ func (h *Handler) createSessionByCredentials(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	usr, err := h.user.CheckPassword(
+	usr, err := h.userAction.CheckPassword(
 		ctx,
 		user.Ident{
 			Platform: user.PlatformEmail,
@@ -392,7 +395,7 @@ func (h *Handler) createSessionByGoogleSignIn(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	usr, err := h.user.GetOrCreate(ctx, user.User{
+	usr, err := h.userAction.GetOrCreate(ctx, user.User{
 		Idents: []user.Ident{
 			{
 				Platform: user.PlatformEmail,
@@ -597,6 +600,24 @@ func (h *Handler) emailResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = h.users.FetchOne(ctx, user.Lookup{
+		Idents: []user.Ident{
+			{
+				Platform: user.PlatformEmail,
+				Value:    request.Address,
+			},
+		},
+	})
+	switch {
+	case errors.Is(err, user.ErrNotFound):
+		log.Ctx(ctx).Info().Msg("Skipped email password reset because user does not exist.")
+		return
+	case err != nil:
+		log.Ctx(ctx).Err(err).Msg("Failed to fetch user.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	token, err := h.secretKey.Sign(auth.NewEmailClaims(request.Address))
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to create email token.")
@@ -690,7 +711,7 @@ func (h *Handler) createPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.user.CreatePassword(
+	_, err = h.userAction.CreatePassword(
 		ctx,
 		user.Ident{
 			Platform: user.PlatformEmail,
@@ -733,7 +754,7 @@ func (h *Handler) updatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.user.UpdatePassword(
+	_, err = h.userAction.UpdatePassword(
 		ctx,
 		claims.UserID,
 		user.Password(request.OldPassword),
@@ -786,7 +807,7 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usr, err := h.user.ResetPassword(
+	usr, err := h.userAction.ResetPassword(
 		ctx,
 		user.Ident{
 			Platform: user.PlatformEmail,

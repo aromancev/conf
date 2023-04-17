@@ -1,28 +1,46 @@
 <template>
   <div class="content">
-    <PageLoader v-if="state === 'LOADING'"></PageLoader>
+    <div v-if="state === 'LOADING'" class="loader-wrapper">
+      <PageLoader></PageLoader>
+    </div>
 
-    <div v-if="state === 'GUEST'">
+    <div v-if="state === 'SIGN_IN_WITH_EMAIL'">
       <div class="title">Sign in</div>
       <GSIButton class="gsi" @token="loginWithGSI"></GSIButton>
-      <div class="or">or use you email to sign in:</div>
+      <div>or use you email to sign in:</div>
       <InputField
         v-model="email"
         :spellcheck="false"
         class="field"
         type="text"
-        label="Email address"
+        placeholder="Your email"
+        autocomplete="email"
+        :errors="emailErrors"
+      />
+      <button class="btn" :disabled="isSubmitted" @click="login">Email sign in link</button>
+      <span class="link margin" @click="state = 'SIGN_IN_WITH_PASSWORD'">sign in with password</span>
+    </div>
+
+    <div v-if="state === 'SIGN_IN_WITH_PASSWORD'">
+      <div class="title">Sign in</div>
+      <InputField
+        v-model="email"
+        :spellcheck="false"
+        class="field"
+        type="text"
+        label="Your email"
         autocomplete="email"
         :errors="emailErrors"
       />
       <InputField v-model="password" class="field" type="password" label="Password" autocomplete="password" />
-      <button class="submit btn" :disabled="isSubmitted" @click="login">
-        {{ password.length ? "Log in with password" : "Send login link" }}
-      </button>
-      <span class="link" @click="emailResetPassword">I forgot my password</span>
+      <button class="btn" :disabled="isSubmitted" @click="login">Sign in</button>
+      <span class="link margin" @click="state = 'SIGN_IN_WITH_EMAIL'">sign in with email</span>
+      <br />
+      <br />
+      <div class="link" @click="emailResetPassword">I forgot my password</div>
     </div>
 
-    <div v-if="state === 'CREATE_PASSWORD'">
+    <div v-if="state === 'CREATE_PASSWORD'" class="centered">
       <ProfileAvatar
         v-if="accessStore.state.allowedWrite"
         class="avatar"
@@ -46,7 +64,7 @@
         autocomplete="new-password"
         :errors="confirmPasswordErrors"
       />
-      <button class="submit btn" :disabled="isSubmitted" @click="createPassword">Set password</button>
+      <button class="btn" :disabled="isSubmitted" @click="createPassword">Set password</button>
     </div>
 
     <div v-if="state === 'RESET_PASSWORD'">
@@ -64,10 +82,10 @@
         autocomplete="new-password"
         :errors="confirmPasswordErrors"
       />
-      <button class="submit btn" :disabled="isSubmitted" @click="resetPassword">Set password</button>
+      <button class="btn" :disabled="isSubmitted" @click="resetPassword">Set password</button>
     </div>
 
-    <div v-if="state === 'SIGNED_IN'">
+    <div v-if="state === 'SIGNED_IN'" class="centered">
       <ProfileAvatar
         v-if="accessStore.state.allowedWrite"
         class="avatar"
@@ -87,7 +105,7 @@
     <p>Check your inbox to sign in.</p>
   </ModalDialog>
   <ModalDialog :is-visible="modal === 'EMAIL_RESET_SENT'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
-    <p>Email sent!</p>
+    <p>If such user exists, an email will be sent.</p>
     <p>Check your inbox to reset password.</p>
   </ModalDialog>
   <ModalDialog
@@ -96,7 +114,8 @@
     @click="
       () => {
         modal = 'NONE'
-        router.replace(route.login())
+        state = 'SIGNED_IN'
+        clearQuery()
       }
     "
   >
@@ -108,7 +127,8 @@
     @click="
       () => {
         modal = 'NONE'
-        router.replace(route.login())
+        state = 'SIGN_IN_WITH_PASSWORD'
+        clearQuery()
       }
     "
   >
@@ -156,7 +176,13 @@ type Modal =
   | "NOT_FOUND"
   | "INVALID_TOKEN"
   | "ALREADY_HAS_PASSWORD"
-type State = "LOADING" | "GUEST" | "SIGNED_IN" | "CREATE_PASSWORD" | "RESET_PASSWORD"
+type State =
+  | "LOADING"
+  | "SIGN_IN_WITH_EMAIL"
+  | "SIGN_IN_WITH_PASSWORD"
+  | "SIGNED_IN"
+  | "CREATE_PASSWORD"
+  | "RESET_PASSWORD"
 
 const props = defineProps<{
   action?: LoginAction
@@ -194,7 +220,7 @@ watch(
   [() => accessStore.state.account, () => props.action, () => props.token],
   async () => {
     if (!props.action || !props.token) {
-      state.value = accessStore.state.account === Account.Guest ? "GUEST" : "SIGNED_IN"
+      state.value = accessStore.state.account === Account.Guest ? "SIGN_IN_WITH_EMAIL" : "SIGNED_IN"
       return
     }
 
@@ -223,7 +249,7 @@ watch(
       } else {
         notificationStore.error("failed to verify email")
       }
-      state.value = "GUEST"
+      state.value = "SIGN_IN_WITH_EMAIL"
     }
   },
   { immediate: true },
@@ -251,7 +277,7 @@ async function login() {
       await api.emailLogin(email.value)
       clearForm()
       modal.value = "EMAIL_LOGIN_SENT"
-      state.value = "GUEST"
+      state.value = "SIGN_IN_WITH_EMAIL"
     }
   } catch (e) {
     switch (errorCode(e)) {
@@ -260,11 +286,11 @@ async function login() {
         break
       case Code.NotFound:
         modal.value = "NOT_FOUND"
-        state.value = "GUEST"
+        state.value = "SIGN_IN_WITH_EMAIL"
         break
       default:
         notificationStore.error("failed to login")
-        state.value = "GUEST"
+        state.value = "SIGN_IN_WITH_EMAIL"
         break
     }
   }
@@ -287,7 +313,7 @@ async function emailResetPassword() {
   } catch {
     notificationStore.error("failed to send email")
   } finally {
-    state.value = "GUEST"
+    state.value = "SIGN_IN_WITH_EMAIL"
   }
 }
 
@@ -313,7 +339,7 @@ async function createPassword() {
       router.replace(route.login())
     } else {
       notificationStore.error("failed to create password")
-      state.value = "GUEST"
+      state.value = "SIGN_IN_WITH_EMAIL"
     }
   }
 }
@@ -332,10 +358,10 @@ async function resetPassword() {
     accessStore.logout()
     api.refreshToken()
     modal.value = "PASSWORD_RESET"
-    state.value = "GUEST"
+    state.value = "SIGN_IN_WITH_PASSWORD"
   } catch {
     notificationStore.error("failed to create password")
-    state.value = "GUEST"
+    state.value = "SIGN_IN_WITH_PASSWORD"
   }
 }
 
@@ -345,15 +371,32 @@ function clearForm() {
   confirmPassword.value = ""
   isSubmitted.value = false
 }
+
+function clearQuery() {
+  window.history.replaceState(null, "", window.location.href.split("?")[0])
+}
 </script>
 
 <style lang="sass" scoped>
+@use '@/css/theme'
 
 .content
-  width: 300px
+  width: 400px
+  height: 100%
+  padding-top: 200px
+  text-align: left
+
+.loader-wrapper
+  position: absolute
+  top: 0
+  left: 0
+  display: flex
+  justify-content: center
+  align-items: center
+  width: 100%
+  height: 100%
 
 .title
-  text-align: left
   font-size: 40px
   margin-bottom: 20px
 
@@ -371,16 +414,15 @@ function clearForm() {
 .field
   margin: 10px 0
 
-.submit
-  width: 100%
-  margin: 15px 0
-
 .create-talk
   margin: 15px 0
 
 .user
-  margin-bottom: 50px
+  margin-bottom: 20px
 
-.or
-  text-align: left
+.margin
+  margin: 10px
+
+.centered
+  text-align: center
 </style>

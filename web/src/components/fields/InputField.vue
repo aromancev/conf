@@ -1,5 +1,5 @@
 <template>
-  <div class="field" tabindex="0" @focus="focusInput">
+  <div class="field" :class="{ padded: !label }" tabindex="0" @focus="focusInput">
     <div class="label">{{ label }}</div>
     <input
       ref="input"
@@ -75,6 +75,8 @@ function change(event: Event) {
   border-radius: 4px
   padding: 0.5em 1em
   text-align: left
+  &.padded
+    padding: 1em 1em
 
 .label
   font-size: 0.7em
