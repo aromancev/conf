@@ -22,11 +22,14 @@ func TestMongo(t *testing.T) {
 
 			profiles := NewMongo(dockerMongo(t))
 
+			givenName := "Rick"
+			familyName := "Sanchez"
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				Handle:    "test",
-				GivenName: "test",
+				ID:         uuid.New(),
+				Owner:      uuid.New(),
+				Handle:     "test",
+				GivenName:  &givenName,
+				FamilyName: &familyName,
 			}
 			created, err := profiles.Create(ctx, request)
 			require.NoError(t, err)
@@ -47,18 +50,14 @@ func TestMongo(t *testing.T) {
 			_, err := profiles.Create(
 				ctx,
 				Profile{
-					ID:         uuid.New(),
-					Owner:      uuid.UUID{1},
-					Handle:     "test-1",
-					GivenName:  "Rick",
-					FamilyName: "Sanchez",
+					ID:     uuid.New(),
+					Owner:  uuid.UUID{1},
+					Handle: "test-1",
 				},
 				Profile{
-					ID:         uuid.New(),
-					Owner:      uuid.UUID{1},
-					Handle:     "test-2",
-					GivenName:  "Rick",
-					FamilyName: "Sanchez",
+					ID:     uuid.New(),
+					Owner:  uuid.UUID{1},
+					Handle: "test-2",
 				},
 			)
 			require.ErrorIs(t, err, ErrDuplicateEntry)
@@ -72,18 +71,14 @@ func TestMongo(t *testing.T) {
 			_, err := profiles.Create(
 				ctx,
 				Profile{
-					ID:         uuid.New(),
-					Owner:      uuid.New(),
-					Handle:     "test",
-					GivenName:  "Rick",
-					FamilyName: "Sanchez",
+					ID:     uuid.New(),
+					Owner:  uuid.New(),
+					Handle: "test",
 				},
 				Profile{
-					ID:         uuid.New(),
-					Owner:      uuid.New(),
-					Handle:     "test",
-					GivenName:  "Rick",
-					FamilyName: "Sanchez",
+					ID:     uuid.New(),
+					Owner:  uuid.New(),
+					Handle: "test",
 				},
 			)
 			require.ErrorIs(t, err, ErrDuplicateEntry)
@@ -99,10 +94,9 @@ func TestMongo(t *testing.T) {
 			profiles := NewMongo(dockerMongo(t))
 
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				Handle:    "test",
-				GivenName: "test",
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test",
 			}
 			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
@@ -119,16 +113,20 @@ func TestMongo(t *testing.T) {
 
 			profiles := NewMongo(dockerMongo(t))
 
+			givenName := "Rick"
+			familyName := "Sanchez"
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				Handle:    "test",
-				GivenName: "test",
+				ID:         uuid.New(),
+				Owner:      uuid.New(),
+				Handle:     "test",
+				GivenName:  &givenName,
+				FamilyName: &familyName,
 			}
 			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
 
-			created.GivenName = "changed"
+			changedGivenName := "Not Rick"
+			created.GivenName = &changedGivenName
 			created.AvatarThumbnail = Image{
 				Format: "jpeg",
 				Data:   []byte{1},
@@ -144,20 +142,17 @@ func TestMongo(t *testing.T) {
 			profiles := NewMongo(dockerMongo(t))
 
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				Handle:    "test",
-				GivenName: "test",
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test",
 			}
 			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
 
 			updated, err := profiles.CreateOrUpdate(ctx, Profile{
-				ID:        uuid.New(),
-				Owner:     request.Owner,
-				GivenName: "changed",
+				ID:    uuid.New(),
+				Owner: request.Owner,
 			})
-			created.GivenName = "changed"
 			require.NoError(t, err)
 			assert.Equal(t, created, updated)
 		})
@@ -166,31 +161,30 @@ func TestMongo(t *testing.T) {
 			profiles := NewMongo(dockerMongo(t))
 
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				GivenName: "test",
+				ID:    uuid.New(),
+				Owner: uuid.New(),
 			}
 			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
 			assert.Equal(t, request.ID.String(), created.Handle)
 		})
 
-		t.Run("Empty fields do not override", func(t *testing.T) {
+		t.Run("Empty value overrides", func(t *testing.T) {
 			profiles := NewMongo(dockerMongo(t))
 
 			request := Profile{
-				ID:        uuid.New(),
-				Owner:     uuid.New(),
-				Handle:    "test",
-				GivenName: "test",
+				ID:     uuid.New(),
+				Owner:  uuid.New(),
+				Handle: "test",
 			}
 			_, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
 
-			request.GivenName = ""
+			empty := ""
+			request.GivenName = &empty
 			created, err := profiles.CreateOrUpdate(ctx, request)
 			require.NoError(t, err)
-			require.Equal(t, "test", created.GivenName)
+			require.Equal(t, "", *created.GivenName)
 		})
 	})
 

@@ -577,17 +577,13 @@ func (r *Resolver) UpdateProfile(ctx context.Context, args struct {
 	}
 
 	request := profile.Profile{
-		ID:    uuid.New(),
-		Owner: claims.UserID,
+		ID:         uuid.New(),
+		Owner:      claims.UserID,
+		GivenName:  args.Request.GivenName,
+		FamilyName: args.Request.FamilyName,
 	}
 	if args.Request.Handle != nil {
 		request.Handle = *args.Request.Handle
-	}
-	if args.Request.GivenName != nil {
-		request.GivenName = *args.Request.GivenName
-	}
-	if args.Request.FamilyName != nil {
-		request.FamilyName = *args.Request.FamilyName
 	}
 
 	upserted, err := r.profiles.CreateOrUpdate(ctx, request)
@@ -806,15 +802,11 @@ func newTalk(t talk.Talk) Talk {
 
 func newProfile(storage *routes.Storage, p profile.Profile) Profile {
 	api := Profile{
-		ID:      p.ID.String(),
-		OwnerID: p.Owner.String(),
-		Handle:  p.Handle,
-	}
-	if p.GivenName != "" {
-		api.GivenName = &p.GivenName
-	}
-	if p.FamilyName != "" {
-		api.FamilyName = &p.FamilyName
+		ID:         p.ID.String(),
+		OwnerID:    p.Owner.String(),
+		Handle:     p.Handle,
+		GivenName:  p.GivenName,
+		FamilyName: p.FamilyName,
 	}
 	if !p.AvatarThumbnail.IsEmpty() {
 		api.AvatarThumbnail = &Image{

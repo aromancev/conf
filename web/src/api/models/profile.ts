@@ -2,12 +2,12 @@ import { Store } from "@/platform/store"
 import { RegexValidator } from "@/platform/validator"
 import { genAvatar, genName } from "@/platform/gen"
 
-export interface Profile extends Object {
+export type Profile = {
   id: string
   ownerId: string
   handle: string
-  givenName: string
-  familyName: string
+  givenName?: string
+  familyName?: string
   avatarThumbnail: string
   avatarUrl: string
 }
@@ -46,11 +46,11 @@ export const profileStore = new ProfileStore({
   avatarThumbnail: "",
   avatarUrl: "",
 })
-export const handleValidator = new RegexValidator("^[a-z0-9-]{4,64}$", [
+export const handleValidator = new RegexValidator(/^[a-z0-9-]{4,64}$/, [
   "Must be from 4 to 64 characters long",
   "Can only contain lower case letters, numbers, and '-'",
 ])
-export const nameValidator = new RegexValidator("^[a-zA-Z ]{0,64}$", [
+export const nameValidator = new RegexValidator(/^[\p{L}\- ]{0,64}$/u, [
   "Must be from 0 to 64 characters long",
-  "Can only contain letters and spaces",
+  "Can only contain letters and spaces, and '-'",
 ])

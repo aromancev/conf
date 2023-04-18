@@ -70,10 +70,10 @@ func (m *Mongo) CreateOrUpdate(ctx context.Context, request Profile) (Profile, e
 	} else {
 		update["handle"] = request.Handle
 	}
-	if request.GivenName != "" {
+	if request.GivenName != nil {
 		update["givenName"] = request.GivenName
 	}
-	if request.FamilyName != "" {
+	if request.FamilyName != nil {
 		update["familyName"] = request.FamilyName
 	}
 	if !request.AvatarThumbnail.IsEmpty() {

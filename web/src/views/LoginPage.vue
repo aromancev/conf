@@ -28,11 +28,11 @@
         :spellcheck="false"
         class="field"
         type="text"
-        label="Your email"
+        placeholder="Your email"
         autocomplete="email"
         :errors="emailErrors"
       />
-      <InputField v-model="password" class="field" type="password" label="Password" autocomplete="password" />
+      <InputField v-model="password" class="field" type="password" placeholder="Password" autocomplete="password" />
       <button class="btn" :disabled="isSubmitted" @click="login">Sign in</button>
       <span class="link margin" @click="state = 'SIGN_IN_WITH_EMAIL'">sign in with email</span>
       <br />

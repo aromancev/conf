@@ -24,8 +24,8 @@ type Confa struct {
 	CreatedAt   time.Time `bson:"createdAt"`
 }
 
-var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
-var validTitle = regexp.MustCompile("^[^ ]*[a-zA-Z0-9- ]{2,64}[^ ]*$")
+var validHandle = regexp.MustCompile(`^[a-z0-9-]{4,64}$`)
+var validTitle = regexp.MustCompile(`^[^ ]*[\p{L}0-9- ]{2,64}[^ ]*$`)
 
 const (
 	maxDescription = 5000

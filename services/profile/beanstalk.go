@@ -33,7 +33,7 @@ func NewBeanstalkEmitter(producer Producer, tubes BeanstalkTubes) *BeansltalkEmi
 	}
 }
 
-func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName string, thumbnail, avatar FileSource) error {
+func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName *string, thumbnail, avatar FileSource) error {
 	if err := thumbnail.Validate(); err != nil {
 		return fmt.Errorf("invalid thumbnail: %w", err)
 	}
@@ -43,11 +43,17 @@ func (e *BeansltalkEmitter) UpdateProfile(ctx context.Context, userID uuid.UUID,
 
 	id, _ := userID.MarshalBinary()
 	job := confa.UpdateProfile{
-		UserId:     id,
-		GivenName:  givenName,
-		FamilyName: familyName,
-		Thumbnail:  newFileSource(thumbnail),
-		Avatar:     newFileSource(avatar),
+		UserId:    id,
+		Thumbnail: newFileSource(thumbnail),
+		Avatar:    newFileSource(avatar),
+	}
+	if givenName != nil {
+		job.GivenNameSet = true
+		job.GivenName = *givenName
+	}
+	if familyName != nil {
+		job.FamilyNameSet = true
+		job.FamilyName = *familyName
 	}
 	if thumbnail.PublicURL != nil {
 		job.Thumbnail.PublicUrl = &confa.UpdateProfile_FileSource_PublicURL{

@@ -21,7 +21,7 @@ type Repo interface {
 }
 
 type Emitter interface {
-	UpdateProfile(ctx context.Context, userID uuid.UUID, gavenName string, familyName string, thumbnail, avatar FileSource) error
+	UpdateProfile(ctx context.Context, userID uuid.UUID, gavenName, familyName *string, thumbnail, avatar FileSource) error
 }
 
 type Buckets struct {
@@ -71,7 +71,7 @@ func (u *Updater) UpdateAndRequestUpload(ctx context.Context, userID uuid.UUID) 
 		return "", nil, fmt.Errorf("failed to sign post policy: %w", err)
 	}
 
-	err = u.emitter.UpdateProfile(ctx, userID, "", "", FileSource{}, FileSource{
+	err = u.emitter.UpdateProfile(ctx, userID, nil, nil, FileSource{}, FileSource{
 		Storage: &FileSourceStorage{
 			Bucket: bucket,
 			Path:   objectPath,
@@ -84,12 +84,12 @@ func (u *Updater) UpdateAndRequestUpload(ctx context.Context, userID uuid.UUID) 
 	return path.Join(u.baseURL, bucket), data, nil
 }
 
-func (u *Updater) Update(ctx context.Context, userID uuid.UUID, givenName, familyName string, thumbnail, avatar FileSource) error {
+func (u *Updater) Update(ctx context.Context, userID uuid.UUID, givenName, familyName *string, thumbnail, avatar FileSource) error {
 	const avatarFullSize = 460
 	const thumbnailSize = 128
 	const quality = 50 // Ranges from 1 to 100 inclusive, higher is better.
 
-	if givenName == "" && familyName == "" && thumbnail.IsZero() && avatar.IsZero() {
+	if givenName == nil && familyName == nil && thumbnail.IsZero() && avatar.IsZero() {
 		return fmt.Errorf("%w: %s", ErrValidation, "empty update not allowed")
 	}
 	if err := thumbnail.Validate(); err != nil {

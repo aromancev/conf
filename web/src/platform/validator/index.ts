@@ -2,8 +2,8 @@ export class RegexValidator {
   readonly regex: RegExp
   readonly errors: string[]
 
-  constructor(regex: string, errors: string[]) {
-    this.regex = new RegExp(regex)
+  constructor(regex: RegExp, errors: string[]) {
+    this.regex = regex
     this.errors = errors
   }
 
