@@ -124,6 +124,13 @@ func updateAvatar(uploader *profile.Updater, profiles *profile.Mongo) JobHandle 
 		}
 		var userID uuid.UUID
 		_ = userID.UnmarshalBinary(payload.UserId)
+		var givenName, familyName *string
+		if payload.GivenNameSet {
+			givenName = &payload.GivenName
+		}
+		if payload.FamilyNameSet {
+			familyName = &payload.FamilyName
+		}
 
 		// TODO: Remove this when migrated to event-based message queue and create a new event.
 		if payload.SkipIfExists {
@@ -145,7 +152,7 @@ func updateAvatar(uploader *profile.Updater, profiles *profile.Mongo) JobHandle 
 			}
 		}
 
-		err = uploader.Update(ctx, userID, payload.GivenName, payload.FamilyName, newSource(payload.Thumbnail), newSource(payload.Avatar))
+		err = uploader.Update(ctx, userID, givenName, familyName, newSource(payload.Thumbnail), newSource(payload.Avatar))
 		switch {
 		case errors.Is(err, profile.ErrValidation):
 			log.Ctx(ctx).Err(err).Msg("Invalid payload for update avatar job.")

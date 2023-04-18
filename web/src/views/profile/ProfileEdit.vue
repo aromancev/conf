@@ -76,8 +76,8 @@ const router = useRouter()
 
 const modal = ref<Modal>("none")
 const handle = ref(props.profile.handle)
-const givenName = ref<string>(props.profile.givenName)
-const familyName = ref<string>(props.profile.familyName)
+const givenName = ref<string>(props.profile.givenName || "")
+const familyName = ref<string>(props.profile.familyName || "")
 const update = ref<ProfileUpdate>({})
 const saving = ref<boolean>(false)
 const uploadedAvatar = ref<string>("")
@@ -106,14 +106,14 @@ watch(givenName, (value) => {
   if (value === props.profile.givenName) {
     delete update.value.givenName
   } else {
-    update.value.givenName = value
+    update.value.givenName = value.trim()
   }
 })
 watch(familyName, (value) => {
   if (value === props.profile.familyName) {
     delete update.value.familyName
   } else {
-    update.value.familyName = value
+    update.value.familyName = value.trim()
   }
 })
 watch(

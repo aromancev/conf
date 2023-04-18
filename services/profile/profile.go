@@ -21,8 +21,8 @@ type Profile struct {
 	ID              uuid.UUID `bson:"_id"`
 	Owner           uuid.UUID `bson:"ownerId"`
 	Handle          string    `bson:"handle"`
-	GivenName       string    `bson:"givenName,omitempty"`
-	FamilyName      string    `bson:"familyName,omitempty"`
+	GivenName       *string   `bson:"givenName,omitempty"`
+	FamilyName      *string   `bson:"familyName,omitempty"`
 	AvatarThumbnail Image     `bson:"avatarThumbnail,omitempty"`
 	AvatarID        uuid.UUID `bson:"avatarId,omitempty"`
 	CreatedAt       time.Time `bson:"createdAt"`
@@ -50,8 +50,8 @@ func (i Image) IsEmpty() bool {
 	return len(i.Data) == 0
 }
 
-var validHandle = regexp.MustCompile("^[a-z0-9-]{4,64}$")
-var validName = regexp.MustCompile("^[a-zA-Z- ]{0,64}$")
+var validHandle = regexp.MustCompile(`^[a-z0-9-]{4,64}$`)
+var validName = regexp.MustCompile(`^[\p{L}- ]{0,64}$`)
 
 func (p Profile) Validate() error {
 	if p.ID == uuid.Nil {
@@ -63,10 +63,10 @@ func (p Profile) Validate() error {
 	if p.Handle != "" && !validHandle.MatchString(p.Handle) {
 		return errors.New("invalid handle")
 	}
-	if !validName.MatchString(p.GivenName) {
+	if p.GivenName != nil && !validName.MatchString(*p.GivenName) {
 		return errors.New("invalid given name")
 	}
-	if !validName.MatchString(p.FamilyName) {
+	if p.FamilyName != nil && !validName.MatchString(*p.FamilyName) {
 		return errors.New("invalid family name")
 	}
 	if err := p.AvatarThumbnail.Validate(); err != nil {

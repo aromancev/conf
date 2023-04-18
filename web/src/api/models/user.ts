@@ -18,11 +18,11 @@ export type User = {
 }
 
 export const emailValidator = new RegexValidator(
-  "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:.[a-zA-Z0-9-]+)*$",
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:.[a-zA-Z0-9-]+)*$/,
   ["Must be a valid email"],
 )
 
-export const passwordValidator = new RegexValidator("^[^ \t].{6,64}[^ \t]$", [
+export const passwordValidator = new RegexValidator(/^[^ \t].{6,64}[^ \t]$/, [
   "Must be from 8 to 64 charachters long",
   "Cannot start or end with a space",
 ])

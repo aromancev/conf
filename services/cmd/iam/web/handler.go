@@ -427,9 +427,16 @@ func (h *Handler) createSessionByGoogleSignIn(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	var givenName, familyName *string
+	if id.GivenName != "" {
+		givenName = &id.GivenName
+	}
+	if id.FamilyName != "" {
+		familyName = &id.FamilyName
+	}
 
 	// TODO: Remove this when migrated to event-based message queue and create a new event.
-	err = h.emitUpdateProfile(ctx, usr.ID, id.GivenName, id.FamilyName, id.Picture)
+	err = h.emitUpdateProfile(ctx, usr.ID, givenName, familyName, id.Picture)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit profile update event.")
 	}
@@ -842,13 +849,19 @@ func (h *Handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: Remove this when migrated to event-based message queue and create a new event.
-func (h *Handler) emitUpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName, thumbnailURL string) error {
+func (h *Handler) emitUpdateProfile(ctx context.Context, userID uuid.UUID, givenName, familyName *string, thumbnailURL string) error {
 	id, _ := userID.MarshalBinary()
 	job := confa.UpdateProfile{
 		UserId:       id,
-		GivenName:    givenName,
-		FamilyName:   familyName,
 		SkipIfExists: true,
+	}
+	if givenName != nil {
+		job.GivenNameSet = true
+		job.GivenName = *givenName
+	}
+	if familyName != nil {
+		job.FamilyNameSet = true
+		job.FamilyName = *familyName
 	}
 	if thumbnailURL != "" {
 		job.Thumbnail = &confa.UpdateProfile_FileSource{

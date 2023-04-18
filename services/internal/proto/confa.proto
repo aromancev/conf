@@ -16,12 +16,14 @@ message UpdateProfile {
     }
 
     bytes user_id = 1;
-    string given_name = 2;
-    string family_name = 3;
-    FileSource thumbnail = 4;
-    FileSource avatar = 5;
+    bool given_name_set = 2;
+    string given_name = 3;
+    bool family_name_set = 4;
+    string family_name = 5;
+    FileSource thumbnail = 6;
+    FileSource avatar = 7;
     // TODO: Remove this when migrated to event-based message queue and create a new event.
-    bool skip_if_exists = 6;
+    bool skip_if_exists = 8;
 }
 
 message StartRecording {
