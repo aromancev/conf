@@ -163,6 +163,7 @@ async function editAvatar() {
   const file = await new Promise<File>((resolve) => {
     const input = document.createElement("input") as HTMLInputElement
     input.type = "file"
+    input.accept = "image/*"
     input.onchange = () => {
       if (!input.files) {
         throw new Error("Failed to parse files.")
