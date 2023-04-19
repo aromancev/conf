@@ -35,14 +35,14 @@
       </div>
     </div>
   </div>
-  <ModalDialog :is-visible="modal.state === 'PASSWORD_EMAIL_SENT'" :buttons="{ ok: 'OK' }" @click="modal.set()">
+  <ModalDialog :is-visible="modal.state === 'PASSWORD_EMAIL_SENT'" :buttons="[{ text: 'OK' }]" @click="modal.set()">
     <p>Email sent!</p>
     <p>Check your inbox to set password.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal.state === 'WRONG_PASSWORD'" :buttons="{ ok: 'OK' }" @click="modal.set()">
+  <ModalDialog :is-visible="modal.state === 'WRONG_PASSWORD'" :buttons="[{ text: 'OK' }]" @click="modal.set()">
     <p>Wrong password. Please try again.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal.state === 'PASSWORD_UPDATED'" :ctrl="modal" :buttons="{ ok: 'OK' }">
+  <ModalDialog :is-visible="modal.state === 'PASSWORD_UPDATED'" :ctrl="modal" :buttons="[{ text: 'OK' }]">
     <p>Password updated.</p>
   </ModalDialog>
 </template>
@@ -206,7 +206,7 @@ function clearForm() {
   margin: 10px 0
 
 .form
-  width: 100%
+  width: theme.$form-width
   height: 100%
   padding: 50px
 

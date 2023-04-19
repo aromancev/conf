@@ -1,9 +1,11 @@
 <template>
   <ModalDialog
     :is-visible="props.isVisible"
-    :buttons="{ upload: 'Upload', cancel: 'Cancel' }"
+    :buttons="[
+      { text: 'Cancel', click: () => emit('close') },
+      { text: 'Upload', click: upload },
+    ]"
     :disabled="loading"
-    @click="onClick"
   >
     <div class="avatar-box">
       <img class="avatar" :src="avatar" />
@@ -32,19 +34,8 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-async function onClick(btn: string) {
-  switch (btn) {
-    case "upload":
-      emit(
-        "update",
-        await fill(props.avatar, fullSize, fullSize),
-        await fill(props.avatar, thumbnailSize, thumbnailSize),
-      )
-      break
-    case "cancel":
-      emit("close")
-      break
-  }
+async function upload() {
+  emit("update", await fill(props.avatar, fullSize, fullSize), await fill(props.avatar, thumbnailSize, thumbnailSize))
 }
 </script>
 

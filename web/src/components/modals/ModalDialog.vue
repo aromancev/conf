@@ -8,8 +8,21 @@
         </div>
         <table v-if="buttons">
           <tr>
-            <td v-for="(text, id) in buttons" :key="id" class="cell" :class="{ disabled: disabled }" @click="click(id)">
-              {{ text }}
+            <td
+              v-for="btn in buttons"
+              :key="btn.id"
+              class="cell"
+              :class="{ disabled: disabled }"
+              @click="
+                () => {
+                  click(btn.id)
+                  if (!disabled && btn.click) {
+                    btn.click()
+                  }
+                }
+              "
+            >
+              {{ btn.text }}
             </td>
           </tr>
         </table>
@@ -19,22 +32,28 @@
 </template>
 
 <script setup lang="ts">
-export interface Controller {
-  submit(id: string): void
+export type Controller = {
+  submit(id?: string): void
+}
+
+export type Button = {
+  text: string
+  id?: string
+  click?: (() => void) | (() => Promise<void>)
 }
 
 const props = defineProps<{
   isVisible: boolean
-  buttons: Record<string, string>
+  buttons: Button[]
   disabled?: boolean
   ctrl?: Controller
 }>()
 
 const emit = defineEmits<{
-  (e: "click", id: string): void
+  (e: "click", id?: string): void
 }>()
 
-function click(id: string) {
+function click(id?: string) {
   if (props.disabled) {
     return
   }

@@ -1,33 +1,42 @@
 <template>
-  <div class="form">
-    <div class="avatar">
-      <img class="avatar-img" :src="avatar" />
-      <div class="avatar-edit-icon material-icons" @click="editAvatar">edit</div>
-    </div>
-    <InputField v-model="handle" :spellcheck="false" class="input" type="text" label="Handle" :errors="handleErrors" />
-    <InputField
-      v-model="givenName"
-      :spellcheck="false"
-      class="input"
-      type="text"
-      label="Given name"
-      :errors="givenNameErrors"
-    />
-    <InputField
-      v-model="familyName"
-      :spellcheck="false"
-      class="input"
-      type="text"
-      label="Family name"
-      :errors="familyNameErrors"
-    />
-    <div class="controls">
-      <div class="save-indicator"></div>
-      <div class="btn save" :disabled="!hasUpdate || saving || !isFormValid ? true : null" @click="save">
-        <div v-if="saving" class="save-loader">
-          <PageLoader />
+  <div class="profile-edit">
+    <div class="form">
+      <div class="avatar">
+        <img class="avatar-img" :src="avatar" />
+        <div class="avatar-edit-icon material-icons" @click="editAvatar">edit</div>
+      </div>
+      <InputField
+        v-model="handle"
+        :spellcheck="false"
+        class="input"
+        type="text"
+        label="Handle"
+        :errors="handleErrors"
+      />
+      <InputField
+        v-model="givenName"
+        :spellcheck="false"
+        class="input"
+        type="text"
+        label="Given name"
+        :errors="givenNameErrors"
+      />
+      <InputField
+        v-model="familyName"
+        :spellcheck="false"
+        class="input"
+        type="text"
+        label="Family name"
+        :errors="familyNameErrors"
+      />
+      <div class="controls">
+        <div class="save-indicator"></div>
+        <div class="btn save" :disabled="!hasUpdate || saving || !isFormValid ? true : null" @click="save">
+          <div v-if="saving" class="save-loader">
+            <PageLoader />
+          </div>
+          <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
         </div>
-        <span v-if="!saving">{{ !hasUpdate ? "Saved" : "Save" }}</span>
       </div>
     </div>
   </div>
@@ -39,7 +48,7 @@
     @close="modal = 'none'"
     @update="uploadAvatar"
   ></AvatarEditor>
-  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="[{ text: 'OK' }]" @click="modal = 'none'">
     <p>Profile with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
@@ -185,12 +194,17 @@ async function uploadAvatar(full: string, thumbnail: string) {
 <style scoped lang="sass">
 @use '@/css/theme'
 
+.profile-edit
+  width: 100%
+  display: flex
+  justify-content: center
+
 .form
   padding: 30px
   display: flex
   flex-direction: column
   align-items: center
-  width: 100%
+  width: theme.$form-width
 
 .input
   width: 100%

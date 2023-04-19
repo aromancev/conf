@@ -15,18 +15,28 @@
     </div>
   </div>
 
-  <ModalDialog :is-visible="state.modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="state.modal = 'none'">
+  <ModalDialog
+    :is-visible="state.modal === 'duplicate_entry'"
+    :buttons="[{ id: 'ok', text: 'OK' }]"
+    @click="state.modal = 'none'"
+  >
     <p>Confa with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="state.modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="state.modal = 'none'">
+  <ModalDialog
+    :is-visible="state.modal === 'not_found'"
+    :buttons="[{ id: 'ok', text: 'OK' }]"
+    @click="state.modal = 'none'"
+  >
     <p>Confa no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
   <ModalDialog
     :is-visible="state.modal === 'delete'"
-    :buttons="{ delete: 'Delete', cancel: 'Cancel' }"
-    @click="deleteConfa"
+    :buttons="[
+      { text: 'Cancel', click: () => (state.modal = 'none') },
+      { text: 'Delete', click: deleteConfa },
+    ]"
   >
     <p>Are you sure you want to delete confa "{{ confa.title || "Untitled" }}"?</p>
     <p>It will delete all the talks inside it as well.</p>
@@ -182,11 +192,8 @@ async function save() {
   }
 }
 
-async function deleteConfa(response: string) {
+async function deleteConfa() {
   state.modal = "none"
-  if (response !== "delete") {
-    return
-  }
   try {
     await new ConfaClient(api).delete({ id: props.confa.id })
   } catch {

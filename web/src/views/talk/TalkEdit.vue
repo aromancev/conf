@@ -15,15 +15,26 @@
     </div>
   </div>
 
-  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'duplicate_entry'" :buttons="[{ text: 'OK' }]" @click="modal = 'none'">
     <p>Talk with this handle already exits.</p>
     <p>Try a different handle.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal === 'not_found'" :buttons="{ ok: 'OK' }" @click="modal = 'none'">
+  <ModalDialog :is-visible="modal === 'not_found'" :buttons="[{ text: 'OK' }]" @click="modal = 'none'">
     <p>Talk no longer exits.</p>
     <p>Maybe someone has changed the handle or archived it.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal === 'delete'" :buttons="{ delete: 'Delete', cancel: 'Cancel' }" @click="deleteTalk">
+  <ModalDialog
+    :is-visible="modal === 'delete'"
+    :buttons="[
+      { text: 'Delete', click: deleteTalk },
+      {
+        text: 'Cancel',
+        click: () => {
+          modal = 'none'
+        },
+      },
+    ]"
+  >
     <p>Are you sure you want to delete talk "{{ talk.title || "Untitled" }}"?</p>
   </ModalDialog>
 </template>
@@ -159,11 +170,8 @@ async function save() {
   }
 }
 
-async function deleteTalk(response: string) {
+async function deleteTalk() {
   modal.value = "none"
-  if (response !== "delete") {
-    return
-  }
   try {
     await new TalkClient(api).delete({ id: props.talk.id })
   } catch {
