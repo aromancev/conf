@@ -22,7 +22,7 @@ defineProps<{
 
 .profile-overview
   padding: 30px 100px
-  text-align: left
+  text-align: center
 
 .avatar
   display: inline-block

@@ -1,5 +1,5 @@
 <template>
-  <ModalDialog :is-visible="props.isVisible" :buttons="{ ok: 'OK' }" :ctrl="props.ctrl" @click="click">
+  <ModalDialog :is-visible="props.isVisible" :buttons="[{ text: 'OK' }]" :ctrl="props.ctrl" @click="click">
     <p>Oh snap! Something unexpected happen.</p>
     <p>Our engineers are already working on the problem. Please try again later.</p>
   </ModalDialog>
@@ -10,7 +10,7 @@ import ModalDialog from "./ModalDialog.vue"
 import { Controller } from "./ModalDialog.vue"
 
 const emit = defineEmits<{
-  (e: "click", id: string): void
+  (e: "click", id?: string): void
 }>()
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
   ctrl?: Controller
 }>()
 
-function click(id: string) {
+function click(id?: string) {
   emit("click", id)
 }
 </script>

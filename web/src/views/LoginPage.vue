@@ -100,17 +100,17 @@
     </div>
   </div>
 
-  <ModalDialog :is-visible="modal === 'EMAIL_LOGIN_SENT'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal === 'EMAIL_LOGIN_SENT'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>Email sent!</p>
     <p>Check your inbox to sign in.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal === 'EMAIL_RESET_SENT'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal === 'EMAIL_RESET_SENT'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>If such user exists, an email will be sent.</p>
     <p>Check your inbox to reset password.</p>
   </ModalDialog>
   <ModalDialog
     :is-visible="modal === 'PASSWORD_CREATED'"
-    :buttons="{ ok: 'OK' }"
+    :buttons="[{ text: 'OK' }]"
     @click="
       () => {
         modal = 'NONE'
@@ -123,7 +123,7 @@
   </ModalDialog>
   <ModalDialog
     :is-visible="modal === 'PASSWORD_RESET'"
-    :buttons="{ ok: 'OK' }"
+    :buttons="[{ text: 'OK' }]"
     @click="
       () => {
         modal = 'NONE'
@@ -135,17 +135,17 @@
     <p>New password set.</p>
     <p>You can use it to log in.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal == 'BAD_REQUEST'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal == 'BAD_REQUEST'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>Incorrect email.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal == 'NOT_FOUND'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal == 'NOT_FOUND'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>Incorrect password or no such user.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal == 'INVALID_TOKEN'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal == 'INVALID_TOKEN'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>Email token has expired or has been used before.</p>
     <p>Please request a new email.</p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal == 'ALREADY_HAS_PASSWORD'" :buttons="{ ok: 'OK' }" @click="modal = 'NONE'">
+  <ModalDialog :is-visible="modal == 'ALREADY_HAS_PASSWORD'" :buttons="[{ text: 'OK' }]" @click="modal = 'NONE'">
     <p>User already has a password.</p>
   </ModalDialog>
 </template>

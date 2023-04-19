@@ -105,8 +105,22 @@
 
   <ModalDialog
     :is-visible="modal.state === 'confirm_join'"
-    :buttons="{ join: 'Join', leave: 'Leave' }"
-    @click="confirmJoin"
+    :buttons="[
+      {
+        text: 'Join',
+        click: () => {
+          emit('join', true)
+          modal.set()
+        },
+      },
+      {
+        text: 'Leave',
+        click: () => {
+          emit('join', false)
+          modal.set()
+        },
+      },
+    ]"
   >
     <p>You are about to join a live talk</p>
     <p v-if="inviteLink">
@@ -114,14 +128,23 @@
       <CopyField :value="inviteLink"></CopyField>
     </p>
   </ModalDialog>
-  <ModalDialog :is-visible="modal.state === 'confirm_leave'" :ctrl="modal" :buttons="{ leave: 'Leave', stay: 'Stay' }">
+  <ModalDialog
+    :is-visible="modal.state === 'confirm_leave'"
+    :ctrl="modal"
+    :buttons="[
+      { id: 'stay', text: 'Stay' },
+      { id: 'leave', text: 'Leave' },
+    ]"
+  >
     <p>You are about to leave the talk while presenting.</p>
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
   <ModalDialog
     :is-visible="modal.state === 'recording_finished'"
-    :buttons="{ leave: 'Go to recording', stay: 'Stay' }"
-    @click="recordingFinished"
+    :buttons="[
+      { text: 'Stay', click: () => modal.set() },
+      { text: 'Go to recording', click: recordingFinished },
+    ]"
   >
     <p>Recording finished.</p>
     <p>For demo purposes it is limited to 5 minutes.</p>
@@ -326,16 +349,8 @@ onBeforeRouteLeave(async (to, from, next) => {
   next(btn === "leave")
 })
 
-function confirmJoin(resp: string) {
-  emit("join", resp === "join")
+function recordingFinished() {
   modal.set()
-}
-
-function recordingFinished(resp: string) {
-  modal.set()
-  if (resp !== "leave") {
-    return
-  }
   const talk = Object.assign({}, props.talk)
   talk.state = TalkState.ENDED
   emit("update", talk)

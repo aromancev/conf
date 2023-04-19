@@ -33,7 +33,7 @@ export class ModalController<T extends string> {
     })
   }
 
-  submit(id: string): void {
+  submit(id?: string): void {
     if (!this.submitFunc) {
       return
     }
