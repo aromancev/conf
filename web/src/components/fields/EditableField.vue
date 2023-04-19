@@ -94,7 +94,7 @@ function discard() {
 <style scoped lang="sass">
 @use '@/css/theme'
 
-.field.editable-field
+.field.editable-field:not(.fake):not(.fake)
   border-radius: 4px
   padding: 0
   box-shadow: none
