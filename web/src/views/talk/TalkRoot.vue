@@ -101,7 +101,7 @@ type State = {
 }
 
 const state = reactive<State>({
-  isLoading: false,
+  isLoading: true,
   isJoinConfirmed: false,
 })
 
