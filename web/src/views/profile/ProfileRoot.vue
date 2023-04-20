@@ -65,7 +65,7 @@ const props = defineProps<{
 const router = useRouter()
 
 const profile = ref<Profile | null>()
-const loading = ref(false)
+const loading = ref(true)
 const avatar = ref<string>("")
 
 watch(

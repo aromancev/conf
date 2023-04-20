@@ -101,6 +101,7 @@ async function clapSingle() {
     notificationStore.info("hold to clap continuously")
     tooltipShown += 1
   }
+
   emit("reaction", {
     clap: {
       isStarting: false,

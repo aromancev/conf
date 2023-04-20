@@ -26,6 +26,7 @@ func TestMongo(t *testing.T) {
 				ID:     uuid.New(),
 				Owner:  uuid.New(),
 				Handle: "test1",
+				Title:  "Test !?",
 			}
 			created, err := confas.Create(ctx, request)
 			require.NoError(t, err)

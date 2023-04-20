@@ -97,10 +97,11 @@ const confirmNewPasswordErrors = computed<string[]>(() => {
   if (!isSubmitted.value) {
     return []
   }
-  if (newPassword.value === confirmNewPassword.value) {
-    return []
+  const errs = passwordValidator.validate(newPassword.value)
+  if (newPassword.value !== confirmNewPassword.value) {
+    errs.push("Must be the same as the new password")
   }
-  return ["Must be the same as the new password"]
+  return errs
 })
 
 watch(
@@ -209,6 +210,7 @@ function clearForm() {
   width: theme.$form-width
   height: 100%
   padding: 50px
+  text-align: left
 
 .link
   margin: 0 10px

@@ -86,6 +86,8 @@ function alignHeight() {
 .area
   position: relative
   min-height: 1.25em
+  padding-top: 0.075em // Textarea has a different padding which looks inconsistent with input. Fixing that.
+  overflow: hidden
 
 textarea
   box-sizing: border-box

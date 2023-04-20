@@ -219,6 +219,10 @@ let resetPasswordToken = ""
 watch(
   [() => accessStore.state.account, () => props.action, () => props.token],
   async () => {
+    if (accessStore.state.id === "") {
+      return
+    }
+
     if (!props.action || !props.token) {
       state.value = accessStore.state.account === Account.Guest ? "SIGN_IN_WITH_EMAIL" : "SIGNED_IN"
       return
@@ -255,7 +259,7 @@ watch(
   { immediate: true },
 )
 
-watch([email, password, confirmPassword], () => (isSubmitted.value = false))
+watch([email, password, confirmPassword, state], () => (isSubmitted.value = false))
 
 async function login() {
   if (isSubmitted.value) {

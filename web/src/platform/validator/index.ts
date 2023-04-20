@@ -11,6 +11,6 @@ export class RegexValidator {
     if (this.regex.test(value)) {
       return []
     }
-    return this.errors
+    return [...this.errors]
   }
 }
