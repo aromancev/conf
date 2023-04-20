@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted, ref } from "vue"
+import { reactive, ref, watch } from "vue"
 import { Confa } from "@/api/models/confa"
 import { accessStore } from "@/api/models/access"
 import { api } from "@/api"
@@ -52,9 +52,17 @@ const list = ref<HTMLElement>()
 
 let iterator: ConfaIterator | undefined
 
-onMounted(() => {
-  loadConfas()
-})
+watch(
+  () => accessStore.state.id,
+  () => {
+    if (accessStore.state.id === "") {
+      return
+    }
+
+    loadConfas()
+  },
+  { immediate: true },
+)
 
 async function onScroll() {
   if (!list.value) {

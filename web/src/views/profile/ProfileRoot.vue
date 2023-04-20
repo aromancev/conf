@@ -69,9 +69,13 @@ const loading = ref(false)
 const avatar = ref<string>("")
 
 watch(
-  () => props.handle,
-  async (handle) => {
-    if (!accessStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+  [() => accessStore.state.id, () => props.handle],
+  async () => {
+    if (accessStore.state.id === "") {
+      return
+    }
+
+    if (!accessStore.state.allowedWrite && (props.tab == "edit" || props.handle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -82,12 +86,12 @@ watch(
 
     loading.value = true
     try {
-      if (handle === handleNew) {
+      if (props.handle === handleNew) {
         profile.value = await new ProfileClient(api).update()
         router.replace(route.profile(profile.value.handle, props.tab))
       } else {
         profile.value = await new ProfileClient(api).fetchOne({
-          handle: handle,
+          handle: props.handle,
         })
       }
 

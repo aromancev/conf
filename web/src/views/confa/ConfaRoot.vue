@@ -69,15 +69,19 @@ type State = {
 }
 
 const state = reactive<State>({
-  isLoading: false,
+  isLoading: true,
 })
 
 const router = useRouter()
 
 watch(
-  () => props.handle,
-  async (handle) => {
-    if (!accessStore.state.allowedWrite && (props.tab == "edit" || handle === handleNew)) {
+  [() => accessStore.state.id, () => props.handle],
+  async () => {
+    if (accessStore.state.id === "") {
+      return
+    }
+
+    if (!accessStore.state.allowedWrite && (props.tab == "edit" || props.handle === handleNew)) {
       router.replace(route.login())
       return
     }
@@ -88,12 +92,12 @@ watch(
 
     state.isLoading = true
     try {
-      if (handle === handleNew) {
+      if (props.handle === handleNew) {
         state.confa = await new ConfaClient(api).create()
         router.replace(route.confa(state.confa.handle, props.tab))
       } else {
         state.confa = await new ConfaClient(api).fetchOne({
-          handle: handle,
+          handle: props.handle,
         })
       }
     } catch (e) {
