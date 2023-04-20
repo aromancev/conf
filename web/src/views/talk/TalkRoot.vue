@@ -112,8 +112,12 @@ const inviteLink = computed(() => {
 })
 
 watch(
-  () => props.handle,
-  async (value) => {
+  [() => accessStore.state.id, () => props.handle],
+  async () => {
+    if (accessStore.state.id === "") {
+      return
+    }
+
     if (!accessStore.state.allowedWrite && (props.tab == "edit" || props.confaHandle === handleNew)) {
       router.replace(route.login())
       return
@@ -125,7 +129,7 @@ watch(
 
     state.isLoading = true
     let confaHandle = props.confaHandle
-    let talkHandle = value
+    let talkHandle = props.handle
     try {
       if (props.confaHandle === handleNew) {
         const confa = await new ConfaClient(api).create()
