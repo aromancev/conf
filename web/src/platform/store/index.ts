@@ -16,10 +16,13 @@ export abstract class Store<T extends object> {
   }
 
   set(state: T): void {
-    Object.assign(this.reactive, state)
+    const reactive = this.reactive as { [k: string]: any } // eslint-disable-line  @typescript-eslint/no-explicit-any
+    for (const [k, v] of Object.entries(state)) {
+      reactive[k] = v
+    }
   }
 
   reset(): void {
-    Object.assign(this.reactive, this.init)
+    this.set(this.init)
   }
 }
