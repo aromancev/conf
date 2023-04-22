@@ -260,6 +260,10 @@ watch(
 )
 
 watch([email, password, confirmPassword, state], () => (isSubmitted.value = false))
+watch(state, () => {
+  password.value = ""
+  confirmPassword.value = ""
+})
 
 async function login() {
   if (isSubmitted.value) {
@@ -290,11 +294,11 @@ async function login() {
         break
       case Code.NotFound:
         modal.value = "NOT_FOUND"
-        state.value = "SIGN_IN_WITH_EMAIL"
+        state.value = "SIGN_IN_WITH_PASSWORD"
         break
       default:
         notificationStore.error("failed to login")
-        state.value = "SIGN_IN_WITH_EMAIL"
+        state.value = "SIGN_IN_WITH_PASSWORD"
         break
     }
   }
