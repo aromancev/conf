@@ -1,5 +1,5 @@
 .idea
-.vscode
+.vscode/*.log
 .artifacts
 .proto
 .DS_Store
