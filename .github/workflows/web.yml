@@ -1,0 +1,31 @@
+name: Web
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+        - uses: actions/checkout@v3
+
+        - uses: ./.github/actions/setup-pnpm
+
+        - name: Build
+          working-directory: ./web
+          run: pnpm run build
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+        - uses: actions/checkout@v3
+
+        - uses: ./.github/actions/setup-pnpm
+
+        - name: Lint
+          working-directory: ./web
+          run: pnpm run lint
