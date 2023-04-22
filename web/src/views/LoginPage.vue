@@ -217,7 +217,7 @@ const router = useRouter()
 let resetPasswordToken = ""
 
 watch(
-  [() => accessStore.state.account, () => props.action, () => props.token],
+  [() => accessStore.state.id, () => props.action, () => props.token],
   async () => {
     if (accessStore.state.id === "") {
       return
