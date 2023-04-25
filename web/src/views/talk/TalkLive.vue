@@ -107,16 +107,16 @@
     :is-visible="modal.state === 'confirm_join'"
     :buttons="[
       {
-        text: 'Join',
+        text: 'Leave',
         click: () => {
-          emit('join', true)
+          emit('join', false)
           modal.set()
         },
       },
       {
-        text: 'Leave',
+        text: 'Join',
         click: () => {
-          emit('join', false)
+          emit('join', true)
           modal.set()
         },
       },

@@ -200,13 +200,18 @@ export class ProfileClient {
   }
 
   async refreshProfile(): Promise<void> {
+    const userId = accessStore.state.id
     try {
-      if (accessStore.state.id === "") {
-        throw new APIError(Code.NotFound, "failed to fetch user")
-      }
-      const profile = await this.fetchOne({ ownerIds: [accessStore.state.id] })
+      const profile = await this.fetchOne({ ownerIds: [userId] })
       profileStore.set(profile)
     } catch (e) {
+      profileStore.set({
+        id: "",
+        ownerId: userId,
+        handle: "",
+        avatarThumbnail: "",
+        avatarUrl: "",
+      })
       if (errorCode(e) !== Code.NotFound) {
         throw e
       }
