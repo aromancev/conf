@@ -48,7 +48,8 @@
         :user-id="accessStore.state.id"
         :src="profileStore.state.avatarThumbnail"
       ></ProfileAvatar>
-      <div class="user">Logged in as {{ loggedInAs }}</div>
+      <div v-if="profileStore.isLoading" class="user"></div>
+      <div v-else class="user">Logged in as {{ loggedInAs }}</div>
       <InputField
         v-model="password"
         :spellcheck="false"
@@ -93,7 +94,8 @@
         :user-id="accessStore.state.id"
         :src="profileStore.state.avatarThumbnail"
       ></ProfileAvatar>
-      <div class="user">Logged in as {{ loggedInAs }}</div>
+      <div v-if="profileStore.isLoading" class="user"></div>
+      <div v-else class="user">Logged in as {{ loggedInAs }}</div>
       <router-link class="btn create-talk" :to="route.talk(handleNew, handleNew, 'watch')"
         >Start broadcasting</router-link
       >

@@ -30,7 +30,7 @@
         <button class="btn" :disabled="isSubmitted" @click="updatePassword">Update password</button>
         <span class="link" @click="emailResetPassword">I forgot my password</span>
       </div>
-      <div v-else>
+      <div v-else class="centered">
         <button class="btn" @click="emailCreatePassword">Create password</button>
       </div>
     </div>
@@ -54,12 +54,10 @@ import { accessStore } from "@/api/models/access"
 import { passwordValidator } from "@/api/models/user"
 import { User, UserClient, Platform } from "@/api/user"
 import { api, Code, errorCode } from "@/api"
-import { route } from "@/router"
 import { notificationStore } from "@/api/models/notifications"
 import PageLoader from "@/components/PageLoader.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import { ModalController } from "@/components/modals/controller"
-import router from "@/router"
 
 type Modal = "PASSWORD_EMAIL_SENT" | "PASSWORD_UPDATED" | "WRONG_PASSWORD"
 const oldPassword = ref<string>("")
@@ -169,11 +167,9 @@ async function updatePassword() {
   isLoading.value = true
   try {
     await api.updatePassword(oldPassword.value, newPassword.value)
+    isLoading.value = false
     await modal.set("PASSWORD_UPDATED")
     clearForm()
-    accessStore.logout()
-    api.refreshToken()
-    router.push(route.login())
   } catch (e) {
     if (errorCode(e) === Code.BadRequest) {
       modal.set("WRONG_PASSWORD")
@@ -211,6 +207,9 @@ function clearForm() {
   height: 100%
   padding: 50px
   text-align: left
+
+.centered
+  text-align: center
 
 .link
   margin: 0 10px

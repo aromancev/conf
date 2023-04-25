@@ -13,6 +13,10 @@ export type Profile = {
 }
 
 export class ProfileStore extends Store<Profile> {
+  get isLoading(): boolean {
+    return this.reactive.ownerId === ""
+  }
+
   set(profile: Profile): void {
     super.set(profile)
 
@@ -41,8 +45,6 @@ export const profileStore = new ProfileStore({
   id: "",
   ownerId: "",
   handle: "",
-  givenName: "",
-  familyName: "",
   avatarThumbnail: "",
   avatarUrl: "",
 })

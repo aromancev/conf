@@ -121,6 +121,7 @@ async function loadTalks() {
 
 .talks
   width: 300px
+  min-width: 300px
   margin: 10px
   border-radius: 4px
   text-align: center

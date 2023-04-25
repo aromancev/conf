@@ -26,13 +26,13 @@
   <ModalDialog
     :is-visible="modal === 'delete'"
     :buttons="[
-      { text: 'Delete', click: deleteTalk },
       {
         text: 'Cancel',
         click: () => {
           modal = 'none'
         },
       },
+      { text: 'Delete', click: deleteTalk },
     ]"
   >
     <p>Are you sure you want to delete talk "{{ talk.title || "Untitled" }}"?</p>

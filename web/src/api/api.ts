@@ -312,7 +312,7 @@ export class Client {
       body: JSON.stringify({
         oldPassword: oldPassword,
         newPassword: newPassword,
-        logout: true,
+        logout: false,
       }),
     })
     switch (resp.status) {
