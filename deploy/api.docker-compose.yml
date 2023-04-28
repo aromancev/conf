@@ -8,7 +8,7 @@ services:
       args:
         - VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
         - VITE_SFU_TURN_URLS=turn:turn.confa.io?transport=tcp
-        - VITE_SFU_STUN_URLS=stun:stun.stunprotocol.org:3478
+        - VITE_SFU_STUN_URLS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302
         - VITE_STORAGE_URL=/api/storage
         - VITE_GSI_CLIENT_ID=453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
     networks:

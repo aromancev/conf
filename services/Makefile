@@ -9,9 +9,9 @@ test:
 lint:
 	docker run \
 		--rm \
-		-t \
+		-it \
 		-w /app \
-		-v `pwd`:/app \
+		-v `pwd`:/app:delegated \
 		golangci/golangci-lint:v1.51-alpine golangci-lint run
 
 .PHONY: build
