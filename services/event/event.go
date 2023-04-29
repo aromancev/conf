@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,11 +61,11 @@ func (e Event) Validate() error {
 }
 
 type Payload struct {
-	PeerState      *PayloadPeerState      `bson:"peerState"`
-	Message        *PayloadMessage        `bson:"message"`
-	Recording      *PayloadRecording      `bson:"recording"`
-	TrackRecording *PayloadTrackRecording `bson:"trackRecording"`
-	Reaction       *PayloadReaction       `bson:"reaction"`
+	PeerState   *PayloadPeerState   `bson:"peerState"`
+	Message     *PayloadMessage     `bson:"message"`
+	Recording   *PayloadRecording   `bson:"recording"`
+	TrackRecord *PayloadTrackRecord `bson:"trackRecording"`
+	Reaction    *PayloadReaction    `bson:"reaction"`
 }
 
 func (p Payload) Validate() error {
@@ -89,8 +88,8 @@ func (p Payload) Validate() error {
 		}
 		hasPayload = true
 	}
-	if p.TrackRecording != nil {
-		if err := p.TrackRecording.Validate(); err != nil {
+	if p.TrackRecord != nil {
+		if err := p.TrackRecord.Validate(); err != nil {
 			return err
 		}
 		hasPayload = true
@@ -111,7 +110,6 @@ type PayloadPeerState struct {
 	Peer      uuid.UUID  `bson:"peerId"`
 	SessionID uuid.UUID  `bson:"sessionId"`
 	Status    PeerStatus `bson:"status,omitempty"`
-	Tracks    []Track    `bson:"tracks,omitempty"`
 }
 
 func (p PayloadPeerState) Validate() error {
@@ -120,14 +118,6 @@ func (p PayloadPeerState) Validate() error {
 	}
 	if p.SessionID == uuid.Nil {
 		return errors.New("session must not be nil")
-	}
-	if len(p.Tracks) > 3 {
-		return errors.New("no more than 3 tracks allowed")
-	}
-	for _, t := range p.Tracks {
-		if err := t.Validate(); err != nil {
-			return fmt.Errorf("invalid track: %w", err)
-		}
 	}
 	switch p.Status {
 	case "", PeerJoined, PeerLeft:
@@ -140,34 +130,8 @@ func (p PayloadPeerState) Validate() error {
 type PeerStatus string
 
 const (
-	PeerJoined PeerStatus = "joined"
-	PeerLeft   PeerStatus = "left"
-)
-
-type Track struct {
-	ID   string    `bson:"id"`
-	Hint TrackHint `bson:"hint"`
-}
-
-func (t Track) Validate() error {
-	if t.ID == "" {
-		return errors.New("id must not be empty")
-	}
-	switch t.Hint {
-	case HintCamera, HintScreen, HintUserAudio, HintDeviceAudio:
-	default:
-		return errors.New("invalid hint")
-	}
-	return nil
-}
-
-type TrackHint string
-
-const (
-	HintCamera      = "camera"
-	HintScreen      = "screen"
-	HintUserAudio   = "user_audio"
-	HintDeviceAudio = "device_audio"
+	PeerJoined PeerStatus = "JOINED"
+	PeerLeft   PeerStatus = "LEFT"
 )
 
 type PayloadMessage struct {
@@ -188,8 +152,8 @@ func (p PayloadMessage) Validate() error {
 type RecordStatus string
 
 const (
-	RecordingStarted = "started"
-	RecordingStopped = "stopped"
+	RecordingStarted = "STARTED"
+	RecordingStopped = "STOPPED"
 )
 
 type PayloadRecording struct {
@@ -205,17 +169,32 @@ func (p PayloadRecording) Validate() error {
 	return nil
 }
 
-type PayloadTrackRecording struct {
-	ID      uuid.UUID `bson:"id"`
-	TrackID string    `bson:"trackId"`
+type TrackKind string
+
+const (
+	TrackKindAudio TrackKind = "AUDIO"
+	TrackKindVideo TrackKind = "VIDEO"
+)
+
+type TrackSource string
+
+const (
+	TrackSourceUnknown     TrackSource = "UNKNOWN"
+	TrackSourceCamera      TrackSource = "CAMERA"
+	TrackSourceMicrophone  TrackSource = "MICROPHONE"
+	TrackSourceScreen      TrackSource = "SCREEN"
+	TrackSourceScreenAudio TrackSource = "SCREEN_AUDIO"
+)
+
+type PayloadTrackRecord struct {
+	RecordID uuid.UUID   `bson:"recordId"`
+	Kind     TrackKind   `bson:"trackKind"`
+	Source   TrackSource `bson:"trackSource"`
 }
 
-func (p PayloadTrackRecording) Validate() error {
-	if p.ID == uuid.Nil {
+func (p PayloadTrackRecord) Validate() error {
+	if p.RecordID == uuid.Nil {
 		return errors.New("id should not be zero")
-	}
-	if p.TrackID == "" {
-		return errors.New("track id should not be zero")
 	}
 	return nil
 }

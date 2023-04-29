@@ -4,21 +4,24 @@
       <div class="video-content">
         <div class="videos">
           <div class="screen video-container">
-            <RoomLiveVideo v-if="screen" class="video screen-video" :src="screen"> </RoomLiveVideo>
+            <RoomLiveVideo
+              v-if="localScreen || remoteScreen"
+              class="video screen-video"
+              :track="localScreen || remoteScreen"
+            ></RoomLiveVideo>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">desktop_access_disabled</div>
             </div>
-            <div v-if="recordingStatus === 'recording'" class="rec-indicator"></div>
+            <div v-if="recordingStatus === 'RECORDING'" class="rec-indicator"></div>
           </div>
           <div class="camera video-container">
-            <video
-              v-if="camera"
+            <RoomLiveVideo
+              v-if="localCamera || remoteCamera"
+              :track="localCamera || remoteCamera"
               class="video camera-video"
-              :class="{ local: room.state.local.camera }"
-              :srcObject="camera"
-              autoplay
-              muted
-            ></video>
+              :class="{ local: localCamera }"
+              :disable-controls="true"
+            ></RoomLiveVideo>
             <div v-else class="video-off">
               <div class="video-off-icon material-icons">videocam_off</div>
             </div>
@@ -28,7 +31,7 @@
       <RoomAudience
         ref="audience"
         :user-id="accessStore.state.id"
-        :is-loading="!isRoomReady"
+        :is-loading="room.state.rtc !== 'CONNECTED'"
         :is-playing="true"
         :peers="room.state.peers"
         :statuses="room.state.statuses"
@@ -40,46 +43,46 @@
         <div
           v-if="accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: room.state.local.screen }"
-          :disabled="!isMediaReady ? true : null"
+          :class="{ active: localScreen }"
+          :disabled="room.state.sfu !== 'CONNECTED' ? true : null"
           @click="room.switchScreen"
         >
-          {{ room.state.local.screen ? "desktop_windows" : "desktop_access_disabled" }}
+          {{ localScreen ? "desktop_windows" : "desktop_access_disabled" }}
         </div>
         <div
           v-if="accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: room.state.local.camera }"
-          :disabled="!isMediaReady ? true : null"
+          :class="{ active: localCamera }"
+          :disabled="room.state.sfu !== 'CONNECTED' ? true : null"
           @click="room.switchCamera"
         >
-          {{ room.state.local.camera ? "videocam" : "videocam_off" }}
+          {{ localCamera ? "videocam" : "videocam_off" }}
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ active: room.state.local.mic }"
-          :disabled="!isMediaReady ? true : null"
+          :class="{ active: localMic }"
+          :disabled="room.state.sfu !== 'CONNECTED' ? true : null"
           @click="room.switchMic"
         >
-          {{ room.state.local.mic ? "mic" : "mic_off" }}
+          {{ localMic ? "mic" : "mic_off" }}
         </div>
         <div
-          v-if="recordingStatus !== 'stopped' && accessStore.state.id === talk.ownerId"
+          v-if="recordingStatus !== 'STOPPED' && accessStore.state.id === talk.ownerId"
           class="ctrl-btn btn-switch material-icons record-icon"
-          :disabled="recordingStatus === 'pending' ? true : null"
+          :disabled="recordingStatus === 'PENDING' ? true : null"
           @click="handleRecording"
         >
-          {{ recordingStatus !== "recording" ? "radio_button_checked" : "stop_circle" }}
+          {{ recordingStatus !== "RECORDING" ? "radio_button_checked" : "stop_circle" }}
         </div>
       </div>
       <div class="controls-bottom">
-        <div v-if="sidePanel !== 'none'" class="ctrl-btn btn-switch material-icons" @click="switchSidePanel('none')">
+        <div v-if="sidePanel !== 'NONE'" class="ctrl-btn btn-switch material-icons" @click="switchSidePanel('NONE')">
           close
         </div>
         <div
           class="ctrl-btn btn-switch material-icons"
-          :class="{ pressed: sidePanel === 'chat' }"
-          @click="switchSidePanel('chat')"
+          :class="{ pressed: sidePanel === 'CHAT' }"
+          @click="switchSidePanel('CHAT')"
         >
           chat
           <div
@@ -89,34 +92,31 @@
         </div>
       </div>
     </div>
-    <div v-if="sidePanel !== 'none'" class="side-panel">
+    <div v-if="sidePanel !== 'NONE'" class="side-panel">
       <RoomMessages
         :user-id="accessStore.state.id"
         :messages="room.state.messages"
-        :is-loading="!isRoomReady"
+        :is-loading="room.state.rtc !== 'CONNECTED'"
         @sent="sendMessage"
       />
     </div>
   </div>
 
-  <div v-if="joinConfirmed">
-    <audio v-for="stream in audios" :key="stream.id" :srcObject="stream" autoplay></audio>
-  </div>
+  <RoomLiveAudio v-for="t in remoteMics" :key="t.id" :track="t"></RoomLiveAudio>
 
   <ModalDialog
-    :is-visible="modal.state === 'confirm_join'"
+    :is-visible="modal.state === 'CONFIRM_SFU_CONNECT'"
     :buttons="[
       {
         text: 'Leave',
         click: () => {
-          emit('join', false)
-          modal.set()
+          router.push(route.talk(props.confaHandle, talk.handle, 'overview'))
         },
       },
       {
         text: 'Join',
         click: () => {
-          emit('join', true)
+          room.connectSFU(roomId)
           modal.set()
         },
       },
@@ -129,7 +129,28 @@
     </p>
   </ModalDialog>
   <ModalDialog
-    :is-visible="modal.state === 'confirm_leave'"
+    :is-visible="modal.state === 'CONFIRM_SFU_RECONNECT'"
+    :buttons="[
+      {
+        text: 'Leave',
+        click: () => {
+          router.push(route.talk(props.confaHandle, talk.handle, 'overview'))
+        },
+      },
+      {
+        text: 'Reconnect',
+        click: () => {
+          room.connectSFU(roomId)
+          modal.set()
+        },
+      },
+    ]"
+  >
+    <p>You joined this talk from another device or tab</p>
+    <p>Only one active session is allowed</p>
+  </ModalDialog>
+  <ModalDialog
+    :is-visible="modal.state === 'CONFIRM_LEAVE'"
     :ctrl="modal"
     :buttons="[
       { id: 'stay', text: 'Stay' },
@@ -140,7 +161,7 @@
     <p>If you leave, your presentation will end.</p>
   </ModalDialog>
   <ModalDialog
-    :is-visible="modal.state === 'recording_finished'"
+    :is-visible="modal.state === 'RECORDING_FINISHED'"
     :buttons="[
       { text: 'Stay', click: () => modal.set() },
       { text: 'Go to recording', click: recordingFinished },
@@ -152,36 +173,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted, onMounted } from "vue"
+import { ref, computed, watch, nextTick, onUnmounted, provide } from "vue"
+import { useRouter } from "vue-router"
 import { onBeforeRouteLeave } from "vue-router"
 import { api } from "@/api"
 import { TalkClient } from "@/api/talk"
 import { Talk, TalkState } from "@/api/models/talk"
 import { accessStore } from "@/api/models/access"
 import { LiveRoom } from "@/components/room"
-import { Hint, Reaction } from "@/api/room/schema"
+import { Reaction, TrackSource } from "@/api/rtc/schema"
 import { ModalController } from "@/components/modals/controller"
+import { Track } from "@/components/room/live"
 import RoomAudience from "@/components/room/RoomAudience.vue"
 import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomLiveVideo from "@/components/room/RoomLiveVideo.vue"
+import RoomLiveAudio from "@/components/room/RoomLiveAudio.vue"
 import RoomReactions from "@/components/room/RoomReactions.vue"
 import ModalDialog from "@/components/modals/ModalDialog.vue"
 import CopyField from "@/components/fields/CopyField.vue"
 import { Throttler } from "@/platform/sync"
 import { notificationStore } from "@/api/models/notifications"
+import { route } from "@/router"
 
-type RecordingStatus = "none" | "pending" | "recording" | "stopped"
+type RecordingStatus = "NONE" | "PENDING" | "RECORDING" | "STOPPED"
 
-const modal = new ModalController<"confirm_join" | "confirm_leave" | "recording_finished">()
+const modal = new ModalController<
+  "CONFIRM_SFU_CONNECT" | "CONFIRM_LEAVE" | "RECORDING_FINISHED" | "CONFIRM_SFU_RECONNECT"
+>("CONFIRM_SFU_CONNECT")
 
-type SidePanel = "none" | "chat"
+type SidePanel = "NONE" | "CHAT"
 
-interface Resizer {
+type Resizer = {
   resize(): void
 }
 
 const emit = defineEmits<{
-  (e: "join", confirmed: boolean): void
   (e: "update", talk: Talk): void
 }>()
 
@@ -189,66 +215,52 @@ const props = defineProps<{
   talk: Talk
   confaHandle: string
   inviteLink?: string
-  joinConfirmed?: boolean
 }>()
 
+const router = useRouter()
+
 const sidePanelKey = "roomSidePanel"
-const sidePanel = ref<SidePanel>((localStorage.getItem(sidePanelKey) as SidePanel) || "none")
+const sidePanel = ref<SidePanel>((localStorage.getItem(sidePanelKey) as SidePanel) || "NONE")
 const audience = ref<Resizer>()
 const room = new LiveRoom()
-const recordingStatus = ref<RecordingStatus>("none")
+const recordingStatus = ref<RecordingStatus>("NONE")
 const roomId = computed<string>(() => {
   return props.talk.roomId
 })
 const lastReadMessageId = ref<string>("")
 
-const screen = computed<MediaStream | undefined>(() => {
-  if (room.state.local.screen) {
-    return room.state.local.screen
-  }
-
-  for (const stream of room.state.remote.values()) {
-    if (stream.hint === Hint.Screen) {
-      return stream.sourse
+const localScreen = computed<Track | undefined>(() => {
+  return track(room.state.localTracks, TrackSource.Screen)
+})
+const remoteScreen = computed<Track | undefined>(() => {
+  return track(room.state.remoteTracks, TrackSource.Screen)
+})
+const localCamera = computed<Track | undefined>(() => {
+  return track(room.state.localTracks, TrackSource.Camera)
+})
+const remoteCamera = computed<Track | undefined>(() => {
+  return track(room.state.remoteTracks, TrackSource.Camera)
+})
+const localMic = computed<Track | undefined>(() => {
+  return track(room.state.localTracks, TrackSource.Microphone)
+})
+const remoteMics = computed<Track[]>(() => {
+  const tracks: Track[] = []
+  for (const track of room.state.remoteTracks.values()) {
+    if (track.source === TrackSource.Microphone) {
+      tracks.push(track)
     }
   }
-  return undefined
-})
-const camera = computed<MediaStream | undefined>(() => {
-  if (room.state.local.camera) {
-    return room.state.local.camera
-  }
-
-  for (const stream of room.state.remote.values()) {
-    if (stream.hint === Hint.Camera) {
-      return stream.sourse
-    }
-  }
-  return undefined
-})
-const audios = computed<MediaStream[]>(() => {
-  const auds: MediaStream[] = []
-  for (const stream of room.state.remote.values()) {
-    if (stream.hint === Hint.UserAudio) {
-      auds.push(stream.sourse)
-    }
-  }
-  return auds
-})
-const isRoomReady = computed<boolean>(() => {
-  return !room.state.isLoading && !room.state.error
-})
-const isMediaReady = computed<boolean>(() => {
-  return !room.state.isLoading && !room.state.error && !room.state.isPublishing && room.state.joinedMedia
+  return tracks
 })
 
 const connectThrottler = new Throttler({ delayMs: 1000 })
 let connectRetries = 0
 connectThrottler.func = async () => {
   try {
-    await room.joinRTC(roomId.value)
-    if (props.joinConfirmed) {
-      await room.joinMedia()
+    await room.connectRTC(roomId.value)
+    if (!modal.state) {
+      await room.connectSFU(roomId.value)
     }
     if (connectRetries > 0) {
       notificationStore.info("connection restored")
@@ -263,6 +275,8 @@ connectThrottler.func = async () => {
   }
 }
 
+provide("attacher", room)
+
 watch(
   [roomId, () => accessStore.state.id],
   () => {
@@ -273,20 +287,30 @@ watch(
 
 watch(room.state.recording, async (r) => {
   if (r.isRecording) {
-    recordingStatus.value = "recording"
+    recordingStatus.value = "RECORDING"
   } else {
-    recordingStatus.value = "stopped"
-    modal.set("recording_finished")
+    recordingStatus.value = "STOPPED"
+    modal.set("RECORDING_FINISHED")
   }
 })
 
 watch(
-  () => room.state.error,
-  async (err) => {
-    if (!err) {
+  () => room.state.rtc,
+  async (state) => {
+    if (state !== "ERROR") {
       return
     }
     connectThrottler.do()
+  },
+)
+
+watch(
+  () => room.state.sfu,
+  async (state) => {
+    if (state !== "DISCONNECTED") {
+      return
+    }
+    modal.set("CONFIRM_SFU_RECONNECT")
   },
 )
 
@@ -299,10 +323,10 @@ watch(
 
     switch (state) {
       case TalkState.RECORDING:
-        recordingStatus.value = "recording"
+        recordingStatus.value = "RECORDING"
         break
       case TalkState.ENDED:
-        recordingStatus.value = "stopped"
+        recordingStatus.value = "STOPPED"
         break
     }
   },
@@ -310,28 +334,8 @@ watch(
 )
 
 watch([room.state.messages, sidePanel], () => {
-  if (sidePanel.value === "chat") {
+  if (sidePanel.value === "CHAT") {
     lastReadMessageId.value = room.state.messages.at(-1)?.id || ""
-  }
-})
-
-watch(
-  () => props.joinConfirmed,
-  async (joined) => {
-    if (!joined || room.state.joinedMedia) {
-      return
-    }
-    try {
-      await room.joinMedia()
-    } catch (e) {
-      connectThrottler.do()
-    }
-  },
-)
-
-onMounted(() => {
-  if (!props.joinConfirmed) {
-    modal.set("confirm_join")
   }
 })
 
@@ -341,13 +345,22 @@ onUnmounted(() => {
 })
 
 onBeforeRouteLeave(async (to, from, next) => {
-  if (!room.state.local.screen && !room.state.local.camera && !room.state.local.mic) {
+  if (room.state.localTracks.size === 0) {
     next()
     return
   }
-  const btn = await modal.set("confirm_leave")
+  const btn = await modal.set("CONFIRM_LEAVE")
   next(btn === "leave")
 })
+
+function track(tracks: Map<string, Track>, source: TrackSource): Track | undefined {
+  for (const t of tracks.values()) {
+    if (t.source === source) {
+      return t
+    }
+  }
+  return undefined
+}
 
 function recordingFinished() {
   modal.set()
@@ -366,7 +379,7 @@ function sendReaction(reaction: Reaction) {
 
 function switchSidePanel(panel: SidePanel) {
   if (sidePanel.value === panel) {
-    panel = "none"
+    panel = "NONE"
   } else {
     sidePanel.value = panel
   }
@@ -379,16 +392,16 @@ function switchSidePanel(panel: SidePanel) {
 
 async function handleRecording() {
   switch (recordingStatus.value) {
-    case "none":
-      recordingStatus.value = "pending"
+    case "NONE":
+      recordingStatus.value = "PENDING"
       try {
         await new TalkClient(api).startRecording({ id: props.talk.id })
       } catch (e) {
         notificationStore.error("failed to start recording")
       }
       break
-    case "recording":
-      recordingStatus.value = "pending"
+    case "RECORDING":
+      recordingStatus.value = "PENDING"
       try {
         await new TalkClient(api).stopRecording({ id: props.talk.id })
       } catch (e) {

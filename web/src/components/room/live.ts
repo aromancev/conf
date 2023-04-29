@@ -1,76 +1,103 @@
-import { LocalStream, Constraints } from "ion-sdk-js"
 import { reactive, readonly } from "vue"
+import {
+  Room,
+  RemoteTrack,
+  RoomEvent as SFURoomEvent,
+  LocalTrackPublication,
+  RemoteTrackPublication,
+  Track as LiveKitTrack,
+  ConnectionState,
+} from "livekit-client"
 import { api } from "@/api"
-import { RTCPeer } from "@/api/room"
+import { RTCPeer } from "@/api/rtc"
 import { BufferedAggregator } from "./aggregators/buffered"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
 import { Peer, Status, PeerAggregator } from "./aggregators/peers"
-import { Stream, StreamAggregator } from "./aggregators/streams"
 import { RecordingAggregator } from "./aggregators/recording"
-import { RoomEvent, Hint, Track, Reaction } from "@/api/room/schema"
+import { RoomEvent, Reaction, TrackSource } from "@/api/rtc/schema"
 import { FIFOMap } from "@/platform/cache"
 import { EventClient } from "@/api/event"
+import { RoomClient } from "@/api/room"
+import { notificationStore } from "@/api/models/notifications"
+import { config } from "@/config"
 
 const UPDATE_TIME_INTERVAL_MS = 300
 const PROFILE_CACHE_SIZE = 500
 const MAX_PEERS = 3000
 const MAX_STREAMS = 10
-const MAX_TRACKS = 10
 const LOAD_EVENTS = 3000
 
-interface State {
+export type Track = {
+  id: string
+  source: TrackSource
+}
+
+export type State = {
   peers: Map<string, Peer>
   statuses: Map<string, Status>
   messages: Message[]
-  isPublishing: boolean
-  isLoading: boolean
-  joinedMedia: boolean
   recording: {
     isRecording: boolean
   }
-  remote: Map<string, Stream>
-  local: {
-    camera?: LocalStream
-    screen?: LocalStream
-    mic?: LocalStream
-  }
-  error?: Error
+  remoteTracks: Map<string, Track>
+  localTracks: Map<string, Track>
+  sfu: SFUState
+  rtc: RTCState
 }
 
-type Error = "UNKNOWN"
+type RTCState = "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "ERROR"
+type SFUState = "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "ERROR"
 
 export class LiveRoom {
-  private rtc: RTCPeer
   private readonly reactive: State
   private readonly readonly: State
-  private peerState: PeerState
+  private readonly tracks: Map<string, LiveKitTrack>
+  private rtc: RTCPeer
+  private sfu: Room
   private profileRepo: ProfileRepository
   private messageAggregator?: MessageAggregator
-  private setTimeIntervalId: ReturnType<typeof setInterval>
+  private setTimeIntervalId: number
 
   constructor() {
     this.reactive = reactive<State>({
       peers: new FIFOMap(MAX_PEERS),
       statuses: new FIFOMap(MAX_PEERS),
-      remote: new FIFOMap(MAX_STREAMS),
+      remoteTracks: new FIFOMap(MAX_STREAMS),
+      localTracks: new FIFOMap(MAX_STREAMS),
       messages: [],
-      isLoading: false,
-      isPublishing: false,
-      joinedMedia: false,
       recording: {
         isRecording: false,
       },
-      local: {},
+      sfu: "DISCONNECTED",
+      rtc: "DISCONNECTED",
     }) as State
     this.readonly = readonly(this.reactive) as State
+    this.tracks = new FIFOMap(MAX_STREAMS * 2)
     this.profileRepo = new ProfileRepository(PROFILE_CACHE_SIZE, 3000)
-    this.peerState = { tracks: new FIFOMap(MAX_TRACKS) }
     this.rtc = new RTCPeer()
     this.rtc.onerror = () => {
       this.close()
-      this.reactive.error = "UNKNOWN"
+      this.reactive.rtc = "ERROR"
     }
+    this.sfu = new Room()
+    this.sfu.on(SFURoomEvent.TrackSubscribed, this.addRemoteTrack.bind(this))
+    this.sfu.on(SFURoomEvent.TrackUnsubscribed, this.removeRemoteTrack.bind(this))
+    this.sfu.on(SFURoomEvent.LocalTrackPublished, this.addLocalTrack.bind(this))
+    this.sfu.on(SFURoomEvent.LocalTrackUnpublished, this.removeLocalTrack.bind(this))
+    this.sfu.on(SFURoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
+      switch (state) {
+        case ConnectionState.Connecting:
+        case ConnectionState.Reconnecting:
+          this.reactive.sfu = "CONNECTING"
+          break
+        case ConnectionState.Disconnected:
+          this.reactive.sfu = "DISCONNECTED"
+          break
+        case ConnectionState.Connected:
+          this.reactive.sfu = "CONNECTED"
+      }
+    })
     this.setTimeIntervalId = 0
   }
 
@@ -79,31 +106,38 @@ export class LiveRoom {
   }
 
   async close(): Promise<void> {
+    Promise.all([this.disconnectRTC(), this.disconnectSFU()])
+  }
+
+  async disconnectRTC(): Promise<void> {
     clearInterval(this.setTimeIntervalId)
-    this.unshareScreen()
-    this.unshareCamera()
-    this.unshareMic()
     await this.rtc.close()
     this.reactive.peers.clear()
     this.reactive.statuses.clear()
-    this.reactive.remote.clear()
     this.reactive.messages.slice(0, this.reactive.messages.length)
-    this.reactive.isLoading = false
-    this.reactive.joinedMedia = false
-    this.reactive.recording.isRecording = false
-    this.peerState = { tracks: new Map() }
+    this.reactive.rtc = "DISCONNECTED"
   }
 
-  async joinRTC(roomId: string): Promise<void> {
-    await this.close()
-    this.reactive.isLoading = true
+  async disconnectSFU(): Promise<void> {
+    this.unshareScreen()
+    this.unshareCamera()
+    this.unshareMic()
+    await this.sfu.disconnect()
+    this.reactive.remoteTracks.clear()
+    this.reactive.localTracks.clear()
+    this.tracks.clear()
+    this.reactive.sfu = "DISCONNECTED"
+  }
 
+  async connectRTC(roomId: string): Promise<void> {
+    await this.disconnectRTC()
+
+    this.reactive.rtc = "CONNECTING"
     try {
-      const streams = new StreamAggregator(this.reactive.remote)
       const peers = new PeerAggregator(this.reactive.peers, this.reactive.statuses, this.profileRepo)
       const recording = new RecordingAggregator(this.reactive.recording)
       this.messageAggregator = new MessageAggregator(this.reactive.messages, this.profileRepo)
-      const aggregators = new BufferedAggregator([peers, streams, recording, this.messageAggregator], 50)
+      const aggregators = new BufferedAggregator([peers, recording, this.messageAggregator], 50)
 
       let serverNow = 0
       let serverNowAt = 0
@@ -114,7 +148,6 @@ export class LiveRoom {
         }
         aggregators.put(event)
       }
-      this.rtc.ontrack = (t, s) => streams.addTrack(t, s)
       await this.rtc.joinRTC(roomId)
 
       const iter = new EventClient(api).fetch({ roomId: roomId }, { policy: "network-only", cursor: { Asc: true } })
@@ -124,7 +157,7 @@ export class LiveRoom {
       aggregators.flush()
 
       // Update aggregators about current time on the server which is taken from received events.
-      this.setTimeIntervalId = setInterval(() => {
+      this.setTimeIntervalId = window.setInterval(() => {
         if (!serverNow) {
           return
         }
@@ -132,16 +165,25 @@ export class LiveRoom {
         aggregators.setTime(serverNow + elapsed)
       }, UPDATE_TIME_INTERVAL_MS)
 
-      this.reactive.error = undefined
-    } finally {
-      this.reactive.isLoading = false
+      this.reactive.rtc = "CONNECTED"
+    } catch {
+      notificationStore.error("real time communication failed")
+      this.reactive.rtc = "ERROR"
     }
   }
 
-  async joinMedia(): Promise<void> {
-    this.reactive.joinedMedia = false
-    await this.rtc.joinMedia()
-    this.reactive.joinedMedia = true
+  async connectSFU(roomId: string): Promise<void> {
+    await this.disconnectSFU()
+
+    this.reactive.sfu = "CONNECTING"
+    try {
+      const token = await new RoomClient(api).requestSFUAccess(roomId)
+      await this.sfu.connect(config.sfu.url, token)
+      this.reactive.sfu = "CONNECTED"
+    } catch {
+      notificationStore.error("real time communication failed")
+      this.reactive.sfu = "ERROR"
+    }
   }
 
   async send(userId: string, message: string): Promise<void> {
@@ -161,142 +203,156 @@ export class LiveRoom {
     await this.rtc.reaction(reaction)
   }
 
-  switchCamera() {
-    if (this.reactive.local.camera) {
-      this.unshareCamera()
+  async switchCamera() {
+    if (this.sfu.localParticipant.isCameraEnabled) {
+      await this.unshareCamera()
     } else {
-      this.shareCamera()
+      await this.shareCamera()
     }
   }
 
-  switchScreen() {
-    if (this.reactive.local.screen) {
-      this.unshareScreen()
+  async switchScreen() {
+    if (this.sfu.localParticipant.isScreenShareEnabled) {
+      await this.unshareScreen()
     } else {
-      this.shareScreen()
+      await this.shareScreen()
     }
   }
 
-  switchMic() {
-    if (this.reactive.local.mic) {
-      this.unshareMic()
+  async switchMic() {
+    if (this.sfu.localParticipant.isMicrophoneEnabled) {
+      await this.unshareMic()
     } else {
-      this.shareMic()
+      await this.shareMic()
     }
   }
 
   async shareCamera() {
-    if (!this.reactive.joinedMedia) {
+    if (this.reactive.sfu !== "CONNECTED") {
       return
     }
-    this.reactive.local.camera = await this.share(async () => {
-      return await LocalStream.getUserMedia({
-        codec: "vp8",
-        resolution: "vga",
-        simulcast: false,
-        video: true,
-        audio: false,
-      })
-    }, Hint.Camera)
+    try {
+      await this.sfu.localParticipant.setCameraEnabled(true)
+    } catch {
+      this.disconnectSFU()
+    }
   }
 
-  unshareCamera() {
-    this.unshare(this.reactive.local.camera)
-    this.reactive.local.camera = undefined
+  async unshareCamera() {
+    try {
+      const pub = await this.sfu.localParticipant.setCameraEnabled(false)
+      if (!pub?.track) {
+        return
+      }
+      this.sfu.localParticipant.unpublishTrack(pub.track)
+    } catch {
+      this.disconnectSFU()
+    }
   }
 
   async shareScreen() {
-    if (!this.reactive.joinedMedia) {
-      return
-    }
-    this.reactive.local.screen = await this.share(async () => {
-      const stream = await LocalStream.getDisplayMedia({
-        codec: "vp8",
-        resolution: "hd",
-        simulcast: false,
-        video: {
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 },
-          frameRate: {
-            ideal: 30,
-            max: 30,
-          },
-        },
-        audio: false,
-      })
-      for (const t of stream.getTracks()) {
-        t.onended = () => {
-          this.unshareScreen()
-        }
+    try {
+      if (this.reactive.sfu !== "CONNECTED") {
+        return
       }
-      return stream
-    }, Hint.Screen)
+      await this.sfu.localParticipant.setScreenShareEnabled(true)
+    } catch {
+      this.disconnectSFU()
+    }
   }
 
-  unshareScreen() {
-    this.unshare(this.reactive.local.screen)
-    this.reactive.local.screen = undefined
+  async unshareScreen() {
+    try {
+      const pub = await this.sfu.localParticipant.setScreenShareEnabled(false)
+      if (!pub?.track) {
+        return
+      }
+      this.sfu.localParticipant.unpublishTrack(pub.track)
+    } catch {
+      this.disconnectSFU()
+    }
   }
 
   async shareMic() {
-    if (!this.reactive.joinedMedia) {
-      return
-    }
-    this.reactive.local.mic = await this.share(() => {
-      return LocalStream.getUserMedia({
-        video: false,
-        audio: true,
-      } as Constraints)
-    }, Hint.UserAudio)
-  }
-
-  unshareMic() {
-    this.unshare(this.reactive.local.mic)
-    this.reactive.local.mic = undefined
-  }
-
-  private async share(fetch: () => Promise<LocalStream>, hint: Hint): Promise<LocalStream | undefined> {
-    if (!this.rtc || this.reactive.isLoading || this.reactive.isPublishing) {
-      return undefined
-    }
-
-    this.reactive.isPublishing = true
     try {
-      const stream = await fetch()
-      const tId = trackId(stream)
-      this.peerState.tracks.set(tId, { id: tId, hint: hint })
-      await this.rtc.state({ tracks: Array.from(this.peerState.tracks.values()) })
-      this.rtc.publish(stream)
-      return stream
-    } catch (e) {
-      console.warn("Failed to share media:", e)
-      return undefined
-    } finally {
-      this.reactive.isPublishing = false
+      if (this.reactive.sfu !== "CONNECTED") {
+        return
+      }
+      await this.sfu.localParticipant.setMicrophoneEnabled(true)
+    } catch {
+      this.disconnectSFU()
     }
   }
 
-  private unshare(stream: LocalStream | null | undefined) {
-    if (!stream) {
+  async unshareMic() {
+    try {
+      const pub = await this.sfu.localParticipant.setMicrophoneEnabled(false)
+      if (!pub?.track) {
+        return
+      }
+      this.sfu.localParticipant.unpublishTrack(pub.track)
+    } catch {
+      this.disconnectSFU()
+    }
+  }
+
+  attach(trackId: string, el: HTMLMediaElement) {
+    const track = this.tracks.get(trackId)
+    if (!track) {
       return
     }
-    this.peerState.tracks.delete(trackId(stream))
-    stream.unpublish()
-    for (const t of stream.getTracks()) {
-      t.stop()
-      stream.removeTrack(t)
+    track.attach(el)
+  }
+
+  private addLocalTrack(publication: LocalTrackPublication) {
+    const track = publication.track
+    if (!track) {
+      return
     }
+
+    this.tracks.set(publication.trackSid, track)
+    this.reactive.localTracks.set(publication.trackSid, {
+      id: publication.trackSid,
+      source: source(track.source),
+    })
+  }
+
+  private removeLocalTrack(publication: LocalTrackPublication) {
+    publication.track?.detach()
+    this.tracks.delete(publication.trackSid)
+    this.reactive.localTracks.delete(publication.trackSid)
+  }
+
+  private addRemoteTrack(track: RemoteTrack, publication: RemoteTrackPublication) {
+    if (track.kind !== LiveKitTrack.Kind.Video && track.kind !== LiveKitTrack.Kind.Audio) {
+      return
+    }
+
+    this.tracks.set(publication.trackSid, track)
+    this.reactive.remoteTracks.set(publication.trackSid, {
+      id: publication.trackSid,
+      source: source(track.source),
+    })
+  }
+
+  private removeRemoteTrack(track: RemoteTrack, publication: RemoteTrackPublication) {
+    track.detach()
+    this.tracks.delete(publication.trackSid)
+    this.reactive.remoteTracks.delete(publication.trackSid)
   }
 }
 
-interface PeerState {
-  tracks: Map<string, Track>
-}
-
-function trackId(s: MediaStream): string {
-  const tracks = s.getTracks()
-  if (tracks.length < 1) {
-    return ""
+function source(s: LiveKitTrack.Source): TrackSource {
+  switch (s) {
+    case LiveKitTrack.Source.Camera:
+      return TrackSource.Camera
+    case LiveKitTrack.Source.Microphone:
+      return TrackSource.Microphone
+    case LiveKitTrack.Source.ScreenShare:
+      return TrackSource.Screen
+    case LiveKitTrack.Source.ScreenShareAudio:
+      return TrackSource.ScreenAudio
+    default:
+      return TrackSource.Unknown
   }
-  return tracks[0].id
 }

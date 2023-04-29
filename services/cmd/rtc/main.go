@@ -18,8 +18,6 @@ import (
 	"github.com/aromancev/confa/room/record"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
@@ -103,11 +101,6 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
-	sfuConn, err := grpc.DialContext(ctx, config.RTC.SFURPCAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to sfu RPC.")
-	}
-
 	publicKey, err := auth.NewPublicKey(config.PublicKey)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create public key")
@@ -142,9 +135,12 @@ func main() {
 			roomMongo,
 			eventMongo,
 			event.NewBeanstalkEmitter(producer, config.Beanstalk.TubeStoreEvent),
-			sfuConn,
 			eventWatcher,
 			recordMongo,
+			web.LiveKitCredentials{
+				Key:    config.LiveKit.Key,
+				Secret: config.LiveKit.Secret,
+			},
 		),
 	}
 	rpcServer := &http.Server{
@@ -216,7 +212,6 @@ func main() {
 	_ = rpcServer.Shutdown(ctx)
 	producer.Stop()
 	consumerDone.Wait()
-	_ = sfuConn.Close()
 
 	log.Info().Msg("Shutdown complete.")
 }

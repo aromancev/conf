@@ -1,4 +1,4 @@
-import { RoomEvent, RecordingEventStatus } from "@/api/room/schema"
+import { RoomEvent, RecordingEventStatus } from "@/api/rtc/schema"
 
 export interface Recording {
   isRecording: boolean

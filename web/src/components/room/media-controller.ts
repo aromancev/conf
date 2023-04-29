@@ -1,9 +1,9 @@
 import { reactive, readonly, watch, WatchStopHandle, WatchSource } from "vue"
 import { MediaPlayer, MediaPlayerClass, PlaybackTimeUpdatedEvent } from "dashjs"
-import { Media } from "./aggregators/media"
+import { TrackRecord } from "./aggregators/record"
 
 interface Watchers {
-  media: WatchSource<Media | undefined>
+  media: WatchSource<TrackRecord | undefined>
   element: WatchSource<HTMLMediaElement | undefined>
   isPlaying: WatchSource<boolean>
   isBuffering: WatchSource<boolean>
@@ -86,7 +86,7 @@ export class MediaController {
   }
 
   private update(
-    media: Media | undefined,
+    media: TrackRecord | undefined,
     element: HTMLMediaElement | undefined,
     isPlaying: boolean,
     isBuffering: boolean,

@@ -1,28 +1,17 @@
 version: '3.9'
 services:
-  sfu:
-    build:
-      context: ../services
-      dockerfile: ./cmd/sfu/Dockerfile
+  caddy:
+    image: livekit/caddyl4
+    command: run --config /etc/caddy.yaml --adapter yaml
+    restart: on-failure
     network_mode: "host"
-    environment:
-      - LOG_FORMAT=console
-      - LISTEN_RPC_ADDRESS=:8080
-      - ICE_PORT_MIN=50000
-      - ICE_PORT_MAX=60000
-      - LOG_LEVEL=error
-
-  turn:
-    build:
-      context: ../services
-      dockerfile: ./cmd/turn/Dockerfile
+    volumes:
+      - ./caddy.yaml:/etc/caddy.yaml
+      - ./.artifacts/caddy:/data
+  livekit:
+    image: livekit/livekit-server:v1.4
+    command: --config /etc/livekit/config.yml
+    restart: on-failure
     network_mode: "host"
-    environment:
-      - LOG_FORMAT=console
-      - LISTEN_WEB_ADDRESS=:3478
-      - REALM=confa.io
-      - USERNAME=confa
-      - CREDENTIAL=confa
-      - PUBLIC_IP=31.184.253.195
-      - PUBLIC_KEY=$PUBLIC_KEY
-      - LOG_LEVEL=error
+    volumes:
+      - ./livekit.yml:/etc/livekit/config.yml

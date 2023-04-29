@@ -14,8 +14,6 @@ import (
 	"github.com/aromancev/confa/tracker/record"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	ilog "github.com/pion/ion-log"
-	sdk "github.com/pion/ion-sdk-go"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -46,9 +44,6 @@ func main() {
 	default:
 		log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	}
-	// ION sdk uses ion logger.
-	// We are only interested in errors from sdk.
-	ilog.Init("error")
 	ctx = log.Logger.WithContext(ctx)
 
 	producer, err := beanstalk.NewProducer(config.Beanstalk.ParsePool(), beanstalk.Config{
@@ -73,7 +68,6 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create minio client.")
 	}
 
-	connector := sdk.NewConnector(config.SFURPCAddress)
 	runtime := tracker.NewRuntime()
 
 	rpcServer := &http.Server{
@@ -86,7 +80,6 @@ func main() {
 		IdleTimeout:  time.Second * 60,
 		Handler: pb.NewRegistryServer(
 			rpc.NewHandler(
-				connector,
 				runtime,
 				minioClient,
 				record.NewBeanstalk(producer, record.Tubes{
@@ -96,6 +89,11 @@ func main() {
 				}),
 				rpc.Buckets{
 					TrackRecords: config.Storage.BucketTrackRecords,
+				},
+				record.LivekitCredentials{
+					URL:    config.Livekit.URL,
+					Key:    config.Livekit.Key,
+					Secret: config.Livekit.Secret,
 				},
 			),
 		),
@@ -131,7 +129,6 @@ func main() {
 
 	_ = rpcServer.Shutdown(ctx)
 	producer.Stop()
-	connector.Close()
 	servers.Wait()
 
 	log.Info().Msg("Shutdown complete")

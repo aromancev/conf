@@ -11,7 +11,6 @@ import (
 	"github.com/aromancev/confa/tracker/record"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
-	sdk "github.com/pion/ion-sdk-go"
 	"github.com/twitchtv/twirp"
 )
 
@@ -20,20 +19,20 @@ type Buckets struct {
 }
 
 type Handler struct {
-	connector *sdk.Connector
-	runtime   *tracker.Runtime
-	storage   *minio.Client
-	emitter   *record.Beanstalk
-	buckets   Buckets
+	runtime      *tracker.Runtime
+	storage      *minio.Client
+	emitter      *record.Beanstalk
+	buckets      Buckets
+	livekitCreds record.LivekitCredentials
 }
 
-func NewHandler(connector *sdk.Connector, runtime *tracker.Runtime, storage *minio.Client, emitter *record.Beanstalk, buckets Buckets) *Handler {
+func NewHandler(runtime *tracker.Runtime, storage *minio.Client, emitter *record.Beanstalk, buckets Buckets, livekitCreds record.LivekitCredentials) *Handler {
 	return &Handler{
-		connector: connector,
-		runtime:   runtime,
-		storage:   storage,
-		buckets:   buckets,
-		emitter:   emitter,
+		runtime:      runtime,
+		storage:      storage,
+		buckets:      buckets,
+		emitter:      emitter,
+		livekitCreds: livekitCreds,
 	}
 }
 
@@ -103,7 +102,7 @@ func (h *Handler) startRecording(ctx context.Context, roomID uuid.UUID, expireAt
 		roleRecord,
 		expireAt,
 		func(ctx context.Context, roomID uuid.UUID) (tracker.Tracker, error) {
-			return record.NewTracker(ctx, h.storage, h.connector, h.emitter, h.buckets.TrackRecords, roomID, recordingID)
+			return record.NewTracker(ctx, h.storage, h.emitter, h.livekitCreds, h.buckets.TrackRecords, roomID, recordingID)
 		},
 	)
 }

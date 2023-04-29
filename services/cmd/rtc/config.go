@@ -28,7 +28,7 @@ type Config struct {
 	PublicKey         string `envconfig:"PUBLIC_KEY"`
 	Mongo             MongoConfig
 	Beanstalk         BeanstalkConfig
-	RTC               RTCConfig
+	LiveKit           LiveKitConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -69,10 +69,9 @@ func (c Config) Validate() error {
 	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalk config: %w", err)
 	}
-	if err := c.RTC.Validate(); err != nil {
-		return fmt.Errorf("invalid rtc config: %w", err)
+	if err := c.LiveKit.Validate(); err != nil {
+		return fmt.Errorf("invalid livekit config: %w", err)
 	}
-
 	return nil
 }
 
@@ -127,13 +126,17 @@ func (c BeanstalkConfig) ParsePool() []string {
 	return strings.Split(c.Pool, ",")
 }
 
-type RTCConfig struct {
-	SFURPCAddress string `envconfig:"SFU_RPC_ADDRESS"`
+type LiveKitConfig struct {
+	Key    string `envconfig:"LIVEKIT_KEY"`
+	Secret string `envconfig:"LIVEKIT_SECRET"`
 }
 
-func (c RTCConfig) Validate() error {
-	if c.SFURPCAddress == "" {
-		return errors.New("SFU_RPC_ADDRESS not set")
+func (c LiveKitConfig) Validate() error {
+	if c.Key == "" {
+		return errors.New("LIVEKIT_KEY not set")
+	}
+	if c.Secret == "" {
+		return errors.New("LIVEKIT_KEY not set")
 	}
 	return nil
 }

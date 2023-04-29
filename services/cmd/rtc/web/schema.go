@@ -28,8 +28,6 @@ type MessagePayload struct {
 	Event       *RoomEvent   `json:"event,omitempty"`      
 	PeerMessage *PeerMessage `json:"peerMessage,omitempty"`
 	Reaction    *Reaction    `json:"reaction,omitempty"`   
-	Signal      *Signal      `json:"signal,omitempty"`     
-	State       *PeerState   `json:"state,omitempty"`      
 }
 
 type RoomEvent struct {
@@ -40,11 +38,11 @@ type RoomEvent struct {
 }
 
 type EventPayload struct {
-	Message        *EventMessage        `json:"message,omitempty"`       
-	PeerState      *EventPeerState      `json:"peerState,omitempty"`     
-	Reaction       *EventReaction       `json:"reaction,omitempty"`      
-	Recording      *EventRecording      `json:"recording,omitempty"`     
-	TrackRecording *EventTrackRecording `json:"trackRecording,omitempty"`
+	Message     *EventMessage     `json:"message,omitempty"`    
+	PeerState   *EventPeerState   `json:"peerState,omitempty"`  
+	Reaction    *EventReaction    `json:"reaction,omitempty"`   
+	Recording   *EventRecording   `json:"recording,omitempty"`  
+	TrackRecord *EventTrackRecord `json:"trackRecord,omitempty"`
 }
 
 type EventMessage struct {
@@ -56,12 +54,6 @@ type EventPeerState struct {
 	PeerID    string      `json:"peerId"`          
 	SessionID string      `json:"sessionId"`       
 	Status    *PeerStatus `json:"status,omitempty"`
-	Tracks    []Track     `json:"tracks,omitempty"`
-}
-
-type Track struct {
-	Hint Hint   `json:"hint"`
-	ID   string `json:"id"`  
 }
 
 type EventReaction struct {
@@ -81,81 +73,39 @@ type EventRecording struct {
 	Status RecordingEventStatus `json:"status"`
 }
 
-type EventTrackRecording struct {
-	ID      string `json:"id"`     
-	TrackID string `json:"trackId"`
+type EventTrackRecord struct {
+	Kind     TrackKind   `json:"kind"`    
+	RecordID string      `json:"recordId"`
+	Source   TrackSource `json:"source"`  
 }
 
 type PeerMessage struct {
 	Text string `json:"text"`
 }
 
-type Signal struct {
-	Answer  *SignalAnswer  `json:"answer,omitempty"` 
-	Join    *SignalJoin    `json:"join,omitempty"`   
-	Offer   *SignalOffer   `json:"offer,omitempty"`  
-	Trickle *SignalTrickle `json:"trickle,omitempty"`
-}
-
-type SignalAnswer struct {
-	Description SessionDescription `json:"description"`
-}
-
-type SessionDescription struct {
-	SDP  string  `json:"sdp"` 
-	Type SDPType `json:"type"`
-}
-
-type SignalJoin struct {
-	Description SessionDescription `json:"description"`
-	SessionID   string             `json:"sessionId"`  
-	UserID      string             `json:"userId"`     
-}
-
-type SignalOffer struct {
-	Description SessionDescription `json:"description"`
-}
-
-type SignalTrickle struct {
-	Candidate ICECandidateInit `json:"candidate"`
-	Target    int64            `json:"target"`   
-}
-
-type ICECandidateInit struct {
-	Candidate        string  `json:"candidate"`                 
-	SDPMid           *string `json:"sdpMid,omitempty"`          
-	SDPMLineIndex    *int64  `json:"sdpMLineIndex,omitempty"`   
-	UsernameFragment *string `json:"usernameFragment,omitempty"`
-}
-
-type PeerState struct {
-	Tracks []Track `json:"tracks,omitempty"`
-}
-
 type PeerStatus string
 const (
-	Joined PeerStatus = "joined"
-	Left PeerStatus = "left"
-)
-
-type Hint string
-const (
-	Camera Hint = "camera"
-	DeviceAudio Hint = "device_audio"
-	Screen Hint = "screen"
-	UserAudio Hint = "user_audio"
+	Joined PeerStatus = "JOINED"
+	Left PeerStatus = "LEFT"
 )
 
 type RecordingEventStatus string
 const (
-	Started RecordingEventStatus = "started"
-	Stopped RecordingEventStatus = "stopped"
+	Started RecordingEventStatus = "STARTED"
+	Stopped RecordingEventStatus = "STOPPED"
 )
 
-type SDPType string
+type TrackKind string
 const (
-	Answer SDPType = "answer"
-	Offer SDPType = "offer"
-	Pranswer SDPType = "pranswer"
-	Rollback SDPType = "rollback"
+	Audio TrackKind = "AUDIO"
+	Video TrackKind = "VIDEO"
+)
+
+type TrackSource string
+const (
+	Camera TrackSource = "CAMERA"
+	Microphone TrackSource = "MICROPHONE"
+	Screen TrackSource = "SCREEN"
+	ScreenAudio TrackSource = "SCREEN_AUDIO"
+	Unknown TrackSource = "UNKNOWN"
 )

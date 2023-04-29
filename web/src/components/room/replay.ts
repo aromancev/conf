@@ -6,8 +6,8 @@ import { EventIterator } from "@/api/event"
 import { ProfileRepository } from "./profiles"
 import { MessageAggregator, Message } from "./aggregators/messages"
 import { Peer, Status, PeerAggregator } from "./aggregators/peers"
-import { Media, MediaAggregator } from "./aggregators/media"
-import { RoomEvent } from "@/api/room/schema"
+import { TrackRecord, MediaAggregator } from "./aggregators/record"
+import { RoomEvent } from "@/api/rtc/schema"
 import { duration } from "@/platform/time"
 import { Throttler } from "@/platform/sync"
 import { FIFOMap } from "@/platform/cache"
@@ -26,7 +26,7 @@ interface State {
   messages: Message[]
   peers: Map<string, Peer>
   statuses: Map<string, Status>
-  medias: Map<string, Media>
+  medias: Map<string, TrackRecord>
 }
 
 export interface Progress {
@@ -48,8 +48,8 @@ export class ReplayRoom {
   private stopped: boolean
   private processEvents: Throttler<void>
   private fetchEvents: Throttler<void>
-  private processIntervalId: ReturnType<typeof setInterval>
-  private deferredProcessTimeoutId: ReturnType<typeof setTimeout>
+  private processIntervalId: number
+  private deferredProcessTimeoutId: number
 
   constructor() {
     this.reactive = reactive<State>({
@@ -80,7 +80,7 @@ export class ReplayRoom {
     this.fetchEvents = new Throttler({ delayMs: MIN_FETCH_DELAY_MS })
     this.processEvents.func = () => this.processEventsFunc()
     this.fetchEvents.func = () => this.fetchEventsFunc()
-    this.processIntervalId = setInterval(() => this.processEvents.do(), MAX_EVENT_DELAY_MS)
+    this.processIntervalId = window.setInterval(() => this.processEvents.do(), MAX_EVENT_DELAY_MS)
     this.deferredProcessTimeoutId = -1
   }
 
@@ -249,7 +249,7 @@ export class ReplayRoom {
 
     const untilNextEvent = nextEventAt - this.recordingStartedAt - progress
     const untilBufferRunsOut = this.reactive.buffer - progress
-    this.deferredProcessTimeoutId = setTimeout(
+    this.deferredProcessTimeoutId = window.setTimeout(
       () => this.processEvents.do(),
       Math.min(untilNextEvent, untilBufferRunsOut),
     )
@@ -372,7 +372,7 @@ export class ReplayRoom {
 }
 
 const EVENT_BATCH = 3000
-const FETCH_ADVANCE_MS = 60 * 1000
+const FETCH_ADVANCE_MS = 2 * 60 * 1000
 const MIN_EVENT_DELAY_MS = 200
 const MAX_EVENT_DELAY_MS = 1 * 500
 const MIN_FETCH_DELAY_MS = 1 * 1000

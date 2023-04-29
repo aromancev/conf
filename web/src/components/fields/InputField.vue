@@ -14,7 +14,7 @@
       @keydown="keySend"
     />
     <div v-if="errors?.length && errExpanded" class="error">
-      {{  errors.map((err: string) => "• " + err).join("\n") }}
+      {{ errors.map((err: string) => "• " + err).join("\n") }}
     </div>
     <div
       v-if="errors?.length"

@@ -24,9 +24,9 @@ type Config struct {
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
-	SFURPCAddress    string `envconfig:"SFU_RPC_ADDRESS"`
 	Beanstalk        BeanstalkConfig
 	Storage          StorageConfig
+	Livekit          LiveKitConfig
 }
 
 func (c Config) WithEnv() Config {
@@ -52,9 +52,6 @@ func (c Config) Validate() error {
 	if c.ListenRPCAddress == "" {
 		return errors.New("LISTEN_RPC_ADDRESS not set")
 	}
-	if c.SFURPCAddress == "" {
-		return errors.New("SFU_RPC_ADDRESS not set")
-	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
 	}
@@ -63,6 +60,9 @@ func (c Config) Validate() error {
 	}
 	if err := c.Beanstalk.Validate(); err != nil {
 		return fmt.Errorf("invalid beanstalk config: %w", err)
+	}
+	if err := c.Livekit.Validate(); err != nil {
+		return fmt.Errorf("invalid livekit config: %w", err)
 	}
 	return nil
 }
@@ -113,6 +113,25 @@ func (c StorageConfig) Validate() error {
 	}
 	if c.BucketTrackRecords == "" {
 		return errors.New("STORAGE_BUCKET_TRACK_RECORDS not set")
+	}
+	return nil
+}
+
+type LiveKitConfig struct {
+	URL    string `envconfig:"LIVEKIT_URL"`
+	Key    string `envconfig:"LIVEKIT_KEY"`
+	Secret string `envconfig:"LIVEKIT_SECRET"`
+}
+
+func (c LiveKitConfig) Validate() error {
+	if c.URL == "" {
+		return errors.New("LIVEKIT_URL not set")
+	}
+	if c.Key == "" {
+		return errors.New("LIVEKIT_KEY not set")
+	}
+	if c.Secret == "" {
+		return errors.New("LIVEKIT_KEY not set")
 	}
 	return nil
 }

@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { onUnmounted, reactive } from "vue"
-import { Reaction } from "@/api/room/schema"
+import { Reaction } from "@/api/rtc/schema"
 import { sleep, repeat } from "@/platform/sync"
 import { Sound } from "./actor"
 import { notificationStore } from "@/api/models/notifications"

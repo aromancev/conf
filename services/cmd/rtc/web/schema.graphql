@@ -67,9 +67,17 @@ type Recordings {
     nextFrom: RecordingFrom
 }
 
+type SFUAccess {
+    token: String!
+}
+
 type Query {
     service: Service!
 
     events(where: EventLookup! = {}, limit: Int! = 100, cursor: EventCursorInput): Events!
     recordings(where: RecordingLookup!, limit: Int! = 100, from: RecordingFromInput): Recordings!
+}
+
+type Mutation {
+    requestSFUAccess(roomId: String!): SFUAccess!
 }

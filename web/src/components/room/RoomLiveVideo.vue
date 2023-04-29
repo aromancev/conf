@@ -6,7 +6,7 @@
     @dblclick="toggleFullscreen"
     @mousemove="onMouseMove"
   >
-    <video class="video" :srcObject="src" autoplay muted></video>
+    <video ref="video" class="video"></video>
     <div v-if="isInterfaceVisible" class="interface">
       <div class="bottom-panel">
         <div class="bottom-right-panel">
@@ -19,20 +19,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue"
+import { ref, onMounted, onUnmounted, watch, inject } from "vue"
 import { debounce } from "@/platform/sync"
+import { Track } from "./live"
 
-defineProps<{
-  src?: MediaStream
+type Attacher = {
+  attach(trackId: string, el: HTMLMediaElement): void
+}
+
+const props = defineProps<{
+  track?: Track
+  disableControls?: boolean
 }>()
 
+const attacher = inject<Attacher>("attacher")
 const container = ref<HTMLElement>()
+const video = ref<HTMLMediaElement>()
 const isFullscreen = ref<boolean>(false)
 const isInterfaceVisible = ref<boolean>(false)
+
+watch(
+  () => props.track,
+  () => {
+    attachTrack()
+  },
+)
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", onFullscreen)
   onFullscreen()
+  attachTrack()
 })
 
 onUnmounted(() => {
@@ -44,6 +60,9 @@ const hideInterfaceDebounced = debounce(() => {
 }, 3000)
 
 function onMouseMove() {
+  if (props.disableControls) {
+    return
+  }
   isInterfaceVisible.value = true
   hideInterfaceDebounced()
 }
@@ -61,6 +80,20 @@ function toggleFullscreen() {
   } else {
     container.value.requestFullscreen()
   }
+}
+
+function attachTrack() {
+  if (!props.track) {
+    return
+  }
+  if (!video.value) {
+    throw new Error("Failed to attach track.")
+  }
+  if (!attacher) {
+    throw new Error("Track attacher not provided.")
+  }
+
+  attacher.attach(props.track.id, video.value)
 }
 </script>
 

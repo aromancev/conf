@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue"
-import { Media } from "./aggregators/media"
+import { TrackRecord } from "./aggregators/record"
 import { MediaController } from "./media-controller"
 import { Progress } from "./replay"
 
@@ -13,7 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{
-  media?: Media
+  record?: TrackRecord
   isPlaying: boolean
   isBuffering: boolean
   duration: number
@@ -22,7 +22,7 @@ const props = defineProps<{
 
 const audio = ref<HTMLMediaElement>()
 const controller = new MediaController({
-  media: () => props.media,
+  media: () => props.record,
   element: audio,
   isPlaying: () => props.isPlaying,
   isBuffering: () => props.isBuffering,

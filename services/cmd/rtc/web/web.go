@@ -21,16 +21,6 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 		if pl.Status != "" {
 			state.Status = (*PeerStatus)(&pl.Status)
 		}
-		if len(pl.Tracks) != 0 {
-			tracks := make([]Track, len(pl.Tracks))
-			for i, t := range pl.Tracks {
-				tracks[i] = Track{
-					ID:   t.ID,
-					Hint: Hint(t.Hint),
-				}
-			}
-			state.Tracks = tracks
-		}
 		payload.PeerState = &state
 	case ev.Payload.Message != nil:
 		pl := *ev.Payload.Message
@@ -43,11 +33,12 @@ func NewRoomEvent(ev event.Event) *RoomEvent {
 		payload.Recording = &EventRecording{
 			Status: RecordingEventStatus(pl.Status),
 		}
-	case ev.Payload.TrackRecording != nil:
-		pl := *ev.Payload.TrackRecording
-		payload.TrackRecording = &EventTrackRecording{
-			ID:      pl.ID.String(),
-			TrackID: pl.TrackID,
+	case ev.Payload.TrackRecord != nil:
+		pl := *ev.Payload.TrackRecord
+		payload.TrackRecord = &EventTrackRecord{
+			RecordID: pl.RecordID.String(),
+			Kind:     TrackKind(pl.Kind),
+			Source:   TrackSource(pl.Source),
 		}
 	case ev.Payload.Reaction != nil:
 		pl := *ev.Payload.Reaction

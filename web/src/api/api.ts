@@ -133,7 +133,7 @@ export class Client {
     return await this._token
   }
 
-  async mutate<T = object, TVariables = OperationVariables>(
+  async mutate<T = object, TVariables extends OperationVariables = OperationVariables>(
     options: MutationOptions<T, TVariables>,
   ): Promise<FetchResult<T>> {
     options.context = {
@@ -142,7 +142,7 @@ export class Client {
     return this.graph.mutate(options)
   }
 
-  async query<T = object, TVariables = OperationVariables>(
+  async query<T = object, TVariables extends OperationVariables = OperationVariables>(
     options: QueryOptions<TVariables, T>,
   ): Promise<ApolloQueryResult<T>> {
     options.context = {

@@ -10,7 +10,7 @@ export interface Notification {
 }
 
 export class NotificationStore extends Store<Notification> {
-  private timeoutId: ReturnType<typeof setTimeout> = 0
+  private timeoutId = 0
 
   info(message: string): void {
     this.message(message, "info")
@@ -24,7 +24,7 @@ export class NotificationStore extends Store<Notification> {
     clearTimeout(this.timeoutId)
     this.reactive.message = message
     this.reactive.level = level
-    this.timeoutId = setTimeout(() => {
+    this.timeoutId = window.setTimeout(() => {
       this.reactive.message = ""
       this.reactive.level = "info"
     }, (message.length / CHARS_PER_SECOND) * 1000)

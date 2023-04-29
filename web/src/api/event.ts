@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client/core"
 import { Client, FetchPolicy } from "./api"
 import { EventLookup, events, eventsVariables, EventCursorInput } from "./schema"
-import { RoomEvent } from "./room/schema"
+import { RoomEvent } from "./rtc/schema"
 
 interface OptionalFetchParams {
   policy?: FetchPolicy

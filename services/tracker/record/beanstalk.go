@@ -48,10 +48,11 @@ func (b *Beanstalk) RecordStarted(ctx context.Context, record Record) error {
 			RoomId:    roomID,
 			CreatedAt: record.CreatedAt.UnixMilli(),
 			Payload: &rtc.Event_Payload{
-				Payload: &rtc.Event_Payload_TrackRecording_{
-					TrackRecording: &rtc.Event_Payload_TrackRecording{
-						Id:      recordID,
-						TrackId: record.TrackID,
+				Payload: &rtc.Event_Payload_TrackRecord_{
+					TrackRecord: &rtc.Event_Payload_TrackRecord{
+						RecordId: recordID,
+						Kind:     record.Kind,
+						Source:   record.Source,
 					},
 				},
 			},
@@ -115,7 +116,7 @@ func (b *Beanstalk) RecordFinished(ctx context.Context, record Record) error {
 		RecordId:        recordID,
 		DurationSeconds: float32(record.Duration.Seconds()),
 	}
-	if record.Kind == KindAudio {
+	if record.Kind == rtc.TrackKind_AUDIO {
 		processTrack.Kind = avp.ProcessTrack_AUDIO
 	} else {
 		processTrack.Kind = avp.ProcessTrack_VIDEO

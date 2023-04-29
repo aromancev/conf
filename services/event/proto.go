@@ -22,15 +22,6 @@ func ToProto(event Event) *rtc.Event {
 		if pl.Status != "" {
 			peerState.Status = string(pl.Status)
 		}
-		if len(pl.Tracks) != 0 {
-			peerState.Tracks = make([]*rtc.Event_Track, len(pl.Tracks))
-			for i, t := range pl.Tracks {
-				peerState.Tracks[i] = &rtc.Event_Track{
-					Id:   t.ID,
-					Hint: string(t.Hint),
-				}
-			}
-		}
 		payload.Payload = &rtc.Event_Payload_PeerState_{
 			PeerState: &peerState,
 		}
@@ -53,14 +44,32 @@ func ToProto(event Event) *rtc.Event {
 			},
 		}
 	}
-	if event.Payload.TrackRecording != nil {
-		pl := *event.Payload.TrackRecording
-		binID, _ := pl.ID.MarshalBinary()
-		payload.Payload = &rtc.Event_Payload_TrackRecording_{
-			TrackRecording: &rtc.Event_Payload_TrackRecording{
-				Id:      binID,
-				TrackId: pl.TrackID,
-			},
+	if event.Payload.TrackRecord != nil {
+		pl := *event.Payload.TrackRecord
+		binID, _ := pl.RecordID.MarshalBinary()
+		record := &rtc.Event_Payload_TrackRecord{
+			RecordId: binID,
+		}
+		switch pl.Kind {
+		case TrackKindAudio:
+			record.Kind = rtc.TrackKind_AUDIO
+		case TrackKindVideo:
+			record.Kind = rtc.TrackKind_VIDEO
+		}
+		switch pl.Source {
+		case TrackSourceCamera:
+			record.Source = rtc.TrackSource_CAMERA
+		case TrackSourceMicrophone:
+			record.Source = rtc.TrackSource_MICROPHONE
+		case TrackSourceScreen:
+			record.Source = rtc.TrackSource_SCREEN
+		case TrackSourceScreenAudio:
+			record.Source = rtc.TrackSource_SCREEN_AUDIO
+		default:
+			record.Source = rtc.TrackSource_UNKNOWN
+		}
+		payload.Payload = &rtc.Event_Payload_TrackRecord_{
+			TrackRecord: record,
 		}
 	}
 	if event.Payload.Reaction != nil {
@@ -108,15 +117,6 @@ func FromProto(event *rtc.Event) Event {
 		if pl.PeerState.Status != "" {
 			payload.PeerState.Status = PeerStatus(pl.PeerState.Status)
 		}
-		if len(pl.PeerState.Tracks) != 0 {
-			payload.PeerState.Tracks = make([]Track, len(pl.PeerState.Tracks))
-			for i, t := range pl.PeerState.Tracks {
-				payload.PeerState.Tracks[i] = Track{
-					ID:   t.Id,
-					Hint: TrackHint(t.Hint),
-				}
-			}
-		}
 	case *rtc.Event_Payload_Message_:
 		var from uuid.UUID
 		_ = from.UnmarshalBinary(pl.Message.FromId)
@@ -128,13 +128,31 @@ func FromProto(event *rtc.Event) Event {
 		payload.Recording = &PayloadRecording{
 			Status: RecordStatus(pl.Recording.Status),
 		}
-	case *rtc.Event_Payload_TrackRecording_:
+	case *rtc.Event_Payload_TrackRecord_:
 		var id uuid.UUID
-		_ = id.UnmarshalBinary(pl.TrackRecording.Id)
-		payload.TrackRecording = &PayloadTrackRecording{
-			ID:      id,
-			TrackID: pl.TrackRecording.TrackId,
+		_ = id.UnmarshalBinary(pl.TrackRecord.RecordId)
+		record := &PayloadTrackRecord{
+			RecordID: id,
 		}
+		switch pl.TrackRecord.Kind {
+		case rtc.TrackKind_AUDIO:
+			record.Kind = TrackKindAudio
+		case rtc.TrackKind_VIDEO:
+			record.Kind = TrackKindVideo
+		}
+		switch pl.TrackRecord.Source {
+		case rtc.TrackSource_CAMERA:
+			record.Source = TrackSourceCamera
+		case rtc.TrackSource_MICROPHONE:
+			record.Source = TrackSourceMicrophone
+		case rtc.TrackSource_SCREEN:
+			record.Source = TrackSourceScreen
+		case rtc.TrackSource_SCREEN_AUDIO:
+			record.Source = TrackSourceScreenAudio
+		default:
+			record.Source = TrackSourceUnknown
+		}
+		payload.TrackRecord = record
 	case *rtc.Event_Payload_Reaction_:
 		var from uuid.UUID
 		_ = from.UnmarshalBinary(pl.Reaction.FromId)
