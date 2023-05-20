@@ -9,7 +9,7 @@ RUN go build \
 FROM alpine:3.16
 
 RUN apk update \
-    && apk add --no-cache ffmpeg=5.0.1-r1
+  && apk add --no-cache ffmpeg=5.0.3-r0
 
 RUN addgroup -g 1001 -S app && mkdir -p /app && adduser -u 1001 -S -G app -h /app app
 USER app
