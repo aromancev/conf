@@ -235,7 +235,7 @@ export class LiveRoom {
     try {
       await this.sfu.localParticipant.setCameraEnabled(true)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
@@ -247,7 +247,7 @@ export class LiveRoom {
       }
       this.sfu.localParticipant.unpublishTrack(pub.track)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
@@ -258,7 +258,7 @@ export class LiveRoom {
       }
       await this.sfu.localParticipant.setScreenShareEnabled(true)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
@@ -270,7 +270,7 @@ export class LiveRoom {
       }
       this.sfu.localParticipant.unpublishTrack(pub.track)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
@@ -281,7 +281,7 @@ export class LiveRoom {
       }
       await this.sfu.localParticipant.setMicrophoneEnabled(true)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
@@ -293,7 +293,7 @@ export class LiveRoom {
       }
       this.sfu.localParticipant.unpublishTrack(pub.track)
     } catch {
-      this.disconnectSFU()
+      this.reactive.sfu = "DISCONNECTED"
     }
   }
 
