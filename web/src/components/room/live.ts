@@ -7,6 +7,7 @@ import {
   RemoteTrackPublication,
   Track as LiveKitTrack,
   ConnectionState,
+  DisconnectReason,
 } from "livekit-client"
 import { api } from "@/api"
 import { RTCPeer } from "@/api/rtc"
@@ -91,11 +92,21 @@ export class LiveRoom {
         case ConnectionState.Reconnecting:
           this.reactive.sfu = "CONNECTING"
           break
-        case ConnectionState.Disconnected:
-          this.reactive.sfu = "DISCONNECTED"
-          break
         case ConnectionState.Connected:
           this.reactive.sfu = "CONNECTED"
+      }
+    })
+    this.sfu.on(SFURoomEvent.Disconnected, (reason?: DisconnectReason) => {
+      switch (reason) {
+        case DisconnectReason.CLIENT_INITIATED:
+          break
+        case DisconnectReason.DUPLICATE_IDENTITY:
+        case DisconnectReason.PARTICIPANT_REMOVED:
+          this.reactive.sfu = "DISCONNECTED"
+          break
+        default:
+          this.reactive.sfu = "ERROR"
+          break
       }
     })
     this.setTimeIntervalId = 0
@@ -106,34 +117,19 @@ export class LiveRoom {
   }
 
   async close(): Promise<void> {
-    Promise.all([this.disconnectRTC(), this.disconnectSFU()])
-  }
-
-  async disconnectRTC(): Promise<void> {
-    clearInterval(this.setTimeIntervalId)
-    await this.rtc.close()
-    this.reactive.peers.clear()
-    this.reactive.statuses.clear()
-    this.reactive.messages.slice(0, this.reactive.messages.length)
-    this.reactive.rtc = "DISCONNECTED"
-  }
-
-  async disconnectSFU(): Promise<void> {
-    this.unshareScreen()
-    this.unshareCamera()
-    this.unshareMic()
-    await this.sfu.disconnect()
-    this.reactive.remoteTracks.clear()
-    this.reactive.localTracks.clear()
-    this.tracks.clear()
-    this.reactive.sfu = "DISCONNECTED"
+    await Promise.all([this.disconnectRTC(), this.disconnectSFU()])
   }
 
   async connectRTC(roomId: string): Promise<void> {
-    await this.disconnectRTC()
+    if (this.reactive.rtc === "CONNECTED") {
+      return
+    }
 
     this.reactive.rtc = "CONNECTING"
+
     try {
+      await this.disconnectRTC()
+
       const peers = new PeerAggregator(this.reactive.peers, this.reactive.statuses, this.profileRepo)
       const recording = new RecordingAggregator(this.reactive.recording)
       this.messageAggregator = new MessageAggregator(this.reactive.messages, this.profileRepo)
@@ -166,23 +162,28 @@ export class LiveRoom {
       }, UPDATE_TIME_INTERVAL_MS)
 
       this.reactive.rtc = "CONNECTED"
-    } catch {
+    } catch (e) {
+      console.error(e)
       notificationStore.error("real time communication failed")
       this.reactive.rtc = "ERROR"
     }
   }
 
   async connectSFU(roomId: string): Promise<void> {
-    await this.disconnectSFU()
+    if (this.reactive.sfu === "CONNECTED") {
+      return
+    }
 
     this.reactive.sfu = "CONNECTING"
+
     try {
+      await this.disconnectSFU()
+
       const token = await new RoomClient(api).requestSFUAccess(roomId)
       await this.sfu.connect(config.sfu.url, token)
       this.reactive.sfu = "CONNECTED"
-    } catch {
-      notificationStore.error("real time communication failed")
-      this.reactive.sfu = "ERROR"
+    } catch (e) {
+      console.error(e)
     }
   }
 
@@ -302,6 +303,24 @@ export class LiveRoom {
       return
     }
     track.attach(el)
+  }
+
+  private async disconnectRTC(): Promise<void> {
+    clearInterval(this.setTimeIntervalId)
+    await this.rtc.close()
+    this.reactive.peers.clear()
+    this.reactive.statuses.clear()
+    this.reactive.messages.slice(0, this.reactive.messages.length)
+  }
+
+  private async disconnectSFU(): Promise<void> {
+    this.unshareScreen()
+    this.unshareCamera()
+    this.unshareMic()
+    await this.sfu.disconnect()
+    this.reactive.remoteTracks.clear()
+    this.reactive.localTracks.clear()
+    this.tracks.clear()
   }
 
   private addLocalTrack(publication: LocalTrackPublication) {
