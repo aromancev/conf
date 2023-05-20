@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/aromancev/confa/event"
-	"github.com/aromancev/confa/event/proxy"
+	"github.com/aromancev/confa/event/peer"
 	"github.com/aromancev/confa/internal/auth"
 	"github.com/aromancev/confa/internal/platform/trace"
 	"github.com/aromancev/confa/room"
@@ -20,7 +20,6 @@ import (
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc"
 )
 
 type Producer interface {
@@ -31,7 +30,7 @@ type Handler struct {
 	router http.Handler
 }
 
-func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter proxy.EventEmitter, sfuConn *grpc.ClientConn, eventWatcher event.Watcher, recs *record.Mongo) *Handler {
+func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emitter peer.EventEmitter, eventWatcher event.Watcher, recs *record.Mongo, lk LiveKitCredentials) *Handler {
 	r := http.NewServeMux()
 
 	r.HandleFunc("/health", ok)
@@ -41,7 +40,7 @@ func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emit
 			&relay.Handler{
 				Schema: graphql.MustParseSchema(
 					gqlSchema,
-					NewResolver(pk, events, recs),
+					NewResolver(pk, events, recs, lk),
 					graphql.UseFieldResolvers(),
 				),
 			},
@@ -55,7 +54,7 @@ func NewHandler(pk *auth.PublicKey, rooms *room.Mongo, events *event.Mongo, emit
 		"/room/socket/",
 		withNewTrace(
 			withWebSocketAuth(
-				roomWebSocket(rooms, pk, sfuConn, emitter, eventWatcher),
+				roomWebSocket(rooms, pk, emitter, eventWatcher),
 			),
 		),
 	)
@@ -82,7 +81,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r.WithContext(ctx))
 }
 
-func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientConn, emitter proxy.EventEmitter, events event.Watcher) http.Handler {
+func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, emitter peer.EventEmitter, events event.Watcher) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -121,7 +120,7 @@ func roomWebSocket(rooms *room.Mongo, pk *auth.PublicKey, sfuConn *grpc.ClientCo
 			return
 		}
 
-		pp, err := NewPeerProxy(ctx, w, r, claims.UserID, rm.ID, events, emitter, sfuConn)
+		pp, err := NewSocketPeer(ctx, w, r, claims.UserID, rm.ID, events, emitter)
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to connect to websocket.")
 			return

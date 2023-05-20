@@ -3,35 +3,34 @@ package record
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"path"
 	"sync"
 	"time"
 
 	"github.com/aromancev/confa/internal/platform/webrtc/webm"
+	"github.com/aromancev/confa/internal/proto/rtc"
 	"github.com/google/uuid"
+	"github.com/livekit/protocol/livekit"
+	lksdk "github.com/livekit/server-sdk-go"
 	"github.com/minio/minio-go/v7"
-	sdk "github.com/pion/ion-sdk-go"
-	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
 )
 
-type Kind int
-
-const (
-	KindVideo Kind = iota
-	KindAudio
-)
+type LivekitCredentials struct {
+	URL    string
+	Key    string
+	Secret string
+}
 
 type Record struct {
 	RoomID      uuid.UUID
 	RecordingID uuid.UUID
 	RecordID    uuid.UUID
-	TrackID     string
-	Kind        Kind
+	Kind        rtc.TrackKind
+	Source      rtc.TrackSource
 	Bucket      string
 	Object      string
 	Duration    time.Duration
@@ -44,7 +43,7 @@ type Emitter interface {
 }
 
 type Tracker struct {
-	rtc                 *sdk.RTC
+	room                *lksdk.Room
 	storage             *minio.Client
 	emitter             Emitter
 	bucket              string
@@ -56,13 +55,8 @@ type Tracker struct {
 	closed  bool
 }
 
-func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Connector, emitter Emitter, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
-	rtcClient, err := sdk.NewRTC(connector)
-	if err != nil {
-		return nil, err
-	}
+func NewTracker(ctx context.Context, storage *minio.Client, emitter Emitter, creds LivekitCredentials, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
 	tracker := &Tracker{
-		rtc:         rtcClient,
 		storage:     storage,
 		emitter:     emitter,
 		bucket:      bucket,
@@ -70,35 +64,44 @@ func NewTracker(ctx context.Context, storage *minio.Client, connector *sdk.Conne
 		recordingID: recordingID,
 	}
 
-	tracker.rtc.OnTrack = func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-		startAt := time.Now()
+	room, err := lksdk.ConnectToRoom(
+		creds.URL,
+		lksdk.ConnectInfo{
+			APIKey:              creds.Key,
+			APISecret:           creds.Secret,
+			RoomName:            roomID.String(),
+			ParticipantIdentity: uuid.NewString(),
+		},
+		&lksdk.RoomCallback{
+			ParticipantCallback: lksdk.ParticipantCallback{
+				OnTrackSubscribed: func(track *webrtc.TrackRemote, pub *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
+					startAt := time.Now()
 
-		tracker.mutex.Lock()
-		if tracker.closed {
-			tracker.mutex.Unlock()
-			log.Ctx(ctx).Debug().Str("trackId", track.ID()).Msg("Received track after closing.")
-			return
-		}
-		tracker.mutex.Unlock()
+					tracker.mutex.Lock()
+					if tracker.closed {
+						tracker.mutex.Unlock()
+						log.Ctx(ctx).Debug().Str("trackId", track.ID()).Msg("Received track after closing.")
+						return
+					}
+					tracker.mutex.Unlock()
 
-		tracker.writers.Add(1)
-		go func() {
-			if track.Kind() == webrtc.RTPCodecTypeAudio {
-				tracker.writeTrack(ctx, track, KindAudio, startAt)
-			} else {
-				tracker.writeTrack(ctx, track, KindVideo, startAt)
-			}
-			tracker.writers.Done()
-		}()
-	}
-	// Empty handler to mute sdk error about missing handler.
-	tracker.rtc.OnTrackEvent = func(event sdk.TrackEvent) {}
-
-	err = rtcClient.Join(roomID.String(), uuid.NewString())
+					tracker.writers.Add(1)
+					go func() {
+						if track.Kind() == webrtc.RTPCodecTypeAudio {
+							tracker.writeTrack(ctx, track, rp.WritePLI, rtc.TrackKind_AUDIO, newSource(pub.Source()), startAt)
+						} else {
+							tracker.writeTrack(ctx, track, rp.WritePLI, rtc.TrackKind_VIDEO, newSource(pub.Source()), startAt)
+						}
+						tracker.writers.Done()
+					}()
+				},
+			},
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to join room: %w", err)
+		return &Tracker{}, err
 	}
-
+	tracker.room = room
 	return tracker, nil
 }
 
@@ -108,13 +111,13 @@ func (t *Tracker) Close(ctx context.Context) error {
 	if t.closed {
 		return nil
 	}
-	t.rtc.Close()
+	t.room.Disconnect()
 	t.writers.Wait()
 	t.closed = true
 	return nil
 }
 
-func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kind Kind, startAt time.Time) {
+func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli lksdk.PLIWriter, kind rtc.TrackKind, source rtc.TrackSource, startAt time.Time) {
 	type RTPWriteCloser interface {
 		Duration() time.Duration
 		WriteRTP(packet *rtp.Packet) error
@@ -123,7 +126,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 
 	const pliPeriod = 3 * time.Second
 	const minDuration = 6 * time.Second
-	const rtpMaxLate = 300
+	const rtpMaxLate = 300 // should be 1000 for 2s of fHD video and 200 for 4s audio.
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
 
@@ -140,16 +143,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		defer cancelWatchdog()
 
 		for {
-			err := t.rtc.GetSubTransport().GetPeerConnection().WriteRTCP(
-				[]rtcp.Packet{
-					&rtcp.PictureLossIndication{
-						MediaSSRC: uint32(track.SSRC()),
-					},
-				},
-			)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Failed to write PLI packet.")
-			}
+			pli(track.SSRC())
 			log.Ctx(ctx).Debug().Msg("Sent PLI.")
 			select {
 			case <-watchdogCtx.Done():
@@ -167,8 +161,8 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		RoomID:      t.roomID,
 		RecordingID: t.recordingID,
 		RecordID:    recordID,
-		TrackID:     track.ID(),
 		Kind:        kind,
+		Source:      source,
 		Bucket:      t.bucket,
 		Object:      objectPath,
 		CreatedAt:   startAt,
@@ -181,7 +175,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		defer cancelWatchdog()
 
 		var rtpWriter RTPWriteCloser
-		if kind == KindVideo {
+		if kind == rtc.TrackKind_VIDEO {
 			w, err := webm.NewVideoRTPWriter(pipedWriter, rtpMaxLate)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to create video writer.")
@@ -258,4 +252,19 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, kin
 		log.Ctx(ctx).Err(err).Msg("Failed to emit record finished event.")
 	}
 	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Str("duration", record.Duration.String()).Msg("Finished writing track to object.")
+}
+
+func newSource(lk livekit.TrackSource) rtc.TrackSource {
+	switch lk {
+	case livekit.TrackSource_CAMERA:
+		return rtc.TrackSource_CAMERA
+	case livekit.TrackSource_MICROPHONE:
+		return rtc.TrackSource_MICROPHONE
+	case livekit.TrackSource_SCREEN_SHARE:
+		return rtc.TrackSource_SCREEN
+	case livekit.TrackSource_SCREEN_SHARE_AUDIO:
+		return rtc.TrackSource_SCREEN_AUDIO
+	default:
+		return rtc.TrackSource_UNKNOWN
+	}
 }

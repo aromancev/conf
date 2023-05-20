@@ -13,7 +13,7 @@
         <div class="videos">
           <div class="screen video-container">
             <RoomReplayVideo
-              :media="screen"
+              :record="screen"
               :duration="room.state.duration"
               :progress="room.state.progress"
               :buffer="room.state.buffer"
@@ -22,14 +22,14 @@
               class="video screen-video"
               @toggle-play="() => room.togglePlay()"
               @rewind="(pos) => room.rewind(pos)"
-              @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(screen?.id || '', bufferMs, durationMs)"
+              @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(screen?.recordId || '', bufferMs, durationMs)"
             >
             </RoomReplayVideo>
           </div>
           <div class="camera video-container">
             <RoomReplayVideo
               v-if="camera"
-              :media="camera"
+              :record="camera"
               :duration="room.state.duration"
               :progress="room.state.progress"
               :buffer="room.state.buffer"
@@ -87,12 +87,12 @@
     <RoomReplayAudio
       v-for="source in audios"
       :key="source.manifestUrl"
-      :media="source"
+      :record="source"
       :duration="room.state.duration"
       :progress="room.state.progress"
       :is-playing="room.state.isPlaying"
       :is-buffering="room.state.isBuffering"
-      @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.id || '', bufferMs, durationMs)"
+      @buffer="(bufferMs, durationMs) => room.updateMediaBuffer(source?.recordId || '', bufferMs, durationMs)"
     ></RoomReplayAudio>
   </div>
 </template>
@@ -110,8 +110,8 @@ import RoomMessages from "@/components/room/RoomMessages.vue"
 import RoomReplayVideo from "@/components/room/RoomReplayVideo.vue"
 import RoomReplayAudio from "@/components/room/RoomReplayAudio.vue"
 import PageLoader from "@/components/PageLoader.vue"
-import { Media } from "@/components/room/aggregators/media"
-import { Hint } from "@/api/room/schema"
+import { TrackRecord } from "@/components/room/aggregators/record"
+import { TrackSource } from "@/api/rtc/schema"
 import { notificationStore } from "@/api/models/notifications"
 import { Backoff } from "@/platform/sync"
 
@@ -139,32 +139,32 @@ const state = reactive<State>({
   isLoading: true,
 })
 
-let loadTimerId: ReturnType<typeof setTimeout> = -1
+let loadTimerId = -1
 const audience = ref<Resizer>()
 const room = new ReplayRoom()
 const roomId = computed<string>(() => {
   return props.talk.roomId
 })
-const screen = computed<Media | undefined>(() => {
+const screen = computed<TrackRecord | undefined>(() => {
   for (const media of room.state.medias.values()) {
-    if (media.hint === Hint.Screen) {
+    if (media.source === TrackSource.Screen) {
       return media
     }
   }
   return undefined
 })
-const camera = computed<Media | undefined>(() => {
+const camera = computed<TrackRecord | undefined>(() => {
   for (const media of room.state.medias.values()) {
-    if (media.hint === Hint.Camera) {
+    if (media.source === TrackSource.Camera) {
       return media
     }
   }
   return undefined
 })
-const audios = computed<Media[]>(() => {
-  const auds: Media[] = []
+const audios = computed<TrackRecord[]>(() => {
+  const auds: TrackRecord[] = []
   for (const media of room.state.medias.values()) {
-    if (media.hint === Hint.UserAudio) {
+    if (media.source === TrackSource.Microphone) {
       auds.push(media)
     }
   }
@@ -208,7 +208,7 @@ async function loadRoom(): Promise<void> {
     state.isLoading = false
     if (recording.status != RecordingStatus.READY) {
       // If recording isn't finished yet, try again later.
-      loadTimerId = setTimeout(() => loadRoom(), loadBackoff.next())
+      loadTimerId = window.setTimeout(() => loadRoom(), loadBackoff.next())
       return
     }
     state.isReady = true

@@ -54,13 +54,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, reactive, watch } from "vue"
 import { debounce } from "@/platform/sync"
-import { Media } from "./aggregators/media"
+import { TrackRecord } from "./aggregators/record"
 import { MediaController } from "./media-controller"
 import PageLoader from "@/components/PageLoader.vue"
 import { Progress } from "./replay"
 
 const props = defineProps<{
-  media?: Media
+  record?: TrackRecord
   isPlaying: boolean
   isBuffering: boolean
   duration: number
@@ -88,7 +88,7 @@ const container = ref<HTMLElement>()
 const timeline = ref<HTMLElement>()
 const video = ref<HTMLMediaElement>()
 const controller = new MediaController({
-  media: () => props.media,
+  media: () => props.record,
   element: video,
   isPlaying: () => props.isPlaying,
   isBuffering: () => props.isBuffering,
@@ -98,13 +98,13 @@ controller.onBuffer = (bufferMs: number, durationMs: number): void => {
   emit("buffer", bufferMs, durationMs)
 }
 const controllerState = controller.state()
-let progressInterval: ReturnType<typeof setInterval> = 0
+let progressInterval = 0
 
 watch([() => props.isPlaying, () => props.isBuffering, () => state.isInterfaceVisible], () => {
   clearInterval(progressInterval)
   if (props.isPlaying && !props.isBuffering && state.isInterfaceVisible) {
     updateProgress()
-    progressInterval = setInterval(() => updateProgress(), 100)
+    progressInterval = window.setInterval(() => updateProgress(), 100)
   }
 })
 

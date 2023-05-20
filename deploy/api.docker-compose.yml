@@ -7,8 +7,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
-        - VITE_SFU_TURN_URLS=turn:turn.confa.io?transport=tcp
-        - VITE_SFU_STUN_URLS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302
+        - VITE_SFU_URL=wss://sfu.confa.io
         - VITE_STORAGE_URL=/api/storage
         - VITE_GSI_CLIENT_ID=453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
     networks:
@@ -118,6 +117,8 @@ services:
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
       - BEANSTALK_TUBE_UPDATE_RECORDING_TRACK=rtc/update-recording-track
       - BEANSTALK_TUBE_RECORDING_UPDATE=confa/recording-update
+      - LIVEKIT_KEY=devkey
+      - LIVEKIT_SECRET=93d33a06-f209-4239-bd7f-d04d411ae7b2
       - LOG_LEVEL=warn
 
   tracker:
@@ -130,7 +131,6 @@ services:
     environment:
       - LOG_FORMAT=console
       - LISTEN_RPC_ADDRESS=:8080
-      - SFU_RPC_ADDRESS=sfu.confa.io:8080
       - PUBLIC_KEY=$PUBLIC_KEY
       - STORAGE_HOST=minio:80
       - STORAGE_ACCESS_KEY=minio
@@ -141,6 +141,9 @@ services:
       - BEANSTALK_TUBE_STORE_EVENT=rtc/store-event
       - BEANSTALK_TUBE_UPDATE_RECORDING_TRACK=rtc/update-recording-track
       - LOG_LEVEL=warn
+      - LIVEKIT_URL=wss://sfu.confa.io
+      - LIVEKIT_KEY=devkey
+      - LIVEKIT_SECRET=93d33a06-f209-4239-bd7f-d04d411ae7b2
 
   avp:
     restart: on-failure

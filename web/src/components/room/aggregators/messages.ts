@@ -1,4 +1,4 @@
-import { RoomEvent } from "@/api/room/schema"
+import { RoomEvent } from "@/api/rtc/schema"
 
 interface Profile {
   handle: string

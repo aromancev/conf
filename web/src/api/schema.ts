@@ -298,6 +298,28 @@ export interface recordingsVariables {
 // This file was automatically generated and should not be edited.
 
 // ====================================================
+// GraphQL mutation operation: requestSFUAccess
+// ====================================================
+
+export interface requestSFUAccess_requestSFUAccess {
+  __typename: "SFUAccess";
+  token: string;
+}
+
+export interface requestSFUAccess {
+  requestSFUAccess: requestSFUAccess_requestSFUAccess;
+}
+
+export interface requestSFUAccessVariables {
+  roomId: string;
+}
+
+/* tslint:disable */
+/* eslint-disable */
+// @generated
+// This file was automatically generated and should not be edited.
+
+// ====================================================
 // GraphQL query operation: talksHydrated
 // ====================================================
 

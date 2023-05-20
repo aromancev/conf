@@ -1,8 +1,8 @@
 export function debounce(fn: () => void, ms: number): () => void {
-  let timeoutId: ReturnType<typeof setTimeout>
+  let timeoutId: number
   return () => {
     clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => {
+    timeoutId = window.setTimeout(() => {
       fn()
     }, ms)
   }
@@ -20,7 +20,7 @@ export class Throttler<T> {
   private resolve?: (t: T) => void
   private isReady: boolean
   private doAfterReady: boolean
-  private timeoutId: ReturnType<typeof setTimeout>
+  private timeoutId: number
 
   constructor(params: ThrottleParams) {
     this.params = params
@@ -53,7 +53,7 @@ export class Throttler<T> {
     }
 
     clearTimeout(this.timeoutId)
-    this.timeoutId = setTimeout(() => {
+    this.timeoutId = window.setTimeout(() => {
       this.isReady = true
       if (this.doAfterReady) {
         this.doAfterReady = false

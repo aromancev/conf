@@ -55,18 +55,25 @@ message StoreEvent {
     Event event = 1;
 }
 
-message Event {
-    message Track {
-        string id = 1;
-        string hint = 2;
-    }
+enum TrackKind {
+    AUDIO = 0;
+    VIDEO = 1;
+}
 
+enum TrackSource {
+    UNKNOWN = 0;
+    CAMERA = 1;
+    MICROPHONE = 2;
+    SCREEN = 3;
+    SCREEN_AUDIO = 4;
+}
+
+message Event {
     message Payload {
         message PeerState {
             bytes peer_id = 1;
             bytes session_id = 2;
             string status = 3;  
-            repeated Track tracks = 4;        
         }
         message Message {
             bytes from_id = 1;
@@ -75,9 +82,10 @@ message Event {
         message Recording {
             string status = 1;
         }
-        message TrackRecording {
-            bytes id = 1;
-            string track_id = 2;
+        message TrackRecord {
+            bytes record_id = 1;
+            TrackKind kind = 3;
+            TrackSource source = 4;
         }
         message Reaction {
             message Reaction {
@@ -98,7 +106,7 @@ message Event {
             PeerState peer_state = 1;
             Message message = 2;
             Recording recording = 3;
-            TrackRecording track_recording = 4;
+            TrackRecord track_record = 4;
             Reaction reaction = 5;
         }
     }

@@ -10,7 +10,7 @@ gen:
 		-w /app/web \
 		-v `pwd`:/app/web \
 		${TOOLS_IMG} bash -c "apollo codegen:generate --target=typescript --outputFlat src/api/schema.ts \
-			&& curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/room/schema.ts -t Message /tmp/schema"
+			&& curl http://rtc/room/schema > /tmp/schema && quicktype -s schema -o src/api/rtc/schema.ts -t Message /tmp/schema"
 
 .PHONY: modules
 modules:

@@ -61,6 +61,7 @@ func (r *Runtime) StartTracker(ctx context.Context, roomID uuid.UUID, role strin
 		entry.expireAt = expireAt
 	} else {
 		trackerCtx, cancel := context.WithCancel(r.ctx)
+		trackerCtx = log.Logger.WithContext(trackerCtx)
 		entry = &trackerEntry{
 			status:    statusInit,
 			expireAt:  expireAt,

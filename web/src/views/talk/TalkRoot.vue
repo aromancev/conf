@@ -57,9 +57,7 @@
         v-if="tab === 'watch' && state.talk.state !== TalkState.ENDED"
         :talk="state.talk"
         :confa-handle="confaHandle"
-        :join-confirmed="state.isJoinConfirmed"
         :invite-link="inviteLink"
-        @join="join"
         @update="update"
       />
       <TalkReplay v-if="tab === 'watch' && state.talk.state === TalkState.ENDED" :talk="state.talk" />
@@ -97,12 +95,10 @@ const props = defineProps<{
 type State = {
   talk?: Talk
   isLoading: boolean
-  isJoinConfirmed: boolean
 }
 
 const state = reactive<State>({
   isLoading: true,
-  isJoinConfirmed: false,
 })
 
 const router = useRouter()
@@ -194,13 +190,6 @@ function update(value: Talk) {
     router.replace(route.talk(props.confaHandle, value.handle, props.tab))
   }
   state.talk = value
-}
-
-function join(confirmed: boolean) {
-  state.isJoinConfirmed = confirmed
-  if (!confirmed) {
-    router.push(route.talk(props.confaHandle, props.handle, "overview"))
-  }
 }
 </script>
 

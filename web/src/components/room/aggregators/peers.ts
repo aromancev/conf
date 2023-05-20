@@ -1,4 +1,4 @@
-import { RoomEvent, PeerStatus } from "@/api/room/schema"
+import { RoomEvent, PeerStatus } from "@/api/rtc/schema"
 import { FIFOSet } from "@/platform/cache"
 
 const MAX_SESSIONS_PER_PEER = 10

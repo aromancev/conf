@@ -39,7 +39,6 @@ x-service-env: &service-env
   STORAGE_BUCKET_TRACK_PUBLIC: "confa-tracks-public"
   RTC_RPC_ADDRESS: "rtc:8080"
   TRACKER_RPC_ADDRESS: "tracker:8080"
-  SFU_RPC_ADDRESS: "sfu:8080"
   IAM_RPC_ADDRESS: "iam:8080"
 
 services:
@@ -66,7 +65,7 @@ services:
       - confa
     environment:
       VITE_RTC_ROOM_URL: "ws://localhost/api/rtc/room/socket"
-      VITE_SFU_TURN_URLS: "turn:localhost?transport=tcp"
+      VITE_SFU_URL: "ws://localhost:7880"
       VITE_STORAGE_URL: "/api/storage"
     volumes:
       - ./web:/app/web:delegated
@@ -118,34 +117,17 @@ services:
       MONGO_USER: "rtc"
       MONGO_PASSWORD: "rtc"
       MONGO_DATABASE: "rtc"
-
-  sfu:
-    <<: *service-common
-    command: "go run ./cmd/sfu"
-    environment:
-      <<: *service-env
-      ICE_PORT_MIN: "5000"
-      ICE_PORT_MAX: "5010"
-      ICE_URLS: "stun:stun.stunprotocol.org:3478"
-
-  turn:
-    <<: *service-common
-    command: "go run ./cmd/turn"
-    ports:
-      - "3478:3478"
-    environment:
-      <<: *service-env
-      LISTEN_WEB_ADDRESS: ":3478"
-      REALM: "confa.io"
-      USERNAME: "confa"
-      CREDENTIAL: "confa"
-      PUBLIC_IP: "127.0.0.1"
+      LIVEKIT_KEY: devkey
+      LIVEKIT_SECRET: 93d33a06-f209-4239-bd7f-d04d411ae7b2
 
   tracker:
     <<: *service-common
     command: "go run ./cmd/tracker"
     environment:
       <<: *service-env
+      LIVEKIT_URL: "ws://livekit:7880"
+      LIVEKIT_KEY: devkey
+      LIVEKIT_SECRET: 93d33a06-f209-4239-bd7f-d04d411ae7b2
 
   avp:
     <<: *service-common
@@ -164,6 +146,30 @@ services:
       MAILERSEND_TOKEN: stub
       MAILERSEND_BASE_URL: http://sender-clients
       MAILERSEND_FROM_EMAIL: noreply@mail.confa.io
+
+  livekit:
+    image: livekit/livekit-server:v1.4
+    command: --config /opt/livekit/config.yml
+    volumes:
+      - ./livekit:/opt/livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882"
+    networks:
+      - confa
+
+  coturn:
+    image: coturn/coturn:4.6
+    ports:
+      - "3478:3478"
+    environment:
+      - TURN_PORT=3478
+      - EXTERNAL_IP=127.0.0.1
+      - TURN_RESTAPI_USER=confa
+      - TURN_RESTAPI_PASSWORD=confa
+    networks:
+      - confa
 
   beanstalk:
     build:

@@ -139,13 +139,11 @@ func (t *DTLSTransport) WriteRTCP(pkts []rtcp.Packet) (int, error) {
 
 	writeStream, err := srtcpSession.OpenWriteStream()
 	if err != nil {
+		// nolint
 		return 0, fmt.Errorf("%w: %v", errPeerConnWriteRTCPOpenWriteStream, err)
 	}
 
-	if n, err := writeStream.Write(raw); err != nil {
-		return n, err
-	}
-	return 0, nil
+	return writeStream.Write(raw)
 }
 
 // GetLocalParameters returns the DTLS parameters of the local DTLSTransport upon construction.
@@ -212,16 +210,19 @@ func (t *DTLSTransport) startSRTP() error {
 	connState := t.conn.ConnectionState()
 	err := srtpConfig.ExtractSessionKeysFromDTLS(&connState, t.role() == DTLSRoleClient)
 	if err != nil {
+		// nolint
 		return fmt.Errorf("%w: %v", errDtlsKeyExtractionFailed, err)
 	}
 
 	srtpSession, err := srtp.NewSessionSRTP(t.srtpEndpoint, srtpConfig)
 	if err != nil {
+		// nolint
 		return fmt.Errorf("%w: %v", errFailedToStartSRTP, err)
 	}
 
 	srtcpSession, err := srtp.NewSessionSRTCP(t.srtcpEndpoint, srtpConfig)
 	if err != nil {
+		// nolint
 		return fmt.Errorf("%w: %v", errFailedToStartSRTCP, err)
 	}
 
@@ -327,9 +328,9 @@ func (t *DTLSTransport) Start(remoteParameters DTLSParameters) error {
 		dtlsConfig.ReplayProtectionWindow = int(*t.api.settingEngine.replayProtection.DTLS)
 	}
 
-	if t.api.settingEngine.dtls.retransmissionInterval != 0 {
-		dtlsConfig.FlightInterval = t.api.settingEngine.dtls.retransmissionInterval
-	}
+	dtlsConfig.FlightInterval = t.api.settingEngine.dtls.retransmissionInterval
+	dtlsConfig.InsecureSkipVerifyHello = t.api.settingEngine.dtls.insecureSkipHelloVerify
+	dtlsConfig.EllipticCurves = t.api.settingEngine.dtls.ellipticCurves
 
 	// Connect as DTLS Client/Server, function is blocking and we
 	// must not hold the DTLSTransport lock
