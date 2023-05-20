@@ -339,9 +339,9 @@ watch([room.state.messages, sidePanel], () => {
   }
 })
 
-onUnmounted(() => {
+onUnmounted(async () => {
   connectThrottler.close()
-  room.close()
+  await room.close()
 })
 
 onBeforeRouteLeave(async (to, from, next) => {
