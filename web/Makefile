@@ -19,7 +19,7 @@ modules:
 		-it \
 		-w /app \
 		-v `pwd`:/app \
-		node:16.15 bash -c "npm install -g pnpm@7.1.0 && pnpm install"
+		node:20.2 npm install
 
 .PHONY: lint
 lint:
@@ -30,7 +30,6 @@ lint:
 		-w /app/web \
 		-v `pwd`:/app/web \
 		-v /app/web/node_modules \
-      	-v /app/web/.pnpm-store \
       	-v /app/web/dist \
 		${TOOLS_IMG} npm run lint
 
@@ -43,6 +42,5 @@ build:
 		-w /app/web \
 		-v `pwd`:/app/web \
 		-v /app/web/node_modules \
-      	-v /app/web/.pnpm-store \
       	-v /app/web/dist \
 		${TOOLS_IMG} npm run build
