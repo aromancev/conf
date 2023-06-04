@@ -13,6 +13,9 @@ inputs:
   dir:
     description: 'Directory with Dockerfile'
     required: true
+  build-args:
+    description: 'Build arguments'
+    default: ''
 
 runs:
   using: composite
@@ -43,3 +46,4 @@ runs:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: ${{ inputs.build-args }}
