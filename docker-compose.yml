@@ -57,7 +57,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile.dev
-    command: pnpm run serve
+    command: npm run serve
     # In the dockerfile node_modules is built at /app, so we mount to a subfolder to avoid bringing node_modules from host with mapping.
     # Node will not find node_modules in the work dir and will look in the parent folder (/app).
     working_dir: /app/web 
@@ -72,7 +72,6 @@ services:
       # Prevent node folders from being mapped by the previous volume.
       # They will just be empty in the container.
       - /app/web/node_modules
-      - /app/web/.pnpm-store
       - /app/web/dist
 
   gateway:
