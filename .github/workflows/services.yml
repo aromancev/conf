@@ -12,7 +12,42 @@ on:
       - services/**
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.19'
+          cache: false
+
+      - name: Test
+        working-directory: ./services
+        run: go test ./... -timeout 5m
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.19'
+          cache: false
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.51
+          working-directory: ./services
+
   build:
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -34,35 +69,3 @@ jobs:
           go build -o bin/ ./cmd/avp/...
           go build -o bin/ ./cmd/sender/...
           go build -o bin/ ./cmd/sender-clients/...
-
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '^1.19'
-          cache: false
-
-      - name: Test
-        working-directory: ./services
-        run: go test ./... -timeout 5m
-
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '^1.19'
-          cache: false
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.51
-          working-directory: ./services
