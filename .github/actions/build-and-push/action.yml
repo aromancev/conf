@@ -1,0 +1,45 @@
+name: 'Build and Push'
+
+inputs:
+  user:
+    description: 'Docker user'
+    required: true
+  password:
+    description: 'Docker password'
+    required: true
+  image:
+    description: 'Image name'
+    required: true
+  dir:
+    description: 'Directory with Dockerfile'
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - name: Check out the repo
+      uses: actions/checkout@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ inputs.user }}
+        password: ${{ inputs.password }}
+    
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: confa/${{ inputs.image }}
+        tags: |
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ${{ inputs.dir }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
