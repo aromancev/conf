@@ -61,14 +61,14 @@ build:
 
 .PHONY: server-api
 server-api:
-	cd deploy \
+	cd deploy-manual \
 		&& docker-compose -f api.docker-compose.yml down \
 		&& docker-compose -f api.docker-compose.yml build \
 		&& docker-compose -f api.docker-compose.yml up -d
 
 .PHONY: server-sfu
 server-sfu:
-	cd deploy \
+	cd deploy-manual \
 		&& docker-compose -f sfu.docker-compose.yml down \
 		&& docker-compose -f sfu.docker-compose.yml build \
 		&& docker-compose -f sfu.docker-compose.yml up -d
