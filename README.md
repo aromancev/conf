@@ -7,3 +7,4 @@ Create new migration: `./mongo/migrate.sh create -ext json -seq -dir path/to/mig
 Run migrations: `make migrate`
 
 test
+ 2
