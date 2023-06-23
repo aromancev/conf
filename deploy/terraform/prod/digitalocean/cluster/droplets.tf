@@ -271,6 +271,11 @@ advertise {
   serf = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 }
 
+client {
+  enabled = true
+  network_interface = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"name\" }}"
+}
+
 ui {
   enabled = true
 }
@@ -292,10 +297,6 @@ tls {
 
   verify_server_hostname = true
   verify_https_client    = true
-}
-
-client {
-  enabled = true
 }
 ' > /etc/nomad.d/nomad.hcl
 
