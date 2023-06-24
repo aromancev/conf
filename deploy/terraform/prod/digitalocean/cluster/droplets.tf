@@ -43,15 +43,10 @@ resource "digitalocean_droplet" "server" {
 
 # Setup Consul.
 echo 'Creating Consul config files in  /etc/consul.d/ ...'
-sudo mkdir --parents /etc/consul.d/certs
-
-echo '${var.consul_ca_cert_pem}' > /etc/consul.d/certs/consul-agent-ca.pem
-echo '${var.consul_server_cert_pem}' > /etc/consul.d/certs/dc1-server-consul-0.pem
-echo '${var.consul_server_private_key_pem}' > /etc/consul.d/certs/dc1-server-consul-0-key.pem
+sudo mkdir --parents /etc/consul.d
 
 echo '
 datacenter = "${var.datacenter}"
-encrypt = "${var.consul_gossip_key}"
 retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojoin api_token=${var.do_token_cloud_autoconnect}"]
 
 # Address to communication inside Consul cluster. Only bind to the private IP on the VPC.
@@ -63,48 +58,16 @@ server = true
 bootstrap_expect = ${local.bootstrap_expect}
 
 addresses {
-  # Address for Consul client. Bind to localhost so that other services on the same host can register themselves.
-  http = "127.0.0.1"
-  # Address for Consul client. Bind to localhost so that other agents can communicate inside the cluster.
-  https = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
+  # Address for Consul client. Bind to private network so that other agents can communicate inside the cluster.
+  http = "127.0.0.1 {{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
   dns = "127.0.0.1"
   grpc = "127.0.0.1"
-  grpc_tls = "127.0.0.1"
 }
 
 ports {
   # Allow unsecured HTTP traffic.
   # This is safe if Consul is exposed ONLY on localhost. Otherwise set to -1.
   http = 8500
-  https = 8501
-  grpc_tls  = 8503
-}
-
-tls {
-  defaults {
-    ca_file = "/etc/consul.d/certs/consul-agent-ca.pem"
-    cert_file = "/etc/consul.d/certs/${var.datacenter}-server-consul-0.pem"
-    key_file = "/etc/consul.d/certs/${var.datacenter}-server-consul-0-key.pem"
-
-    verify_incoming = true
-    verify_outgoing = true
-  }
-
-  internal_rpc {
-    verify_server_hostname = true
-  }
-}
-
-auto_encrypt {
-  allow_tls = true
-}
-
-connect {
-  enabled = true
-}
-
-performance {
-  raft_multiplier = 1
 }
 ' > /etc/consul.d/consul.hcl
 
@@ -116,11 +79,7 @@ sudo systemctl start consul
 
 # Setup Nomad.
 echo 'Creating Nomad config files in  /etc/nomad.d/ ...'
-sudo mkdir --parents /etc/nomad.d/certs
-
-echo '${var.nomad_ca_cert_pem}' > /etc/consul.d/certs/nomad-agent-ca.pem
-echo '${var.nomad_server_cert_pem}' > /etc/consul.d/certs/global-server-nomad.pem
-echo '${var.nomad_server_private_key_pem}' > /etc/consul.d/certs/global-server-nomad-key.pem
+sudo mkdir --parents /etc/nomad.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -144,24 +103,9 @@ consul {
   address = "127.0.0.1:8500"
 }
 
-tls {
-  # Allow unsecured HTTP traffic.
-  # This is safe if Nomad is exposed ONLY on localhost. Otherwise set to false.
-  http = false
-  rpc  = true
-
-  ca_file   = "/etc/consul.d/certs/nomad-agent-ca.pem"
-  cert_file = "/etc/consul.d/certs/global-server-nomad.pem"
-  key_file  = "/etc/consul.d/certs/global-server-nomad-key.pem"
-
-  verify_server_hostname = true
-  verify_https_client    = true
-}
-
 server {
   enabled = true
   bootstrap_expect = ${local.bootstrap_expect}
-  encrypt = "${var.nomad_gossip_key}"
 }
 ' > /etc/nomad.d/nomad.hcl
 
@@ -194,13 +138,10 @@ resource "digitalocean_droplet" "worker" {
 
 # Setup Consul.
 echo 'Creating Consul config files in  /etc/consul.d/ ...'
-sudo mkdir --parents /etc/consul.d/certs
-
-echo '${var.consul_ca_cert_pem}' > /etc/consul.d/certs/consul-agent-ca.pem
+sudo mkdir --parents /etc/consul.d
 
 echo '
 datacenter = "${var.datacenter}"
-encrypt = "${var.consul_gossip_key}"
 retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojoin api_token=${var.do_token_cloud_autoconnect}"]
 
 # Address to communication inside Consul cluster. Only bind to the private IP.
@@ -215,24 +156,6 @@ ports {
   # Allow unsecured HTTP traffic.
   # This is safe if Consul is exposed ONLY on localhost. Otherwise set to -1.
   http = 8500
-  https = 8501
-}
-
-tls {
-  defaults {
-    ca_file = "/etc/consul.d/certs/consul-agent-ca.pem"
-
-    verify_incoming = true
-    verify_outgoing = true
-  }
-
-  internal_rpc {
-    verify_server_hostname = true
-  }
-}
-
-auto_encrypt = {
-  tls = true
 }
 
 ui_config {
@@ -248,11 +171,7 @@ sudo systemctl start consul
 
 # Setup Nomad.
 echo 'Creating Nomad config files in  /etc/nomad.d/ ...'
-sudo mkdir --parents /etc/nomad.d/certs
-
-echo '${var.nomad_ca_cert_pem}' > /etc/consul.d/certs/nomad-agent-ca.pem
-echo '${var.nomad_client_cert_pem}' > /etc/consul.d/certs/global-client-nomad.pem
-echo '${var.nomad_client_private_key_pem}' > /etc/consul.d/certs/global-client-nomad-key.pem
+sudo mkdir --parents /etc/nomad.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -283,20 +202,6 @@ ui {
 # This allows Nomad to register as a service with the Consul agent on the same host.
 consul {
   address = "127.0.0.1:8500"
-}
-
-tls {
-  # Allow unsecured HTTP traffic.
-  # This is safe if Nomad is exposed ONLY on localhost. Otherwise set to true.
-  http = false
-  rpc  = true
-
-  ca_file   = "/etc/consul.d/certs/nomad-agent-ca.pem"
-  cert_file = "/etc/consul.d/certs/global-client-nomad.pem"
-  key_file  = "/etc/consul.d/certs/global-client-nomad-key.pem"
-
-  verify_server_hostname = true
-  verify_https_client    = true
 }
 ' > /etc/nomad.d/nomad.hcl
 
