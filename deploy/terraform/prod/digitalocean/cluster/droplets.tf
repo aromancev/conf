@@ -1,21 +1,19 @@
-provider "digitalocean" {
-  token = var.do_token
+locals {
+  bootstrap_expect = 1
+  vpc_range        = "10.10.10.0/24"
+  mongo_group_id   = "1001"
+  mongo_user_id    = "1001"
 }
 
-locals {
-  bootstrap_expect = floor(var.server_count / 2) + 1
-  vpc_range        = "10.10.10.0/24"
+resource "digitalocean_ssh_key" "main" {
+  name       = "Confa Terraform"
+  public_key = file(var.ssh_key_public)
 }
 
 data "digitalocean_droplet_snapshot" "cluster" {
   name_regex  = "^confa_cluster$"
   region      = var.region
   most_recent = true
-}
-
-resource "digitalocean_ssh_key" "main" {
-  name       = "Confa Terraform"
-  public_key = file(var.ssh_key_public)
 }
 
 resource "digitalocean_vpc" "main" {
@@ -25,9 +23,8 @@ resource "digitalocean_vpc" "main" {
 }
 
 resource "digitalocean_droplet" "server" {
-  count    = var.server_count
   image    = data.digitalocean_droplet_snapshot.cluster.id
-  name     = "cluster-server-${count.index}"
+  name     = "cluster-server"
   region   = var.region
   size     = "s-1vcpu-512mb-10gb"
   tags     = ["consul-autojoin"]
@@ -36,14 +33,13 @@ resource "digitalocean_droplet" "server" {
     digitalocean_ssh_key.main.fingerprint,
   ]
 
-  # If `user_data` doesn't work, check cloud init logs on the instance:
-  # /var/log/cloud-init.log /var/log/cloud-init-output.log
+  # If `user_data` doesn't work, check cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
 
 # Setup Consul.
 echo 'Creating Consul config files in  /etc/consul.d/ ...'
-sudo mkdir --parents /etc/consul.d
+mkdir --parents /etc/consul.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -72,14 +68,14 @@ ports {
 ' > /etc/consul.d/consul.hcl
 
 echo 'Starting Consul service ...'
-sudo chown --recursive consul:consul /etc/consul.d
-sudo chmod 700 /etc/consul.d
-sudo systemctl enable consul
-sudo systemctl start consul
+chown --recursive consul:consul /etc/consul.d
+chmod 700 /etc/consul.d
+systemctl enable consul
+systemctl start consul
 
 # Setup Nomad.
 echo 'Creating Nomad config files in  /etc/nomad.d/ ...'
-sudo mkdir --parents /etc/nomad.d
+mkdir --parents /etc/nomad.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -110,35 +106,33 @@ server {
 ' > /etc/nomad.d/nomad.hcl
 
 echo 'Starting Nomad service ...'
-sudo chown --recursive nomad:nomad /etc/nomad.d
-sudo chmod 700 /etc/nomad.d
-sudo systemctl enable nomad
-sudo systemctl start nomad
+chown --recursive nomad:nomad /etc/nomad.d
+chmod 700 /etc/nomad.d
+systemctl enable nomad
+systemctl start nomad
 
 echo 'Bootstrap complete!'
   EOT
 }
 
 resource "digitalocean_droplet" "worker" {
-  count    = var.server_count
   image    = data.digitalocean_droplet_snapshot.cluster.id
-  name     = "cluster-worker-${count.index}"
+  name     = "cluster-worker"
   region   = var.region
-  size     = "s-1vcpu-512mb-10gb"
+  size     = "s-1vcpu-1gb"
   tags     = ["consul-autojoin"]
   vpc_uuid = digitalocean_vpc.main.id
   ssh_keys = [
     digitalocean_ssh_key.main.fingerprint,
   ]
 
-  # If `user_data` doesn't work, check cloud init logs on the instance:
-  # /var/log/cloud-init.log /var/log/cloud-init-output.log
+  # If `user_data` doesn't work, check cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
 
 # Setup Consul.
 echo 'Creating Consul config files in  /etc/consul.d/ ...'
-sudo mkdir --parents /etc/consul.d
+mkdir --parents /etc/consul.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -164,14 +158,14 @@ ui_config {
 ' > /etc/consul.d/consul.hcl
 
 echo 'Starting Consul service ...'
-sudo chown --recursive consul:consul /etc/consul.d
-sudo chmod 700 /etc/consul.d
-sudo systemctl enable consul
-sudo systemctl start consul
+chown --recursive consul:consul /etc/consul.d
+chmod 700 /etc/consul.d
+systemctl enable consul
+systemctl start consul
 
 # Setup Nomad.
 echo 'Creating Nomad config files in  /etc/nomad.d/ ...'
-sudo mkdir --parents /etc/nomad.d
+mkdir --parents /etc/nomad.d
 
 echo '
 datacenter = "${var.datacenter}"
@@ -193,6 +187,12 @@ advertise {
 client {
   enabled = true
   network_interface = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"name\" }}"
+
+  # Host mount that the mongo job can use. It is also used by Nomad to select the node for scheduling.
+  host_volume "mongodb" {
+    path      = "/opt/mongodb"
+    read_only = false
+  }
 }
 
 ui {
@@ -205,11 +205,21 @@ consul {
 }
 ' > /etc/nomad.d/nomad.hcl
 
+# Creating host directory for mongo.
+mkdir --parents /opt/mongodb/data
+chmod 700 /opt/mongodb/data
+# Temporary hack for enabling replication on a single instance.
+openssl rand -base64 32 > /opt/mongodb/repl.key
+chmod 400 /opt/mongodb/repl.key
+groupadd -g ${local.mongo_group_id} mongodb
+useradd -M -s /bin/false -g mongodb -u ${local.mongo_user_id} mongodb
+chown --recursive mongodb:mongodb /opt/mongodb
+
 echo 'Starting Nomad service ...'
-sudo chown --recursive nomad:nomad /etc/nomad.d
-sudo chmod 700 /etc/nomad.d
-sudo systemctl enable nomad
-sudo systemctl start nomad
+chown --recursive nomad:nomad /etc/nomad.d
+chmod 700 /etc/nomad.d
+systemctl enable nomad
+systemctl start nomad
 
 echo 'Bootstrap complete!'
   EOT
