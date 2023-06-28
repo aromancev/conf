@@ -25,6 +25,17 @@ variable "ssh_key_private" {
   type        = string
 }
 
+variable "github_actions_repo" {
+  description = "GitHub respository URL for self-hosted runner."
+  type        = string
+}
+
+variable "github_actions_token" {
+  description = "GitHub runner registration token."
+  type        = string
+  sensitive   = true
+}
+
 variable "datacenter" {
   description = "Cluster datacenter name."
   type        = string

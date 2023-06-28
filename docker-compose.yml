@@ -187,7 +187,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: mongo
       MONGO_INITDB_ROOT_PASSWORD: mongo
     volumes:
-      - .artifacts/mongo/:/data/db
+      - .artifacts/mongodb/:/data/db
     entrypoint:
       - bash
       - -c
