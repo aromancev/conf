@@ -14,10 +14,11 @@ job "web" {
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.http.rule=Path(`/`)",
+        "traefik.http.routers.http.rule=PathPrefix(`/`)",
       ]
 
       check {
+        name     = "alive"
         type     = "http"
         path     = "/"
         interval = "2s"
