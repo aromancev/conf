@@ -1,0 +1,26 @@
+name: Services
+on: workflow_dispatch
+
+jobs:
+  migrate:
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "^1.19"
+
+      - run: go version
+
+  mongodb-setup:
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: |
+          nomad exec -job mongodb mongo --quiet --eval '
+            db.runCommand("ping").ok
+          '

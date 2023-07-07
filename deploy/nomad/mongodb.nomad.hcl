@@ -5,7 +5,8 @@ job "mongodb" {
   group "mongodb" {
     network {
       port "db" {
-        to = 27017
+        # Port has to be static to initiative replica set. See https://www.mongodb.com/docs/manual/reference/command/replSetInitiate/#mongodb-dbcommand-dbcmd.replSetInitiate.
+        static = 27017
       }
     }
 
@@ -32,18 +33,18 @@ job "mongodb" {
         interval = "10s"
         timeout  = "2s"
       }
+      
       check {
         name     = "ready"
         type     = "script"
         interval = "10s"
-        timeout  = "10s"
+        timeout  = "5s"
         task     = "mongodb"
         command  = "mongo"
         args     = [
+          "--quiet",
           "--eval",
           "'db.runCommand(\"ping\").ok'",
-          "localhost:27017",
-          "--quiet",
         ]
       }
     }
@@ -54,6 +55,9 @@ job "mongodb" {
 
       config {
         image = "mongodb/mongodb-community-server:4.4-ubuntu2004"
+        # Host network is required to access Consul DNS on the host machine.
+        # Alternatively, we could dance with docker DNS forwarding. See: https://github.com/hashicorp/nomad/issues/12894.
+        network_mode = "host"
         command = "mongod"
         args = [
           "--dbpath",
@@ -79,7 +83,7 @@ job "mongodb" {
 
       resources {
         cpu    = 500
-        memory = 512
+        memory = 256
       }
     }
   }
