@@ -16,8 +16,8 @@ jobs:
         run: go install -tags 'mongodb' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.14.1
 
       - name: Run migrations
-        working-directory: ./services
+        working-directory: ./services/migrations
         run: |
-          migrate -source file://services/migrations/iam/ -database "mongodb://iam:iam@mongodb.service.consul/iam?replicaSet=rs" up
-          migrate -source file://services/migrations/rtc/ -database "mongodb://rtc:rtc@mongodb.service.consul/rtc?replicaSet=rs" up
-          migrate -source file://services/migrations/confa/ -database "mongodb://confa:confa@mongodb.service.consul/confa?replicaSet=rs" up
+          migrate -source file://iam/ -database "mongodb://iam:iam@mongodb.service.consul/iam?replicaSet=rs" up
+          migrate -source file://rtc/ -database "mongodb://rtc:rtc@mongodb.service.consul/rtc?replicaSet=rs" up
+          migrate -source file://confa/ -database "mongodb://confa:confa@mongodb.service.consul/confa?replicaSet=rs" up
