@@ -1,7 +1,7 @@
 name: Beanstalk
 on:
   push:
-    branches: 
+    branches:
       - main
     paths:
       - beanstalk/**
@@ -10,13 +10,14 @@ jobs:
   build-and-push:
     name: Build and push image to Docker Hub
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-      
+
       - uses: ./.github/actions/build-and-push
         with:
           user: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           image: beanstalk
-          dir: ./beanstalk
+          context: ./beanstalk

@@ -10,9 +10,12 @@ inputs:
   image:
     description: 'Image name'
     required: true
-  dir:
-    description: 'Directory with Dockerfile'
+  context:
+    description: 'Context for build'
     required: true
+  file:
+    description: 'Path to Dockerfile'
+    default: ''
   build-args:
     description: 'Build arguments'
     default: ''
@@ -42,7 +45,8 @@ runs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
-        context: ${{ inputs.dir }}
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
