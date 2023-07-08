@@ -71,8 +71,8 @@ job "mongodb" {
       }
 
       env = {
-        MONGODB_INITDB_ROOT_USERNAME = "mongodb"
-        MONGODB_INITDB_ROOT_PASSWORD = "mongodb"
+        MONGODB_INITDB_ROOT_USERNAME = "admin"
+        MONGODB_INITDB_ROOT_PASSWORD = "admin"
       }
 
       volume_mount {

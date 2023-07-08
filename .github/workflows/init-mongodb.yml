@@ -1,0 +1,73 @@
+name: Init MongoDB
+on: workflow_dispatch
+
+jobs:
+  init-rs:
+    name: Init Replica Set
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: |
+          nomad exec -job mongodb mongo --quiet -u admin -p admin --eval '
+            rs.initiate({
+              _id: "rs",
+              members: [
+                {_id: 0, host : "mongodb.service.consul:27017"},
+              ]
+            })
+          '
+
+  create-users:
+    name: Create Users
+    runs-on: self-hosted
+    needs: init-rs
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: |
+          nomad exec -job mongodb mongo --quiet -u admin -p admin --eval '
+            db = db.getSiblingDB("iam")
+            if (db.getUser("iam") === null) {
+                db.createUser({
+                    user: "iam",
+                    pwd: "iam",
+                    roles: [
+                        {
+                            role: "readWrite",
+                            db: "iam"
+                        },
+                    ]
+                })
+            }
+            
+            db = db.getSiblingDB("rtc")
+            if (db.getUser("rtc") === null) {
+                db.createUser({
+                    user: "rtc",
+                    pwd: "rtc",
+                    roles: [
+                        {
+                            role: "readWrite",
+                            db: "rtc"
+                        },
+                    ]
+                })
+            }
+            
+            db = db.getSiblingDB("confa")
+            if (db.getUser("confa") === null) {
+                db.createUser({
+                    user: "confa",
+                    pwd: "confa",
+                    roles: [
+                        {
+                            role: "readWrite",
+                            db: "confa"
+                        },
+                    ]
+                })
+            }
+          '
