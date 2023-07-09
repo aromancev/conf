@@ -1,6 +1,4 @@
 job "mongodb" {
-  type = "system"
-
   group "mongodb" {
     network {
       port "db" {
