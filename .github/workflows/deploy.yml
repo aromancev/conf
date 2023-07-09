@@ -1,0 +1,16 @@
+name: Deploy
+on: workflow_dispatch
+
+jobs:
+  deploy:
+    name: Deploy all applications
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: nomad job run beanstalk.nomad.hcl
+      - run: nomad job run mongodb.nomad.hcl
+      - run: nomad job run web.nomad.hcl
+      - run: nomad job run iam.nomad.hcl
+      - run: nomad job run traefik.nomad.hcl
