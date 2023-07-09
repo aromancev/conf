@@ -46,6 +46,22 @@ jobs:
           version: v1.51
           working-directory: ./services
 
+  build-iam:
+    name: Build iam
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/build-and-push
+        with:
+          user: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          image: iam
+          context: ./services
+          file: ./services/cmd/iam/Dockerfile
+
   build:
     name: Build
     runs-on: ubuntu-latest
