@@ -4,11 +4,11 @@ job "traefik" {
 
   group "traefik" {
     network {
-      port "http" {
+      port "gateway" {
         static = 80
       }
       port "api" {
-        static = 8080
+        static = 8000
       }
     }
 
@@ -38,24 +38,32 @@ job "traefik" {
 
       template {
         data = <<EOF
-entryPoints:
-  http:
-    address: ":80"
-  traefik:
-    address: ":8080"
+          logLevel: "INFO"
 
-api:
-  dashboard: true
-  insecure: true
+          log:
+            format: "json"
 
-providers:
-  consulCatalog:
-    prefix: "traefik"
-    exposedByDefault: false
-    endpoint:
-      address: "127.0.0.1:8500"
-      scheme: "http"
-EOF
+          accessLog:
+            format: "json"
+
+          entryPoints:
+            gateway:
+              address: ":80"
+            traefik:
+              address: ":8000"
+
+          api:
+            dashboard: true
+            insecure: true
+
+          providers:
+            consulCatalog:
+              prefix: "traefik"
+              exposedByDefault: false
+              endpoint:
+                address: "127.0.0.1:8500"
+                scheme: "http"
+        EOF
         destination = "local/traefik.yml"
       }
 

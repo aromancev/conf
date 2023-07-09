@@ -3,18 +3,18 @@ job "web" {
 
   group "web" {
     network {
-      port "http" {
+      port "web" {
         to = 80
       }
     }
 
     service {
       name = "web"
-      port = "http"
+      port = "web"
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.http.rule=PathPrefix(`/`)",
+        "traefik.http.routers.web.rule=PathPrefix(`/`)",
       ]
 
       check {
@@ -31,7 +31,7 @@ job "web" {
 
       config {
         image = "confa/web:latest"
-        ports = ["http"]
+        ports = ["web"]
       }
 
       resources {
