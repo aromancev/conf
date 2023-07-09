@@ -17,7 +17,7 @@ job "traefik" {
       check {
         name     = "alive"
         type     = "tcp"
-        port     = "http"
+        port     = "gateway"
         interval = "10s"
         timeout  = "2s"
       }

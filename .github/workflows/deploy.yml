@@ -9,7 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - working-directory: ./deploy/nomad
+      - name: Deploy all services
+        working-directory: ./deploy/nomad
         run: |
           nomad job run beanstalk.nomad.hcl
           nomad job run mongodb.nomad.hcl
