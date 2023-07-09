@@ -1,6 +1,4 @@
 job "web" {
-  datacenters = ["dc1"]
-
   group "web" {
     network {
       port "web" {

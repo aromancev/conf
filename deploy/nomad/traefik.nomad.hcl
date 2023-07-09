@@ -1,6 +1,5 @@
 job "traefik" {
   type = "system"
-  datacenters = ["dc1"]
 
   group "traefik" {
     network {
