@@ -32,6 +32,8 @@ func main() {
 
 	if config.LogFormat == LogConsole {
 		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout})
+	} else {
+		log.Logger = zerolog.New(os.Stdout)
 	}
 	log.Logger = log.Logger.With().Timestamp().Caller().Logger()
 	switch config.LogLevel {

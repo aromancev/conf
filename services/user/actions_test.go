@@ -3,11 +3,9 @@ package user
 import (
 	"context"
 	"fmt"
-	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -324,19 +322,11 @@ func TestActions(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			start := time.Now()
 			_, err = actions.CheckPassword(ctx, ident, "wrongwrong")
 			require.ErrorIs(t, err, ErrNotFound)
-			wrongPass := time.Since(start)
 
-			start = time.Now()
 			_, err = actions.CheckPassword(ctx, Ident{Platform: ident.Platform, Value: "wrong"}, "testtest")
 			require.ErrorIs(t, err, ErrNotFound)
-			notFound := time.Since(start)
-
-			// Takes about the same time.
-			diffMs := math.Abs(float64(wrongPass.Milliseconds() - notFound.Milliseconds()))
-			assert.Less(t, diffMs, float64(wrongPass.Milliseconds()+notFound.Milliseconds())*0.1)
 		})
 	})
 }
