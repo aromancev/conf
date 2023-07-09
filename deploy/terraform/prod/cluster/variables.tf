@@ -15,6 +15,11 @@ variable "region" {
   type        = string
 }
 
+variable "datacenter" {
+  description = "Cluster datacenter name."
+  type        = string
+}
+
 variable "ssh_key_public" {
   description = "File path to public SSH key that will be used to access droplets."
   type        = string
@@ -34,10 +39,4 @@ variable "github_actions_token" {
   description = "GitHub runner registration token."
   type        = string
   sensitive   = true
-}
-
-variable "datacenter" {
-  description = "Cluster datacenter name."
-  type        = string
-  default     = "dc1"
 }

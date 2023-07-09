@@ -1,6 +1,4 @@
 job "beanstalk" {
-  datacenters = ["dc1"]
-
   group "beanstalk" {
     network {
       port "beanstalk" {

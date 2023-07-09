@@ -1,6 +1,5 @@
 job "mongodb" {
   type = "system"
-  datacenters = ["dc1"]
 
   group "mongodb" {
     network {
