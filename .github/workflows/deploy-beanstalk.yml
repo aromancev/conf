@@ -5,11 +5,11 @@ on:
       - main
     paths:
       - beanstalk/**
-      - deploy/beanstalk.nomad.hcl
+      - deploy/nomad/beanstalk.nomad.hcl
 
 jobs:
   build-and-push:
-    name: Build and push image to Docker Hub
+    name: Build and Push
     runs-on: ubuntu-latest
     environment: production
     steps:

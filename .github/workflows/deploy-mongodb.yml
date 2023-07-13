@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - deploy/mongodb.nomad.hcl
+      - deploy/nomad/mongodb.nomad.hcl
 
 jobs:
   deploy:

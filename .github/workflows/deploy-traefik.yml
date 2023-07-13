@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - deploy/traefik.nomad.hcl
+      - deploy/nomad/traefik.nomad.hcl
 
 jobs:
   deploy:
