@@ -1,0 +1,41 @@
+name: Deploy Web
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - web/**
+      - deploy/web.nomad.hcl
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/build-and-push
+        with:
+          user: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          image: web
+          dir: ./web
+          build-args: |
+            VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
+            VITE_SFU_URL=wss://sfu.confa.io
+            VITE_STORAGE_URL=/api/storage
+            VITE_GSI_CLIENT_ID=453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
+
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy
+        working-directory: ./deploy/nomad
+        run: nomad job run web.nomad.hcl

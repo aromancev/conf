@@ -1,10 +1,11 @@
-name: Beanstalk
+name: Deploy Beanstalk
 on:
   push:
     branches:
       - main
     paths:
       - beanstalk/**
+      - deploy/beanstalk.nomad.hcl
 
 jobs:
   build-and-push:
@@ -15,9 +16,22 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/build-and-push
+      - name: Build and Push
+        uses: ./.github/actions/build-and-push
         with:
           user: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           image: beanstalk
           context: ./beanstalk
+
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy
+        working-directory: ./deploy/nomad
+        run: nomad job run beanstalk.nomad.hcl
