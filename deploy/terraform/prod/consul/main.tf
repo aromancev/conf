@@ -1,6 +1,6 @@
 resource "tls_private_key" "main" {
   algorithm   = "ECDSA"
-  ecdsa_curve = "P384"
+  ecdsa_curve = "P256"
 }
 
 resource "consul_key_prefix" "auth" {
