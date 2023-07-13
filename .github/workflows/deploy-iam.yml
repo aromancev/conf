@@ -5,11 +5,11 @@ on:
       - main
     paths:
       - services/**
-      - deploy/iam.nomad.hcl
+      - deploy/nomad/iam.nomad.hcl
 
 jobs:
   build-and-push:
-    name: Build and push image to Docker Hub
+    name: Build and Push
     runs-on: ubuntu-latest
     environment: production
     steps:

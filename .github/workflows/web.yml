@@ -1,12 +1,12 @@
 name: Web
 on:
   push:
-    branches: 
+    branches:
       - main
     paths:
       - web/**
   pull_request:
-    branches: 
+    branches:
       - main
     paths:
       - web/**
@@ -17,21 +17,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-        - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-        - uses: actions/setup-node@v3
-          with:
-            node-version: 20.2
-            cache: 'npm'
-            cache-dependency-path: 'web/package-lock.json'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.2
+          cache: "npm"
+          cache-dependency-path: "web/package-lock.json"
 
-        - name: Install
-          working-directory: ./web
-          run: npm ci
+      - name: Install
+        working-directory: ./web
+        run: npm ci
 
-        - name: Lint
-          working-directory: ./web
-          run: npm run lint
+      - name: Lint
+        working-directory: ./web
+        run: npm run lint
 
   build-and-push:
     name: Build and Push
@@ -39,7 +39,7 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-      
+
       - uses: ./.github/actions/build-and-push
         with:
           user: ${{ secrets.DOCKER_USER }}
