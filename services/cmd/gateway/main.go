@@ -49,6 +49,9 @@ func main() {
 	}
 	var services []*bramble.Service
 	for _, s := range config.ParseServices() {
+		if s == "" {
+			continue
+		}
 		services = append(services, bramble.NewService(s))
 	}
 	gateway := bramble.NewGateway(

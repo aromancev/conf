@@ -14,6 +14,7 @@ job "iam" {
       port = "web"
 
       tags = [
+        "graph",
         "traefik.enable=true",
         "traefik.http.routers.iam.rule=PathPrefix(`/api/iam`)",
         "traefik.http.routers.iam.middlewares=stripprefix-iam",
