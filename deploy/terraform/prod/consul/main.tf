@@ -47,3 +47,11 @@ resource "consul_key_prefix" "storage" {
     "buckets/confa-tracks-public"   = "confa-tracks-public"
   }
 }
+
+resource "consul_key_prefix" "sender" {
+  path_prefix = "sender/"
+
+  subkeys = {
+    "mailersend/token" = var.mailersend_token
+  }
+}

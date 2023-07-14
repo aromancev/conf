@@ -18,3 +18,4 @@ jobs:
           nomad job run -detach traefik.nomad.hcl
           nomad job run -detach web.nomad.hcl
           nomad job run -detach gateway.nomad.hcl
+          nomad job run -detach sender.nomad.hcl
