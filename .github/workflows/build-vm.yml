@@ -1,0 +1,30 @@
+name: Build VM Images
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: Build VM Images
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Setup `packer`
+        uses: hashicorp/setup-packer@main
+        with:
+          version: 1.8.6
+
+      - name: Init `packer`
+        working-directory: ./deploy/packer
+        run: packer init .
+
+      - name: Build
+        working-directory: ./deploy/packer
+        run: |
+          packer build \
+            -var="do_token=${{ secrets.TF_VAR_DO_DEPLOY_TOKEN }}" \
+            -var="region=${{ vars.TF_VAR_REGION }}" \
+            -var="snapshot_name=confa_cluster" \
+            .

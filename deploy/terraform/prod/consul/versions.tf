@@ -1,4 +1,6 @@
 terraform {
+  backend "consul" {}
+
   required_providers {
     consul = {
       source  = "hashicorp/consul"

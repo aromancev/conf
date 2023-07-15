@@ -8,7 +8,7 @@ job "iam" {
         to = 8000
       }
       dns {
-        servers = ["${meta.docker_dns}"]
+        servers = ["172.17.0.1"] # Pre-defined well-known global constant. See terraform configuration.
       }
     }
 
