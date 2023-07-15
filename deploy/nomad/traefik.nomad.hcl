@@ -2,6 +2,11 @@ job "traefik" {
   type = "system"
 
   group "traefik" {
+    constraint {
+      attribute = "${meta.ingress_web}"
+      value     = "true"
+    }
+
     network {
       port "gateway" {
         static = 80

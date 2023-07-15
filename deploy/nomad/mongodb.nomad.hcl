@@ -5,6 +5,9 @@ job "mongodb" {
         # Port has to be static to initiative replica set. See https://www.mongodb.com/docs/manual/reference/command/replSetInitiate/#mongodb-dbcommand-dbcmd.replSetInitiate.
         static = 27017
       }
+      dns {
+        servers = ["${meta.docker_dns}"]
+      }
     }
 
     volume "mongodb" {
@@ -48,13 +51,10 @@ job "mongodb" {
 
     task "mongodb" {
       driver = "docker"
-      user = "1001:1001"
+      user = "${meta.mongodb_uid}:${meta.mongodb_gid}"
 
       config {
         image = "mongodb/mongodb-community-server:4.4-ubuntu2004"
-        # Host network is required to access Consul DNS on the host machine.
-        # Alternatively, we could dance with docker DNS forwarding. See: https://github.com/hashicorp/nomad/issues/12894.
-        network_mode = "host"
         command = "mongod"
         args = [
           "--dbpath",
@@ -80,7 +80,7 @@ job "mongodb" {
 
       resources {
         cpu    = 500
-        memory = 256
+        memory = 512
       }
     }
   }
