@@ -7,6 +7,9 @@ job "iam" {
       port "rpc" {
         to = 8000
       }
+      dns {
+        servers = ["${meta.docker_dns}"]
+      }
     }
 
     service {

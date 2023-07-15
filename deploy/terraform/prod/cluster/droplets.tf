@@ -1,13 +1,14 @@
 locals {
   bootstrap_expect = 1
   vpc_range        = "10.10.10.0/24"
-  mongo_group_id   = "1001"
-  mongo_user_id    = "1001"
+  mongo_uid        = "1001"
+  mongo_gid        = "1001"
+  docker_dns       = "172.17.0.1"
 }
 
 resource "digitalocean_ssh_key" "main" {
   name       = "Confa Terraform"
-  public_key = file(var.ssh_key_public)
+  public_key = tls_private_key.main.public_key_openssh
 }
 
 data "digitalocean_droplet_snapshot" "cluster_server" {
@@ -39,7 +40,7 @@ resource "digitalocean_droplet" "server" {
     digitalocean_ssh_key.main.fingerprint,
   ]
 
-  # If `user_data` doesn't work, check cloud init logs on the instance: /var/log/cloud-init-output.log
+  # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
 
@@ -132,7 +133,7 @@ resource "digitalocean_droplet" "ingress" {
     digitalocean_ssh_key.main.fingerprint,
   ]
 
-  # If `user_data` doesn't work, check cloud init logs on the instance: /var/log/cloud-init-output.log
+  # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
 
@@ -147,7 +148,6 @@ retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojo
 # Address to communication inside Consul cluster. Only bind to the private IP.
 bind_addr = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 # Address for Consul client. Bind localhost so that services like Nomad on the same host can register themselves. 
-# Also bind to the public IP to serve the UI. 
 client_addr = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
 
 data_dir = "/opt/consul"
@@ -193,6 +193,12 @@ advertise {
 client {
   enabled = true
   network_interface = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"name\" }}"
+
+  meta = {
+    docker_dns = "${local.docker_dns}"
+    ingress_web = "true"
+    ingress_sfu = "true"
+  }
 }
 
 ui {
@@ -213,7 +219,9 @@ systemctl start nomad
 
 echo 'Configuring Consul DNS forwarding ...'
 # Clear all systemd-resolved configs. DigitalOcean puts it's own servers there. 
-# We want to replace it with our Consul instance running locally. More info: https://developer.hashicorp.com/consul/tutorials/networking/dns-forwarding.
+# We want to replace it with our Consul instance running locally.
+# https://developer.hashicorp.com/consul/tutorials/networking/dns-forwarding
+# https://felix.ehrenpfort.de/notes/2022-06-22-use-consul-dns-interface-inside-docker-container/
 rm /etc/systemd/resolved.conf.d/*
 # Create Consul DNS forwarding.
 echo '
@@ -222,7 +230,18 @@ DNS=127.0.0.1:8600
 DNSSEC=false
 Domains=~consul
 ' > /etc/systemd/resolved.conf.d/consul.conf
-systemctl restart systemd-resolved
+# Create Consul DNS forwarding for Docker. This will enable containers to query Consul DNS.
+echo '
+[Resolve]
+DNSStubListener=yes
+DNSStubListenerExtra=${local.docker_dns}
+' > /etc/systemd/resolved.conf.d/docker.conf
+echo '
+{
+  "dns": ["${local.docker_dns}"]
+}
+' > /etc/docker/daemon.json
+systemctl restart systemd-resolved docker
 
 echo 'Bootstrap complete!'
   EOT
@@ -254,7 +273,6 @@ retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojo
 # Address to communication inside Consul cluster. Only bind to the private IP.
 bind_addr = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 # Address for Consul client. Bind localhost so that services like Nomad on the same host can register themselves. 
-# Also bind to the public IP to serve the UI. 
 client_addr = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
 
 data_dir = "/opt/consul"
@@ -306,6 +324,12 @@ client {
     path      = "/opt/mongodb"
     read_only = false
   }
+
+  meta {
+    docker_dns = "${local.docker_dns}"
+    mongodb_uid = "${local.mongo_uid}"
+    mongodb_gid = "${local.mongo_gid}"
+  }
 }
 
 ui {
@@ -325,8 +349,8 @@ chmod 700 /opt/mongodb/data
 # TODO: handle roperly in case of multiple instances.
 openssl rand -base64 32 > /opt/mongodb/repl.key
 chmod 400 /opt/mongodb/repl.key
-groupadd -g ${local.mongo_group_id} mongodb
-useradd -M -s /bin/false -g mongodb -u ${local.mongo_user_id} mongodb
+groupadd -g ${local.mongo_gid} mongodb
+useradd -M -s /bin/false -g mongodb -u ${local.mongo_uid} mongodb
 chown --recursive mongodb:mongodb /opt/mongodb
 
 echo 'Starting Nomad service ...'
@@ -343,7 +367,9 @@ sudo -H -u github bash -c './config.sh --unattended --replace --url ${var.github
 
 echo 'Configuring Consul DNS forwarding ...'
 # Clear all systemd-resolved configs. DigitalOcean puts it's own servers there. 
-# We want to replace it with our Consul instance running locally. More info: https://developer.hashicorp.com/consul/tutorials/networking/dns-forwarding.
+# We want to replace it with our Consul instance running locally.
+# https://developer.hashicorp.com/consul/tutorials/networking/dns-forwarding
+# https://felix.ehrenpfort.de/notes/2022-06-22-use-consul-dns-interface-inside-docker-container/
 rm /etc/systemd/resolved.conf.d/*
 # Create Consul DNS forwarding.
 echo '
@@ -352,7 +378,18 @@ DNS=127.0.0.1:8600
 DNSSEC=false
 Domains=~consul
 ' > /etc/systemd/resolved.conf.d/consul.conf
-systemctl restart systemd-resolved
+# Create Consul DNS forwarding for Docker. This will enable containers to query Consul DNS.
+echo '
+[Resolve]
+DNSStubListener=yes
+DNSStubListenerExtra=${local.docker_dns}
+' > /etc/systemd/resolved.conf.d/docker.conf
+echo '
+{
+  "dns": ["${local.docker_dns}"]
+}
+' > /etc/docker/daemon.json
+systemctl restart systemd-resolved docker
 
 echo 'Bootstrap complete!'
   EOT
