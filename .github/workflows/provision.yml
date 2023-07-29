@@ -3,7 +3,7 @@ on: workflow_dispatch
 
 jobs:
   apply-cluster:
-    name: Apply Cluster
+    name: Provision Cluster
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -34,9 +34,63 @@ jobs:
             -var="github_actions_repo=${{ github.repository }}" \
             -var="github_actions_pat=${{ secrets.ACTIONS_RUNNER_PAT }}"
 
+  check-cluster:
+    name: Check Cluster
+    needs: apply-cluster
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - name: Check Consul
+        run: |
+          # Wrapping the script in bash to avoid pipefail (Actions run with `-e` by defulat).
+          bash -c '
+            max_attempts=10
+            attempt=1
+
+            while [[ $attempt -le $max_attempts ]]; do
+              consul info
+              if [[ $? -eq 0 ]]; then
+                break
+              fi
+              
+              echo "Consul check failed. Retrying..."
+              attempt=$((attempt+1))
+              sleep 10
+            done
+
+            if [[ $attempt -gt $max_attempts ]]; then
+              echo "Max attempts reached. Exiting..."
+              exit 1
+            fi
+          '
+
+      - name: Check Nomad
+        run: |
+          # Wrapping the script in bash to avoid pipefail (Actions run with `-e` by defulat).
+          bash -c '
+            max_attempts=10
+            attempt=1
+
+            while [[ $attempt -le $max_attempts ]]; do
+              nomad status
+              if [[ $? -eq 0 ]]; then
+                break
+              fi
+              
+              echo "Nomad check failed. Retrying..."
+              attempt=$((attempt+1))
+              sleep 10
+            done
+
+            if [[ $attempt -gt $max_attempts ]]; then
+              echo "Max attempts reached. Exiting..."
+              exit 1
+            fi
+          '
+
   apply-consul:
     name: Apply Consul
-    needs: apply-cluster
+    needs: check-cluster
     runs-on: self-hosted
     environment: production
     steps:
@@ -63,9 +117,9 @@ jobs:
             -var="datacenter=${{ vars.TF_VAR_DATACENTER }}" \
             -var="mailersend_token=${{ secrets.TF_VAR_MAILERSEND_TOKEN }}"
 
-  provision-mongo:
-    name: Provision Mongo
-    needs: apply-cluster
+  deploy-mongo:
+    name: Deploy Mongo
+    needs: check-cluster
     runs-on: self-hosted
     environment: production
     steps:
@@ -134,7 +188,7 @@ jobs:
 
   migrate-mongo:
     runs-on: self-hosted
-    needs: provision-mongo
+    needs: deploy-mongo
     environment: production
     steps:
       - uses: actions/checkout@v3
@@ -155,7 +209,7 @@ jobs:
 
   deploy-all:
     name: Deploy all services
-    needs: apply-consul
+    needs: check-cluster
     runs-on: self-hosted
     environment: production
     steps:
