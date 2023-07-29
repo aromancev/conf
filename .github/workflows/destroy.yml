@@ -32,4 +32,4 @@ jobs:
             -var="region=stub" \
             -var="datacenter=stub" \
             -var="github_actions_repo=stub" \
-            -var="github_actions_token=stub"
+            -var="github_actions_pat=stub"
