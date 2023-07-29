@@ -28,8 +28,8 @@ jobs:
         run: |
           terraform destroy -input=false -auto-approve \
             -var="do_token=${{ secrets.TF_VAR_DO_DEPLOY_TOKEN }}" \
-            -var="do_token_cloud_autoconnect=stub" \
-            -var="region=stub" \
-            -var="datacenter=stub" \
-            -var="github_actions_repo=stub" \
-            -var="github_actions_pat=stub"
+            -var="do_token_cloud_autoconnect=${{ secrets.TF_VAR_DO_TOKEN_AUTOCONNECT }}" \
+            -var="region=${{ vars.TF_VAR_REGION }}" \
+            -var="datacenter=${{ vars.TF_VAR_DATACENTER }}" \
+            -var="github_actions_repo=${{ github.repository }}" \
+            -var="github_actions_pat=${{ secrets.ACTIONS_RUNNER_PAT }}"
