@@ -25,8 +25,8 @@ variable "github_actions_repo" {
   type        = string
 }
 
-variable "github_actions_token" {
-  description = "GitHub runner registration token."
+variable "github_actions_pat" {
+  description = "GitHub runner PAT to create registration token."
   type        = string
   sensitive   = true
 }

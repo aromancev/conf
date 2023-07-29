@@ -6,7 +6,7 @@ job "mongodb" {
         static = 27017
       }
       dns {
-        servers = ["${meta.docker_dns}"]
+        servers = ["172.17.0.1"] # Pre-defined well-known global constant. See terraform configuration.
       }
     }
 
@@ -51,7 +51,7 @@ job "mongodb" {
 
     task "mongodb" {
       driver = "docker"
-      user = "${meta.mongodb_uid}:${meta.mongodb_gid}"
+      user = "1001:1001" # Pre-defined well-known global constant. See terraform configuration.
 
       config {
         image = "mongodb/mongodb-community-server:4.4-ubuntu2004"

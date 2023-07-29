@@ -1,0 +1,35 @@
+name: Destroy
+on: workflow_dispatch
+
+jobs:
+  destroy:
+    name: Destroy
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_CLOUD_ORGANIZATION: ${{ vars.TF_BACKEND_ORG }}
+      TF_WORKSPACE: ${{ vars.TF_BACKEND_WORKSPACE_CLUSTER }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Init Terraform
+        working-directory: ./deploy/terraform/prod/cluster
+        run: |
+          terraform init -input=false
+
+      - name: Destroy
+        working-directory: ./deploy/terraform/prod/cluster
+        run: |
+          terraform destroy -input=false -auto-approve \
+            -var="do_token=${{ secrets.TF_VAR_DO_DEPLOY_TOKEN }}" \
+            -var="do_token_cloud_autoconnect=stub" \
+            -var="region=stub" \
+            -var="datacenter=stub" \
+            -var="github_actions_repo=stub" \
+            -var="github_actions_token=stub"

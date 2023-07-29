@@ -1,0 +1,172 @@
+name: Provision
+on: workflow_dispatch
+
+jobs:
+  apply-cluster:
+    name: Apply Cluster
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      TF_CLOUD_ORGANIZATION: ${{ vars.TF_BACKEND_ORG }}
+      TF_WORKSPACE: ${{ vars.TF_BACKEND_WORKSPACE_CLUSTER }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Init Terraform
+        working-directory: ./deploy/terraform/prod/cluster
+        run: |
+          terraform init -input=false
+
+      - name: Apply
+        working-directory: ./deploy/terraform/prod/cluster
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var="do_token=${{ secrets.TF_VAR_DO_DEPLOY_TOKEN }}" \
+            -var="do_token_cloud_autoconnect=${{ secrets.TF_VAR_DO_TOKEN_AUTOCONNECT }}" \
+            -var="region=${{ vars.TF_VAR_REGION }}" \
+            -var="datacenter=${{ vars.TF_VAR_DATACENTER }}" \
+            -var="github_actions_repo=${{ github.repository }}" \
+            -var="github_actions_pat=${{ secrets.ACTIONS_RUNNER_PAT }}"
+
+  apply-consul:
+    name: Apply Consul
+    needs: apply-cluster
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+
+      - name: Init Terraform
+        working-directory: ./deploy/terraform/prod/consul
+        run: |
+          terraform init -input=false \
+            -backend-config="address=localhost:8500" \
+            -backend-config="path=terraform/consul/state" \
+            -backend-config="scheme=http"
+
+      - name: Apply
+        working-directory: ./deploy/terraform/prod/consul
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var="consul_host=localhost:8500" \
+            -var="datacenter=${{ vars.TF_VAR_DATACENTER }}" \
+            -var="mailersend_token=${{ secrets.TF_VAR_MAILERSEND_TOKEN }}"
+
+  provision-mongo:
+    name: Provision Mongo
+    needs: apply-cluster
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy
+        working-directory: ./deploy/nomad
+        run: nomad job run mongodb.nomad.hcl
+
+      - name: Init replica set
+        run: |
+          nomad exec -job mongodb mongo --quiet -u admin -p admin --eval '
+            rs.initiate({
+              _id: "rs",
+              members: [
+                {_id: 0, host : "mongodb.service.consul:27017"},
+              ]
+            })
+          '
+
+      - name: Create Users
+        run: |
+          nomad exec -job mongodb mongo --quiet -u admin -p admin --eval '
+            db = db.getSiblingDB("iam")
+            if (db.getUser("iam") === null) {
+              db.createUser({
+                user: "iam",
+                pwd: "iam",
+                roles: [
+                  {
+                    role: "readWrite",
+                    db: "iam"
+                  },
+                ]
+              })
+            }
+            
+            db = db.getSiblingDB("rtc")
+            if (db.getUser("rtc") === null) {
+              db.createUser({
+                user: "rtc",
+                pwd: "rtc",
+                roles: [
+                  {
+                    role: "readWrite",
+                    db: "rtc"
+                  },
+                ]
+              })
+            }
+            
+            db = db.getSiblingDB("confa")
+            if (db.getUser("confa") === null) {
+              db.createUser({
+                user: "confa",
+                pwd: "confa",
+                roles: [
+                  {
+                    role: "readWrite",
+                    db: "confa"
+                  },
+                ]
+              })
+            }
+          '
+
+  migrate-mongo:
+    runs-on: self-hosted
+    needs: provision-mongo
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "^1.20"
+
+      - name: Install golang-migrate
+        run: go install -tags 'mongodb' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.14.1
+
+      - name: Run migrations
+        working-directory: ./services/migrations
+        run: |
+          migrate -source file://iam/ -database "mongodb://iam:iam@mongodb.service.consul/iam?replicaSet=rs" up
+          migrate -source file://rtc/ -database "mongodb://rtc:rtc@mongodb.service.consul/rtc?replicaSet=rs" up
+          migrate -source file://confa/ -database "mongodb://confa:confa@mongodb.service.consul/confa?replicaSet=rs" up
+
+  deploy-all:
+    name: Deploy all services
+    needs: apply-consul
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy all services
+        working-directory: ./deploy/nomad
+        run: |
+          nomad job run -detach beanstalk.nomad.hcl
+          nomad job run -detach iam.nomad.hcl
+          nomad job run -detach traefik.nomad.hcl
+          nomad job run -detach web.nomad.hcl
+          nomad job run -detach gateway.nomad.hcl
+          nomad job run -detach sender.nomad.hcl

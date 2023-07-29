@@ -36,6 +36,10 @@ echo \
 
 sudo apt-get update
 sudo apt-get install -y \
+  unzip \
+  nodejs \
+  jq \
+  curl \
   consul=1.15.3-* \
   nomad=1.5.6-* \
   docker-ce=5:24.0.0-*

@@ -195,7 +195,6 @@ client {
   network_interface = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"name\" }}"
 
   meta = {
-    docker_dns = "${local.docker_dns}"
     ingress_web = "true"
     ingress_sfu = "true"
   }
@@ -258,7 +257,7 @@ resource "digitalocean_droplet" "ops" {
     digitalocean_ssh_key.main.fingerprint,
   ]
 
-  # If `user_data` doesn't work, check cloud init logs on the instance: /var/log/cloud-init-output.log
+  # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
 
@@ -324,12 +323,6 @@ client {
     path      = "/opt/mongodb"
     read_only = false
   }
-
-  meta {
-    docker_dns = "${local.docker_dns}"
-    mongodb_uid = "${local.mongo_uid}"
-    mongodb_gid = "${local.mongo_gid}"
-  }
 }
 
 ui {
@@ -361,7 +354,11 @@ systemctl start nomad
 
 echo 'Configuring GitHub Actions runner ...'
 cd /home/github
-sudo -H -u github bash -c './config.sh --unattended --replace --url ${var.github_actions_repo} --token ${var.github_actions_token}'
+sudo -H -u github bash -c '
+  ./config.sh --unattended --replace \
+    --url https://github.com/${var.github_actions_repo} \
+    --token $(curl -sX POST -H "Authorization: Bearer ${var.github_actions_pat}" https://api.github.com/repos/${var.github_actions_repo}/actions/runners/registration-token | jq -r .token)
+'
 ./svc.sh install github
 ./svc.sh start
 
