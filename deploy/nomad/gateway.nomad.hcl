@@ -12,7 +12,9 @@ job "gateway" {
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.gateway.rule=PathPrefix(`/api/query`)",
+        "traefik.http.routers.gateway.rule=Host(`confa.io`) && PathPrefix(`/api/query`)",
+        "traefik.http.routers.gateway.tls=true",
+        "traefik.http.routers.gateway.tls.certresolver=confa",
         "traefik.http.routers.gateway.middlewares=stripprefix-gateway",
         "traefik.http.middlewares.stripprefix-gateway.stripprefix.prefixes=/api",
       ]

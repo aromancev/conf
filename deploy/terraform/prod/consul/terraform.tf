@@ -14,3 +14,8 @@ terraform {
 
   required_version = "~> 1.4"
 }
+
+provider "consul" {
+  address    = var.consul_host
+  datacenter = var.datacenter
+}

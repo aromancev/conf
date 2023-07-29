@@ -3,6 +3,14 @@ resource "tls_private_key" "main" {
   ecdsa_curve = "P256"
 }
 
+resource "consul_key_prefix" "tls" {
+  path_prefix = "tls/"
+
+  subkeys = {
+    "confa/email" = var.cert_email
+  }
+}
+
 resource "consul_key_prefix" "auth" {
   path_prefix = "auth/"
 
@@ -16,7 +24,7 @@ resource "consul_key_prefix" "web" {
   path_prefix = "web/"
 
   subkeys = {
-    "host"   = "confa.io"
+    "host"   = var.domain
     "scheme" = "https"
   }
 }

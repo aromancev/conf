@@ -8,6 +8,16 @@ variable "datacenter" {
   type        = string
 }
 
+variable "domain" {
+  description = "Domain to use for the main website."
+  type        = string
+}
+
+variable "cert_email" {
+  description = "Email to use in the TLS certificate administration."
+  type        = string
+}
+
 variable "mailersend_token" {
   description = "MailerSend API token."
   type        = string

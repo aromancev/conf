@@ -12,7 +12,9 @@ job "web" {
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.web.rule=PathPrefix(`/`)",
+        "traefik.http.routers.web.rule=Host(`confa.io`)",
+        "traefik.http.routers.web.tls=true",
+        "traefik.http.routers.web.tls.certresolver=confa",
       ]
 
       check {

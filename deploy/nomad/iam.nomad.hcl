@@ -19,7 +19,9 @@ job "iam" {
       tags = [
         "graph.enable=true",
         "traefik.enable=true",
-        "traefik.http.routers.iam.rule=PathPrefix(`/api/iam`)",
+        "traefik.http.routers.iam.rule=Host(`confa.io`) && PathPrefix(`/api/iam`)",
+        "traefik.http.routers.iam.tls=true",
+        "traefik.http.routers.iam.tls.certresolver=confa",
         "traefik.http.routers.iam.middlewares=stripprefix-iam",
         "traefik.http.middlewares.stripprefix-iam.stripprefix.prefixes=/api/iam",
       ]
