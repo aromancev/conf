@@ -8,10 +8,13 @@ job "traefik" {
     }
 
     network {
-      port "gateway" {
+      port "https" {
+        static = 443
+      }
+      port "http" {
         static = 80
       }
-      port "api" {
+      port "traefik" {
         static = 8000
       }
     }
@@ -22,10 +25,16 @@ job "traefik" {
       check {
         name     = "alive"
         type     = "tcp"
-        port     = "gateway"
+        port     = "traefik"
         interval = "10s"
         timeout  = "2s"
       }
+    }
+
+    volume "traefik" {
+      type      = "host"
+      read_only = false
+      source    = "traefik"
     }
 
     task "traefik" {
@@ -51,10 +60,25 @@ job "traefik" {
             format: "json"
 
           entryPoints:
-            gateway:
+            http:
               address: ":80"
+              http:
+                redirections:
+                  entryPoint:
+                    to: https
+                    scheme: https
+            https:
+              address: ":443"
             traefik:
               address: ":8000"
+
+          certificatesResolvers:
+            confa:
+              acme:
+                email: {{ key "tls/confa/email" }}
+                storage: /etc/traefik/acme/confa.json
+                httpChallenge:
+                  entryPoint: http
 
           api:
             dashboard: true
@@ -69,6 +93,12 @@ job "traefik" {
                 scheme: "http"
         EOF
         destination = "local/traefik.yml"
+      }
+
+      volume_mount {
+        volume      = "traefik"
+        destination = "/etc/traefik"
+        read_only   = false
       }
 
       resources {

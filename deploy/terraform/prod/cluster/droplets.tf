@@ -1,8 +1,10 @@
 locals {
   bootstrap_expect = 1
   vpc_range        = "10.10.10.0/24"
-  mongo_uid        = "1001"
   mongo_gid        = "1001"
+  mongo_uid        = "1001"
+  traefik_uid      = "1001"
+  traefik_gid      = "1001"
   docker_dns       = "172.17.0.1"
 }
 
@@ -39,6 +41,25 @@ resource "digitalocean_droplet" "server" {
   ssh_keys = [
     digitalocean_ssh_key.main.fingerprint,
   ]
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = tls_private_key.main.private_key_pem
+    host        = self.ipv4_address
+  }
+
+  # Have to do this for 2 reasons:
+  # 1. This way we know that the droplet is fully booted up before continuing.
+  # 2. There is a data race when creating multiple resources (e.g. reserved ip) during agent booting on the droplet.
+  provisioner "remote-exec" {
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do",
+      "echo 'Waiting for cloud init ...'",
+      "sleep 5",
+      "done",
+    ]
+  }
 
   # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
@@ -133,6 +154,25 @@ resource "digitalocean_droplet" "ingress" {
     digitalocean_ssh_key.main.fingerprint,
   ]
 
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = tls_private_key.main.private_key_pem
+    host        = self.ipv4_address
+  }
+
+  # Have to do this for 2 reasons:
+  # 1. This way we know that the droplet is fully booted up before continuing.
+  # 2. There is a data race when creating multiple resources (e.g. reserved ip) during agent booting on the droplet.
+  provisioner "remote-exec" {
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do",
+      "echo 'Waiting for cloud init ...'",
+      "sleep 5",
+      "done",
+    ]
+  }
+
   # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
 #!/bin/bash -e
@@ -198,6 +238,12 @@ client {
     ingress_web = "true"
     ingress_sfu = "true"
   }
+
+  # Host mount that the traefik job can use. It is also used by Nomad to select the node for scheduling.
+  host_volume "traefik" {
+    path      = "/etc/traefik"
+    read_only = false
+  }
 }
 
 ui {
@@ -209,6 +255,13 @@ consul {
   address = "127.0.0.1:8500"
 }
 ' > /etc/nomad.d/nomad.hcl
+
+# Creating host directory for Traefik.
+mkdir --parents /etc/traefik/acme
+chmod 700 /etc/traefik
+groupadd -g ${local.traefik_gid} traefik
+useradd -M -s /bin/false -g traefik -u ${local.traefik_uid} traefik
+chown --recursive traefik:traefik /etc/traefik
 
 echo 'Starting Nomad service ...'
 chown --recursive nomad:nomad /etc/nomad.d
@@ -256,6 +309,25 @@ resource "digitalocean_droplet" "ops" {
   ssh_keys = [
     digitalocean_ssh_key.main.fingerprint,
   ]
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = tls_private_key.main.private_key_pem
+    host        = self.ipv4_address
+  }
+
+  # Have to do this for 2 reasons:
+  # 1. This way we know that the droplet is fully booted up before continuing.
+  # 2. There is a data race when creating multiple resources (e.g. reserved ip) during agent booting on the droplet.
+  provisioner "remote-exec" {
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do",
+      "echo 'Waiting for cloud init ...'",
+      "sleep 5",
+      "done",
+    ]
+  }
 
   # Cloud init logs on the instance: /var/log/cloud-init-output.log
   user_data = <<EOT
@@ -337,7 +409,7 @@ consul {
 
 # Creating host directory for MongoDB.
 mkdir --parents /opt/mongodb/data
-chmod 700 /opt/mongodb/data
+chmod 700 /opt/mongodb
 # Hack for enabling replication on a single instance.
 # TODO: handle roperly in case of multiple instances.
 openssl rand -base64 32 > /opt/mongodb/repl.key
