@@ -7,7 +7,7 @@ job "gateway" {
     }
 
     service {
-      name = "gateway"
+      name = "gateway-web"
       port = "web"
 
       tags = [

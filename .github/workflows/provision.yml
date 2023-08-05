@@ -227,8 +227,11 @@ jobs:
           nomad job run -detach beanstalk.nomad.hcl
           nomad job run -detach minio.nomad.hcl
           nomad job run -detach iam.nomad.hcl
+          nomad job run -detach livekit.nomad.hcl
           nomad job run -detach traefik.nomad.hcl
           nomad job run -detach web.nomad.hcl
           nomad job run -detach gateway.nomad.hcl
           nomad job run -detach sender.nomad.hcl
           nomad job run -detach confa.nomad.hcl
+          nomad job run -detach rtc.nomad.hcl
+          nomad job run -detach tracker.nomad.hcl

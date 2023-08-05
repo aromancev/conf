@@ -4,13 +4,10 @@ job "confa" {
       port "web" {
         to = 80
       }
-      port "rpc" {
-        to = 8000
-      }
     }
 
     service {
-      name = "confa"
+      name = "confa-web"
       port = "web"
 
       tags = [
@@ -23,13 +20,12 @@ job "confa" {
 
       config {
         image = "confa/confa:latest"
-        ports = ["web", "rpc"]
+        ports = ["web"]
       }
 
       template {
         data = <<EOH
           LISTEN_WEB_ADDRESS = ":80"
-          LISTEN_RPC_ADDRESS = ":8000"
           WEB_HOST = "{{ key "web/host" }}"
           WEB_SCHEME = "{{ key "web/scheme" }}"
           LOG_FORMAT = "json"
@@ -53,7 +49,10 @@ job "confa" {
           STORAGE_PUBLIC_URL = "/api/storage"
           STORAGE_BUCKET_USER_UPLOADS = "{{ key "storage/buckets/user-uploads" }}"
           STORAGE_BUCKET_USER_PUBLIC = "{{ key "storage/buckets/user-public" }}"
-        EOH
+          {{range service "rtc-rpc" }}
+            RTC_RPC_ADDRESS = "{{.Address}}:{{.Port}}"
+          {{end}}
+        EOH 
         destination = "secrets/.env"
         env         = true
       }

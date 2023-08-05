@@ -1,0 +1,38 @@
+name: Deploy RTC
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - services/**
+      - deploy/nomad/rtc.nomad.hcl
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Build
+        uses: ./.github/actions/build-and-push
+        with:
+          user: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          image: rtc
+          context: ./services
+          file: ./services/cmd/rtc/Dockerfile
+
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy
+        working-directory: ./deploy/nomad
+        run: nomad job run rtc.nomad.hcl

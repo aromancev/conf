@@ -1,5 +1,5 @@
-job "iam" {
-  group "iam" {
+job "rtc" {
+  group "rtc" {
     network {
       port "web" {
         to = 80
@@ -10,17 +10,11 @@ job "iam" {
     }
 
     service {
-      name = "iam-web"
+      name = "rtc-web"
       port = "web"
 
       tags = [
         "graph.enable=true",
-        "traefik.enable=true",
-        "traefik.http.routers.iam.rule=Host(`confa.io`) && PathPrefix(`/api/iam`)",
-        "traefik.http.routers.iam.tls=true",
-        "traefik.http.routers.iam.tls.certresolver=confa",
-        "traefik.http.routers.iam.middlewares=stripprefix-iam",
-        "traefik.http.middlewares.stripprefix-iam.stripprefix.prefixes=/api/iam",
       ]
 
       check {
@@ -33,15 +27,15 @@ job "iam" {
     }
 
     service {
-      name = "iam-rpc"
+      name = "rtc-rpc"
       port = "rpc"
     }
 
-    task "iam" {
+    task "rtc" {
       driver = "docker"
 
       config {
-        image = "confa/iam:latest"
+        image = "confa/rtc:latest"
         ports = ["web", "rpc"]
       }
 
@@ -49,24 +43,24 @@ job "iam" {
         data = <<EOH
           LISTEN_WEB_ADDRESS = ":80"
           LISTEN_RPC_ADDRESS = ":8000"
-          WEB_HOST = "{{ key "web/host" }}"
-          WEB_SCHEME = "{{ key "web/scheme" }}"
           LOG_FORMAT = "json"
           LOG_LEVEL = "info"
-          SECRET_KEY = "{{ key "auth/private_key" | base64Encode }}"
           PUBLIC_KEY = "{{ key "auth/public_key" | base64Encode }}"
           MONGO_HOSTS = "{{range $i, $s := service "mongodb" }}{{if ne $i 0}},{{end}}{{$s.Address}}{{end}}"
-          MONGO_USER = "iam"
-          MONGO_PASSWORD = "iam"
-          MONGO_DATABASE = "iam"
+          MONGO_USER = "rtc"
+          MONGO_PASSWORD = "rtc"
+          MONGO_DATABASE = "rtc"
           BEANSTALK_POOL = "{{range $i, $s := service "beanstalk" }}{{if ne $i 0}},{{end}}{{$s.Address}}:{{$s.Port}}{{end}}"
           BEANSTALK_TUBE_SEND = "{{ key "beanstalk/tubes/send" }}"
-          BEANSTALK_TUBE_UPDATE_AVATAR = "{{ key "beanstalk/tubes/update-avatar" }}"
-          GOOGLE_API_BASE_URL = "https://www.googleapis.com"
-          GOOGLE_CLIENT_ID = "{{ key "auth/google/client_id" }}"
-          GOOGLE_CLIENT_SECRET = "{{ key "auth/google/client_secret" }}"
+          BEANSTALK_TUBE_STORE_EVENT = "{{ key "beanstalk/tubes/store-event" }}"
+          BEANSTALK_TUBE_UPDATE_RECORDING_TRACK = "{{ key "beanstalk/tubes/update-recording-track" }}"
+          BEANSTALK_TUBE_RECORDING_UPDATE = "{{ key "beanstalk/tubes/recording-update" }}"
+          {{range service "tracker-rpc" }}
+            TRACKER_RPC_ADDRESS = "{{.Address}}:{{.Port}}"
+          {{end}}
+          LIVEKIT_KEY = "key"
+          LIVEKIT_SECRET = "93d33a06-f209-4239-bd7f-d04d411ae7b2"
         EOH
-
         destination = "secrets/.env"
         env         = true
       }
