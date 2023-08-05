@@ -21,7 +21,7 @@ jobs:
           user: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           image: web
-          dir: ./web
+          context: ./web
           build-args: |
             VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
             VITE_SFU_URL=wss://sfu.confa.io

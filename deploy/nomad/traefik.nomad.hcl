@@ -1,6 +1,4 @@
 job "traefik" {
-  type = "system"
-
   group "traefik" {
     constraint {
       attribute = "${meta.ingress_web}"

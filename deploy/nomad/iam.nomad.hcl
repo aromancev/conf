@@ -61,8 +61,8 @@ job "iam" {
           BEANSTALK_TUBE_SEND = "{{ key "beanstalk/tubes/send" }}"
           BEANSTALK_TUBE_UPDATE_AVATAR = "{{ key "beanstalk/tubes/update-avatar" }}"
           GOOGLE_API_BASE_URL = "https://www.googleapis.com"
-          GOOGLE_CLIENT_ID = "stub"
-          GOOGLE_CLIENT_SECRET = "stub"
+          GOOGLE_CLIENT_ID = "{{ key "auth/google/client_id" }}"
+          GOOGLE_CLIENT_SECRET = "{{ key "auth/google/client_secret" }}"
         EOH
 
         destination = "secrets/.env"

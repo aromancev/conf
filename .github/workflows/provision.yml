@@ -119,7 +119,9 @@ jobs:
             -var="datacenter=${{ vars.TF_VAR_DATACENTER }}" \
             -var="mailersend_token=${{ secrets.TF_VAR_MAILERSEND_TOKEN }}" \
             -var="domain=${{ vars.TF_VAR_DOMAIN }}" \
-            -var="cert_email=${{ vars.TF_VAR_CERT_EMAIL }}"
+            -var="cert_email=${{ vars.TF_VAR_CERT_EMAIL }}" \
+            -var="google_client_id=${{ vars.TF_VAR_GOOGLE_CLIENT_ID }}" \
+            -var="google_client_secret=${{ secrets.TF_VAR_GOOGLE_CLIENT_SECRET }}"
 
   deploy-mongo:
     name: Deploy Mongo
