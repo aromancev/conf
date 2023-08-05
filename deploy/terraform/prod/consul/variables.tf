@@ -23,3 +23,14 @@ variable "mailersend_token" {
   type        = string
   sensitive   = true
 }
+
+variable "google_client_id" {
+  description = "Client ID for Google authentication."
+  type        = string
+}
+
+variable "google_client_secret" {
+  description = "Client Secret for Google authentication."
+  type        = string
+  sensitive   = true
+}
