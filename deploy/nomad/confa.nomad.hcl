@@ -54,7 +54,6 @@ job "confa" {
           STORAGE_BUCKET_USER_UPLOADS = "{{ key "storage/buckets/user-uploads" }}"
           STORAGE_BUCKET_USER_PUBLIC = "{{ key "storage/buckets/user-public" }}"
         EOH
-
         destination = "secrets/.env"
         env         = true
       }
