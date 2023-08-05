@@ -3,6 +3,8 @@ locals {
   vpc_range        = "10.10.10.0/24"
   mongo_gid        = "1001"
   mongo_uid        = "1001"
+  minio_gid        = "1002"
+  minio_uid        = "1002"
   traefik_uid      = "1001"
   traefik_gid      = "1001"
   docker_dns       = "172.17.0.1"
@@ -244,6 +246,12 @@ client {
     path      = "/etc/traefik"
     read_only = false
   }
+
+  # Host mount that the minio job can use. It is also used by Nomad to select the node for scheduling.
+  host_volume "minio" {
+    path      = "/opt/minio"
+    read_only = false
+  }
 }
 
 ui {
@@ -262,6 +270,13 @@ chmod 700 /etc/traefik
 groupadd -g ${local.traefik_gid} traefik
 useradd -M -s /bin/false -g traefik -u ${local.traefik_uid} traefik
 chown --recursive traefik:traefik /etc/traefik
+
+# Creating host directory for Minio.
+mkdir --parents /opt/minio/data
+chmod 700 /opt/minio
+groupadd -g ${local.minio_gid} minio
+useradd -M -s /bin/false -g minio -u ${local.minio_uid} minio
+chown --recursive minio:minio /opt/minio
 
 echo 'Starting Nomad service ...'
 chown --recursive nomad:nomad /etc/nomad.d

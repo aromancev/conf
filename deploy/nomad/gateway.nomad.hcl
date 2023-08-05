@@ -42,7 +42,7 @@ job "gateway" {
           LOG_FORMAT = "json"
           LOG_LEVEL = "info"
           SCHEMA_UPDATE_INTERVAL_S = "10"
-          SERVICES = "{{ range services }}{{ if .Tags | contains "graph.enable=true" }}{{ range service .Name }}http://{{ .Address }}:{{ .Port }}/query,{{ end }}{{ end }}{{ end }}"
+          SERVICES = "{{ range services }}{{ if .Tags | contains "graph.enable=true" }}{{ range service .Name }}http://{{ .Address }}:{{ .Port }}/graph,{{ end }}{{ end }}{{ end }}"
         EOH
 
         destination = "secrets/.env"
