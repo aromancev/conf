@@ -15,6 +15,12 @@ job "rtc" {
 
       tags = [
         "graph.enable=true",
+        "traefik.enable=true",
+        "traefik.http.routers.rtc.rule=Host(`confa.io`) && PathPrefix(`/api/rtc`)",
+        "traefik.http.routers.rtc.tls=true",
+        "traefik.http.routers.rtc.tls.certresolver=confa",
+        "traefik.http.routers.rtc.middlewares=stripprefix-rtc",
+        "traefik.http.middlewares.stripprefix-rtc.stripprefix.prefixes=/api/rtc",
       ]
 
       check {
