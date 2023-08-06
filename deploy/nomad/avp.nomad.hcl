@@ -25,10 +25,10 @@ job "avp" {
         destination = "secrets/.env"
         env         = true
       }
-      
+
       resources {
         cpu    = 100
-        memory = 64
+        memory = 32
       }
     }
   }
