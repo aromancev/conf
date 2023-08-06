@@ -6,7 +6,7 @@ resource "cloudflare_record" "root" {
   ttl     = 3600
 }
 
-resource "cloudflare_record" "teleport" {
+resource "cloudflare_record" "sfu" {
   zone_id = var.cloudflare_zone_id
   name    = "sfu"
   value   = digitalocean_reserved_ip.ingress.ip_address
@@ -14,7 +14,7 @@ resource "cloudflare_record" "teleport" {
   ttl     = 3600
 }
 
-resource "cloudflare_record" "teleport" {
+resource "cloudflare_record" "turn" {
   zone_id = var.cloudflare_zone_id
   name    = "turn"
   value   = digitalocean_reserved_ip.ingress.ip_address
