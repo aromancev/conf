@@ -14,22 +14,35 @@ job "livekit" {
 
     network {
       port "ws" {
-        to = local.port_ws
+        static = local.port_ws
       }
-      port "rtc" {
-        to = local.port_rtc
-      }
-      port "turn_udp" {
-        to = local.port_turn_udp
-      }
-      port "turn_tls" {
-        to = local.port_turn_tls
+      port "turn" {
+        static = local.port_turn_tls
       }
     }
 
     service {
-      name = "livekit"
+      name = "livekit-ws"
       port = "ws"
+
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.livekit.rule=Host(`sfu.confa.io`)",
+        "traefik.http.routers.livekit.tls=true",
+        "traefik.http.routers.livekit.tls.certresolver=confa",
+      ]
+    }
+
+    service {
+      name = "livekit-turn"
+      port = "turn"
+
+      tags = [
+        "traefik.enable=true",
+        "traefik.tcp.routers.livekit.rule=HostSNI(`turn.confa.io`)",
+        "traefik.tcp.routers.livekit.tls=true",
+        "traefik.tcp.routers.livekit.tls.certresolver=confa",
+      ]
     }
 
     task "livekit" {
@@ -106,7 +119,7 @@ job "livekit" {
             tls_port: ${local.port_turn_tls}
             external_tls: true
             # needs to match tls cert domain
-            domain: turn.{{ key "web/host" }}
+            domain: turn.confa.io
         EOF
         destination = "local/livekit.yml"
       }

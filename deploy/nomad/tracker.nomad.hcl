@@ -29,7 +29,7 @@ job "tracker" {
           BEANSTALK_TUBE_PROCESS_TRACK = "{{ key "beanstalk/tubes/process-track" }}"
           BEANSTALK_TUBE_STORE_EVENT = "{{ key "beanstalk/tubes/store-event" }}"
           BEANSTALK_TUBE_UPDATE_RECORDING_TRACK = "{{ key "beanstalk/tubes/update-recording-track" }}"
-          {{range service "livekit" }}
+          {{range service "livekit-ws" }}
             LIVEKIT_URL = "ws://{{.Address}}:{{.Port}}"
           {{end}}
           LIVEKIT_KEY = "key"
