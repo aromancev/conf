@@ -34,6 +34,12 @@ job "tracker" {
           {{end}}
           LIVEKIT_KEY = "key"
           LIVEKIT_SECRET = "93d33a06-f209-4239-bd7f-d04d411ae7b2"
+          {{range service "minio" }}
+            STORAGE_HOST = "{{.Address}}:{{.Port}}"
+          {{end}}
+          STORAGE_ACCESS_KEY = "minio"
+          STORAGE_SECRET_KEY = "miniominio"
+          STORAGE_BUCKET_TRACK_RECORDS = "{{ key "storage/buckets/confa-tracks-internal" }}"
         EOH
         destination = "secrets/.env"
         env         = true
