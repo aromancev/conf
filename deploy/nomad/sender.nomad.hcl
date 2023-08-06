@@ -15,7 +15,7 @@ job "sender" {
         data = <<EOH
           LOG_FORMAT = "json"
           LOG_LEVEL = "info"
-          {{range service "iam" }}
+          {{range service "iam-rpc" }}
             IAM_RPC_ADDRESS = "{{.Address}}:{{.Port}}"
           {{end}}
           MAILERSEND_BASE_URL = "https://api.mailersend.com"
