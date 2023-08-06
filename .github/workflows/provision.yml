@@ -235,3 +235,4 @@ jobs:
           nomad job run -detach confa.nomad.hcl
           nomad job run -detach rtc.nomad.hcl
           nomad job run -detach tracker.nomad.hcl
+          nomad job run -detach avp.nomad.hcl
