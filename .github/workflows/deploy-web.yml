@@ -25,7 +25,7 @@ jobs:
           build-args: |
             VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
             VITE_SFU_URL=wss://sfu.confa.io
-            VITE_STORAGE_URL=/api/storage
+            VITE_STORAGE_URL=https://storage.confa.io
             VITE_GSI_CLIENT_ID=453594643410-5of30hgi2mjn4rrm26laf63ibtfm69c5.apps.googleusercontent.com
 
   deploy:

@@ -34,3 +34,14 @@ variable "google_client_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "storage_access_key" {
+  description = "Access key for S3 compatibe object storage."
+  type        = string
+}
+
+variable "storage_secret_key" {
+  description = "Secret key for S3 compatibe object storage."
+  type        = string
+  sensitive   = true
+}

@@ -50,7 +50,9 @@ resource "consul_key_prefix" "storage" {
   path_prefix = "storage/"
 
   subkeys = {
-    "public-url"                    = "/api/storage"
+    "public-url"                    = "storage.confa.io"
+    "access-key"                    = var.storage_access_key
+    "secret-key"                    = var.storage_secret_key
     "buckets/user-public"           = "user-public"
     "buckets/user-uploads"          = "user-uploads"
     "buckets/confa-tracks-internal" = "confa-tracks-internal"

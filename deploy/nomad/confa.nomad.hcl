@@ -44,9 +44,9 @@ job "confa" {
           {{range service "minio" }}
             STORAGE_HOST = "{{.Address}}:{{.Port}}"
           {{end}}
-          STORAGE_ACCESS_KEY = "minio"
-          STORAGE_SECRET_KEY = "miniominio"
-          STORAGE_PUBLIC_URL = "/api/storage"
+          STORAGE_ACCESS_KEY = "{{ key "storage/access-key" }}"
+          STORAGE_SECRET_KEY = "{{ key "storage/secret-key" }}"
+          STORAGE_PUBLIC_URL = "{{ key "storage/public-url" }}"
           STORAGE_BUCKET_USER_UPLOADS = "{{ key "storage/buckets/user-uploads" }}"
           STORAGE_BUCKET_USER_PUBLIC = "{{ key "storage/buckets/user-public" }}"
           {{range service "rtc-rpc" }}

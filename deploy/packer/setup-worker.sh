@@ -54,5 +54,4 @@ curl -o actions-runner-linux-x64-2.305.0.tar.gz -L https://github.com/actions/ru
 echo "737bdcef6287a11672d6a5a752d70a7c96b4934de512b7eb283be6f51a563f2f  actions-runner-linux-x64-2.305.0.tar.gz" | shasum -a 256 -c
 tar xzf ./actions-runner-linux-x64-2.305.0.tar.gz
 rm actions-runner-linux-x64-2.305.0.tar.gz
-
 chown --recursive github:github /home/github

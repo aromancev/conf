@@ -23,6 +23,13 @@ job "minio" {
       name = "minio"
       port = "web"
 
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.minio.rule=Host(`storage.confa.io`)",
+        "traefik.http.routers.minio.tls=true",
+        "traefik.http.routers.minio.tls.certresolver=confa",
+      ]
+
       check {
         name     = "alive"
         type     = "http"
@@ -46,10 +53,14 @@ job "minio" {
         ]
         ports = ["web"]
       }
-      env = {
-        MINIO_ROOT_USER = "minio"
-        MINIO_ROOT_PASSWORD = "miniominio"
-        MINIO_BROWSER = "off"
+
+      template {
+        data = <<EOH
+          MINIO_ROOT_USER = "{{ key "storage/access-key" }}"
+          MINIO_ROOT_PASSWORD = "{{ key "storage/secret-key" }}"
+        EOH 
+        destination = "secrets/.env"
+        env         = true
       }
 
       volume_mount {
