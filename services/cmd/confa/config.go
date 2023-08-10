@@ -106,7 +106,8 @@ type StorageConfig struct {
 	Host              string `envconfig:"STORAGE_HOST"`
 	AccessKey         string `envconfig:"STORAGE_ACCESS_KEY"`
 	SecretKey         string `envconfig:"STORAGE_SECRET_KEY"`
-	PublicPrefix      string `envconfig:"STORAGE_PUBLIC_URL"`
+	PublicDomain      string `envconfig:"STORAGE_PUBLIC_DOMAIN"`
+	PublicScheme      string `envconfig:"STORAGE_PUBLIC_SCHEME"`
 	BucketUserUploads string `envconfig:"STORAGE_BUCKET_USER_UPLOADS"`
 	BucketUserPublic  string `envconfig:"STORAGE_BUCKET_USER_PUBLIC"`
 }
@@ -121,8 +122,11 @@ func (c StorageConfig) Validate() error {
 	if c.SecretKey == "" {
 		return errors.New("STORAGE_SECRET_KEY not set")
 	}
-	if c.PublicPrefix == "" {
-		return errors.New("STORAGE_PUBLIC_URL not set")
+	if c.PublicDomain == "" {
+		return errors.New("STORAGE_PUBLIC_DOMAIN not set")
+	}
+	if c.PublicScheme == "" {
+		return errors.New("STORAGE_PUBLIC_SCHEME not set")
 	}
 	if c.BucketUserUploads == "" {
 		return errors.New("STORAGE_BUCKET_USER_UPLOADS not set")

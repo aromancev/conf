@@ -32,7 +32,8 @@ x-service-env: &service-env
   STORAGE_HOST: "minio:80"
   STORAGE_ACCESS_KEY: "minio"
   STORAGE_SECRET_KEY: "miniominio"
-  STORAGE_PUBLIC_URL: "/api/storage"
+  STORAGE_PUBLIC_DOMAIN: "localhost:8003"
+  STORAGE_PUBLIC_SCHEME: "http"
   STORAGE_BUCKET_USER_PUBLIC: "user-public"
   STORAGE_BUCKET_USER_UPLOADS: "user-uploads"
   STORAGE_BUCKET_TRACK_RECORDS: "confa-tracks-internal"
@@ -66,7 +67,7 @@ services:
     environment:
       VITE_RTC_ROOM_URL: "ws://localhost/api/rtc/room/socket"
       VITE_SFU_URL: "ws://localhost:7880"
-      VITE_STORAGE_URL: "/api/storage"
+      VITE_STORAGE_URL: "localhost:8003"
     volumes:
       - ./web:/app/web:delegated
       # Prevent node folders from being mapped by the previous volume.
@@ -210,6 +211,7 @@ services:
       - .artifacts/minio:/data
     ports:
       - "8002:8000"
+      - "8003:80"
 
   sender-clients:
     <<: *service-common
