@@ -125,6 +125,39 @@ jobs:
             -var="storage_access_key=${{ vars.TF_VAR_STORAGE_ACCESS_KEY }}" \
             -var="storage_secret_key=${{ secrets.TF_VAR_STORAGE_SECRET_KEY }}"
 
+  deploy-minio:
+    name: Deploy Minio
+    needs: check-cluster
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy
+        working-directory: ./deploy/nomad
+        run: nomad job run minio.nomad.hcl
+
+  setup-minio:
+    name: Setup Minio
+    needs: deploy-minio
+    runs-on: ubuntu-latest
+    environment: production
+    container:
+      image: minio/mc
+
+    steps:
+      - name: Create Alias
+        run: mc alias set confa https://storage.confa.io ${{ vars.TF_VAR_STORAGE_ACCESS_KEY }} ${{ secrets.TF_VAR_STORAGE_SECRET_KEY }}
+
+      - name: Create Buckets
+        run: mc mb -p confa/user-uploads confa/user-public confa/confa-tracks-internal confa/confa-tracks-public
+
+      - name: Set User Public Policy
+        run: mc policy set download confa/user-public
+
+      - name: Set Tracks Public Policy
+        run: mc policy set download confa/confa-tracks-public
+
   deploy-mongo:
     name: Deploy Mongo
     needs: check-cluster
@@ -227,7 +260,6 @@ jobs:
         working-directory: ./deploy/nomad
         run: |
           nomad job run -detach beanstalk.nomad.hcl
-          nomad job run -detach minio.nomad.hcl
           nomad job run -detach iam.nomad.hcl
           nomad job run -detach livekit.nomad.hcl
           nomad job run -detach traefik.nomad.hcl
