@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/aromancev/confa/internal/routes"
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
@@ -30,22 +31,22 @@ type Buckets struct {
 }
 
 type Updater struct {
-	baseURL string
-	storage *minio.Client
-	buckets Buckets
-	emitter Emitter
-	repo    Repo
-	client  *http.Client
+	storageRoutes *routes.Storage
+	storage       *minio.Client
+	buckets       Buckets
+	emitter       Emitter
+	repo          Repo
+	client        *http.Client
 }
 
-func NewUpdater(baseURL string, buckets Buckets, storage *minio.Client, emitter Emitter, repo Repo, client *http.Client) *Updater {
+func NewUpdater(storageRoutes *routes.Storage, buckets Buckets, storage *minio.Client, emitter Emitter, repo Repo, client *http.Client) *Updater {
 	return &Updater{
-		storage: storage,
-		buckets: buckets,
-		baseURL: baseURL,
-		emitter: emitter,
-		repo:    repo,
-		client:  client,
+		storageRoutes: storageRoutes,
+		storage:       storage,
+		buckets:       buckets,
+		emitter:       emitter,
+		repo:          repo,
+		client:        client,
 	}
 }
 
@@ -81,7 +82,7 @@ func (u *Updater) UpdateAndRequestUpload(ctx context.Context, userID uuid.UUID) 
 		return "", nil, fmt.Errorf("failed to emit avatar update: %w", err)
 	}
 
-	return path.Join(u.baseURL, bucket), data, nil
+	return u.storageRoutes.Bucket(bucket), data, nil
 }
 
 func (u *Updater) Update(ctx context.Context, userID uuid.UUID, givenName, familyName *string, thumbnail, avatar FileSource) error {

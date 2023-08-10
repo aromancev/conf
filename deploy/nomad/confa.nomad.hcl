@@ -46,7 +46,8 @@ job "confa" {
           {{end}}
           STORAGE_ACCESS_KEY = "{{ key "storage/access-key" }}"
           STORAGE_SECRET_KEY = "{{ key "storage/secret-key" }}"
-          STORAGE_PUBLIC_URL = "{{ key "storage/public-url" }}"
+          STORAGE_PUBLIC_DOMAIN = "{{ key "storage/public/domain" }}"
+          STORAGE_PUBLIC_SCHEME = "{{ key "storage/public/scheme" }}"
           STORAGE_BUCKET_USER_UPLOADS = "{{ key "storage/buckets/user-uploads" }}"
           STORAGE_BUCKET_USER_PUBLIC = "{{ key "storage/buckets/user-public" }}"
           {{range service "rtc-rpc" }}

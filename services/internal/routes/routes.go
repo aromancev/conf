@@ -66,21 +66,28 @@ type Buckets struct {
 type Storage struct {
 	scheme  string
 	host    string
-	prefix  string
 	buckets Buckets
 }
 
-func NewStorage(scheme, host, prefix string, buckets Buckets) *Storage {
+func NewStorage(scheme, host string, buckets Buckets) *Storage {
 	return &Storage{
 		scheme:  scheme,
 		host:    host,
-		prefix:  prefix,
 		buckets: buckets,
 	}
 }
 
+func (s *Storage) Bucket(name string) string {
+	u := url.URL{
+		Host:   s.host,
+		Scheme: s.scheme,
+		Path:   name,
+	}
+	return u.String()
+}
+
 func (s *Storage) ProfileAvatar(userID, avatarID uuid.UUID) string {
-	path, _ := url.JoinPath(s.prefix, s.buckets.UserPublic, userID.String(), avatarID.String())
+	path, _ := url.JoinPath(s.buckets.UserPublic, userID.String(), avatarID.String())
 	u := url.URL{
 		Host:   s.host,
 		Scheme: s.scheme,

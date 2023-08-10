@@ -117,7 +117,7 @@ func main() {
 	}
 
 	pages := routes.NewPages(config.WebScheme, config.WebHost)
-	storageRoutes := routes.NewStorage(config.WebScheme, config.WebHost, config.Storage.PublicPrefix, routes.Buckets{
+	storageRoutes := routes.NewStorage(config.Storage.PublicScheme, config.Storage.PublicDomain, routes.Buckets{
 		UserPublic: config.Storage.BucketUserPublic,
 	})
 
@@ -136,7 +136,7 @@ func main() {
 	})
 	profileMongo := profile.NewMongo(mongoDB)
 	avatarUploader := profile.NewUpdater(
-		config.Storage.PublicPrefix,
+		storageRoutes,
 		profile.Buckets{
 			UserUploads: config.Storage.BucketUserUploads,
 			UserPublic:  config.Storage.BucketUserPublic,
