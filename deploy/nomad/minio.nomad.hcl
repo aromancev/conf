@@ -4,6 +4,9 @@ job "minio" {
       port "web" {
         to = 80
       }
+      port "minio" {
+        to = 8000
+      }
     }
 
     volume "minio" {
@@ -39,6 +42,11 @@ job "minio" {
       }
     }
 
+    service {
+      name = "minio-console"
+      port = "minio"
+    }
+
     task "minio" {
       driver = "docker"
       user = "1002:1002" # Pre-defined well-known global constant. See terraform configuration.
@@ -50,8 +58,10 @@ job "minio" {
           "/opt/minio/data",
           "--address",
           ":80",
+          "--console-address",
+          ":8000",
         ]
-        ports = ["web"]
+        ports = ["web", "minio"]
       }
 
       template {
