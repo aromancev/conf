@@ -121,7 +121,9 @@ jobs:
             -var="domain=${{ vars.TF_VAR_DOMAIN }}" \
             -var="cert_email=${{ vars.TF_VAR_CERT_EMAIL }}" \
             -var="google_client_id=${{ vars.TF_VAR_GOOGLE_CLIENT_ID }}" \
-            -var="google_client_secret=${{ secrets.TF_VAR_GOOGLE_CLIENT_SECRET }}"
+            -var="google_client_secret=${{ secrets.TF_VAR_GOOGLE_CLIENT_SECRET }}" \
+            -var="storage_access_key=${{ vars.TF_VAR_STORAGE_ACCESS_KEY }}" \
+            -var="storage_secret_key=${{ secrets.TF_VAR_STORAGE_SECRET_KEY }}"
 
   deploy-mongo:
     name: Deploy Mongo

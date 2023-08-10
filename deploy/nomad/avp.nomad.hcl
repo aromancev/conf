@@ -17,8 +17,8 @@ job "avp" {
           {{range service "minio" }}
             STORAGE_HOST = "{{.Address}}:{{.Port}}"
           {{end}}
-          STORAGE_ACCESS_KEY = "minio"
-          STORAGE_SECRET_KEY = "miniominio"
+          STORAGE_ACCESS_KEY = "{{ key "storage/access-key" }}"
+          STORAGE_SECRET_KEY = "{{ key "storage/secret-key" }}"
           STORAGE_BUCKET_TRACK_RECORDS = "{{ key "storage/buckets/confa-tracks-internal" }}"
           STORAGE_BUCKET_TRACK_PUBLIC = "{{ key "storage/buckets/confa-tracks-public" }}"
         EOH
