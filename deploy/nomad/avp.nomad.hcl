@@ -27,8 +27,8 @@ job "avp" {
       }
 
       resources {
-        cpu    = 100
-        memory = 32
+        cpu    = 1024
+        memory = 256
       }
     }
   }
