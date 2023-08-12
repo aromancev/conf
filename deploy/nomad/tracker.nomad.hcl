@@ -17,6 +17,8 @@ job "tracker" {
       config {
         image = "confa/tracker:latest"
         ports = ["rpc"]
+        # This job processes video. It can consume all CPU kicking out other jobs.
+        cpu_hard_limit = true
       }
 
       template {
@@ -46,8 +48,9 @@ job "tracker" {
       }
 
       resources {
-        cpu    = 100
-        memory = 64
+        cpu    = 1000
+        memory = 128
+        memory_max = 512
       }
     }
   }

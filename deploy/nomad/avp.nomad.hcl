@@ -5,6 +5,8 @@ job "avp" {
 
       config {
         image = "confa/avp:latest"
+        # This job processes video. It can consume all CPU kicking out other jobs.
+        cpu_hard_limit = true
       }
 
       template {
@@ -27,8 +29,9 @@ job "avp" {
       }
 
       resources {
-        cpu    = 1024
+        cpu    = 1000
         memory = 256
+        memory_max = 512
       }
     }
   }

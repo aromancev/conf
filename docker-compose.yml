@@ -65,9 +65,11 @@ services:
     networks:
       - confa
     environment:
-      VITE_RTC_ROOM_URL: "ws://localhost/api/rtc/room/socket"
+      VITE_API_GRAPH_URL: "http://localhost/api/query"
+      VITE_API_IAM_URL: "http://localhost/api/iam"
+      VITE_API_ROOM_RTC_URL: "ws://localhost/api/rtc/room/socket"
       VITE_SFU_URL: "ws://localhost:7880"
-      VITE_STORAGE_URL: "localhost:8003"
+      VITE_STORAGE_URL: "http://localhost:8003"
     volumes:
       - ./web:/app/web:delegated
       # Prevent node folders from being mapped by the previous volume.

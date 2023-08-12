@@ -146,6 +146,14 @@ jobs:
       image: minio/mc:RELEASE.2023-08-08T17-23-59Z
 
     steps:
+      - name: Wait for Minio
+        run: |
+          until $(curl --output /dev/null --silent --head --fail https://storage.confa.io/minio/health/live); do
+              echo 'Waiting for minio...'
+              sleep 5
+          done
+          echo 'minio ready!'
+
       - name: Create Alias
         run: mc alias set confa https://storage.confa.io ${{ vars.TF_VAR_STORAGE_ACCESS_KEY }} ${{ secrets.TF_VAR_STORAGE_SECRET_KEY }}
 
@@ -257,17 +265,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Deploying services with constraints or high resource consumption first because resources are limited.
+      # If deployed in the wrong order, Nomad can fail to schedule a job on a required node that is selected by constraints.
+      - name: Deploy services with constraints
+        working-directory: ./deploy/nomad
+        run: |
+          nomad job run -detach livekit.nomad.hcl
+          nomad job run -detach traefik.nomad.hcl
+          nomad job run -detach tracker.nomad.hcl
+
       - name: Deploy all services
         working-directory: ./deploy/nomad
         run: |
           nomad job run -detach beanstalk.nomad.hcl
           nomad job run -detach iam.nomad.hcl
-          nomad job run -detach livekit.nomad.hcl
-          nomad job run -detach traefik.nomad.hcl
           nomad job run -detach web.nomad.hcl
           nomad job run -detach gateway.nomad.hcl
           nomad job run -detach sender.nomad.hcl
           nomad job run -detach confa.nomad.hcl
           nomad job run -detach rtc.nomad.hcl
-          nomad job run -detach tracker.nomad.hcl
           nomad job run -detach avp.nomad.hcl
