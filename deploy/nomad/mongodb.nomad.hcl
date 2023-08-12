@@ -79,8 +79,8 @@ job "mongodb" {
       }
 
       resources {
-        cpu    = 500
-        memory = 512
+        cpu    = 256
+        memory = 256
       }
     }
   }
