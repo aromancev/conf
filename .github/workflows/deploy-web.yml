@@ -24,8 +24,8 @@ jobs:
           image: web
           context: ./web
           build-args: |
-            VITE_API_GRAPH_URL="https://confa.io/api/query"
-            VITE_API_IAM_URL="https://confa.io/api/iam"
+            VITE_API_GRAPH_URL=https://confa.io/api/query
+            VITE_API_IAM_URL=https://confa.io/api/iam
             VITE_RTC_ROOM_URL=wss://confa.io/api/rtc/room/socket
             VITE_SFU_URL=wss://sfu.confa.io
             VITE_STORAGE_URL=https://storage.confa.io
