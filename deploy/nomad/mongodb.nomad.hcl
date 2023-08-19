@@ -5,9 +5,6 @@ job "mongodb" {
         # Port has to be static to initiative replica set. See https://www.mongodb.com/docs/manual/reference/command/replSetInitiate/#mongodb-dbcommand-dbcmd.replSetInitiate.
         static = 27017
       }
-      dns {
-        servers = ["172.17.0.1"] # Pre-defined well-known global constant. See terraform configuration.
-      }
     }
 
     volume "mongodb" {
@@ -65,6 +62,9 @@ job "mongodb" {
           "/opt/mongodb/repl.key",
         ]
         ports = ["db"]
+        volumes = [
+          "local/hosts:/etc/hosts",
+        ]
       }
 
       env = {
@@ -76,6 +76,16 @@ job "mongodb" {
         volume      = "mongodb"
         destination = "/opt/mongodb"
         read_only   = false
+      }
+
+      # Always resolve mongodb Consul address to the current host to avoid deadlock.
+      # Consul does not return unhealthy services, so it will not resolve before the process starts. 
+      # The process cannot start if the node is unreachable.
+      template {
+        data = <<EOF
+          {{env "attr.unique.network.ip-address"}} mongodb.service.consul
+        EOF
+        destination = "local/hosts"
       }
 
       resources {
