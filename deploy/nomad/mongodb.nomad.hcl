@@ -81,6 +81,7 @@ job "mongodb" {
       resources {
         cpu    = 256
         memory = 256
+        memory_max = 512
       }
     }
   }

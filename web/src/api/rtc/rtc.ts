@@ -59,7 +59,7 @@ class RoomWebSocket {
     if (this.socket) {
       await this.close()
     }
-    this.socket = new WebSocket(`${config.rtc.room.baseURL}/${roomId}?t=${token}`)
+    this.socket = new WebSocket(`${config.api.roomRTCURL}/${roomId}?t=${token}`)
     this.socket.onmessage = (resp) => {
       const msg = JSON.parse(resp.data) as Message
 

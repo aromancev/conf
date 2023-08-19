@@ -16,6 +16,7 @@ import { setContext } from "@apollo/client/link/context"
 import { duration, Duration } from "@/platform/time"
 import { ApolloError } from "@apollo/client/core"
 import { accessStore } from "./models/access"
+import { config } from "@/config"
 
 const minRefresh = 10 * Duration.second
 
@@ -86,7 +87,7 @@ export class Client {
 
   constructor() {
     const httpLink = createHttpLink({
-      uri: `${window.location.protocol}/api/query`,
+      uri: config.api.graphURL,
     })
 
     const errorLink = onError((resp: ErrorResponse) => {
@@ -152,7 +153,7 @@ export class Client {
   }
 
   async emailLogin(email: string): Promise<void> {
-    const resp = await fetch("/api/iam/email-login", {
+    const resp = await fetch(`${config.api.iamURL}/email-login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -167,7 +168,7 @@ export class Client {
   }
 
   async emailCreatePassword(email: string): Promise<void> {
-    const resp = await fetch("/api/iam/email-create-password", {
+    const resp = await fetch(`${config.api.iamURL}/email-create-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -182,7 +183,7 @@ export class Client {
   }
 
   async emailResetPassword(email: string): Promise<void> {
-    const resp = await fetch("/api/iam/email-reset-password", {
+    const resp = await fetch(`${config.api.iamURL}/email-reset-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -197,7 +198,7 @@ export class Client {
   }
 
   async logout(): Promise<void> {
-    const resp = await fetch("/api/iam/logout", {
+    const resp = await fetch(`${config.api.iamURL}/logout`, {
       method: "POST",
     })
     if (resp.status !== HTTPCode.OK) {
@@ -210,7 +211,7 @@ export class Client {
   async createSessionWithEmail(emailToken: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/session-email", {
+    const resp = await fetch(`${config.api.iamURL}/session-email`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -241,7 +242,7 @@ export class Client {
   async createSessionWithCredentials(email: string, password: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/session-credentials", {
+    const resp = await fetch(`${config.api.iamURL}/session-credentials`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -268,7 +269,7 @@ export class Client {
   async createSessionWithGSI(token: string): Promise<void> {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/session-google-sign-in", {
+    const resp = await fetch(`${config.api.iamURL}/session-google-sign-in`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -290,7 +291,7 @@ export class Client {
   async refreshToken() {
     this.setRefreshInProgress()
 
-    const resp = await fetch("/api/iam/token", {
+    const resp = await fetch(`${config.api.iamURL}/token`, {
       method: "GET",
     })
     if (resp.status === HTTPCode.OK) {
@@ -303,7 +304,7 @@ export class Client {
   }
 
   async updatePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const resp = await fetch("/api/iam/password-update", {
+    const resp = await fetch(`${config.api.iamURL}/password-update`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -326,7 +327,7 @@ export class Client {
   }
 
   async createPassword(emailToken: string, password: string): Promise<void> {
-    const resp = await fetch("/api/iam/password-create", {
+    const resp = await fetch(`${config.api.iamURL}/password-create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -347,7 +348,7 @@ export class Client {
   }
 
   async resetPassword(emailToken: string, password: string): Promise<void> {
-    const resp = await fetch("/api/iam/password-reset", {
+    const resp = await fetch(`${config.api.iamURL}/password-reset`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
