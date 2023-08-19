@@ -80,8 +80,9 @@ job "minio" {
       }
 
       resources {
-        cpu    = 500
+        cpu    = 200
         memory = 128
+        memory_max = 256
       }
     }
   }

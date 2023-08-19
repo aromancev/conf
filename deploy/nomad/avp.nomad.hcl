@@ -29,7 +29,7 @@ job "avp" {
       }
 
       resources {
-        cpu    = 1000
+        cpu    = 700
         memory = 256
         memory_max = 512
       }

@@ -1,12 +1,9 @@
 locals {
   bootstrap_expect = 1
-  vpc_range        = "10.10.10.0/24"
   mongo_gid        = "1001"
   mongo_uid        = "1001"
   minio_gid        = "1002"
   minio_uid        = "1002"
-  traefik_uid      = "1001"
-  traefik_gid      = "1001"
   docker_dns       = "172.17.0.1"
 }
 
@@ -25,12 +22,6 @@ data "digitalocean_droplet_snapshot" "cluster_worker" {
   name_regex  = "^confa_cluster_worker$"
   region      = var.region
   most_recent = true
-}
-
-resource "digitalocean_vpc" "main" {
-  name     = "confa-vpc"
-  region   = var.region
-  ip_range = local.vpc_range
 }
 
 resource "digitalocean_droplet" "server" {
@@ -190,7 +181,7 @@ retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojo
 # Address to communication inside Consul cluster. Only bind to the private IP.
 bind_addr = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 # Address for Consul client. Bind localhost so that services like Nomad on the same host can register themselves. 
-client_addr = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
+client_addr = "127.0.0.1"
 
 data_dir = "/opt/consul"
 
@@ -221,13 +212,14 @@ data_dir = "/opt/nomad"
 
 addresses {
   # Address for Nomad client. Only bind to localhost to allow access from services running on the same machine.
-  http = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
+  http = "127.0.0.1"
   rpc = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
   serf = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 }
 
 advertise {
-  http = "{{ GetPublicInterfaces | attr \"address\" }}"
+  # Address for Nomad client. Only bind to localhost to allow access from services running on the same machine.
+  http = "127.0.0.1"
   rpc = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
   serf = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 }
@@ -267,9 +259,6 @@ consul {
 # Creating host directory for Traefik.
 mkdir --parents /etc/traefik/acme
 chmod 700 /etc/traefik
-groupadd -g ${local.traefik_gid} traefik
-useradd -M -s /bin/false -g traefik -u ${local.traefik_uid} traefik
-chown --recursive traefik:traefik /etc/traefik
 
 # Creating host directory for Minio.
 mkdir --parents /opt/minio/data
@@ -359,7 +348,7 @@ retry_join = ["provider=digitalocean region=${var.region} tag_name=consul-autojo
 # Address to communication inside Consul cluster. Only bind to the private IP.
 bind_addr = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 # Address for Consul client. Bind localhost so that services like Nomad on the same host can register themselves. 
-client_addr = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
+client_addr = "127.0.0.1"
 
 data_dir = "/opt/consul"
 
@@ -390,13 +379,14 @@ data_dir = "/opt/nomad"
 
 addresses {
   # Address for Nomad client. Only bind to localhost to allow access from services running on the same machine.
-  http = "127.0.0.1 {{ GetPublicInterfaces | attr \"address\" }}"
+  http = "127.0.0.1"
   rpc = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
   serf = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 }
 
 advertise {
-  http = "{{ GetPublicInterfaces | attr \"address\" }}"
+  # Address for Nomad client. Only bind to localhost to allow access from services running on the same machine.
+  http = "127.0.0.1"
   rpc = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
   serf = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"address\" }}"
 }
@@ -405,9 +395,19 @@ client {
   enabled = true
   network_interface = "{{ GetPrivateInterfaces | include \"network\" \"${local.vpc_range}\" | attr \"name\" }}"
 
+  meta = {
+    ingress_teleport = "true"
+  }
+
   # Host mount that the mongo job can use. It is also used by Nomad to select the node for scheduling.
   host_volume "mongodb" {
     path      = "/opt/mongodb"
+    read_only = false
+  }
+
+  # Host mount that the teleport job can use. It is also used by Nomad to select the node for scheduling.
+  host_volume "teleport" {
+    path      = "/opt/teleport"
     read_only = false
   }
 }
@@ -432,6 +432,10 @@ chmod 400 /opt/mongodb/repl.key
 groupadd -g ${local.mongo_gid} mongodb
 useradd -M -s /bin/false -g mongodb -u ${local.mongo_uid} mongodb
 chown --recursive mongodb:mongodb /opt/mongodb
+
+# Creating host directory for Teleport.
+mkdir --parents /opt/teleport
+chmod 700 /opt/teleport
 
 echo 'Starting Nomad service ...'
 chown --recursive nomad:nomad /etc/nomad.d

@@ -34,6 +34,7 @@ echo \
   "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
+# Install required tools.
 sudo apt-get update
 sudo apt-get install -y \
   unzip \
@@ -43,7 +44,12 @@ sudo apt-get install -y \
   consul=1.15.3-* \
   nomad=1.5.6-* \
   docker-ce=5:24.0.0-*
-sudo apt-get autoremove
+
+# Remove snapd because it consumes a lot of CPU.
+sudo systemctl stop snapd
+sudo apt-get purge -y snapd
+
+sudo apt-get autoremove -y
 
 # Download GitHub self-hosted runner and create a user for it.
 groupadd github

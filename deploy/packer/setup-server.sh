@@ -23,9 +23,14 @@ curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
  sudo tee -a /etc/apt/sources.list.d/hashicorp.list
 
+# Install required tools.
 sudo apt-get update
 sudo apt-get install -y \
   consul=1.15.3-* \
-  nomad=1.5.6-* \
-  vault=1.14.0-*
-sudo apt-get autoremove
+  nomad=1.5.6-*
+
+# Remove snapd because it consumes a lot of CPU.
+sudo systemctl stop snapd
+sudo apt-get purge -y snapd
+
+sudo apt-get autoremove -y

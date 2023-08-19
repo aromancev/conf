@@ -21,7 +21,8 @@ job "beanstalk" {
 
       resources {
         cpu    = 100
-        memory = 32
+        memory = 16
+        memory_max = 256
       }
     }
   }
