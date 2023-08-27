@@ -36,9 +36,27 @@ jobs:
             -var="github_actions_repo=${{ github.repository }}" \
             -var="github_actions_pat=${{ secrets.ACTIONS_RUNNER_PAT }}"
 
-  check-cluster:
-    name: Check Cluster
+  # We have to prempopulate runner cache because we're deploying everything to a single VM.
+  # Cold start on a runner can consume all CPU and node becomes unresponsive.
+  # Ideally, the runner should have it's own dedicated VM.
+  precache-runner:
+    name: Prepare Github Runner Cache
+    runs-on: self-hosted
     needs: apply-cluster
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "^1.20"
+
+      - name: Install golang-migrate
+        run: go install -tags 'mongodb' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.14.1
+
+  setup-cluster:
+    name: Setup Cluster
+    needs: precache-runner
     runs-on: self-hosted
     environment: production
     steps:
@@ -90,9 +108,17 @@ jobs:
             fi
           '
 
+      # Have to oversubscribe memory because deploying to a constrained (cheap) environment.
+      # https://developer.hashicorp.com/nomad/tutorials/advanced-scheduling/memory-oversubscription
+      - name: Enable Nomad Memory oversubscription
+        run: |
+          curl -s http://localhost:4646/v1/operator/scheduler/configuration | \
+            jq '.SchedulerConfig | .MemoryOversubscriptionEnabled=true' | \
+            curl -X PUT http://localhost:4646/v1/operator/scheduler/configuration -d @-
+
   apply-consul:
     name: Apply Consul
-    needs: check-cluster
+    needs: setup-cluster
     runs-on: self-hosted
     environment: production
     steps:
@@ -265,8 +291,33 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Deploy Teleport
+        working-directory: ./deploy/nomad
+        run: nomad job run teleport.nomad.hcl
+
+      - name: Configure Github Auth for Teleport
+        run: |
+          echo '
+            version: v3
+            kind: github
+            metadata:
+              name: github
+            spec:
+              client_id: ${{ vars.TELEPORT_GITHUB_CLIENT_ID }}
+              client_secret: ${{ secrets.TELEPORT_GITHUB_CLIENT_SECRET }}
+              display: GitHub
+              redirect_url: https://teleport.confa.io/v1/webapi/github/callback
+              teams_to_roles:
+                - organization: ${{ vars.TELEPORT_GITHUB_ORG }}
+                  team: ${{ vars.TELEPORT_GITHUB_TEAM }}
+                  roles:
+                    - access
+                    - editor
+          ' | nomad exec -job teleport tctl create -f -c /etc/teleport/teleport.yaml
+
       # Deploying services with constraints or high resource consumption first because resources are limited.
       # If deployed in the wrong order, Nomad can fail to schedule a job on a required node that is selected by constraints.
+      # Ideally we would have more VM and this will not be an issue.
       - name: Deploy services with constraints
         working-directory: ./deploy/nomad
         run: |

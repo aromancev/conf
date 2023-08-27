@@ -36,7 +36,7 @@ job "web" {
 
       resources {
         cpu    = 100
-        memory = 32
+        memory = 16
       }
     }
   }

@@ -32,6 +32,14 @@ resource "cloudflare_record" "storage" {
 
 resource "cloudflare_record" "teleport" {
   zone_id = var.cloudflare_zone_id
+  name    = "teleport"
+  value   = digitalocean_reserved_ip.ops.ip_address
+  type    = "A"
+  ttl     = 3600
+}
+
+resource "cloudflare_record" "teleport_apps" {
+  zone_id = var.cloudflare_zone_id
   name    = "*.teleport"
   value   = digitalocean_reserved_ip.ops.ip_address
   type    = "A"
