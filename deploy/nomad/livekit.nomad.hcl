@@ -126,8 +126,8 @@ job "livekit" {
 
       resources {
         cpu    = 300
-        memory = 64
-        memory_max = 256
+        memory = 256
+        memory_max = 1024
       }
     }
   }

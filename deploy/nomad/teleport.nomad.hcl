@@ -23,6 +23,8 @@ job "teleport" {
       config {
         image        = "public.ecr.aws/gravitational/teleport-distroless:13.3"
         network_mode = "host"
+        # For some reason, teleport can start consuming a lof of CPU.
+        cpu_hard_limit = true
 
         volumes = [
           "local/teleport.yml:/etc/teleport/teleport.yaml",
@@ -84,8 +86,8 @@ job "teleport" {
       }
 
       resources {
-        cpu    = 100
-        memory = 128
+        cpu    = 300
+        memory = 256
         memory_max = 512
       }
     }
