@@ -5,6 +5,11 @@ locals {
   minio_gid        = "1002"
   minio_uid        = "1002"
   docker_dns       = "172.17.0.1"
+  cluster_droplet_ids = [
+    digitalocean_droplet.server.id,
+    digitalocean_droplet.ingress.id,
+    digitalocean_droplet.ops.id,
+  ]
 }
 
 resource "digitalocean_ssh_key" "main" {
