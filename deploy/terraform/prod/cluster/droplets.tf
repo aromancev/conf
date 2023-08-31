@@ -145,7 +145,7 @@ resource "digitalocean_droplet" "ingress" {
   image    = data.digitalocean_droplet_snapshot.cluster_worker.id
   name     = "cluster-ingress"
   region   = var.region
-  size     = "s-1vcpu-1gb"
+  size     = "s-1vcpu-2gb-intel"
   tags     = ["consul-autojoin"]
   vpc_uuid = digitalocean_vpc.main.id
   ssh_keys = [
@@ -312,7 +312,7 @@ resource "digitalocean_droplet" "ops" {
   image    = data.digitalocean_droplet_snapshot.cluster_worker.id
   name     = "cluster-ops"
   region   = var.region
-  size     = "s-1vcpu-1gb"
+  size     = "s-1vcpu-1gb-intel"
   tags     = ["consul-autojoin"]
   vpc_uuid = digitalocean_vpc.main.id
   ssh_keys = [
