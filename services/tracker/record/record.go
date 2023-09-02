@@ -231,7 +231,11 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		defer wg.Done()
 		defer cancelWatchdog()
 
-		_, err := t.storage.PutObject(ctx, t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{})
+		_, err := t.storage.PutObject(ctx, t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{
+			PartSize:              30 * 1024 * 1024,
+			NumThreads:            5,
+			ConcurrentStreamParts: true,
+		})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to write object from track.")
 		}
