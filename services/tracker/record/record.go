@@ -127,7 +127,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 
 	const pliPeriod = 3 * time.Second
 	const minDuration = 6 * time.Second
-	const rtpMaxLate = 300 // should be 1000 for 2s of fHD video and 200 for 4s audio.
+	const rtpMaxLate = 2000 // should be 1000 for 2s of fHD video and 200 for 4s audio.
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
 

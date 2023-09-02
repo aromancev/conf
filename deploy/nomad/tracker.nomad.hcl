@@ -49,8 +49,8 @@ job "tracker" {
 
       resources {
         cpu    = 300
-        memory = 128
-        memory_max = 512
+        memory = 256
+        memory_max = 1024
       }
     }
   }
