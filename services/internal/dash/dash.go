@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/aromancev/confa/internal/platform/ffmpeg"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 )
 
 type Record struct {
@@ -21,14 +22,14 @@ type Record struct {
 }
 
 type Converter struct {
-	storage *minio.Client
-	bucket  string
+	s3client *s3.Client
+	bucket   string
 }
 
-func NewConverter(storage *minio.Client, destBucket string) *Converter {
+func NewConverter(s3client *s3.Client, destBucket string) *Converter {
 	return &Converter{
-		storage: storage,
-		bucket:  destBucket,
+		s3client: s3client,
+		bucket:   destBucket,
 	}
 }
 
@@ -65,15 +66,11 @@ func (c *Converter) ConvertVideo(ctx context.Context, roomID uuid.UUID, record R
 	}
 
 	// Upload DASH files to storage.
-	err = c.uploadFromFile(ctx, videoPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "video"), minio.PutObjectOptions{
-		ContentType: "video/webm",
-	})
+	err = c.uploadFromFile(ctx, videoPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "video"), "video/webm")
 	if err != nil {
 		return err
 	}
-	err = c.uploadFromFile(ctx, manifestPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "manifest"), minio.PutObjectOptions{
-		ContentType: "application/dash+xml",
-	})
+	err = c.uploadFromFile(ctx, manifestPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "manifest"), "application/dash+xml")
 	if err != nil {
 		return err
 	}
@@ -82,7 +79,11 @@ func (c *Converter) ConvertVideo(ctx context.Context, roomID uuid.UUID, record R
 	if err := os.RemoveAll(tmpPath); err != nil {
 		return fmt.Errorf("failed to drop tmp folder: %w", err)
 	}
-	if err := c.storage.RemoveObject(ctx, record.BucketName, record.ObjectName, minio.RemoveObjectOptions{}); err != nil {
+	_, err = c.s3client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: &record.BucketName,
+		Key:    &record.ObjectName,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to remove record object: %w", err)
 	}
 	return nil
@@ -120,15 +121,11 @@ func (c *Converter) ConvertAudio(ctx context.Context, roomID uuid.UUID, record R
 	}
 
 	// Upload DASH files to storage.
-	err = c.uploadFromFile(ctx, audioPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "audio"), minio.PutObjectOptions{
-		ContentType: "audio/webm",
-	})
+	err = c.uploadFromFile(ctx, audioPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "audio"), "audio/webm")
 	if err != nil {
 		return err
 	}
-	err = c.uploadFromFile(ctx, manifestPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "manifest"), minio.PutObjectOptions{
-		ContentType: "application/xhtml+xml",
-	})
+	err = c.uploadFromFile(ctx, manifestPath, c.bucket, path.Join(roomID.String(), record.ID.String(), "manifest"), "application/xhtml+xml")
 	if err != nil {
 		return err
 	}
@@ -137,7 +134,11 @@ func (c *Converter) ConvertAudio(ctx context.Context, roomID uuid.UUID, record R
 	if err := os.RemoveAll(tmpPath); err != nil {
 		return fmt.Errorf("failed to drop tmp folder: %w", err)
 	}
-	if err := c.storage.RemoveObject(ctx, record.BucketName, record.ObjectName, minio.RemoveObjectOptions{}); err != nil {
+	_, err = c.s3client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: &record.BucketName,
+		Key:    &record.ObjectName,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to remove record object: %w", err)
 	}
 	return nil
@@ -152,29 +153,37 @@ func (c *Converter) downloadToFile(ctx context.Context, fileName, bucketName, ob
 		return fmt.Errorf("failed to create a record file: %w", err)
 	}
 	defer record.Close()
-	object, err := c.storage.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+	object, err := c.s3client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &bucketName,
+		Key:    &objectName,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to access storage: %w", err)
 	}
-	defer object.Close()
-	_, err = io.Copy(record, object)
+	defer object.Body.Close()
+	_, err = io.Copy(record, object.Body)
 	if err != nil {
 		return fmt.Errorf("failed to download record from storage: %w", err)
 	}
 	return nil
 }
 
-func (c *Converter) uploadFromFile(ctx context.Context, fileName, bucketName, objectName string, ops minio.PutObjectOptions) error {
+func (c *Converter) uploadFromFile(ctx context.Context, fileName, bucketName, objectName, contentType string) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return fmt.Errorf("failed to open webm file: %w", err)
 	}
 	defer file.Close()
-	stat, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read webm file stat: %w", err)
-	}
-	_, err = c.storage.PutObject(ctx, bucketName, objectName, file, stat.Size(), ops)
+	uploader := manager.NewUploader(c.s3client, func(u *manager.Uploader) {
+		u.PartSize = 10 * 1024 * 1024 // The minimum/default allowed part size is 5MB
+		u.Concurrency = 1             // default is 5
+	})
+	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+		Bucket:      &bucketName,
+		Key:         &objectName,
+		Body:        file,
+		ContentType: &contentType,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to upload webm file to storage: %w", err)
 	}

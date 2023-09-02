@@ -95,11 +95,9 @@ class ProfileIterator {
 
 export class ProfileClient {
   private api: Client
-  private refreshCtrl: AbortController
 
   constructor(api: Client) {
     this.api = api
-    this.refreshCtrl = new AbortController()
   }
 
   async update(request: ProfileUpdate = {}): Promise<Profile> {

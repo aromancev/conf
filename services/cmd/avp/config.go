@@ -73,6 +73,8 @@ func (c BeanstalkConfig) ParsePool() []string {
 
 type StorageConfig struct {
 	Host               string `envconfig:"STORAGE_HOST"`
+	Scheme             string `envconfig:"STORAGE_SCHEME"`
+	Region             string `envconfig:"STORAGE_REGION"`
 	AccessKey          string `envconfig:"STORAGE_ACCESS_KEY"`
 	SecretKey          string `envconfig:"STORAGE_SECRET_KEY"`
 	BucketTrackRecords string `envconfig:"STORAGE_BUCKET_TRACK_RECORDS"`
@@ -82,6 +84,12 @@ type StorageConfig struct {
 func (c StorageConfig) Validate() error {
 	if c.Host == "" {
 		return errors.New("STORAGE_HOST not set")
+	}
+	if c.Scheme == "" {
+		return errors.New("STORAGE_SCHEME not set")
+	}
+	if c.Region == "" {
+		return errors.New("STORAGE_REGION not set")
 	}
 	if c.AccessKey == "" {
 		return errors.New("STORAGE_ACCESS_KEY not set")

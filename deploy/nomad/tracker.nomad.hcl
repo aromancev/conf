@@ -37,6 +37,8 @@ job "tracker" {
           {{range service "minio" }}
             STORAGE_HOST = "{{.Address}}:{{.Port}}"
           {{end}}
+          STORAGE_SCHEME = "http"
+          STORAGE_REGION = "stub"
           STORAGE_ACCESS_KEY = "{{ key "storage/access-key" }}"
           STORAGE_SECRET_KEY = "{{ key "storage/secret-key" }}"
           STORAGE_BUCKET_TRACK_RECORDS = "{{ key "storage/buckets/confa-tracks-internal" }}"
@@ -47,8 +49,8 @@ job "tracker" {
 
       resources {
         cpu    = 500
-        memory = 512
-        memory_max = 1024
+        memory = 128
+        memory_max = 512
       }
     }
   }

@@ -53,15 +53,18 @@ func NewUpdater(storageRoutes *routes.Storage, buckets Buckets, storage *minio.C
 func (u *Updater) UpdateAndRequestUpload(ctx context.Context, userID uuid.UUID) (string, map[string]string, error) {
 	objectID := "avatar"
 	objectPath := path.Join(userID.String(), objectID)
-	policy := minio.NewPostPolicy()
 	bucket := u.buckets.UserUploads
+
+	// Have to use minio client because the official s3 SDK does support POST policy.
+	// https://github.com/aws/aws-sdk-go-v2/issues/1224
+	policy := minio.NewPostPolicy()
 	if err := policy.SetBucket(bucket); err != nil {
 		return "", nil, fmt.Errorf("failed to set policy bucket: %w", err)
 	}
 	if err := policy.SetKey(objectPath); err != nil {
 		return "", nil, fmt.Errorf("failed to set policy key: %w", err)
 	}
-	if err := policy.SetExpires(time.Now().Add(30 * time.Second)); err != nil {
+	if err := policy.SetExpires(time.Now().Add(5 * time.Minute)); err != nil {
 		return "", nil, fmt.Errorf("failed to set policy expires: %w", err)
 	}
 	if err := policy.SetContentLengthRange(0, 5*1000*1000); err != nil {

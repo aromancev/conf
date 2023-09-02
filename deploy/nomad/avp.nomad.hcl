@@ -20,6 +20,8 @@ job "avp" {
             STORAGE_HOST = "{{.Address}}:{{.Port}}"
           {{end}}
           STORAGE_ACCESS_KEY = "{{ key "storage/access-key" }}"
+          STORAGE_SCHEME = "http"
+          STORAGE_REGION = "stub"
           STORAGE_SECRET_KEY = "{{ key "storage/secret-key" }}"
           STORAGE_BUCKET_TRACK_RECORDS = "{{ key "storage/buckets/confa-tracks-internal" }}"
           STORAGE_BUCKET_TRACK_PUBLIC = "{{ key "storage/buckets/confa-tracks-public" }}"

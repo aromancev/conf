@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -9,8 +10,9 @@ import (
 
 	"github.com/aromancev/confa/cmd/avp/queue"
 	"github.com/aromancev/confa/internal/dash"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+	s3cfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/prep/beanstalk"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -71,20 +73,23 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to beanstalk.")
 	}
 
-	minioClient, err := minio.New(config.Storage.Host, &minio.Options{
-		Creds:  credentials.NewStaticV4(config.Storage.AccessKey, config.Storage.SecretKey, ""),
-		Secure: false,
-	})
+	cfg, err := s3cfg.LoadDefaultConfig(ctx, s3cfg.WithRegion(config.Storage.Region))
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create minio client.")
+		log.Fatal().Err(err).Msg("Failed to create s3 config.")
 	}
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		endpoint := fmt.Sprintf("%s://%s", config.Storage.Scheme, config.Storage.Host)
+		o.BaseEndpoint = &endpoint
+		o.Credentials = credentials.NewStaticCredentialsProvider(config.Storage.AccessKey, config.Storage.SecretKey, "")
+		o.UsePathStyle = true
+	})
 
 	tubes := queue.Tubes{
 		ProcessTrack:         config.Beanstalk.TubeProcessTrack,
 		UpdateRecordingTrack: config.Beanstalk.TubeUpdateRecordingTrack,
 	}
 	jobHandler := queue.NewHandler(
-		dash.NewConverter(minioClient, config.Storage.BucketTrackPublic),
+		dash.NewConverter(s3Client, config.Storage.BucketTrackPublic),
 		tubes,
 		queue.NewBeanstalk(producer, tubes),
 	)
