@@ -10,11 +10,10 @@ import (
 
 	"github.com/aromancev/confa/internal/platform/webrtc/webm"
 	"github.com/aromancev/confa/internal/proto/rtc"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go"
+	"github.com/minio/minio-go/v7"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/rs/zerolog/log"
@@ -48,7 +47,7 @@ type Tracker struct {
 	emitter             Emitter
 	bucket              string
 	roomID, recordingID uuid.UUID
-	s3Client            *s3.Client
+	storage             *minio.Client
 
 	// Using mutext to protect waitgroup from calling `Wait` before `Add`.
 	mutex   sync.Mutex
@@ -56,13 +55,13 @@ type Tracker struct {
 	closed  bool
 }
 
-func NewTracker(ctx context.Context, s3Client *s3.Client, emitter Emitter, creds LivekitCredentials, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
+func NewTracker(ctx context.Context, storage *minio.Client, emitter Emitter, creds LivekitCredentials, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
 	tracker := &Tracker{
 		emitter:     emitter,
 		bucket:      bucket,
 		roomID:      roomID,
 		recordingID: recordingID,
-		s3Client:    s3Client,
+		storage:     storage,
 	}
 
 	room, err := lksdk.ConnectToRoom(
@@ -232,15 +231,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		defer wg.Done()
 		defer cancelWatchdog()
 
-		uploader := manager.NewUploader(t.s3Client, func(u *manager.Uploader) {
-			u.PartSize = 30 * 1024 * 1024 // The minimum/default allowed part size is 5MB
-			u.Concurrency = 3             // default is 5
-		})
-		_, err := uploader.Upload(ctx, &s3.PutObjectInput{
-			Bucket: &t.bucket,
-			Key:    &objectPath,
-			Body:   pipedReader,
-		})
+		_, err := t.storage.PutObject(ctx, t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{})
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to write object from track.")
 		}
@@ -250,10 +241,10 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 
 	if !recordStarted {
 		log.Ctx(ctx).Info().Str("duration", record.Duration.String()).Msg("Track durations is less than minimum allowed WebM duration. Removing record.")
-		_, err := t.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
-			Bucket: &t.bucket,
-			Key:    &objectPath,
-		})
+		err := t.storage.RemoveObject(ctx, t.bucket, objectPath, minio.RemoveObjectOptions{})
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Failed to remove object from storage.")
+		}
 		if err != nil {
 			log.Ctx(ctx).Err(err).Msg("Failed to remove object from storage.")
 		}
