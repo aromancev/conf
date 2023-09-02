@@ -30,6 +30,8 @@ x-service-env: &service-env
   BEANSTALK_TUBE_UPDATE_RECORDING_TRACK: "rtc/update-recording-track"
   BEANSTALK_TUBE_PROCESS_TRACK: "avp/process-track"
   STORAGE_HOST: "minio:80"
+  STORAGE_SCHEME: "http"
+  STORAGE_REGION: "stub"
   STORAGE_ACCESS_KEY: "minio"
   STORAGE_SECRET_KEY: "miniominio"
   STORAGE_PUBLIC_DOMAIN: "localhost:8003"

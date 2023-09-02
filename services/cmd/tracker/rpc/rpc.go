@@ -9,8 +9,9 @@ import (
 	pb "github.com/aromancev/confa/internal/proto/tracker"
 	"github.com/aromancev/confa/tracker"
 	"github.com/aromancev/confa/tracker/record"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 	"github.com/twitchtv/twirp"
 )
 
@@ -20,19 +21,19 @@ type Buckets struct {
 
 type Handler struct {
 	runtime      *tracker.Runtime
-	storage      *minio.Client
 	emitter      *record.Beanstalk
 	buckets      Buckets
 	livekitCreds record.LivekitCredentials
+	s3Client     *s3.Client
 }
 
-func NewHandler(runtime *tracker.Runtime, storage *minio.Client, emitter *record.Beanstalk, buckets Buckets, livekitCreds record.LivekitCredentials) *Handler {
+func NewHandler(runtime *tracker.Runtime, s3Client *s3.Client, emitter *record.Beanstalk, buckets Buckets, livekitCreds record.LivekitCredentials) *Handler {
 	return &Handler{
 		runtime:      runtime,
-		storage:      storage,
 		buckets:      buckets,
 		emitter:      emitter,
 		livekitCreds: livekitCreds,
+		s3Client:     s3Client,
 	}
 }
 
@@ -102,7 +103,7 @@ func (h *Handler) startRecording(ctx context.Context, roomID uuid.UUID, expireAt
 		roleRecord,
 		expireAt,
 		func(ctx context.Context, roomID uuid.UUID) (tracker.Tracker, error) {
-			return record.NewTracker(ctx, h.storage, h.emitter, h.livekitCreds, h.buckets.TrackRecords, roomID, recordingID)
+			return record.NewTracker(ctx, h.s3Client, h.emitter, h.livekitCreds, h.buckets.TrackRecords, roomID, recordingID)
 		},
 	)
 }
