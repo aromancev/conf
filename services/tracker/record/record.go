@@ -221,6 +221,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 					log.Ctx(ctx).Err(err).Msg("Failed to emit record started event.")
 				}
 				recordStarted = true
+				log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Str("duration", record.Duration.String()).Msg("Track record started.")
 			}
 		}
 	}()
@@ -232,8 +233,8 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		defer cancelWatchdog()
 
 		uploader := manager.NewUploader(t.s3Client, func(u *manager.Uploader) {
-			u.PartSize = 5 * 1024 * 1024 // The minimum/default allowed part size is 5MB
-			u.Concurrency = 1            // default is 5
+			u.PartSize = 30 * 1024 * 1024 // The minimum/default allowed part size is 5MB
+			u.Concurrency = 3             // default is 5
 		})
 		_, err := uploader.Upload(ctx, &s3.PutObjectInput{
 			Bucket: &t.bucket,
