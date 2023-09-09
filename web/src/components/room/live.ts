@@ -233,7 +233,16 @@ export class LiveRoom {
       return
     }
     try {
-      await this.sfu.localParticipant.setCameraEnabled(true)
+      await this.sfu.localParticipant.setCameraEnabled(
+        true,
+        {
+          resolution: {
+            width: 1280,
+            height: 720,
+            frameRate: 30,
+          },
+        },
+      )
     } catch {
       this.reactive.sfu = "DISCONNECTED"
     }
@@ -256,7 +265,17 @@ export class LiveRoom {
       if (this.reactive.sfu !== "CONNECTED") {
         return
       }
-      await this.sfu.localParticipant.setScreenShareEnabled(true)
+      await this.sfu.localParticipant.setScreenShareEnabled(
+        true,
+        {
+          resolution: {
+            width: 1920,
+            height: 1080,
+            frameRate: 30,
+          },
+          audio: false,
+        },
+      )
     } catch {
       this.reactive.sfu = "DISCONNECTED"
     }

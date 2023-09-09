@@ -205,18 +205,16 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		}()
 
 		for {
-			log.Ctx(ctx).Debug().Msg("Reading RTP.")
 			packet, _, err := track.ReadRTP()
 			switch {
 			case errors.Is(err, io.EOF):
-				log.Ctx(ctx).Debug().Msg("Track ended when writing RTP.")
+				log.Ctx(ctx).Debug().Msg("Track ended when reading RTP.")
 				return
 			case err != nil:
 				log.Ctx(ctx).Err(err).Msg("Failed to read RTP.")
 				continue
 			}
 
-			log.Ctx(ctx).Debug().Msg("Writing RTP.")
 			if err := rtpWriter.WriteRTP(packet); err != nil {
 				log.Ctx(ctx).Warn().Msg("Failed to write RTP packet.")
 				continue
