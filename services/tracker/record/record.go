@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -48,6 +49,7 @@ type Tracker struct {
 	bucket              string
 	roomID, recordingID uuid.UUID
 	storage             *minio.Client
+	tmpDir              string
 
 	// Using mutext to protect waitgroup from calling `Wait` before `Add`.
 	mutex   sync.Mutex
@@ -55,13 +57,14 @@ type Tracker struct {
 	closed  bool
 }
 
-func NewTracker(ctx context.Context, storage *minio.Client, emitter Emitter, creds LivekitCredentials, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
+func NewTracker(ctx context.Context, storage *minio.Client, tmpDir string, emitter Emitter, creds LivekitCredentials, bucket string, roomID, recordingID uuid.UUID) (*Tracker, error) {
 	tracker := &Tracker{
 		emitter:     emitter,
 		bucket:      bucket,
 		roomID:      roomID,
 		recordingID: recordingID,
 		storage:     storage,
+		tmpDir:      tmpDir,
 	}
 
 	room, err := lksdk.ConnectToRoom(
@@ -129,8 +132,21 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 	const rtpMaxLate = 2000 // should be 1000 for 2s of fHD video and 200 for 4s audio.
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
+	tmpFilePath := path.Join(t.tmpDir, objectPath)
 
-	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Msg("Started writing track to object.")
+	err := os.MkdirAll(path.Join(t.tmpDir, t.roomID.String()), 0o700)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to create temporary dir.")
+		return
+	}
+	tmpFile, err := os.Create(tmpFilePath)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to open temporary file for buffering track.")
+		return
+	}
+	defer tmpFile.Close()
+
+	log.Ctx(ctx).Info().Str("bucket", t.bucket).Str("objectPath", objectPath).Msg("Started writing track.")
 
 	watchdogCtx, cancelWatchdog := context.WithCancel(ctx)
 	defer cancelWatchdog()
@@ -153,10 +169,6 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		}
 	}()
 
-	pipedReader, pipedWriter := io.Pipe()
-	defer pipedReader.Close()
-	defer pipedWriter.Close()
-
 	record := Record{
 		RoomID:      t.roomID,
 		RecordingID: t.recordingID,
@@ -169,14 +181,14 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 	}
 	var recordStarted bool
 	wg.Add(1)
-	// Writing WebM into pipedWriter.
+	// Writing WebM into a temporary file.
 	go func() {
 		defer wg.Done()
 		defer cancelWatchdog()
 
 		var rtpWriter RTPWriteCloser
 		if kind == rtc.TrackKind_VIDEO {
-			w, err := webm.NewVideoRTPWriter(pipedWriter, rtpMaxLate)
+			w, err := webm.NewVideoRTPWriter(tmpFile, rtpMaxLate)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to create video writer.")
 				return
@@ -184,7 +196,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 			rtpWriter = w
 			log.Ctx(ctx).Debug().Msg("Created video writer.")
 		} else {
-			w, err := webm.NewAudioRTPWriter(pipedWriter)
+			w, err := webm.NewAudioRTPWriter(tmpFile)
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("Failed to create audio writer.")
 				return
@@ -225,37 +237,39 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		}
 	}()
 
-	// Reading WebM into an object from pipedReader.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancelWatchdog()
-
-		_, err := t.storage.PutObject(ctx, t.bucket, objectPath, pipedReader, -1, minio.PutObjectOptions{
-			PartSize:              30 * 1024 * 1024,
-			NumThreads:            5,
-			ConcurrentStreamParts: true,
-		})
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to write object from track.")
-		}
-	}()
-
 	wg.Wait()
 
 	if !recordStarted {
-		log.Ctx(ctx).Info().Str("duration", record.Duration.String()).Msg("Track durations is less than minimum allowed WebM duration. Removing record.")
-		err := t.storage.RemoveObject(ctx, t.bucket, objectPath, minio.RemoveObjectOptions{})
+		log.Ctx(ctx).Info().Str("duration", record.Duration.String()).Msg("Track durations is less than minimum allowed WebM duration. Removing temporary file.")
+		err := os.Remove(tmpFilePath)
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to remove object from storage.")
-		}
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Failed to remove object from storage.")
+			log.Ctx(ctx).Err(err).Msg("Failed to remove temporary file.")
 		}
 		return
 	}
 
-	err := t.emitter.RecordFinished(ctx, record)
+	log.Ctx(ctx).Info().Msg("Finished writing track to temporary file. Uploading to object storage.")
+	readFile, err := os.Open(tmpFilePath)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to open temporary file for reading.")
+		return
+	}
+	stat, err := readFile.Stat()
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to get size of temporary file.")
+		return
+	}
+	_, err = t.storage.PutObject(ctx, t.bucket, objectPath, readFile, stat.Size(), minio.PutObjectOptions{})
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to upload temporary file to storage.")
+		return
+	}
+	err = os.Remove(tmpFilePath)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to remove temporary file.")
+	}
+
+	err = t.emitter.RecordFinished(ctx, record)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to emit record finished event.")
 	}

@@ -24,6 +24,7 @@ type Config struct {
 	LogFormat        string `envconfig:"LOG_FORMAT"`
 	LogLevel         string `envconfig:"LOG_LEVEL"`
 	PublicKey        string `envconfig:"PUBLIC_KEY"`
+	TmpDir           string `envconfig:"TMP_DIR"`
 	Beanstalk        BeanstalkConfig
 	Storage          StorageConfig
 	Livekit          LiveKitConfig
@@ -54,6 +55,9 @@ func (c Config) Validate() error {
 	}
 	if c.PublicKey == "" {
 		return errors.New("PUBLIC_KEY not set")
+	}
+	if c.TmpDir == "" {
+		return errors.New("TMP_DIR not set")
 	}
 	if err := c.Storage.Validate(); err != nil {
 		return fmt.Errorf("invalid storage config: %w", err)

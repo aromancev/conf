@@ -11,8 +11,15 @@ job "tracker" {
       port = "rpc"
     }
 
+    volume "tracker" {
+      type      = "host"
+      read_only = false
+      source    = "tracker"
+    }
+
     task "tracker" {
       driver = "docker"
+      user = "1003:1003" # Pre-defined well-known global constant. See terraform configuration.
 
       config {
         image = "confa/tracker:latest"
@@ -25,6 +32,7 @@ job "tracker" {
           LOG_FORMAT = "json"
           LOG_LEVEL = "info"
           PUBLIC_KEY = "{{ key "auth/public_key" | base64Encode }}"
+          TMP_DIR = "/opt/tracker"
           BEANSTALK_POOL = "{{range $i, $s := service "beanstalk" }}{{if ne $i 0}},{{end}}{{$s.Address}}:{{$s.Port}}{{end}}"
           BEANSTALK_TUBE_PROCESS_TRACK = "{{ key "beanstalk/tubes/process-track" }}"
           BEANSTALK_TUBE_STORE_EVENT = "{{ key "beanstalk/tubes/store-event" }}"
@@ -45,6 +53,12 @@ job "tracker" {
         EOH
         destination = "secrets/.env"
         env         = true
+      }
+
+      volume_mount {
+        volume      = "tracker"
+        destination = "/opt/tracker"
+        read_only   = false
       }
 
       resources {

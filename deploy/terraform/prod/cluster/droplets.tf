@@ -4,6 +4,8 @@ locals {
   mongo_uid        = "1001"
   minio_gid        = "1002"
   minio_uid        = "1002"
+  tracker_uid      = "1003"
+  tracker_gid      = "1003"
   docker_dns       = "172.17.0.1"
   cluster_droplet_ids = [
     digitalocean_droplet.server.id,
@@ -249,6 +251,12 @@ client {
     path      = "/opt/minio"
     read_only = false
   }
+
+  # Host mount that the tracker job can use. It is also used by Nomad to select the node for scheduling.
+  host_volume "tracker" {
+    path      = "/opt/tracker"
+    read_only = false
+  }
 }
 
 ui {
@@ -271,6 +279,13 @@ chmod 700 /opt/minio
 groupadd -g ${local.minio_gid} minio
 useradd -M -s /bin/false -g minio -u ${local.minio_uid} minio
 chown --recursive minio:minio /opt/minio
+
+# Creating host directory for tracker.
+mkdir --parents /opt/tracker
+chmod 700 /opt/tracker
+groupadd -g ${local.tracker_gid} tracker
+useradd -M -s /bin/false -g tracker -u ${local.tracker_uid} tracker
+chown --recursive tracker:tracker /opt/tracker
 
 echo 'Starting Nomad service ...'
 chown --recursive nomad:nomad /etc/nomad.d
