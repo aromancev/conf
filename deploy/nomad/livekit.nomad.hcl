@@ -85,7 +85,7 @@ job "livekit" {
           signal_relay:
             # disabled by default. will be enabled by default in future versions
             enabled: true
-
+          
           # API key / secret pairs.
           # Keys are used for JWT authentication, server APIs would require a keypair in order to generate access tokens
           # and make calls to the server
@@ -95,14 +95,14 @@ job "livekit" {
           # Logging config
           logging:
             # log level, valid values: debug, info, warn, error
-            level: info
+            level: debug
             # log level for pion, default error
             pion_level: info
             # when set to true, emit json fields
             json: true
             # for production setups, enables sampling algorithm
             # https://github.com/uber-go/zap/blob/master/FAQ.md#why-sample-application-logs
-            sample: true
+            sample: false
 
           # turn server
           turn:
