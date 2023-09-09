@@ -129,6 +129,7 @@ services:
     command: "go run ./cmd/tracker"
     environment:
       <<: *service-env
+      TMP_DIR: /tmp/tracks
       LIVEKIT_URL: "ws://livekit:7880"
       LIVEKIT_KEY: devkey
       LIVEKIT_SECRET: 93d33a06-f209-4239-bd7f-d04d411ae7b2

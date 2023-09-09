@@ -25,15 +25,17 @@ type Handler struct {
 	buckets      Buckets
 	livekitCreds record.LivekitCredentials
 	storage      *minio.Client
+	tmpDir       string
 }
 
-func NewHandler(runtime *tracker.Runtime, storage *minio.Client, emitter *record.Beanstalk, buckets Buckets, livekitCreds record.LivekitCredentials) *Handler {
+func NewHandler(runtime *tracker.Runtime, storage *minio.Client, tmpDir string, emitter *record.Beanstalk, buckets Buckets, livekitCreds record.LivekitCredentials) *Handler {
 	return &Handler{
 		runtime:      runtime,
 		buckets:      buckets,
 		emitter:      emitter,
 		livekitCreds: livekitCreds,
 		storage:      storage,
+		tmpDir:       tmpDir,
 	}
 }
 
@@ -103,7 +105,7 @@ func (h *Handler) startRecording(ctx context.Context, roomID uuid.UUID, expireAt
 		roleRecord,
 		expireAt,
 		func(ctx context.Context, roomID uuid.UUID) (tracker.Tracker, error) {
-			return record.NewTracker(ctx, h.storage, h.emitter, h.livekitCreds, h.buckets.TrackRecords, roomID, recordingID)
+			return record.NewTracker(ctx, h.storage, h.tmpDir, h.emitter, h.livekitCreds, h.buckets.TrackRecords, roomID, recordingID)
 		},
 	)
 }

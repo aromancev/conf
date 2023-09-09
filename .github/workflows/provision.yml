@@ -315,19 +315,12 @@ jobs:
                     - editor
           ' | nomad exec -job teleport tctl create -f -c /etc/teleport/teleport.yaml
 
-      # Deploying services with constraints or high resource consumption first because resources are limited.
-      # If deployed in the wrong order, Nomad can fail to schedule a job on a required node that is selected by constraints.
-      # Ideally we would have more VM and this will not be an issue.
-      - name: Deploy services with constraints
+      - name: Deploy all services
         working-directory: ./deploy/nomad
         run: |
           nomad job run -detach livekit.nomad.hcl
           nomad job run -detach traefik.nomad.hcl
           nomad job run -detach tracker.nomad.hcl
-
-      - name: Deploy all services
-        working-directory: ./deploy/nomad
-        run: |
           nomad job run -detach beanstalk.nomad.hcl
           nomad job run -detach iam.nomad.hcl
           nomad job run -detach web.nomad.hcl

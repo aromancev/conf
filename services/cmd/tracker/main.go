@@ -85,6 +85,7 @@ func main() {
 			rpc.NewHandler(
 				runtime,
 				minioClient,
+				config.TmpDir,
 				record.NewBeanstalk(producer, record.Tubes{
 					ProcessTrack:         config.Beanstalk.TubeProcessTrack,
 					StoreEvent:           config.Beanstalk.TubeStoreEvent,
