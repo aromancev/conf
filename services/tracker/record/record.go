@@ -3,6 +3,7 @@ package record
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -132,7 +133,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 	const rtpMaxLate = 2000 // should be 1000 for 2s of fHD video and 200 for 4s audio.
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
-	tmpFilePath := path.Join(t.tmpDir, objectPath)
+	tmpFilePath := path.Join(t.tmpDir, fmt.Sprintf("%s_%s", t.roomID.String(), recordID.String()))
 
 	err := os.MkdirAll(path.Join(t.tmpDir, t.roomID.String()), 0o700)
 	if err != nil {
@@ -209,6 +210,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		}()
 
 		for {
+			log.Ctx(ctx).Debug().Msg("Reading RTP.")
 			packet, _, err := track.ReadRTP()
 			switch {
 			case errors.Is(err, io.EOF):
@@ -219,6 +221,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 				continue
 			}
 
+			log.Ctx(ctx).Debug().Msg("Writing RTP.")
 			if err := rtpWriter.WriteRTP(packet); err != nil {
 				log.Ctx(ctx).Warn().Msg("Failed to write RTP packet.")
 				continue

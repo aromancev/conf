@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -6,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -63,17 +78,17 @@ func (c *SignalClient) Join(urlPrefix string, token string, params *ConnectParam
 		return nil, ErrURLNotProvided
 	}
 	urlPrefix = ToWebsocketURL(urlPrefix)
-	urlSuffix := fmt.Sprintf("/rtc?protocol=%d&sdk=go&version=%s", PROTOCOL, Version)
+	urlSuffix := fmt.Sprintf("/rtc?protocol=%d&version=%s", PROTOCOL, Version)
 
 	if params.AutoSubscribe {
 		urlSuffix += "&auto_subscribe=1"
 	} else {
 		urlSuffix += "&auto_subscribe=0"
 	}
-
 	if params.Reconnect {
 		urlSuffix += "&reconnect=1"
 	}
+	urlSuffix += getStatsParamString()
 
 	u, err := url.Parse(urlPrefix + urlSuffix)
 	if err != nil {
@@ -81,18 +96,35 @@ func (c *SignalClient) Join(urlPrefix string, token string, params *ConnectParam
 	}
 
 	header := newHeaderWithToken(token)
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), header)
+	conn, hresp, err := websocket.DefaultDialer.Dial(u.String(), header)
 	if err != nil {
+		// TODO-REMOVE - logging to check if we can distinguish Dial error vs app error. Remove log below also after collecting some data
+		logger.Errorw("error establishing signal connection", err, "httpResponse", hresp)
+
+		if strings.HasSuffix(err.Error(), ":53: server misbehaving") {
+			// DNS issue, abort
+			return nil, ErrCannotDialSignal
+		}
 		// use validate endpoint to get the actual error
 		validateSuffix := strings.Replace(urlSuffix, "/rtc", "/rtc/validate", 1)
 
-		res, err := http.Get(ToHttpURL(urlPrefix) + validateSuffix)
-		if err != nil || res.StatusCode == http.StatusOK {
+		validateReq, err1 := http.NewRequest(http.MethodGet, ToHttpURL(urlPrefix)+validateSuffix, nil)
+		if err1 != nil {
+			logger.Errorw("error creating validate request", err1)
+			return nil, ErrCannotDialSignal
+		}
+		validateReq.Header = header
+		hresp, err := http.DefaultClient.Do(validateReq)
+		if err != nil {
+			logger.Errorw("error getting validation", err, "httpResponse", hresp)
+			return nil, ErrCannotDialSignal
+		} else if hresp.StatusCode == http.StatusOK {
 			// no specific errors to return if validate succeeds
+			logger.Infow("validate succeeded")
 			return nil, ErrCannotConnectSignal
 		} else {
 			var errString string
-			switch res.StatusCode {
+			switch hresp.StatusCode {
 			case http.StatusUnauthorized:
 				errString = "unauthorized: "
 			case http.StatusNotFound:
@@ -100,7 +132,7 @@ func (c *SignalClient) Join(urlPrefix string, token string, params *ConnectParam
 			case http.StatusServiceUnavailable:
 				errString = "unavailable: "
 			}
-			body, err := io.ReadAll(res.Body)
+			body, err := io.ReadAll(hresp.Body)
 			if err == nil {
 				errString += string(body)
 			}
@@ -350,4 +382,9 @@ func isIgnoredWebsocketError(err error) bool {
 	}
 
 	return websocket.IsCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived)
+}
+
+func getStatsParamString() string {
+	params := "&sdk=go&os=" + runtime.GOOS
+	return params
 }
