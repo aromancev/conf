@@ -1,11 +1,27 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/bep/debounce"
+	"github.com/pion/dtls/v2"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/nack"
 	"github.com/pion/sdp/v3"
@@ -79,7 +95,10 @@ func NewPCTransport(configuration webrtc.Configuration) (*PCTransport, error) {
 		return nil, err
 	}
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i))
+	se := webrtc.SettingEngine{}
+	se.SetSRTPProtectionProfiles(dtls.SRTP_AEAD_AES_128_GCM, dtls.SRTP_AES128_CM_HMAC_SHA1_80)
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithSettingEngine(se), webrtc.WithInterceptorRegistry(i))
 	pc, err := api.NewPeerConnection(configuration)
 	if err != nil {
 		return nil, err
@@ -211,6 +230,25 @@ func (t *PCTransport) OnRemoteDescriptionSettled(f func() error) {
 	t.lock.Lock()
 	t.onRemoteDescriptionSettled = f
 	t.lock.Unlock()
+}
+
+func (t *PCTransport) GetSelectedCandidatePair() (*webrtc.ICECandidatePair, error) {
+	sctp := t.pc.SCTP()
+	if sctp == nil {
+		return nil, errors.New("no SCTP")
+	}
+
+	dtlsTransport := sctp.Transport()
+	if dtlsTransport == nil {
+		return nil, errors.New("no DTLS transport")
+	}
+
+	iceTransport := dtlsTransport.ICETransport()
+	if iceTransport == nil {
+		return nil, errors.New("no ICE transport")
+	}
+
+	return iceTransport.GetSelectedCandidatePair()
 }
 
 func (t *PCTransport) isRemoteOfferRestartICE(sd webrtc.SessionDescription) (string, bool, error) {

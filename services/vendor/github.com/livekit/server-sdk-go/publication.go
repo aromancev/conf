@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -227,18 +241,24 @@ type LocalTrackPublication struct {
 	// set for simulcasted tracks
 	simulcastTracks map[livekit.VideoQuality]*LocalSampleTrack
 	onRttUpdate     func(uint32)
+	opts            TrackPublicationOptions
 }
 
-func NewLocalTrackPublication(kind TrackKind, track Track, name string, client *SignalClient) *LocalTrackPublication {
+func NewLocalTrackPublication(kind TrackKind, track Track, opts TrackPublicationOptions, client *SignalClient) *LocalTrackPublication {
 	pub := &LocalTrackPublication{
 		trackPublicationBase: trackPublicationBase{
 			track:  track,
 			client: client,
 		},
+		opts: opts,
 	}
 	pub.kind.Store(string(kind))
-	pub.name.Store(name)
+	pub.name.Store(opts.Name)
 	return pub
+}
+
+func (p *LocalTrackPublication) PublicationOptions() TrackPublicationOptions {
+	return p.opts
 }
 
 func (p *LocalTrackPublication) TrackLocal() webrtc.TrackLocal {
@@ -263,7 +283,14 @@ func (p *LocalTrackPublication) SetMuted(muted bool) {
 	if p.isMuted.Swap(muted) == muted {
 		return
 	}
+
 	_ = p.client.SendMuteTrack(p.sid.Load(), muted)
+	if track := p.track; track != nil {
+		switch t := track.(type) {
+		case *LocalSampleTrack:
+			t.setMuted(muted)
+		}
+	}
 }
 
 func (p *LocalTrackPublication) addSimulcastTrack(st *LocalSampleTrack) {
@@ -312,6 +339,16 @@ func (p *LocalTrackPublication) OnRttUpdate(cb func(uint32)) {
 	p.lock.Lock()
 	p.onRttUpdate = cb
 	p.lock.Unlock()
+}
+
+func (p *LocalTrackPublication) CloseTrack() {
+	for _, st := range p.simulcastTracks {
+		st.Close()
+	}
+
+	if localTrack, ok := p.track.(LocalTrackWithClose); ok {
+		localTrack.Close()
+	}
 }
 
 type SimulcastTrack struct {

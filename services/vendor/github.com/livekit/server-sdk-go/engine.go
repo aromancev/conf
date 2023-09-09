@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -22,20 +36,21 @@ const (
 )
 
 type RTCEngine struct {
-	publisher          *PCTransport
-	subscriber         *PCTransport
-	client             *SignalClient
-	dclock             sync.RWMutex
-	reliableDC         *webrtc.DataChannel
-	lossyDC            *webrtc.DataChannel
-	reliableDCSub      *webrtc.DataChannel
-	lossyDCSub         *webrtc.DataChannel
-	trackPublishedChan chan *livekit.TrackPublishedResponse
-	subscriberPrimary  bool
-	hasConnected       atomic.Bool
-	hasPublish         atomic.Bool
-	closed             atomic.Bool
-	reconnecting       atomic.Bool
+	publisher             *PCTransport
+	subscriber            *PCTransport
+	client                *SignalClient
+	dclock                sync.RWMutex
+	reliableDC            *webrtc.DataChannel
+	lossyDC               *webrtc.DataChannel
+	reliableDCSub         *webrtc.DataChannel
+	lossyDCSub            *webrtc.DataChannel
+	trackPublishedChan    chan *livekit.TrackPublishedResponse
+	subscriberPrimary     bool
+	hasConnected          atomic.Bool
+	hasPublish            atomic.Bool
+	closed                atomic.Bool
+	reconnecting          atomic.Bool
+	requiresFullReconnect atomic.Bool
 
 	url        string
 	token      atomic.String
@@ -174,6 +189,7 @@ func (e *RTCEngine) configure(res *livekit.JoinResponse) error {
 	if e.subscriber, err = NewPCTransport(configuration); err != nil {
 		return err
 	}
+	logger.Debugw("Using ICE servers", "servers", iceServers)
 
 	e.subscriberPrimary = res.SubscriberPrimary
 	e.subscriber.OnRemoteDescriptionSettled(e.createPublisherAnswerAndSend)
@@ -197,14 +213,18 @@ func (e *RTCEngine) configure(res *livekit.JoinResponse) error {
 		}
 	})
 
-	primaryPC := e.publisher.pc
+	primaryTransport := e.publisher
 	if res.SubscriberPrimary {
-		primaryPC = e.subscriber.pc
+		primaryTransport = e.subscriber
 	}
-	primaryPC.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+	primaryTransport.pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		switch state {
 		case webrtc.ICEConnectionStateConnected:
-			logger.Infow("ICE connected")
+			var fields []interface{}
+			if pair, err := primaryTransport.GetSelectedCandidatePair(); err == nil {
+				fields = append(fields, "iceCandidatePair", pair)
+			}
+			logger.Infow("ICE connected", fields...)
 		case webrtc.ICEConnectionStateDisconnected:
 			logger.Infow("ICE disconnected")
 		case webrtc.ICEConnectionStateFailed:
@@ -233,6 +253,7 @@ func (e *RTCEngine) configure(res *livekit.JoinResponse) error {
 	})
 
 	e.publisher.OnOffer = func(offer webrtc.SessionDescription) {
+		e.hasPublish.Store(true)
 		if err := e.client.SendOffer(offer); err != nil {
 			logger.Errorw("could not send offer", err)
 		}
@@ -316,6 +337,7 @@ func (e *RTCEngine) waitUntilConnected() error {
 			return ErrConnectionTimeout
 		case <-time.After(10 * time.Millisecond):
 			if e.IsConnected() {
+				e.requiresFullReconnect.Store(false)
 				return nil
 			}
 		}
@@ -330,8 +352,6 @@ func (e *RTCEngine) ensurePublisherConnected(ensureDataReady bool) error {
 	if e.publisher.IsConnected() && (!ensureDataReady || e.dataPubChannelReady()) {
 		return nil
 	}
-
-	e.hasPublish.Store(true)
 
 	e.publisher.Negotiate()
 
@@ -394,6 +414,9 @@ func (e *RTCEngine) handleDisconnect(fullReconnect bool) {
 	}
 
 	if !e.reconnecting.CompareAndSwap(false, true) {
+		if fullReconnect {
+			e.requiresFullReconnect.Store(true)
+		}
 		return
 	}
 
@@ -401,6 +424,9 @@ func (e *RTCEngine) handleDisconnect(fullReconnect bool) {
 		defer e.reconnecting.Store(false)
 		var reconnectCount int
 		for ; reconnectCount < maxReconnectCount; reconnectCount++ {
+			if e.requiresFullReconnect.Load() {
+				fullReconnect = true
+			}
 			if fullReconnect {
 				if reconnectCount == 0 && e.OnRestarting != nil {
 					e.OnRestarting()
@@ -418,7 +444,6 @@ func (e *RTCEngine) handleDisconnect(fullReconnect bool) {
 				logger.Infow("resuming connection...", "reconnectCount", reconnectCount)
 				if err := e.resumeConnection(); err != nil {
 					logger.Errorw("resume connection failed", err)
-					fullReconnect = true
 				} else {
 					return
 				}

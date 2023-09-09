@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
 //go:build !js
 // +build !js
 
@@ -121,6 +124,15 @@ func (r *RTPReceiver) Tracks() []*TrackRemote {
 		tracks = append(tracks, r.tracks[i].track)
 	}
 	return tracks
+}
+
+// RTPTransceiver returns the RTPTransceiver this
+// RTPReceiver belongs too, or nil if none
+func (r *RTPReceiver) RTPTransceiver() *RTPTransceiver {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.tr
 }
 
 // configureReceive initialize the track

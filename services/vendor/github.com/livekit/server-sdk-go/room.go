@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -15,6 +29,8 @@ import (
 	"github.com/livekit/protocol/livekit"
 )
 
+// -----------------------------------------------
+
 type SimulateScenario int
 
 const (
@@ -22,7 +38,14 @@ const (
 	SimulateForceTCP
 	SimulateForceTLS
 	SimulateSpeakerUpdate
+	SimulateMigration
+	SimulateServerLeave
+	SimulateNodeFailure
+)
 
+// -----------------------------------------------
+
+const (
 	SimulateSpeakerUpdateInterval = 5
 )
 
@@ -194,6 +217,8 @@ func (r *Room) JoinWithToken(url, token string, opts ...ConnectOption) error {
 func (r *Room) Disconnect() {
 	_ = r.engine.client.SendLeave()
 	r.engine.Close()
+
+	r.LocalParticipant.closeTracks()
 }
 
 func (r *Room) GetParticipant(sid string) *RemoteParticipant {
@@ -292,23 +317,8 @@ func (r *Room) handleRestarted(joinRes *livekit.JoinResponse) {
 
 	r.handleParticipantUpdate(joinRes.OtherParticipants)
 
-	var localPubs []*LocalTrackPublication
-	r.LocalParticipant.tracks.Range(func(_, value interface{}) bool {
-		track := value.(*LocalTrackPublication)
+	r.LocalParticipant.republishTracks()
 
-		if track.Track() != nil {
-			localPubs = append(localPubs, track)
-		}
-		return true
-	})
-
-	for _, pub := range localPubs {
-		if track := pub.TrackLocal(); track != nil {
-			r.LocalParticipant.PublishTrack(track, &TrackPublicationOptions{
-				Name: pub.Name(),
-			})
-		}
-	}
 	r.callback.OnReconnected()
 }
 
@@ -322,15 +332,14 @@ func (r *Room) handleResumed() {
 }
 
 func (r *Room) handleDataReceived(userPacket *livekit.UserPacket) {
-	if userPacket.ParticipantSid == r.LocalParticipant.sid {
+	if userPacket.ParticipantSid == r.LocalParticipant.SID() {
 		// if sent by itself, do not handle data
 		return
 	}
 	p := r.GetParticipant(userPacket.ParticipantSid)
-	if p == nil {
-		return
+	if p != nil {
+		p.Callback.OnDataReceived(userPacket.Payload, p)
 	}
-	p.Callback.OnDataReceived(userPacket.Payload, p)
 	r.callback.OnDataReceived(userPacket.Payload, p)
 }
 
@@ -370,9 +379,10 @@ func (r *Room) handleParticipantDisconnect(p *RemoteParticipant) {
 func (r *Room) handleActiveSpeakerChange(speakers []*livekit.SpeakerInfo) {
 	var activeSpeakers []Participant
 	seenSids := make(map[string]bool)
+	localSID := r.LocalParticipant.SID()
 	for _, s := range speakers {
 		seenSids[s.Sid] = true
-		if s.Sid == r.LocalParticipant.sid {
+		if s.Sid == localSID {
 			r.LocalParticipant.setAudioLevel(s.Level)
 			r.LocalParticipant.setIsSpeaking(true)
 			activeSpeakers = append(activeSpeakers, r.LocalParticipant)
@@ -387,11 +397,11 @@ func (r *Room) handleActiveSpeakerChange(speakers []*livekit.SpeakerInfo) {
 		}
 	}
 
-	if !seenSids[r.LocalParticipant.sid] {
+	if !seenSids[localSID] {
 		r.LocalParticipant.setAudioLevel(0)
 	}
 	for _, rp := range r.GetParticipants() {
-		if !seenSids[rp.sid] {
+		if !seenSids[rp.SID()] {
 			rp.setAudioLevel(0)
 			rp.setIsSpeaking(false)
 		}
@@ -559,6 +569,36 @@ func (r *Room) Simulate(scenario SimulateScenario) {
 				Simulate: &livekit.SimulateScenario{
 					Scenario: &livekit.SimulateScenario_SpeakerUpdate{
 						SpeakerUpdate: SimulateSpeakerUpdateInterval,
+					},
+				},
+			},
+		})
+	case SimulateMigration:
+		r.engine.client.SendRequest(&livekit.SignalRequest{
+			Message: &livekit.SignalRequest_Simulate{
+				Simulate: &livekit.SimulateScenario{
+					Scenario: &livekit.SimulateScenario_Migration{
+						Migration: true,
+					},
+				},
+			},
+		})
+	case SimulateServerLeave:
+		r.engine.client.SendRequest(&livekit.SignalRequest{
+			Message: &livekit.SignalRequest_Simulate{
+				Simulate: &livekit.SimulateScenario{
+					Scenario: &livekit.SimulateScenario_ServerLeave{
+						ServerLeave: true,
+					},
+				},
+			},
+		})
+	case SimulateNodeFailure:
+		r.engine.client.SendRequest(&livekit.SignalRequest{
+			Message: &livekit.SignalRequest_Simulate{
+				Simulate: &livekit.SimulateScenario{
+					Scenario: &livekit.SimulateScenario_NodeFailure{
+						NodeFailure: true,
 					},
 				},
 			},

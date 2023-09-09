@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -40,7 +54,7 @@ func (p *LocalParticipant) PublishTrack(track webrtc.TrackLocal, opts *TrackPubl
 		}
 	}
 
-	pub := NewLocalTrackPublication(kind, track, opts.Name, p.engine.client)
+	pub := NewLocalTrackPublication(kind, track, *opts, p.engine.client)
 	pub.OnRttUpdate(func(rtt uint32) {
 		p.engine.setRTT(rtt)
 	})
@@ -134,7 +148,7 @@ func (p *LocalParticipant) PublishSimulcastTrack(tracks []*LocalSampleTrack, opt
 
 	mainTrack := tracks[len(tracks)-1]
 
-	pub := NewLocalTrackPublication(KindFromRTPType(mainTrack.Kind()), nil, opts.Name, p.engine.client)
+	pub := NewLocalTrackPublication(KindFromRTPType(mainTrack.Kind()), nil, *opts, p.engine.client)
 
 	var layers []*livekit.VideoLayer
 	for _, st := range tracks {
@@ -200,13 +214,56 @@ func (p *LocalParticipant) PublishSimulcastTrack(tracks []*LocalSampleTrack, opt
 	return pub, nil
 }
 
+func (p *LocalParticipant) republishTracks() {
+	var localPubs []*LocalTrackPublication
+	p.tracks.Range(func(key, value interface{}) bool {
+		track := value.(*LocalTrackPublication)
+
+		if track.Track() != nil {
+			localPubs = append(localPubs, track)
+		}
+		p.tracks.Delete(key)
+		return true
+	})
+
+	for _, pub := range localPubs {
+		opt := pub.PublicationOptions()
+		if len(pub.simulcastTracks) > 0 {
+			var tracks []*LocalSampleTrack
+			for _, st := range pub.simulcastTracks {
+				tracks = append(tracks, st)
+			}
+			p.PublishSimulcastTrack(tracks, &opt)
+		} else if track := pub.TrackLocal(); track != nil {
+			p.PublishTrack(track, &opt)
+		} else {
+			logger.Warnw("could not republish track as no track local found", nil, "track", pub.SID())
+		}
+	}
+}
+
+func (p *LocalParticipant) closeTracks() {
+	var localPubs []*LocalTrackPublication
+	p.tracks.Range(func(_, value interface{}) bool {
+		track := value.(*LocalTrackPublication)
+		if track.Track() != nil {
+			localPubs = append(localPubs, track)
+		}
+		return true
+	})
+
+	for _, pub := range localPubs {
+		pub.CloseTrack()
+	}
+}
+
 func (p *LocalParticipant) PublishData(data []byte, kind livekit.DataPacket_Kind, destinationSids []string) error {
 	packet := &livekit.DataPacket{
 		Kind: kind,
 		Value: &livekit.DataPacket_User{
 			User: &livekit.UserPacket{
 				// this is enforced on the server side, setting for completeness
-				ParticipantSid:  p.sid,
+				ParticipantSid:  p.SID(),
 				Payload:         data,
 				DestinationSids: destinationSids,
 			},
@@ -249,6 +306,8 @@ func (p *LocalParticipant) UnpublishTrack(sid string) error {
 		}
 		p.engine.publisher.Negotiate()
 	}
+
+	pub.CloseTrack()
 
 	return err
 }

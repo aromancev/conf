@@ -1,3 +1,17 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lksdk
 
 import (
@@ -51,6 +65,7 @@ type LocalSampleTrack struct {
 	videoLayer      *livekit.VideoLayer
 	onRTCP          func(rtcp.Packet)
 
+	muted       atomic.Bool
 	cancelWrite func()
 	provider    SampleProvider
 	onBind      func()
@@ -338,6 +353,24 @@ func (s *LocalSampleTrack) WriteSample(sample media.Sample, opts *SampleWriteOpt
 	return nil
 }
 
+func (s *LocalSampleTrack) Close() error {
+	s.lock.Lock()
+	cancelWrite := s.cancelWrite
+	provider := s.provider
+	s.lock.Unlock()
+	if cancelWrite != nil {
+		cancelWrite()
+	}
+	if provider != nil {
+		provider.Close()
+	}
+	return nil
+}
+
+func (s *LocalSampleTrack) setMuted(muted bool) {
+	s.muted.Store(muted)
+}
+
 func (s *LocalSampleTrack) rtcpWorker(rtcpReader interceptor.RTCPReader) {
 	// read incoming rtcp packets, interceptors require this
 	b := make([]byte, rtpInboundMTU)
@@ -402,18 +435,21 @@ func (s *LocalSampleTrack) writeWorker(provider SampleProvider, onComplete func(
 			return
 		}
 
-		var opts *SampleWriteOptions
-		if isAudioProvider {
-			level := audioProvider.CurrentAudioLevel()
-			opts = &SampleWriteOptions{
-				AudioLevel: &level,
+		if !s.muted.Load() {
+			var opts *SampleWriteOptions
+			if isAudioProvider {
+				level := audioProvider.CurrentAudioLevel()
+				opts = &SampleWriteOptions{
+					AudioLevel: &level,
+				}
+			}
+
+			if err := s.WriteSample(sample, opts); err != nil {
+				logger.Errorw("could not write sample", err)
+				return
 			}
 		}
 
-		if err := s.WriteSample(sample, opts); err != nil {
-			logger.Errorw("could not write sample", err)
-			return
-		}
 		// account for clock drift
 		nextSampleTime = nextSampleTime.Add(sample.Duration)
 		sleepDuration := time.Until(nextSampleTime)

@@ -3,6 +3,7 @@ package record
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -132,6 +133,7 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 	const rtpMaxLate = 2000 // should be 1000 for 2s of fHD video and 200 for 4s audio.
 	recordID := uuid.New()
 	objectPath := path.Join(t.roomID.String(), recordID.String())
+<<<<<<< HEAD
 	tmpFilePath := path.Join(t.tmpDir, objectPath)
 
 	err := os.MkdirAll(path.Join(t.tmpDir, t.roomID.String()), 0o700)
@@ -139,6 +141,10 @@ func (t *Tracker) writeTrack(ctx context.Context, track *webrtc.TrackRemote, pli
 		log.Ctx(ctx).Err(err).Msg("Failed to create temporary dir.")
 		return
 	}
+=======
+	tmpFilePath := path.Join(t.tmpDir, fmt.Sprintf("%s_%s", t.tmpDir, objectPath))
+
+>>>>>>> 3de57b4d (refactor: write tracks to disk first. (#244))
 	tmpFile, err := os.Create(tmpFilePath)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("Failed to open temporary file for buffering track.")
